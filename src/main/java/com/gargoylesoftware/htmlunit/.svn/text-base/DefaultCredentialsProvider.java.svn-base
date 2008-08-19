@@ -1,0 +1,285 @@
+/*
+ * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.gargoylesoftware.htmlunit;
+
+import java.io.Serializable;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+
+import org.apache.commons.httpclient.Credentials;
+import org.apache.commons.httpclient.NTCredentials;
+import org.apache.commons.httpclient.UsernamePasswordCredentials;
+import org.apache.commons.httpclient.auth.AuthScheme;
+import org.apache.commons.httpclient.auth.AuthScope;
+import org.apache.commons.httpclient.auth.CredentialsNotAvailableException;
+import org.apache.commons.httpclient.auth.CredentialsProvider;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+/**
+ * Default HtmlUnit implementation of the <tt>CredentialsProvider</tt> interface. Provides
+ * credentials for both web servers and proxies. Supports NTLM authentication, Digest
+ * authentication, and Basic HTTP authentication.
+ *
+ * @version $Revision$
+ * @author Daniel Gredler
+ * @author Vikram Shitole
+ * @author Marc Guillemot
+ * @author Ahmed Ashour
+ */
+public class DefaultCredentialsProvider implements CredentialsProvider, Serializable  {
+
+    private static final long serialVersionUID = 1036331144926557053L;
+
+    private final Map<AuthScope, Credentials> credentials_ = new HashMap<AuthScope, Credentials>();
+    private final Map<AuthScope, Credentials> proxyCredentials_ = new HashMap<AuthScope, Credentials>();
+    private final Set<Object> answerMarks_ = Collections.synchronizedSortedSet(new TreeSet<Object>());
+
+    /**
+     * Creates a new <tt>DefaultCredentialsProvider</tt> instance.
+     */
+    public DefaultCredentialsProvider() {
+        // nothing
+    }
+
+    /**
+     * Adds credentials for the specified username/password for any host/port/realm combination.
+     * The credentials may be for any authentication scheme, including NTLM, digest and basic
+     * HTTP authentication. If you are using sensitive username/password information, please do
+     * NOT use this method. If you add credentials using this method, any server that requires
+     * authentication will receive the specified username and password.
+     * @param username the username for the new credentials
+     * @param password the password for the new credentials
+     */
+    public void addCredentials(final String username, final String password) {
+        addCredentials(username, password, AuthScope.ANY_HOST, AuthScope.ANY_PORT, AuthScope.ANY_REALM);
+    }
+
+    /**
+     * Adds credentials for the specified username/password on the specified host/port for the
+     * specified realm. The credentials may be for any authentication scheme, including NTLM,
+     * digest and basic HTTP authentication.
+     * @param username the username for the new credentials
+     * @param password the password for the new credentials
+     * @param host the host to which to the new credentials apply (<tt>null</tt> if applicable to any host)
+     * @param port the port to which to the new credentials apply (negative if applicable to any port)
+     * @param realm the realm to which to the new credentials apply (<tt>null</tt> if applicable to any realm)
+     */
+    public void addCredentials(final String username, final String password, final String host,
+            final int port, final String realm) {
+        final AuthScope scope = new AuthScope(host, port, realm, AuthScope.ANY_SCHEME);
+        final Credentials c = new UsernamePasswordCredentials(username, password);
+        credentials_.put(scope, c);
+        clearAnswered(); // don't need to be precise, will cause in worst case one extra request
+    }
+
+    /**
+     * Adds proxy credentials for the specified username/password for any host/port/realm combination.
+     * @param username the username for the new credentials
+     * @param password the password for the new credentials
+     */
+    public void addProxyCredentials(final String username, final String password) {
+        addProxyCredentials(username, password, AuthScope.ANY_HOST, AuthScope.ANY_PORT);
+    }
+
+    /**
+     * Adds proxy credentials for the specified username/password on the specified host/port.
+     * @param username the username for the new credentials
+     * @param password the password for the new credentials
+     * @param host the host to which to the new credentials apply (<tt>null</tt> if applicable to any host)
+     * @param port the port to which to the new credentials apply (negative if applicable to any port)
+     */
+    public void addProxyCredentials(final String username, final String password, final String host, final int port) {
+        final AuthScope scope = new AuthScope(host, port, AuthScope.ANY_REALM, AuthScope.ANY_SCHEME);
+        final Credentials c = new UsernamePasswordCredentials(username, password);
+        proxyCredentials_.put(scope, c);
+        clearAnswered(); // don't need to be precise, will cause in worst case one extra request
+    }
+
+    /**
+     * Adds NTLM credentials for the specified username/password on the specified host/port.
+     * @param username the username for the new credentials; should not include the domain to authenticate with;
+     *        for example: <tt>"user"</tt> is correct whereas <tt>"DOMAIN\\user"</tt> is not
+     * @param password the password for the new credentials
+     * @param host the host to which to the new credentials apply (<tt>null</tt> if applicable to any host)
+     * @param port the port to which to the new credentials apply (negative if applicable to any port)
+     * @param clientHost the host the authentication request is originating from; essentially, the computer name for
+     *        this machine.
+     * @param clientDomain the domain to authenticate within
+     */
+    public void addNTLMCredentials(final String username, final String password, final String host,
+            final int port, final String clientHost, final String clientDomain) {
+        final AuthScope scope = new AuthScope(host, port, AuthScope.ANY_REALM, AuthScope.ANY_SCHEME);
+        final Credentials c = new NTCredentials(username, password, clientHost, clientDomain);
+        credentials_.put(scope, c);
+        clearAnswered(); // don't need to be precise, will cause in worst case one extra request
+    }
+
+    /**
+     * Adds NTLM proxy credentials for the specified username/password on the specified host/port.
+     * @param username the username for the new credentials; should not include the domain to authenticate with;
+     *        for example: <tt>"user"</tt> is correct whereas <tt>"DOMAIN\\user"</tt> is not.
+     * @param password the password for the new credentials
+     * @param host the host to which to the new credentials apply (<tt>null</tt> if applicable to any host)
+     * @param port the port to which to the new credentials apply (negative if applicable to any port)
+     * @param clientHost the host the authentication request is originating from; essentially, the computer name for
+     *        this machine
+     * @param clientDomain the domain to authenticate within
+     */
+    public void addNTLMProxyCredentials(final String username, final String password, final String host,
+            final int port, final String clientHost, final String clientDomain) {
+        final AuthScope scope = new AuthScope(host, port, AuthScope.ANY_REALM, AuthScope.ANY_SCHEME);
+        final Credentials c = new NTCredentials(username, password, clientHost, clientDomain);
+        proxyCredentials_.put(scope, c);
+        clearAnswered(); // don't need to be precise, will cause in worst case one extra request
+    }
+
+    /**
+     * Returns the credentials associated with the specified scheme, host and port.
+     * @param scheme the authentication scheme being used (basic, digest, NTLM, etc)
+     * @param host the host we are authenticating for
+     * @param port the port we are authenticating for
+     * @param proxy Whether or not we are authenticating using a proxy
+     * @return the credentials corresponding to the specified scheme, host and port or <code>null</code>
+     * if already asked for it to avoid infinite loop
+     * @throws CredentialsNotAvailableException if the specified credentials cannot be provided due to an error
+     * @see CredentialsProvider#getCredentials(AuthScheme, String, int, boolean)
+     */
+    public Credentials getCredentials(final AuthScheme scheme, final String host, final int port, final boolean proxy)
+        throws CredentialsNotAvailableException {
+
+        // it's the responsibility of the CredentialProvider to answer only once with a given Credentials
+        // to avoid infinite loop if it is incorrect
+        // see http://issues.apache.org/bugzilla/show_bug.cgi?id=8140
+        if (alreadyAnswered(scheme, host, port, proxy)) {
+            getLog().debug("Already answered for " + buildKey(scheme, host, port, proxy)
+                    + " returning null");
+            return null;
+        }
+
+        final Map<AuthScope, Credentials> credentials;
+        if (proxy) {
+            credentials = proxyCredentials_;
+        }
+        else {
+            credentials = credentials_;
+        }
+
+        for (final Map.Entry<AuthScope, Credentials> entry : credentials.entrySet()) {
+            final AuthScope scope = entry.getKey();
+            final Credentials c = entry.getValue();
+            if (matchScheme(scope, scheme) && matchHost(scope, host)
+                    && matchPort(scope, port) && matchRealm(scope, scheme)) {
+
+                markAsAnswered(scheme, host, port, proxy);
+                getLog().debug("Returning " + c + " for " + buildKey(scheme, host, port, proxy));
+                return c;
+            }
+        }
+
+        getLog().debug("No credential found for " + buildKey(scheme, host, port, proxy));
+        return null;
+    }
+
+    /**
+     * @param scheme the request scheme for which Credentials are asked
+     * @param scope the configured authorization scope
+     * @return <code>true</code> if the scope's realm matches the one of the scheme
+     */
+    protected boolean matchRealm(final AuthScope scope, final AuthScheme scheme) {
+        return scope.getRealm() == AuthScope.ANY_REALM || scope.getRealm().equals(scheme.getRealm());
+    }
+
+    /**
+     * @param port the request port for which Credentials are asked
+     * @param scope the configured authorization scope
+     * @return <code>true</code> if the scope's port matches the provided one
+     */
+    protected boolean matchPort(final AuthScope scope, final int port) {
+        return scope.getPort() == AuthScope.ANY_PORT || scope.getPort() == port;
+    }
+
+    /**
+     * @param host the request host for which Credentials are asked
+     * @param scope the configured authorization scope
+     * @return <code>true</code> if the scope's host matches the provided one
+     */
+    protected boolean matchHost(final AuthScope scope, final String host) {
+        return scope.getHost() == AuthScope.ANY_HOST || scope.getHost().equals(host);
+    }
+
+    /**
+     * @param scheme the request scheme for which Credentials are asked
+     * @param scope the configured authorization scope
+     * @return <code>true</code> if the scope's scheme matches the provided one
+     */
+    protected boolean matchScheme(final AuthScope scope, final AuthScheme scheme) {
+        return scope.getScheme() == AuthScope.ANY_SCHEME || scope.getScheme().equals(scheme.getSchemeName());
+    }
+
+    /**
+     * Indicates if this provider has already provided an answer for this (scheme, host, port, proxy).
+     * @param scheme the scheme
+     * @param host the server name
+     * @param port the server port
+     * @param proxy is proxy
+     * @return true if the provider has already provided an answer for this
+     */
+    protected boolean alreadyAnswered(final AuthScheme scheme, final String host, final int port, final boolean proxy) {
+        return answerMarks_.contains(buildKey(scheme, host, port, proxy));
+    }
+
+    /**
+     * @param scheme the scheme
+     * @param host the server name
+     * @param port the server port
+     * @param proxy is proxy
+     */
+    protected void markAsAnswered(final AuthScheme scheme, final String host, final int port, final boolean proxy) {
+        answerMarks_.add(buildKey(scheme, host, port, proxy));
+    }
+
+    /**
+     * Clears the cache of answered (scheme, host, port, proxy) combinations.
+     */
+    protected void clearAnswered() {
+        answerMarks_.clear();
+        getLog().debug("Flushed marked answers");
+    }
+
+    /**
+     * Builds a key with the specified data.
+     * @param scheme the scheme
+     * @param host the server name
+     * @param port the server port
+     * @param proxy is proxy
+     * @return the new key
+     */
+    protected Object buildKey(final AuthScheme scheme, final String host, final int port, final boolean proxy) {
+        return scheme.getSchemeName() + " " + scheme.getRealm() + " " + host + ":" + port + " " + proxy;
+    }
+
+    /**
+     * Returns the log object for this class.
+     * @return the log object
+     */
+    protected final Log getLog() {
+        return LogFactory.getLog(getClass());
+    }
+
+}

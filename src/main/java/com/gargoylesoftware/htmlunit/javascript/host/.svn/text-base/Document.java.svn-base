@@ -1,0 +1,289 @@
+/*
+ * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.gargoylesoftware.htmlunit.javascript.host;
+
+import java.io.IOException;
+
+import org.mozilla.javascript.Context;
+
+import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.ElementNotFoundException;
+import com.gargoylesoftware.htmlunit.SgmlPage;
+import com.gargoylesoftware.htmlunit.html.DomDocumentFragment;
+import com.gargoylesoftware.htmlunit.html.DomNode;
+import com.gargoylesoftware.htmlunit.html.DomText;
+import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+
+/**
+ * A JavaScript object for a Document.
+ *
+ * @version $Revision$
+ * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
+ * @author David K. Taylor
+ * @author <a href="mailto:chen_jun@users.sourceforge.net">Chen Jun</a>
+ * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
+ * @author Chris Erskine
+ * @author Marc Guillemot
+ * @author Daniel Gredler
+ * @author Michael Ottati
+ * @author <a href="mailto:george@murnock.com">George Murnock</a>
+ * @author Ahmed Ashour
+ * @author Rob Di Marco
+ * @see <a href="http://msdn.microsoft.com/workshop/author/dhtml/reference/objects/obj_document.asp">
+ * MSDN documentation</a>
+ * @see <a href="http://www.w3.org/TR/2000/WD-DOM-Level-1-20000929/level-one-html.html#ID-7068919">
+ * W3C Dom Level 1</a>
+ */
+public class Document extends EventNode {
+    private static final long serialVersionUID = 3700830050839613384L;
+    private Window window_;
+    private DOMImplementation implementation_;
+
+    /**
+     * Sets the Window JavaScript object that encloses this document.
+     * @param window the Window JavaScript object that encloses this document
+     */
+    void setWindow(final Window window) {
+        window_ = window;
+    }
+
+    /**
+     * Returns the value of the "location" property.
+     * @return the value of the "location" property
+     */
+    public Location jsxGet_location() {
+        return window_.jsxGet_location();
+    }
+
+    /**
+     * Sets the value of the "location" property. The location's default property is "href",
+     * so setting "document.location='http://www.sf.net'" is equivalent to setting
+     * "document.location.href='http://www.sf.net'".
+     * @see <a href="http://msdn.microsoft.com/workshop/author/dhtml/reference/objects/obj_location.asp">
+     * MSDN documentation</a>
+     * @param location the location to navigate to
+     * @throws IOException when location loading fails
+     */
+    public void jsxSet_location(final String location) throws IOException {
+        window_.jsxSet_location(location);
+    }
+
+    /**
+     * Returns the value of the "referrer" property.
+     * @return the value of the "referrer" property
+     */
+    public String jsxGet_referrer() {
+        final String referrer = getPage().getWebResponse().getResponseHeaderValue("referrer");
+        if (referrer == null) {
+            return "";
+        }
+        return referrer;
+    }
+
+    /**
+     * Gets the JavaScript property "documentElement" for the document.
+     * @return the root node for the document
+     */
+    public SimpleScriptable jsxGet_documentElement() {
+        final Object documentElement = getPage().getDocumentElement();
+        if (documentElement == null) {
+            // for instance with an XML document with parsing error
+            return null;
+        }
+        return getScriptableFor(documentElement);
+    }
+
+    /**
+     * Returns the page that this document is modeling.
+     * @return the page that this document is modeling
+     */
+    protected SgmlPage getPage() {
+        return (SgmlPage) getDomNodeOrDie();
+    }
+
+    /**
+     * Gets the window in which this document is contained.
+     * @return the window
+     */
+    public Object jsxGet_defaultView() {
+        return getWindow();
+    }
+
+    /**
+     * Creates a new document fragment.
+     * @return a newly created document fragment
+     */
+    public Object jsxFunction_createDocumentFragment() {
+        final DomDocumentFragment fragment = ((SgmlPage) getDomNodeOrDie().getPage()).createDomDocumentFragment();
+        final DocumentFragment node = new DocumentFragment();
+        node.setParentScope(getParentScope());
+        node.setPrototype(getPrototype(node.getClass()));
+        node.setDomNode(fragment);
+        return getScriptableFor(fragment);
+    }
+
+    /**
+     * Creates a new HTML attribute with the specified name.
+     *
+     * @param attributeName the name of the attribute to create
+     * @return an attribute with the specified name
+     */
+    public Attr jsxFunction_createAttribute(final String attributeName) {
+        final Attr att = new Attr();
+        att.setPrototype(getPrototype(Attr.class));
+        att.setParentScope(getWindow());
+        att.init(attributeName, null);
+        return att;
+    }
+
+    /**
+     * Returns the {@link BoxObject} for the specific element.
+     *
+     * @param element target for BoxObject
+     * @return the BoxObject
+     */
+    public BoxObject jsxFunction_getBoxObjectFor(final HTMLElement element) {
+        return element.getBoxObject();
+    }
+
+    /**
+     * Imports a node from another document to this document.
+     * The source node is not altered or removed from the original document;
+     * this method creates a new copy of the source node.
+     *
+     * @param importedNode the node to import
+     * @param deep Whether to recursively import the subtree under the specified node; or not
+     * @return the imported node that belongs to this Document
+     */
+    public Object jsxFunction_importNode(final Node importedNode, final boolean deep) {
+        return importedNode.getDomNodeOrDie().cloneNode(deep).getScriptObject();
+    }
+
+    /**
+     * Returns the implementation object of the current document.
+     * @return implementation-specific object
+     */
+    public DOMImplementation jsxGet_implementation() {
+        if (implementation_ == null) {
+            implementation_ = new DOMImplementation();
+            implementation_.setParentScope(getWindow());
+            implementation_.setPrototype(getPrototype(implementation_.getClass()));
+        }
+        return implementation_;
+    }
+
+    /**
+     * Adapts any DOM node to resolve namespaces so that an XPath expression can be easily
+     * evaluated relative to the context of the node where it appeared within the document.
+     * @param nodeResolver the node to be used as a context for namespace resolution
+     * @return an XPathNSResolver which resolves namespaces with respect to the definitions
+     *         in scope for a specified node
+     */
+    public XPathNSResolver jsxFunction_createNSResolver(final Node nodeResolver) {
+        final XPathNSResolver resolver = new XPathNSResolver();
+        resolver.setElement(nodeResolver);
+        resolver.setParentScope(getWindow());
+        resolver.setPrototype(getPrototype(resolver.getClass()));
+        return resolver;
+    }
+
+    /**
+     * Create a new DOM text node with the given data.
+     *
+     * @param newData the string value for the text node
+     * @return the new text node or NOT_FOUND if there is an error
+     */
+    public Object jsxFunction_createTextNode(final String newData) {
+        Object result = NOT_FOUND;
+        try {
+            final DomNode domNode = new DomText(getDomNodeOrDie().getPage(), newData);
+            final Object jsElement = getScriptableFor(domNode);
+
+            if (jsElement == NOT_FOUND) {
+                getLog().debug("createTextNode(" + newData
+                    + ") cannot return a result as there isn't a JavaScript object for the DOM node "
+                    + domNode.getClass().getName());
+            }
+            else {
+                result = jsElement;
+            }
+        }
+        catch (final ElementNotFoundException e) {
+            // Just fall through - result is already set to NOT_FOUND
+        }
+        return result;
+    }
+
+    /**
+     * Evaluates an XPath expression string and returns a result of the specified type if possible.
+     * @param expression the XPath expression string to be parsed and evaluated
+     * @param contextNode the context node for the evaluation of this XPath expression
+     * @param resolver the resolver permits translation of all prefixes, including the XML namespace prefix,
+     *        within the XPath expression into appropriate namespace URIs.
+     * @param type If a specific type is specified, then the result will be returned as the corresponding type
+     * @param result the result object which may be reused and returned by this method
+     * @return the result of the evaluation of the XPath expression
+     */
+    public XPathResult jsxFunction_evaluate(final String expression, final Node contextNode,
+            final Object resolver, final int type, final Object result) {
+        XPathResult xPathResult = (XPathResult) result;
+        if (xPathResult == null) {
+            xPathResult = new XPathResult();
+            xPathResult.setParentScope(getParentScope());
+            xPathResult.setPrototype(getPrototype(xPathResult.getClass()));
+        }
+        xPathResult.init(contextNode.getDomNodeOrDie().getByXPath(expression), type);
+        return xPathResult;
+    }
+
+    /**
+     * Create a new HTML element with the given tag name.
+     *
+     * @param tagName the tag name
+     * @return the new HTML element, or NOT_FOUND if the tag is not supported
+     */
+    public Object jsxFunction_createElement(String tagName) {
+        Object result = NOT_FOUND;
+        try {
+            final BrowserVersion browserVersion = getBrowserVersion();
+
+            if (tagName.startsWith("<") && tagName.endsWith(">") && browserVersion.isNetscape()) {
+                tagName = tagName.substring(1, tagName.length() - 1);
+                if (!tagName.matches("\\w+")) {
+                    getLog().error("Unexpected exception occurred while parsing HTML snippet");
+                    throw Context.reportRuntimeError("Unexpected exception occurred while parsing HTML snippet: "
+                            + tagName);
+                }
+            }
+
+            final SgmlPage page = getPage();
+            final org.w3c.dom.Element element = page.createElement(tagName);
+            final Object jsElement = getScriptableFor(element);
+
+            if (jsElement == NOT_FOUND) {
+                getLog().debug("createElement(" + tagName
+                        + ") cannot return a result as there isn't a JavaScript object for the element "
+                        + element.getClass().getName());
+            }
+            else {
+                result = jsElement;
+            }
+        }
+        catch (final ElementNotFoundException e) {
+            // Just fall through - result is already set to NOT_FOUND
+        }
+        return result;
+    }
+}

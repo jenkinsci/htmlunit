@@ -1,0 +1,100 @@
+<?xml version="1.0"?>
+<document>
+
+    <properties>
+        <title>Packaging a release</title>
+        <author email="mbowler@GargoyleSoftware.com">Mike Bowler</author>
+        <author email="asashour@users.sourceforge.net">Ahmed Ashour</author>
+        <revision>$Revision$</revision>
+    </properties>
+
+    <body>
+        <section>
+            <p>
+                This document is intended for committers who are packaging a release.  It likely won't be
+                of much use to anyone else.
+            </p>
+            <p>
+            	If this is the first time you're doing a release you'll need to perform
+            	some setup.
+            	<ol>
+           			<li>
+           				Configure your SourceForge username in ~/.m2/settings.xml (see <a href="http://maven.apache.org/guides/mini/guide-deployment-security-settings.html">Security and Deployment Settings</a>). 
+						As an example, my settings.xml looks like:
+<source>
+<![CDATA[
+<settings>
+  ...
+  <servers>
+    <server>
+      <id>htmlunit-website</id>
+      <username>mguillem</username>
+      <!-- optional element:
+        <password>my_login_password</password>
+      -->
+    </server>
+    <server>
+      <id>htmlunit-m2-repo</id>
+      <username>mguillem</username>
+      <!-- optional element:
+        <password>my_login_password</password>
+      -->
+    </server>
+  </servers>
+  ...
+</settings>
+]]>
+</source>
+           			</li>
+           		</ol>
+       		</p>
+            <p>
+                Now do this for each release:
+                <ol>
+                    <li>
+                        Update the version number in pom.xml
+                    </li>
+                    <li>
+                        Update the version number and release date in src/site/xdoc/index.xml
+                    </li>
+                    <li>
+                        Update the version number and release date in src/changes/changes.xml
+                    </li>
+                    <li>
+                        Remove pom.xml reference to any snapshot repository (needed for Maven upload request).
+                    </li>
+                    <li>
+                        Increase Java heap space by setting the environment variable
+                        <source>MAVEN_OPTS="-Xms256m -Xmx512m"</source>
+                        Then build the zip files
+                        <source>mvn -up clean site assembly:assembly</source>
+                    </li>
+                    <li>
+                        Upload the two zip files to SourceForge following 
+                        <a href="http://sourceforge.net/docman/display_doc.php?docid=6445&amp;group_id=1">
+                        these instructions</a>
+                    </li>
+                    <li>
+                        Add a new Group in SourceForge tracker system.
+                    </li>
+                    <li>
+                        Assuming that everything has gone smoothly so far, make sure everything is checked
+                        in and tag the repository (to https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/) 
+                        with a name like this "HtmlUnit-2.0" that reflects the current build version.
+                    </li>
+                    <li>Deploy the release to HtmlUnit Maven repository (which is synchronized with the main repository)
+                        <source>mvn deploy</source>
+                    </li>
+                    <li>
+                        Deploy the site documentation.
+                        <source>mvn site:deploy</source>
+                    </li>
+                    <li>
+                        Add pom.xml reference to previously removed snapshot repository.
+                    </li>
+                </ol>
+            </p>
+        </section>
+    </body>
+</document>
+

@@ -1,0 +1,43 @@
+8
+
+dir
+3268
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
+
+
+
+2008-07-24T14:26:48.200685Z
+3198
+mguillem
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+797ba2fd-6919-0410-a55a-8c1f0daf9432
+
+assembly
+dir
+
+test
+dir
+
+main
+dir
+
+site
+dir
+
+changes
+dir
+

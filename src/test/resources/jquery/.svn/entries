@@ -1,0 +1,49 @@
+8
+
+dir
+3268
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/jquery
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
+
+
+
+2008-03-12T09:50:52.612723Z
+2589
+mguillem
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+797ba2fd-6919-0410-a55a-8c1f0daf9432
+
+1.1.2
+dir
+
+1.1.3.1
+dir
+
+1.2.3
+dir
+
+README
+file
+
+
+
+
+2008-08-19T23:16:13.000000Z
+c23403ce28c648812b5778c64c736c71
+2007-08-15T21:27:38.401072Z
+1740
+sdanig
+

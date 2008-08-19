@@ -1,0 +1,49 @@
+8
+
+dir
+3268
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/gwt
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
+
+
+
+2008-07-22T08:26:03.514683Z
+3188
+asashour
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+797ba2fd-6919-0410-a55a-8c1f0daf9432
+
+1.4.60
+dir
+
+1.4.62
+dir
+
+1.5RC1
+dir
+
+README
+file
+
+
+
+
+2008-08-19T23:16:46.000000Z
+4653e26f7524c9146e9c9893678d52ce
+2007-09-15T00:34:47.023228Z
+1881
+asashour
+

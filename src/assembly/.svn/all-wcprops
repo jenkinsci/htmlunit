@@ -1,0 +1,17 @@
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/assembly
+END
+src-distribution.xml
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/assembly/src-distribution.xml
+END
+bin-distribution.xml
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/assembly/bin-distribution.xml
+END

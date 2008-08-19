@@ -1,0 +1,157 @@
+/*
+ * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.gargoylesoftware.htmlunit;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ListIterator;
+
+import com.gargoylesoftware.htmlunit.html.FrameWindow;
+
+/**
+ * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
+ *
+ * Base class for common WebWindow functionality. While public, this class is not
+ * exposed in any other places of the API. Internally we can cast to this class
+ * when we need access to functionality that is not present in {@link WebWindow}
+ *
+ * @version $Revision$
+ * @author Brad Clarke
+ * @author David K. Taylor
+ * @author Ahmed Ashour
+ */
+public abstract class WebWindowImpl implements WebWindow {
+    private WebClient webClient_;
+    private Page enclosedPage_;
+    private Object scriptObject_;
+    private ThreadManager threadManager_ = new ThreadManager(this);
+    private List<WebWindowImpl> childWindows_ = new ArrayList<WebWindowImpl>();
+    private String name_ = "";
+
+    /**
+     * Never call this, used for Serialization.
+     * @deprecated
+     */
+    @Deprecated
+    protected WebWindowImpl() {
+    }
+
+    /**
+     * Creates a window and associates it with the client.
+     *
+     * @param webClient the web client that "owns" this window
+     */
+    public WebWindowImpl(final WebClient webClient) {
+        WebAssert.notNull("webClient", webClient);
+        webClient_ = webClient;
+        performRegistration();
+    }
+
+    /**
+     * Registers the window with the client.
+     */
+    protected void performRegistration() {
+        webClient_.registerWebWindow(this);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public WebClient getWebClient() {
+        return webClient_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public Page getEnclosedPage() {
+        return enclosedPage_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void setEnclosedPage(final Page page) {
+        if (page == enclosedPage_) {
+            return;
+        }
+        destroyChildren();
+        enclosedPage_ = page;
+        if (isJavaScriptInitializationNeeded()) {
+            webClient_.initialize(this);
+        }
+        webClient_.initialize(page);
+    }
+
+    /**
+     * Returns <tt>true</tt> if this window needs JavaScript initialization to occur when the enclosed page is set.
+     * @return <tt>true</tt> if this window needs JavaScript initialization to occur when the enclosed page is set
+     */
+    protected abstract boolean isJavaScriptInitializationNeeded();
+
+    /**
+     * {@inheritDoc}
+     */
+    public void setScriptObject(final Object scriptObject) {
+        scriptObject_ = scriptObject;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public Object getScriptObject() {
+        return scriptObject_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public ThreadManager getThreadManager() {
+        return threadManager_;
+    }
+
+    /**
+     * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
+     *
+     * Adds a child to this window, for shutdown purposes.
+     *
+     * @param child the child window to associate with this window
+     */
+    public void addChildWindow(final FrameWindow child) {
+        childWindows_.add(child);
+    }
+
+    void destroyChildren() {
+        getThreadManager().interruptAll();
+        for (final ListIterator<WebWindowImpl> iter = childWindows_.listIterator(); iter.hasNext();) {
+            iter.next().destroyChildren();
+            iter.remove();
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public String getName() {
+        return name_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void setName(final String name) {
+        name_ = name;
+    }
+}

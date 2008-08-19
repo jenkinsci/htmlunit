@@ -1,0 +1,70 @@
+8
+
+dir
+3268
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/prototype/1.5.0-rc1/test
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
+
+
+
+2006-11-15T22:24:11.685986Z
+1275
+sdanig
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+797ba2fd-6919-0410-a55a-8c1f0daf9432
+
+unit
+dir
+
+console.html
+file
+
+
+
+
+2008-08-19T23:16:49.000000Z
+8c585764d0aab04ec97f81e5d28a868e
+2006-11-15T22:24:11.685986Z
+1275
+sdanig
+
+lib
+dir
+
+browser.html
+file
+
+
+
+
+2008-08-19T23:16:49.000000Z
+6a8deaea6dac93f7c10ba09e18c423ba
+2006-11-15T22:24:11.685986Z
+1275
+sdanig
+
+test.css
+file
+
+
+
+
+2008-08-19T23:16:49.000000Z
+1456303356d81aff24ad7b09b8f7cc98
+2006-11-15T22:24:11.685986Z
+1275
+sdanig
+

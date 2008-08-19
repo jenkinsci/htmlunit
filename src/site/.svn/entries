@@ -1,0 +1,66 @@
+8
+
+dir
+3268
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/site
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
+
+
+
+2008-07-24T14:26:48.200685Z
+3198
+mguillem
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+797ba2fd-6919-0410-a55a-8c1f0daf9432
+
+site.xml
+file
+
+
+
+
+2008-08-19T23:17:35.000000Z
+1a7ad38fc8deaed2a73c205748346ec7
+2008-04-16T16:07:58.018414Z
+2925
+mguillem
+has-props
+
+apt
+dir
+
+maven-site.vm
+file
+
+
+
+
+2008-08-19T23:17:35.000000Z
+4f6948681b53c00a764b28328c149eb1
+2007-11-16T20:25:01.061740Z
+2050
+asashour
+has-props
+
+resources
+dir
+
+xdoc
+dir
+
+fml
+dir
+

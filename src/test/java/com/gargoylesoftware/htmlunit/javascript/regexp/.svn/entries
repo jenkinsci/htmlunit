@@ -1,0 +1,53 @@
+8
+
+dir
+3268
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/javascript/regexp
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
+
+
+
+2008-06-10T03:08:01.567443Z
+3075
+sdanig
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+797ba2fd-6919-0410-a55a-8c1f0daf9432
+
+HtmlUnitRegExpProxyTest.java
+file
+
+
+
+
+2008-08-19T23:16:03.000000Z
+bd7b3a41fbd594134c4a111f3a2af2bb
+2008-06-10T03:08:01.567443Z
+3075
+sdanig
+has-props
+
+package.html
+file
+
+
+
+
+2008-08-19T23:16:03.000000Z
+0fb7f215e459525c74c65e74f8c55a9f
+2007-07-06T14:33:33.590911Z
+1548
+mguillem
+

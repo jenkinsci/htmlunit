@@ -1,0 +1,47 @@
+8
+
+dir
+3268
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/gwt/1.5RC1
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
+
+
+
+2008-07-22T08:26:03.514683Z
+3188
+asashour
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+797ba2fd-6919-0410-a55a-8c1f0daf9432
+
+DynaTable
+dir
+
+Hello
+dir
+
+gwt-servlet.jar
+file
+
+
+
+
+2008-08-19T23:16:46.000000Z
+99f0481e44f2b950e1a09da9e9a241fd
+2008-05-28T13:53:45.376484Z
+3043
+asashour
+has-props
+

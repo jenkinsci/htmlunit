@@ -1,0 +1,163 @@
+/*
+ * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.gargoylesoftware.htmlunit.html;
+
+import org.junit.Test;
+
+import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.MockWebConnection;
+import com.gargoylesoftware.htmlunit.TextUtil;
+import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.WebTestCase;
+
+/**
+ * Tests for {@link DomText}.
+ *
+ * @version $Revision$
+ * @author Marc Guillemot
+ * @author Ahmed Ashour
+ * @author Rodney Gitzel
+ */
+public class DomTextTest extends WebTestCase {
+
+    /**
+     * Test the clean up of &amp;nbsp; in strings.
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void testAsText_nbsp() throws Exception {
+        testPlainText("a b&nbsp;c  d &nbsp;e",  "a b c d  e");
+        testPlainText("a b&nbsp;c  d &nbsp; e", "a b c d   e");
+        testPlainText("&nbsp;a&nbsp;", " a ");
+        testPlainText("&nbsp; a&nbsp;", "  a ");
+        testPlainText("&nbsp;a &nbsp;", " a  ");
+    }
+
+    /**
+     * Test font formats, as per bug #1731042.
+     * See http://sourceforge.net/tracker/index.php?func=detail&aid=1731042&group_id=47038&atid=448266.
+     *
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void testAsText_fontFormat() throws Exception {
+        testAsText("a <b>b</b> c",  "a b c");
+        testAsText("a <b>b</b>c",   "a bc");
+        testAsText("a<b>b</b> c",   "ab c");
+        testAsText("a<b>b</b>c",    "abc");
+
+        // italics and teletype should work the same way
+        testAsText("a <i>b</i> c",  "a b c");
+        testAsText("a <i>b</i>c",   "a bc");
+        testAsText("a<i>b</i> c",   "ab c");
+        testAsText("a<i>b</i>c",    "abc");
+
+        testAsText("a <tt>b</tt> c",  "a b c");
+        testAsText("a <tt>b</tt>c",   "a bc");
+        testAsText("a<tt>b</tt> c",   "ab c");
+        testAsText("a<tt>b</tt>c",    "abc");
+
+        testAsText("a <font>b</font> c",  "a b c");
+        testAsText("a<font>b</font> c",   "ab c");
+        testAsText("a <font>b</font>c",   "a bc");
+        testAsText("a<font>b</font>c",    "abc");
+
+        testAsText("a <span>b</span> c",  "a b c");
+        testAsText("a<span>b</span> c",   "ab c");
+        testAsText("a <span>b</span>c",   "a bc");
+        testAsText("a<span>b</span>c",    "abc");
+
+        testAsText("a<b><font><i>b</i></font></b>c",  "abc");
+        testAsText("a<b><font> <i>b</i></font></b>c", "a bc");
+    }
+
+    /**
+     * These worked before the changes for bug #1731042, and should afterwards, too.
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void testAsText_regression() throws Exception {
+        testAsText("a<ul><li>b</ul>c",                     "a b c");
+        testAsText("a<p>b<br>c",                           "a b c");
+        testAsText("a<table><tr><td>b</td></tr></table>c", "a b c");
+        testAsText("a<div>b</div>c",                       "a b c");
+
+        testAsText("a<table><tr><td> b </td></tr>\n<tr><td> b </td></tr></table>c", "a b b c");
+    }
+
+    /**
+     * Checks the HtmlTable* objects themselves.
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void testAsText_table_elements() throws Exception {
+        final String html = "<table id='table'><tr id='row'><td id='cell'> b </td></tr>\n</table>\n";
+        final String content = "<html><body><span id='foo'>" + html + "</span></body></html>";
+
+        final HtmlPage page = loadPage(content);
+
+        assertEquals("b", page.getHtmlElementById("cell").asText());
+        assertEquals("b", page.getHtmlElementById("row").asText());
+        assertEquals("b", page.getHtmlElementById("table").asText());
+    }
+
+    // ====================================================================================
+
+    private void testPlainText(final String html, final String expectedText) throws Exception {
+        final String content = "<html><body><span id='foo'>" + html + "</span></body></html>";
+
+        final HtmlPage page = loadPage(content);
+        final HtmlElement elt = page.getHtmlElementById("foo");
+        assertEquals(expectedText, elt.asText());
+
+        final DomNode node = elt.getFirstChild();
+        assertEquals(expectedText, node.asText());
+    }
+
+    private void testAsText(final String html, final String expectedText) throws Exception {
+        final String content = "<html><body><span id='foo'>" + html + "</span></body></html>";
+
+        final HtmlPage page = loadPage(content);
+        final HtmlElement elt = page.getHtmlElementById("foo");
+        assertEquals(expectedText, elt.asText());
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void testAsXml() throws Exception {
+        final String unicodeString = "\u064A\u0627 \u0644\u064A\u064A\u0644";
+        final String html = "<html>\n"
+            + "<head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8'></head>\n"
+            + "<body><span id='foo'>" + unicodeString + "</span></body></html>";
+
+        final int[] expectedValues = {1610, 1575, 32, 1604, 1610, 1610, 1604};
+
+        final WebClient client = new WebClient(BrowserVersion.getDefault());
+        final MockWebConnection webConnection = new MockWebConnection(client);
+
+        webConnection.setDefaultResponse(TextUtil.stringToByteArray(html, "UTF-8"), 200, "OK", "text/html");
+        client.setWebConnection(webConnection);
+
+        final HtmlPage page = (HtmlPage) client.getPage(URL_GARGOYLE);
+        final String xml = page.getHtmlElementById("foo").getFirstChild().asXml().trim();
+        assertEquals(expectedValues.length, xml.length());
+        int index = 0;
+        for (final int expectedValue : expectedValues) {
+            assertEquals(expectedValue, xml.codePointAt(index++));
+        }
+    }
+}

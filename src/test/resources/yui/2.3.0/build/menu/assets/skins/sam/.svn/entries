@@ -1,0 +1,52 @@
+8
+
+dir
+3268
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/yui/2.3.0/build/menu/assets/skins/sam
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
+
+
+
+2007-08-15T21:30:20.716980Z
+1741
+sdanig
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+797ba2fd-6919-0410-a55a-8c1f0daf9432
+
+menu.css
+file
+
+
+
+
+2008-08-19T23:16:54.000000Z
+c211c8e41b2adb46ecc309b09da1c053
+2007-08-15T21:30:20.716980Z
+1741
+sdanig
+
+menu-skin.css
+file
+
+
+
+
+2008-08-19T23:16:54.000000Z
+b5b3dd9227a20131ceaa69bfb6246081
+2007-08-15T21:30:20.716980Z
+1741
+sdanig
+

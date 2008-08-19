@@ -1,0 +1,54 @@
+8
+
+dir
+3268
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/assembly
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
+
+
+
+2008-04-15T10:39:34.297388Z
+2914
+mguillem
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+797ba2fd-6919-0410-a55a-8c1f0daf9432
+
+src-distribution.xml
+file
+
+
+
+
+2008-08-19T23:15:57.000000Z
+c2f2634864e8e079211a137e0d95d1c3
+2008-03-15T01:44:41.831274Z
+2617
+sdanig
+has-props
+
+bin-distribution.xml
+file
+
+
+
+
+2008-08-19T23:15:57.000000Z
+ef2548097f731dc240b96c1bfd3d9079
+2008-04-15T10:39:34.297388Z
+2914
+mguillem
+has-props
+

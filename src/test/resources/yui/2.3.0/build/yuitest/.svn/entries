@@ -1,0 +1,79 @@
+8
+
+dir
+3268
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/yui/2.3.0/build/yuitest
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
+
+
+
+2007-08-15T21:30:20.716980Z
+1741
+sdanig
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+797ba2fd-6919-0410-a55a-8c1f0daf9432
+
+assets
+dir
+
+yuitest-beta.js
+file
+
+
+
+
+2008-08-19T23:16:54.000000Z
+032bda773607ff761efc79484f028753
+2007-08-15T21:30:20.716980Z
+1741
+sdanig
+
+yuitest-beta-min.js
+file
+
+
+
+
+2008-08-19T23:16:54.000000Z
+ad0c177cd44a389e2d43894c89ad53d6
+2007-08-15T21:30:20.716980Z
+1741
+sdanig
+
+README
+file
+
+
+
+
+2008-08-19T23:16:54.000000Z
+146838dc6ccec89eb7a64f2b3aae1638
+2007-08-15T21:30:20.716980Z
+1741
+sdanig
+
+yuitest-beta-debug.js
+file
+
+
+
+
+2008-08-19T23:16:54.000000Z
+032bda773607ff761efc79484f028753
+2007-08-15T21:30:20.716980Z
+1741
+sdanig
+

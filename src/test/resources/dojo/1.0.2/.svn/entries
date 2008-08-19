@@ -1,0 +1,34 @@
+8
+
+dir
+3268
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
+
+
+
+2008-07-13T16:54:24.261937Z
+3154
+sudhan_moghe
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+797ba2fd-6919-0410-a55a-8c1f0daf9432
+
+dojo
+dir
+
+util
+dir
+

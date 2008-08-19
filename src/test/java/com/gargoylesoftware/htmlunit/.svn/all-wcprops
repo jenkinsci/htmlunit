@@ -1,0 +1,143 @@
+K 25
+svn:wc:ra_dav:version-url
+V 93
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit
+END
+WebAssertTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 112
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/WebAssertTest.java
+END
+DefaultPageCreatorTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 121
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/DefaultPageCreatorTest.java
+END
+ThreadManagerTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 116
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/ThreadManagerTest.java
+END
+CacheTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 108
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/CacheTest.java
+END
+SanityCheck.java
+K 25
+svn:wc:ra_dav:version-url
+V 110
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/SanityCheck.java
+END
+MemoryLeakTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 113
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/MemoryLeakTest.java
+END
+BrowserRoadie.java
+K 25
+svn:wc:ra_dav:version-url
+V 112
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/BrowserRoadie.java
+END
+WebTestCase.java
+K 25
+svn:wc:ra_dav:version-url
+V 110
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/WebTestCase.java
+END
+ImmediateRefreshHandlerTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 126
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/ImmediateRefreshHandlerTest.java
+END
+WebClientTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 112
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/WebClientTest.java
+END
+DefaultCredentialsProviderTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 129
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/DefaultCredentialsProviderTest.java
+END
+BrowserRunner.java
+K 25
+svn:wc:ra_dav:version-url
+V 112
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/BrowserRunner.java
+END
+WebResponseImplTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 118
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/WebResponseImplTest.java
+END
+package.html
+K 25
+svn:wc:ra_dav:version-url
+V 106
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/package.html
+END
+WaitingRefreshHandlerTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 124
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/WaitingRefreshHandlerTest.java
+END
+TopLevelWindowTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 117
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/TopLevelWindowTest.java
+END
+TextUtilTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 111
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/TextUtilTest.java
+END
+ScriptExceptionTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 118
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/ScriptExceptionTest.java
+END
+WebResponseDataTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 118
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/WebResponseDataTest.java
+END
+IncorrectnessListenerTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 124
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/IncorrectnessListenerTest.java
+END
+FailingHttpStatusCodeExceptionTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 133
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/FailingHttpStatusCodeExceptionTest.java
+END
+CodeStyleTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 112
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/CodeStyleTest.java
+END
+HttpWebConnectionTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 120
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware/htmlunit/HttpWebConnectionTest.java
+END

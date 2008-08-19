@@ -1,0 +1,79 @@
+8
+
+dir
+3268
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/yui/2.3.0/build/autocomplete
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
+
+
+
+2007-08-15T21:30:20.716980Z
+1741
+sdanig
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+797ba2fd-6919-0410-a55a-8c1f0daf9432
+
+autocomplete-debug.js
+file
+
+
+
+
+2008-08-19T23:16:59.000000Z
+035e7aa63231bd24f2907dea668f16ab
+2007-08-15T21:30:20.716980Z
+1741
+sdanig
+
+assets
+dir
+
+autocomplete.js
+file
+
+
+
+
+2008-08-19T23:16:59.000000Z
+9047bccce5a2dcc9df73d4d673df5e84
+2007-08-15T21:30:20.716980Z
+1741
+sdanig
+
+README
+file
+
+
+
+
+2008-08-19T23:16:59.000000Z
+7f860a0da060969d907e9f98e8b5bb0c
+2007-08-15T21:30:20.716980Z
+1741
+sdanig
+
+autocomplete-min.js
+file
+
+
+
+
+2008-08-19T23:16:59.000000Z
+b25236a78436239a4ec7049005153c2f
+2007-08-15T21:30:20.716980Z
+1741
+sdanig
+

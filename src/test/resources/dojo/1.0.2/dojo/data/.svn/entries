@@ -1,0 +1,58 @@
+8
+
+dir
+3268
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/data
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
+
+
+
+2008-01-03T08:45:38.145177Z
+2138
+asashour
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+797ba2fd-6919-0410-a55a-8c1f0daf9432
+
+ItemFileWriteStore.js
+file
+
+
+
+
+2008-08-19T23:16:23.000000Z
+b6c86dcba86198c3878d4fcba8d584c7
+2008-01-03T08:45:38.145177Z
+2138
+asashour
+
+ItemFileReadStore.js
+file
+
+
+
+
+2008-08-19T23:16:23.000000Z
+fd77f251d322407a14257d1084405e22
+2008-01-03T08:45:38.145177Z
+2138
+asashour
+
+api
+dir
+
+util
+dir
+

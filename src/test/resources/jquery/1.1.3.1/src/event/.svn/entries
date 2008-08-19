@@ -1,0 +1,52 @@
+8
+
+dir
+3268
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/jquery/1.1.3.1/src/event
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
+
+
+
+2007-08-13T17:04:16.543239Z
+1726
+sdanig
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+797ba2fd-6919-0410-a55a-8c1f0daf9432
+
+event.js
+file
+
+
+
+
+2008-08-19T23:16:10.000000Z
+80ce7a77b217fef570b174a0d5ef4418
+2007-08-13T17:04:16.543239Z
+1726
+sdanig
+
+eventTest.js
+file
+
+
+
+
+2008-08-19T23:16:10.000000Z
+be009b9b134d623bc31f976d2f6d961a
+2007-08-13T17:04:16.543239Z
+1726
+sdanig
+

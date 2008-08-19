@@ -1,0 +1,54 @@
+8
+
+dir
+3268
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/cruise/reporting-app/WEB-INF/classes/net/sourceforge/cruisecontrol/util
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
+
+
+
+2007-03-09T14:51:08.608898Z
+1330
+mguillem
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+797ba2fd-6919-0410-a55a-8c1f0daf9432
+
+DateUtil.class
+file
+
+
+
+
+2008-08-19T23:17:39.000000Z
+9f8a5b33467eb94f38af3b88a3218a2c
+2007-03-09T14:51:08.608898Z
+1330
+mguillem
+has-props
+
+TimeNumberFormat.class
+file
+
+
+
+
+2008-08-19T23:17:39.000000Z
+f99e0973d7b2022ee74f0103fd642d84
+2007-03-09T14:51:08.608898Z
+1330
+mguillem
+has-props
+

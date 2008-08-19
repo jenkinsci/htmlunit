@@ -1,0 +1,79 @@
+8
+
+dir
+3268
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/yui/2.3.0/build/datatable
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
+
+
+
+2007-08-15T21:30:20.716980Z
+1741
+sdanig
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+797ba2fd-6919-0410-a55a-8c1f0daf9432
+
+assets
+dir
+
+datatable-beta.js
+file
+
+
+
+
+2008-08-19T23:16:51.000000Z
+d99efb3af8ef805c9ebd9074ca0a3cdd
+2007-08-15T21:30:20.716980Z
+1741
+sdanig
+
+datatable-beta-min.js
+file
+
+
+
+
+2008-08-19T23:16:51.000000Z
+7a780884eb5241d96a334950dace80f3
+2007-08-15T21:30:20.716980Z
+1741
+sdanig
+
+datatable-beta-debug.js
+file
+
+
+
+
+2008-08-19T23:16:51.000000Z
+7fe7655393591b5e4a4a0ec167e0aae5
+2007-08-15T21:30:20.716980Z
+1741
+sdanig
+
+README
+file
+
+
+
+
+2008-08-19T23:16:51.000000Z
+df50d75c77bf1678209922e87256d88a
+2007-08-15T21:30:20.716980Z
+1741
+sdanig
+

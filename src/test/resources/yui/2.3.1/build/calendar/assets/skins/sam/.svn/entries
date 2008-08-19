@@ -1,0 +1,52 @@
+8
+
+dir
+3268
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/yui/2.3.1/build/calendar/assets/skins/sam
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
+
+
+
+2007-09-21T16:26:01.765813Z
+1894
+asashour
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+797ba2fd-6919-0410-a55a-8c1f0daf9432
+
+calendar.css
+file
+
+
+
+
+2008-08-19T23:17:12.000000Z
+7e3c3275a67eaa6c8869d81599f30811
+2007-09-21T16:26:01.765813Z
+1894
+asashour
+
+calendar-skin.css
+file
+
+
+
+
+2008-08-19T23:17:12.000000Z
+c34b5066d024c2833ebb5c672a3ec5a1
+2007-09-21T16:26:01.765813Z
+1894
+asashour
+

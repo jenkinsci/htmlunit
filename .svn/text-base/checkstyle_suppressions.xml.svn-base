@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE suppressions PUBLIC
+    "-//Puppy Crawl//DTD Suppressions 1.0//EN"
+    "http://www.puppycrawl.com/dtds/suppressions_1_0.dtd">
+
+<suppressions>
+    <suppress checks="FileLength" files="WebClient.java"/>
+    <suppress checks="FileLength" files="CSSStyleDeclaration.java"/>
+    <suppress checks="FileLength" files="HtmlPage.java"/>
+    <suppress checks="FileLength" files="DocumentTest.java"/>
+    <suppress checks="FileLength" files="WindowTest.java"/>
+    <suppress checks="FileLength" files="HTMLElementTest.java"/>
+    <suppress checks="LineLength" files="JavaScriptEngine.java" lines="67"/>
+    <suppress checks="LineLength" files="HTMLScriptElementTest.java"/>
+    <suppress checks="LineLength" files="Dojo102Test.java"/>
+    <suppress checks="LineLength" files="BoxObjectTest.java"/>
+    <suppress checks="LineLength" files="HTMLBodyElementTest.java"/>
+    <suppress checks="Indentation" files="ThreadManager.java" lines="143"/>
+    <suppress checks="MethodLength" files="DefaultElementFactory.java"/>
+    <suppress checks="MethodLength" files="Dojo102Test.java"/>
+    <suppress checks="MethodLength" files="CSSStyleDeclarationTest.java"/>
+    <suppress checks="ParameterNumber" files="HtmlUnitRegExpProxy.java"/>
+    <suppress checks="ParameterNumber" files="MouseEvent.java"/>
+    <suppress checks="ParameterNumber" files="BrowserRoadie.java"/>
+</suppressions>

@@ -1,0 +1,52 @@
+8
+
+dir
+3268
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/tests/date
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
+
+
+
+2008-07-13T16:54:24.261937Z
+3154
+sudhan_moghe
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+797ba2fd-6919-0410-a55a-8c1f0daf9432
+
+stamp.js
+file
+
+
+
+
+2008-08-19T23:16:21.000000Z
+174668558f051fe6d2140d42399a8255
+2008-07-13T16:54:24.261937Z
+3154
+sudhan_moghe
+
+locale.js
+file
+
+
+
+
+2008-08-19T23:16:21.000000Z
+fceef7633851f9d8c79e669ed4ecc37f
+2008-01-03T08:45:38.145177Z
+2138
+asashour
+

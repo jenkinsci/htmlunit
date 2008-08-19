@@ -1,0 +1,52 @@
+8
+
+dir
+3268
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/prototype/1.6.0/test/lib
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
+
+
+
+2008-01-05T17:59:56.889667Z
+2146
+asashour
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+797ba2fd-6919-0410-a55a-8c1f0daf9432
+
+unittest.js
+file
+
+
+
+
+2008-08-19T23:16:48.000000Z
+d6a402377db1048a5de454b7e6617321
+2008-01-05T17:59:56.889667Z
+2146
+asashour
+
+jstest.rb
+file
+
+
+
+
+2008-08-19T23:16:48.000000Z
+9ef20200bdf00a53d41e9c6555f9783e
+2008-01-05T17:59:56.889667Z
+2146
+asashour
+

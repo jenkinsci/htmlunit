@@ -1,0 +1,127 @@
+8
+
+dir
+3268
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/cldr/nls
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
+
+
+
+2008-01-03T08:45:38.145177Z
+2138
+asashour
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+797ba2fd-6919-0410-a55a-8c1f0daf9432
+
+zh-cn
+dir
+
+zh
+dir
+
+en-ca
+dir
+
+ko-kr
+dir
+
+pt
+dir
+
+pt-br
+dir
+
+it-it
+dir
+
+en-us
+dir
+
+en-gb
+dir
+
+de
+dir
+
+gregorian.js
+file
+
+
+
+
+2008-08-19T23:16:16.000000Z
+d00a59207615701602f657c0c74e8fc8
+2008-01-03T08:45:38.145177Z
+2138
+asashour
+
+ja
+dir
+
+ja-jp
+dir
+
+en
+dir
+
+number.js
+file
+
+
+
+
+2008-08-19T23:16:16.000000Z
+ec35b9b893a7acb8bdbeb2248e506fcf
+2008-01-03T08:45:38.145177Z
+2138
+asashour
+
+en-au
+dir
+
+currency.js
+file
+
+
+
+
+2008-08-19T23:16:16.000000Z
+3b1a7e9073af36f31ac7527cd36a5ae7
+2008-01-03T08:45:38.145177Z
+2138
+asashour
+
+fr
+dir
+
+es
+dir
+
+ko
+dir
+
+zh-tw
+dir
+
+it
+dir
+
+es-es
+dir
+
+de-de
+dir
+

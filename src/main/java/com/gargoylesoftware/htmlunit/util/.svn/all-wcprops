@@ -1,0 +1,47 @@
+K 25
+svn:wc:ra_dav:version-url
+V 98
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/main/java/com/gargoylesoftware/htmlunit/util
+END
+UrlUtils.java
+K 25
+svn:wc:ra_dav:version-url
+V 112
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/main/java/com/gargoylesoftware/htmlunit/util/UrlUtils.java
+END
+StringUtils.java
+K 25
+svn:wc:ra_dav:version-url
+V 115
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/main/java/com/gargoylesoftware/htmlunit/util/StringUtils.java
+END
+DebuggingWebConnection.java
+K 25
+svn:wc:ra_dav:version-url
+V 126
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/main/java/com/gargoylesoftware/htmlunit/util/DebuggingWebConnection.java
+END
+FalsifyingWebConnection.java
+K 25
+svn:wc:ra_dav:version-url
+V 127
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/main/java/com/gargoylesoftware/htmlunit/util/FalsifyingWebConnection.java
+END
+WebResponseWrapper.java
+K 25
+svn:wc:ra_dav:version-url
+V 122
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/main/java/com/gargoylesoftware/htmlunit/util/WebResponseWrapper.java
+END
+WebConnectionWrapper.java
+K 25
+svn:wc:ra_dav:version-url
+V 124
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/main/java/com/gargoylesoftware/htmlunit/util/WebConnectionWrapper.java
+END
+package.html
+K 25
+svn:wc:ra_dav:version-url
+V 111
+/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/main/java/com/gargoylesoftware/htmlunit/util/package.html
+END
