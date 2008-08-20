@@ -3,8 +3,8 @@
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <artifactId>htmlunit</artifactId>
-    <groupId>net.sourceforge.htmlunit</groupId>
-    <version>2.2</version>
+    <groupId>org.jvnet.hudson</groupId>
+    <version>2.2-hudson-1-SNAPSHOT</version>
     <name>HtmlUnit</name>
     <organization>
         <name>Gargoyle Software Inc.</name>
@@ -103,7 +103,14 @@
                 </executions>
             </plugin>
         </plugins>
-    </build>
+    <extensions>
+      <extension>
+        <groupId>org.jvnet.wagon-svn</groupId>
+        <artifactId>wagon-svn</artifactId>
+        <version>1.8</version>
+      </extension>
+    </extensions>
+        </build>
     <reporting>
         <plugins>
             <plugin>
@@ -485,7 +492,7 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-    <distributionManagement>
+    <!--distributionManagement>
         <site>
             <id>htmlunit-website</id>
             <name>HtmlUnit WebSite - Sourceforge</name>
@@ -507,5 +514,12 @@
             </url>
             <name>HtmlUnit Maven 2 Snapshots Repository</name>
         </snapshotRepository>
-    </distributionManagement>
+    </distributionManagement-->
+
+   <distributionManagement>
+    <repository>
+      <id>java.net-m2-repository</id>
+      <url>java-net:/maven2-repository/trunk/www/repository/</url>
+    </repository>
+  </distributionManagement>    
 </project>
