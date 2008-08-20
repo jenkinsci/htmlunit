@@ -82,6 +82,15 @@ public class HtmlForm extends ClickableElement {
     }
 
     /**
+     * Submit this form as if the first &lt;input type="submit" button in the form was clicked.
+     *
+     * @see #submit(SubmittableElement) 
+     */
+    public Page submit() throws IOException {
+        return submit(getSubmitButton());
+    }
+
+    /**
      * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
      *
      * Submit this form to the appropriate server. If submitElement is null then
@@ -320,6 +329,28 @@ public class HtmlForm extends ClickableElement {
         }
 
         return true;
+    }
+
+    /**
+     * Returns all the &lt;input type="submit"> elements in this form.
+     */
+    public List<HtmlSubmitInput> getSubmitButtons() throws ElementNotFoundException {
+        final List<HtmlSubmitInput> list = (List<HtmlSubmitInput>) getHtmlElementsByAttribute("input", "type", "submit");
+
+        // collect inputs from lost children
+        for (final HtmlElement elt : getLostChildren()) {
+            if (elt instanceof HtmlSubmitInput) {
+                list.add((HtmlSubmitInput) elt);
+            }
+        }
+        return list;
+    }
+
+    /**
+     * Gets the first &lt;input type="submit"> element in this form.
+     */
+    public HtmlSubmitInput getSubmitButton() throws ElementNotFoundException {
+        return getSubmitButtons().get(0);
     }
 
     /**
