@@ -72,7 +72,7 @@ public class Stylesheet extends SimpleScriptable {
 
     private com.gargoylesoftware.htmlunit.javascript.host.CSSRuleList cssRules_;
 
-    private static final ErrorHandler CSS_ERROR_HANDLER = new ErrorHandler() {
+    public static ErrorHandler CSS_ERROR_HANDLER = new ErrorHandler() {
         private final Log log_ = LogFactory.getLog(Stylesheet.class);
 
         public void error(final CSSParseException exception) throws CSSException {
