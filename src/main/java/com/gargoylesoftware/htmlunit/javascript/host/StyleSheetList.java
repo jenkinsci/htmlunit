@@ -130,7 +130,10 @@ public class StyleSheetList extends SimpleScriptable {
                     if(response.getStatusCode()>=400) {
                         // recover by parsing an empty stylesheet.
                         // workaround for http://sourceforge.net/tracker/index.php?func=detail&aid=2070940&group_id=47038&atid=448266
-                        LOGGER.warning("Stylesheet reference to "+link.getHrefAttribute()+" in "+link.getOwnerDocument().getDocumentURI()+" resulted in "+response.getStatusCode());
+                        LOGGER.warning("Stylesheet reference to "+link.getHrefAttribute()+
+                                " in "+link.getOwnerDocument().getDocumentURI()+
+                                " line "+link.getStartLineNumber()+
+                                " resulted in "+response.getStatusCode());
                         css = "";
                     }
                     final InputSource source = new InputSource(new StringReader(css));

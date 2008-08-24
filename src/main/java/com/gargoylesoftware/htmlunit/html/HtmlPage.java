@@ -332,7 +332,7 @@ public final class HtmlPage extends SgmlPage implements Cloneable, Document {
      * Not yet implemented.
      */
     public String getDocumentURI() {
-        throw new UnsupportedOperationException("HtmlPage.getDocumentURI is not yet implemented.");
+        return getWebResponse().getUrl().toExternalForm();
     }
 
     /**
