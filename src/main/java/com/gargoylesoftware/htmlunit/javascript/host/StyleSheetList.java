@@ -15,6 +15,7 @@
 package com.gargoylesoftware.htmlunit.javascript.host;
 
 import java.io.StringReader;
+import java.util.logging.Logger;
 
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.Scriptable;
@@ -120,12 +121,18 @@ public class StyleSheetList extends SimpleScriptable {
             final HtmlLink link = (HtmlLink) node;
             try {
                 final WebResponse response = link.getWebResponse(true);
-                final String css = response.getContentAsString();
+                String css = response.getContentAsString();
                 final CSSStyleSheet cached = cache.getCachedStyleSheet(css);
                 if (cached != null) {
                     sheet = new Stylesheet(element, cached);
                 }
                 else {
+                    if(response.getStatusCode()>=400) {
+                        // recover by parsing an empty stylesheet.
+                        // workaround for http://sourceforge.net/tracker/index.php?func=detail&aid=2070940&group_id=47038&atid=448266
+                        LOGGER.warning("Stylesheet reference to "+link.getHrefAttribute()+" in "+link.getOwnerDocument().getDocumentURI()+" resulted in "+response.getStatusCode());
+                        css = "";
+                    }
                     final InputSource source = new InputSource(new StringReader(css));
                     source.setURI(response.getUrl().toExternalForm());
                     sheet = new Stylesheet(element, source);
@@ -150,4 +157,6 @@ public class StyleSheetList extends SimpleScriptable {
         }
         return super.get(index, start);
     }
+
+    private static final Logger LOGGER = Logger.getLogger(StyleSheetList.class.getName());
 }
