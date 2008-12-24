@@ -19,14 +19,7 @@ import static com.gargoylesoftware.htmlunit.protocol.javascript.JavaScriptURLCon
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.apache.commons.httpclient.HttpStatus;
 import org.apache.commons.httpclient.util.EncodingUtil;
@@ -1684,7 +1677,19 @@ public final class HtmlPage extends SgmlPage implements Cloneable, Document {
         if (node instanceof HtmlElement) {
             boolean insideNoScript = false;
             if (getWebClient().isJavaScriptEnabled()) {
+                // Kohsuke: while going up the tree, detect a cycle. this is not the best place to do it,
+                // (it should be detected when a cycle node is inserted), but I couldn't find where it was,
+                // and this is where the infinite loop happens.
+                // the cycle appears to happen when xyz.innerHTML="<html><body>...</body></html>" is executed
+                // from JavaScript, so it's likely NekoHTML's mark up fix
+                Set<DomNode> parents = new HashSet<DomNode>();
                 for (DomNode parent = node.getParentNode(); parent != null; parent = parent.getParentNode()) {
+                    if(!parents.add(parent)) {
+                        // somehow even when we throw an exception, we'll get stuck somewhere else.
+                        // so just to call for an attention, print some message.
+                        System.out.println("Cycle in an HTML tree detected");
+                        throw new AssertionError("Cycle in an HTML tree detected");
+                    }
                     if (parent instanceof HtmlNoScript) {
                         insideNoScript = true;
                         break;

@@ -275,6 +275,11 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
      * @param parent the parent node
      */
     public void setParentNode(final DomNode parent) {
+        // make sure there's no cycle
+        for(DomNode p=parent; p!=null; p=p.getParentNode())
+            if(p==this)
+                throw new AssertionError("Trying to create a cycle");
+
         parent_ = parent;
     }
 
