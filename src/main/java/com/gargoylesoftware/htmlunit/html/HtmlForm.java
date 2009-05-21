@@ -458,6 +458,14 @@ public class HtmlForm extends ClickableElement {
         return list.get(0);
     }
 
+    public HtmlButton getButtonByCaption(final String caption) throws ElementNotFoundException {
+        for (HtmlElement b : getHtmlElementsByTagName("button")) {
+            if(b.getTextContent().trim().equals(caption))
+                return (HtmlButton)b;
+        }
+        throw new ElementNotFoundException("button", "caption", caption);
+    }
+
     /**
      * Returns all the {@link HtmlTextArea} elements in this form that have the specified name.
      *
