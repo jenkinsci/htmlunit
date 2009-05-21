@@ -178,4 +178,14 @@ public class HTMLParserTest extends WebTestCase {
 
         assertEquals(expectedAlerts, collectedAlerts);
     }
+
+    @Test
+    public void bodyInInnerHTML() throws Exception {
+        final String content = "<html><body><div id=x></div>" +
+                "<script>window.onload=function(){" +
+                  "document.getElementById('x').innerHTML='<html><body>foobar</body></html>';" +
+                "}</script>" +
+                "</body></html>";
+        loadPage(content);
+    }
 }

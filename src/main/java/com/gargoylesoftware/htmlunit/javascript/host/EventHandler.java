@@ -21,6 +21,7 @@ import org.mozilla.javascript.Context;
 import org.mozilla.javascript.Function;
 import org.mozilla.javascript.JavaScriptException;
 import org.mozilla.javascript.Scriptable;
+import org.mozilla.javascript.ScriptRuntime;
 
 import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
@@ -57,6 +58,11 @@ public class EventHandler extends BaseFunction {
             functionSignature = "function(event)";
         }
         jsSnippet_ =  functionSignature + " {" + jsSnippet + "\n}";
+
+        // KK -- this was needed to make "foo.call" work.
+        // see https://sourceforge.net/tracker/index.php?func=detail&aid=2479876&group_id=47038&atid=448266
+        ScriptRuntime.setFunctionProtoAndParent(this,
+                (Scriptable)node.getPage().getEnclosingWindow().getScriptObject());
     }
 
     /**

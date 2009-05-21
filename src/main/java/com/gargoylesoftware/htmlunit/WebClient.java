@@ -66,6 +66,7 @@ import com.gargoylesoftware.htmlunit.javascript.JavaScriptEngine;
 import com.gargoylesoftware.htmlunit.javascript.host.Event;
 import com.gargoylesoftware.htmlunit.javascript.host.HTMLElement;
 import com.gargoylesoftware.htmlunit.javascript.host.Window;
+import com.gargoylesoftware.htmlunit.javascript.host.XMLHttpRequest;
 import com.gargoylesoftware.htmlunit.protocol.data.DataUrlDecoder;
 import com.gargoylesoftware.htmlunit.ssl.InsecureSSLProtocolSocketFactory;
 import com.gargoylesoftware.htmlunit.util.UrlUtils;
@@ -118,6 +119,7 @@ public class WebClient implements Serializable {
     private transient WebConnection webConnection_;
     private boolean printContentOnFailingStatusCode_ = true;
     private boolean throwExceptionOnFailingStatusCode_ = true;
+    private boolean throwExceptionOnFailingAjax_ = true;
     private CredentialsProvider credentialsProvider_ = new DefaultCredentialsProvider();
     private ProxyConfig proxyConfig_;
     private JavaScriptEngine scriptEngine_;
@@ -515,6 +517,17 @@ public class WebClient implements Serializable {
      */
     public boolean isThrowExceptionOnFailingStatusCode() {
         return throwExceptionOnFailingStatusCode_;
+    }
+
+    public boolean isThrowExceptionOnFailingAjax() {
+        return throwExceptionOnFailingAjax_;
+    }
+
+    /**
+     * If true, error code in {@link XMLHttpRequest} causes an exception.
+     */
+    public void setThrowExceptionOnFailingAjax(boolean enabled) {
+        this.throwExceptionOnFailingAjax_ = enabled;
     }
 
     /**

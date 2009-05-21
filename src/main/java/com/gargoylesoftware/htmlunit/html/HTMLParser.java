@@ -196,7 +196,7 @@ public final class HTMLParser {
         final HtmlPage page = (HtmlPage) parent.getPage();
         final URL url = page.getWebResponse().getUrl();
 
-        final HtmlUnitDOMBuilder domBuilder = new HtmlUnitDOMBuilder(parent, url);
+        final HtmlUnitDOMBuilder domBuilder = new HtmlUnitDOMBuilder(parent, url, true);
         domBuilder.setFeature("http://cyberneko.org/html/features/balance-tags/document-fragment", true);
 
         final XMLInputSource in = new XMLInputSource(null, url.toString(), null, new StringReader(source), null);
@@ -226,7 +226,7 @@ public final class HTMLParser {
         final HtmlPage page = new HtmlPage(url, webResponse, webWindow);
         webWindow.setEnclosedPage(page);
 
-        final HtmlUnitDOMBuilder domBuilder = new HtmlUnitDOMBuilder(page, webResponse.getUrl());
+        final HtmlUnitDOMBuilder domBuilder = new HtmlUnitDOMBuilder(page, webResponse.getUrl(), false);
         final String charSet = webResponse.getContentCharSet();
 
         final InputStream content = webResponse.getContentAsStream();
@@ -337,6 +337,14 @@ public final class HTMLParser {
         private static final String FEATURE_AUGMENTATIONS = "http://cyberneko.org/html/features/augmentations";
 
         /**
+         * Kohsuke: when parsing a fragment (for example "xyz.innerHTML=..."),
+         * the body tag that appears in this fragment needs a special handling,
+         * or else it will end up eating all children from the main BODY tag.
+         * This in turn results in a cycle in a tree.
+         */
+        private final boolean parsingFragment;
+
+        /**
          * Calls {@link HTMLConfiguration#pushInputSource(XMLInputSource)} on the configuration.
          * @param sourceString the string to push
          */
@@ -353,9 +361,10 @@ public final class HTMLParser {
          * @param webResponse the response data
          * @param webWindow the web window into which the page is to be loaded
          */
-        private HtmlUnitDOMBuilder(final DomNode page, final URL url) {
+        private HtmlUnitDOMBuilder(final DomNode page, final URL url, boolean parsingFragment) {
             super(new HTMLConfiguration());
             this.page_ = (HtmlPage) page.getPage();
+            this.parsingFragment = parsingFragment;
 
             currentNode_ = page;
             stack_.push(currentNode_);
@@ -446,7 +455,7 @@ public final class HTMLParser {
 
             // If we had an old synthetic body and we just added a real body element, quietly
             // remove the old body and move its children to the real body element we just added.
-            if (oldBody != null) {
+            if (oldBody != null && !parsingFragment) {
                 oldBody.quietlyRemoveAndMoveChildrenTo(newElement);
             }
 

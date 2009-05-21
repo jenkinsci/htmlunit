@@ -409,6 +409,10 @@ public class XMLHttpRequest extends SimpleScriptable {
                     }
                 };
             }
+            if(wc.isThrowExceptionOnFailingAjax() && webResponse.getStatusCode()>=400)
+                throw new AssertionError("AJAX request to "+requestSettings_+"failed.\n" +
+                        "code="+webResponse.getStatusCode()+" "+webResponse.getStatusMessage()+"\n" +
+                        webResponse.getContentAsString());
             setState(STATE_INTERACTIVE, context);
             setState(STATE_COMPLETED, context);
         }
