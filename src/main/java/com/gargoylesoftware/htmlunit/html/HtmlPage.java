@@ -1144,10 +1144,12 @@ public final class HtmlPage extends SgmlPage implements Cloneable, Document {
         final Window jsWindow = (Window) window.getScriptObject();
         if (jsWindow != null) {
             final HtmlElement element = getDocumentElement();
-            final Event event = new Event(element, eventType);
-            element.fireEvent(event);
-            if (!isOnbeforeunloadAccepted(this, event)) {
-                return false;
+            if (element!=null) { // -- KK patch. I don't know exactly when element can be null, but Hudson tests exhibit this. 
+                final Event event = new Event(element, eventType);
+                element.fireEvent(event);
+                if (!isOnbeforeunloadAccepted(this, event)) {
+                    return false;
+                }
             }
         }
 
