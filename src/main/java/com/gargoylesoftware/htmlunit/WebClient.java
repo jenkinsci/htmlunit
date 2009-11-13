@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 import java.util.StringTokenizer;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.httpclient.HttpStatus;
@@ -148,7 +149,7 @@ public class WebClient implements Serializable {
     private PageCreator pageCreator_ = new DefaultPageCreator();
 
     private final Set<WebWindowListener> webWindowListeners_ = new HashSet<WebWindowListener>(5);
-    private final List<WebWindow> webWindows_ = Collections.synchronizedList(new ArrayList<WebWindow>());
+    private final List<WebWindow> webWindows_ = new CopyOnWriteArrayList<WebWindow>();
 
     private WebWindow currentWindow_;
     private Stack<WebWindow> firstWindowStack_ = new Stack<WebWindow>();
