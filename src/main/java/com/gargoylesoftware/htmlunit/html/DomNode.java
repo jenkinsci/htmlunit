@@ -1548,8 +1548,8 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
      * @see #getFirstByXPath(String)
      * @see #getCanonicalXPath()
      */
-    public List<?> getByXPath(final String xpathExpr, final PrefixResolver resolver) {
-        return XPathUtils.getByXPath(this, xpathExpr, resolver);
+    public <E> List<E> getByXPath(final String xpathExpr, final PrefixResolver resolver) {
+        return (List)XPathUtils.getByXPath(this, xpathExpr, resolver);
     }
 
     /**
@@ -1564,6 +1564,10 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
      */
     public <X> X getFirstByXPath(final String xpathExpr) {
         return getFirstByXPath(xpathExpr, null);
+    }
+
+    public <E> List<E> selectNodes(final String xpathExpr) {
+        return (List)getByXPath(xpathExpr);
     }
 
     /**
