@@ -113,6 +113,8 @@ public class Stylesheet extends SimpleScriptable {
      * @param uri this stylesheet's URI (used to resolved contained @import rules)
      */
     public Stylesheet(final HTMLElement element, final InputSource source, final String uri) {
+        if (source.getURI()==null)
+            source.setURI(uri);
         setParentScope(element.getWindow());
         setPrototype(getPrototype(Stylesheet.class));
         wrapped_ = parseCSS(source);

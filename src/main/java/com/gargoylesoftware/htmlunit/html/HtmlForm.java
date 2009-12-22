@@ -213,13 +213,13 @@ public class HtmlForm extends ClickableElement {
     }
 
     /**
-     * Returns a list of {@link KeyValuePair}s that represent the data that will be
+     * Returns a list of {@link NameValuePair}s that represent the data that will be
      * sent to the server when this form is submitted. This is primarily intended to aid
      * debugging.
      *
      * @param submitElement the element used to submit the form, or <tt>null</tt> if the
      *        form was submitted by JavaScript
-     * @return the list of {@link KeyValuePair}s that represent that data that will be sent
+     * @return the list of {@link NameValuePair}s that represent that data that will be sent
      *         to the server when this form is submitted
      */
     private List<NameValuePair> getParameterListForSubmit(final SubmittableElement submitElement) {
@@ -355,7 +355,7 @@ public class HtmlForm extends ClickableElement {
      * Returns all the &lt;input type="submit"> elements in this form.
      */
     public List<HtmlSubmitInput> getSubmitButtons() throws ElementNotFoundException {
-        final List<HtmlSubmitInput> list = (List<HtmlSubmitInput>) getHtmlElementsByAttribute("input", "type", "submit");
+        final List<HtmlSubmitInput> list = getElementsByAttribute("input", "type", "submit");
 
         // collect inputs from lost children
         for (final HtmlElement elt : getLostChildren()) {
@@ -771,7 +771,7 @@ public class HtmlForm extends ClickableElement {
     /**
      * Allows the parser to notify the form of a field that doesn't belong to its DOM children
      * due to malformed HTML code
-     * @param element the form field
+     * @param field the form field
      */
     void addLostChild(final HtmlElement field) {
         lostChildren_.add(field);

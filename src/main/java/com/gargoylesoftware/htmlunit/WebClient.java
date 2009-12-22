@@ -840,7 +840,7 @@ public class WebClient implements Serializable {
             // KK: fixing a memory/thread leak bug
             // terminate the current window, and cancel all its pending actions.
             // see http://sourceforge.net/tracker/index.php?func=detail&aid=2127419&group_id=47038&atid=448266
-            currentWindow_.getThreadManager().interruptAll();
+//            currentWindow_.getThreadManager().interruptAll();
         }
         currentWindow_ = window;
         //1. In IE activeElement becomes focused element for new current window

@@ -350,7 +350,7 @@ public class HtmlPage extends SgmlPage {
      * Not yet implemented.
      */
     public String getDocumentURI() {
-        return getWebResponse().getUrl().toExternalForm();
+        return getWebResponse().getRequestSettings().getUrl().toExternalForm();
     }
 
     /**
