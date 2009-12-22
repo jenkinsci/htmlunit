@@ -110,6 +110,10 @@ public class WebResponseImpl implements WebResponse {
         return getRequestSettings().getUrl();
     }
 
+    public URL getUrl() {
+        return getRequestUrl();
+    }
+
     /**
      * {@inheritDoc}
      */

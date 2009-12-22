@@ -56,6 +56,11 @@ public interface WebResponse extends Serializable {
     URL getRequestUrl();
 
     /**
+     * Synonym for {@link #getRequestUrl()}
+     */
+    URL getUrl();
+
+    /**
      * Returns the response headers as a list of {@link NameValuePair}s.
      * @return the response headers as a list of {@link NameValuePair}s
      */

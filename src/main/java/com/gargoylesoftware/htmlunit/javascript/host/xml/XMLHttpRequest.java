@@ -560,6 +560,10 @@ public class XMLHttpRequest extends SimpleScriptable {
             return webRequestSettings_.getUrl();
         }
 
+        public URL getUrl() {
+            return getRequestUrl();
+        }
+
         /**
          * {@inheritDoc}
          * @deprecated As of 2.6, please use {@link #getRequestSettings()}.getHttpMethod()
