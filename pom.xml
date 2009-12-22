@@ -2,8 +2,8 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>net.sourceforge.htmlunit</groupId>
-    <artifactId>htmlunit</artifactId>
+    <groupId>org.jvnet.hudson</groupId>
+    <version>2.6-hudson-1</version>
     <version>2.6</version>
     <name>HtmlUnit</name>
     <organization>
@@ -129,7 +129,14 @@
                 </executions>
             </plugin>
         </plugins>
-    </build>
+    <extensions>
+      <extension>
+        <groupId>org.jvnet.wagon-svn</groupId>
+        <artifactId>wagon-svn</artifactId>
+        <version>1.8</version>
+      </extension>
+    </extensions>
+        </build>
     <profiles>
         <profile>
             <id>without-library-tests</id>
@@ -564,9 +571,9 @@
             <version>1.4</version>
         </dependency>
         <dependency>
-            <groupId>net.sourceforge.htmlunit</groupId>
+            <groupId>org.jvnet.hudson</groupId>
             <artifactId>htmlunit-core-js</artifactId>
-            <version>2.6</version>
+            <version>2.2-hudson-2</version><!-- TODO: update to 2.6 -->
         </dependency>
         <!-- This is an indirect dependency, used by Xalan and NekoHtml -->
         <dependency>
@@ -688,7 +695,7 @@
             </exclusions>
         </dependency>
     </dependencies>
-    <distributionManagement>
+    <!--distributionManagement>
         <site>
             <id>htmlunit-website</id>
             <name>HtmlUnit WebSite - Sourceforge</name>
@@ -711,5 +718,12 @@
             <name>HtmlUnit Maven 2 Snapshots Repository</name>
             <uniqueVersion>false</uniqueVersion>
         </snapshotRepository>
-    </distributionManagement>
+    </distributionManagement-->
+
+   <distributionManagement>
+    <repository>
+      <id>java.net-m2-repository</id>
+      <url>java-net:/maven2-repository/trunk/repository/</url>
+    </repository>
+  </distributionManagement>    
 </project>

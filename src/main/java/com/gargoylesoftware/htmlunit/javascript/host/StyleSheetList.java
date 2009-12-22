@@ -14,6 +14,8 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
+import java.util.logging.Logger;
+
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 
@@ -105,6 +107,7 @@ public class StyleSheetList extends SimpleScriptable {
         else {
             // <link rel="stylesheet" type="text/css" href="..." />
             sheet = ((HTMLLinkElement) element).getSheet();
+
         }
 
         return sheet;
@@ -120,4 +123,6 @@ public class StyleSheetList extends SimpleScriptable {
         }
         return super.get(index, start);
     }
+
+    private static final Logger LOGGER = Logger.getLogger(StyleSheetList.class.getName());
 }

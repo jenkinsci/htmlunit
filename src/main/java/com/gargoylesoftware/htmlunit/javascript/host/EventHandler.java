@@ -19,6 +19,7 @@ import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.Function;
 import net.sourceforge.htmlunit.corejs.javascript.JavaScriptException;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
+import org.mozilla.javascript.ScriptRuntime;
 
 import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
@@ -59,6 +60,7 @@ public class EventHandler extends BaseFunction {
         final Window w = (Window) node.getPage().getEnclosingWindow().getScriptObject();
         final Scriptable function = (Scriptable) w.get("Function", w);
         setPrototype(function.getPrototype());
+        
     }
 
     /**

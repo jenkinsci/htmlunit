@@ -652,6 +652,16 @@ public class HTMLParserTest extends WebServerTestCase {
         }
     }
 
+    @Test
+    public void bodyInInnerHTML() throws Exception {
+        final String content = "<html><body><div id=x></div>" +
+                "<script>window.onload=function(){" +
+                  "document.getElementById('x').innerHTML='<html><body>foobar</body></html>';" +
+                "}</script>" +
+                "</body></html>";
+        loadPage(content);
+    }
+
     /**
      * Regression test for bug 2523870: parse failure when parsing page with UTF-8 BOM (byte order mark).
      * The HTML file used is from NekoHTML's bug number 2560899.

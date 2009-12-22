@@ -84,6 +84,15 @@ public class HtmlForm extends ClickableElement {
     }
 
     /**
+     * Submit this form as if the first &lt;input type="submit" button in the form was clicked.
+     *
+     * @see #submit(SubmittableElement) 
+     */
+    public Page submit() throws IOException {
+        return submit(getSubmitButton());
+    }
+
+    /**
      * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
      *
      * <p>Submits this form to the server. If <tt>submitElement</tt> is <tt>null</tt>, then
@@ -343,6 +352,28 @@ public class HtmlForm extends ClickableElement {
     }
 
     /**
+     * Returns all the &lt;input type="submit"> elements in this form.
+     */
+    public List<HtmlSubmitInput> getSubmitButtons() throws ElementNotFoundException {
+        final List<HtmlSubmitInput> list = (List<HtmlSubmitInput>) getHtmlElementsByAttribute("input", "type", "submit");
+
+        // collect inputs from lost children
+        for (final HtmlElement elt : getLostChildren()) {
+            if (elt instanceof HtmlSubmitInput) {
+                list.add((HtmlSubmitInput) elt);
+            }
+        }
+        return list;
+    }
+
+    /**
+     * Gets the first &lt;input type="submit"> element in this form.
+     */
+    public HtmlSubmitInput getSubmitButton() throws ElementNotFoundException {
+        return getSubmitButtons().get(0);
+    }
+
+    /**
      * Returns all input elements which are members of this form and have the specified name.
      *
      * @param name the input name to search for
@@ -444,6 +475,14 @@ public class HtmlForm extends ClickableElement {
             throw new ElementNotFoundException("button", "name", name);
         }
         return list.get(0);
+    }
+
+    public HtmlButton getButtonByCaption(final String caption) throws ElementNotFoundException {
+        for (HtmlElement b : getHtmlElementsByTagName("button")) {
+            if(b.getTextContent().trim().equals(caption))
+                return (HtmlButton)b;
+        }
+        throw new ElementNotFoundException("button", "caption", caption);
     }
 
     /**

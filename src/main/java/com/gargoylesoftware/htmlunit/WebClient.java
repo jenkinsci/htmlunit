@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 
+import java.util.concurrent.CopyOnWriteArrayList;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.ContextFactory;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
@@ -123,6 +124,7 @@ public class WebClient implements Serializable {
     private transient WebConnection webConnection_;
     private boolean printContentOnFailingStatusCode_ = true;
     private boolean throwExceptionOnFailingStatusCode_ = true;
+    private boolean throwExceptionOnFailingAjax_ = true;
     private CredentialsProvider credentialsProvider_ = new DefaultCredentialsProvider();
     private ProxyConfig proxyConfig_;
     private CookieManager cookieManager_ = new CookieManager();
@@ -519,6 +521,17 @@ public class WebClient implements Serializable {
         return throwExceptionOnFailingStatusCode_;
     }
 
+    public boolean isThrowExceptionOnFailingAjax() {
+        return throwExceptionOnFailingAjax_;
+    }
+
+    /**
+     * If true, error code in {@link XMLHttpRequest} causes an exception.
+     */
+    public void setThrowExceptionOnFailingAjax(boolean enabled) {
+        this.throwExceptionOnFailingAjax_ = enabled;
+    }
+
     /**
      * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span>
      *
@@ -824,6 +837,10 @@ public class WebClient implements Serializable {
                     focusedElement.fireEvent(Event.TYPE_BLUR);
                 }
             }
+            // KK: fixing a memory/thread leak bug
+            // terminate the current window, and cancel all its pending actions.
+            // see http://sourceforge.net/tracker/index.php?func=detail&aid=2127419&group_id=47038&atid=448266
+            currentWindow_.getThreadManager().interruptAll();
         }
         currentWindow_ = window;
         //1. In IE activeElement becomes focused element for new current window
