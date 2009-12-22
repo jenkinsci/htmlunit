@@ -1254,11 +1254,11 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
      * @see #getFirstByXPath(String)
      * @see #getCanonicalXPath()
      */
-    public List< ? > getByXPath(final String xpathExpr) {
-        return XPathUtils.getByXPath(this, xpathExpr);
+    public <E> List<E> getByXPath(final String xpathExpr) {
+        return (List)XPathUtils.getByXPath(this, xpathExpr);
     }
 
-    public List<?> selectNodes(final String xpathExpr) {
+    public <E> List<E> selectNodes(final String xpathExpr) {
         return getByXPath(xpathExpr);
     }
 
