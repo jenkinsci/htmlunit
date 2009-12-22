@@ -16,6 +16,7 @@ package com.gargoylesoftware.htmlunit.util;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.util.List;
 
 import com.gargoylesoftware.htmlunit.WebRequest;
@@ -151,6 +152,25 @@ public class WebResponseWrapper extends WebResponse {
     /**
      * {@inheritDoc}
      * The default behavior of this method is to return getWebRequest() on the wrapped webResponse object.
+     * @deprecated As of 2.6, please use {@link #getRequestSettings()}.getUrl()
+     */
+    @Deprecated
+    public URL getRequestUrl() {
+        return wrappedWebResponse_.getUrl();
+    }
+
+    /**
+     * {@inheritDoc}
+     * The default behavior of this method is to return getWebRequest() on the wrapped webResponse object.
+     * @deprecated As of 2.6, please use {@link #getRequestSettings()}.getUrl()
+     */
+    public URL getUrl() {
+        return getRequestUrl();
+    }
+
+    /**
+     * {@inheritDoc}
+     * The default behavior of this method is to return getRequestSettings() on the wrapped connection object.
      */
     @Override
     public WebRequest getWebRequest() {

@@ -987,7 +987,36 @@ public class XMLHttpRequest extends EventTarget {
             return null;
         }
 
-        @Override
+        public byte[] getContentAsBytes() {
+            return new byte[0];
+        }
+
+        /**
+         * {@inheritDoc}
+         * @deprecated As of 2.6, please use {@link #getWebRequest()}.getUrl()
+         */
+        @Deprecated
+        public URL getRequestUrl() {
+            return getWebRequest().getUrl();
+        }
+
+        /**
+         * {@inheritDoc}
+         * @deprecated As of 2.6, please use {@link #getWebRequest()}.getUrl()
+         */
+        public URL getUrl() {
+            return getRequestUrl();
+        }
+
+        /**
+         * {@inheritDoc}
+         * @deprecated As of 2.6, please use {@link #getWebRequest()}.getHttpMethod()
+         */
+        @Deprecated
+        public HttpMethod getRequestMethod() {
+            return getWebRequest().getHttpMethod();
+        }
+
         public List<NameValuePair> getResponseHeaders() {
             return Collections.emptyList();
         }

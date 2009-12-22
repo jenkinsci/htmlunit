@@ -85,6 +85,14 @@ public class WebResponse implements Serializable {
     }
 
     /**
+     * @deprecated
+     *      Use {@code getWebRequest().getUrl()}
+     */
+    public URL getUrl() {
+        return getWebRequest().getUrl();
+    }
+
+    /**
      * Returns the response headers as a list of {@link NameValuePair}s.
      * @return the response headers as a list of {@link NameValuePair}s
      */

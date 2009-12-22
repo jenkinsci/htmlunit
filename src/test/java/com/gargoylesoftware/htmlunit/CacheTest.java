@@ -419,4 +419,17 @@ class DummyWebResponse extends WebResponse {
     public WebRequest getWebRequest() {
         throw new RuntimeException("not implemented");
     }
+
+    /**
+     * {@inheritDoc}
+     * @deprecated As of 2.6, please use {@link #getWebRequest()}.getUrl()
+     */
+    @Deprecated
+    public URL getRequestUrl() {
+        throw new RuntimeException("not implemented");
+    }
+
+    public URL getUrl() {
+        throw new RuntimeException("not implemented");
+    }
 }
