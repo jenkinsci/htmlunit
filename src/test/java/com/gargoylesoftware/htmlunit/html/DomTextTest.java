@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,11 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import static org.junit.Assert.assertSame;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import org.junit.Test;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
@@ -25,10 +30,11 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
 /**
  * Tests for {@link DomText}.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4769 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  * @author Rodney Gitzel
+ * @author Sudhan Moghe
  */
 public class DomTextTest extends WebTestCase {
 
@@ -84,17 +90,20 @@ public class DomTextTest extends WebTestCase {
     }
 
     /**
-     * These worked before the changes for bug #1731042, and should afterwards, too.
+     * This test once tested regression for bug #1731042 but the expectations have been changed
+     * as asText() should now use new lines when appropriate.
      * @throws Exception if the test fails
      */
     @Test
     public void testAsText_regression() throws Exception {
-        testAsText("a<ul><li>b</ul>c",                     "a b c");
-        testAsText("a<p>b<br>c",                           "a b c");
-        testAsText("a<table><tr><td>b</td></tr></table>c", "a b c");
-        testAsText("a<div>b</div>c",                       "a b c");
+        String expected = "a" + LINE_SEPARATOR + "b" + LINE_SEPARATOR + "c";
+        testAsText("a<ul><li>b</ul>c", expected);
+        testAsText("a<p>b<br>c", expected);
+        testAsText("a<table><tr><td>b</td></tr></table>c", expected);
+        testAsText("a<div>b</div>c", expected);
 
-        testAsText("a<table><tr><td> b </td></tr>\n<tr><td> b </td></tr></table>c", "a b b c");
+        expected = "a" + LINE_SEPARATOR + "b" + LINE_SEPARATOR + "b" + LINE_SEPARATOR + "c";
+        testAsText("a<table><tr><td> b </td></tr>\n<tr><td> b </td></tr></table>c", expected);
     }
 
     /**
@@ -108,9 +117,9 @@ public class DomTextTest extends WebTestCase {
 
         final HtmlPage page = loadPage(content);
 
-        assertEquals("b", page.getHtmlElementById("cell").asText());
-        assertEquals("b", page.getHtmlElementById("row").asText());
-        assertEquals("b", page.getHtmlElementById("table").asText());
+        assertEquals("b", page.<HtmlElement>getHtmlElementById("cell").asText());
+        assertEquals("b", page.<HtmlElement>getHtmlElementById("row").asText());
+        assertEquals("b", page.<HtmlElement>getHtmlElementById("table").asText());
     }
 
     // ====================================================================================
@@ -119,6 +128,8 @@ public class DomTextTest extends WebTestCase {
         final String content = "<html><body><span id='foo'>" + html + "</span></body></html>";
 
         final HtmlPage page = loadPage(content);
+        assertEquals(expectedText, page.asText());
+
         final HtmlElement elt = page.getHtmlElementById("foo");
         assertEquals(expectedText, elt.asText());
 
@@ -147,17 +158,128 @@ public class DomTextTest extends WebTestCase {
         final int[] expectedValues = {1610, 1575, 32, 1604, 1610, 1610, 1604};
 
         final WebClient client = new WebClient(BrowserVersion.getDefault());
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final MockWebConnection webConnection = new MockWebConnection();
 
         webConnection.setDefaultResponse(TextUtil.stringToByteArray(html, "UTF-8"), 200, "OK", "text/html");
         client.setWebConnection(webConnection);
 
-        final HtmlPage page = (HtmlPage) client.getPage(URL_GARGOYLE);
-        final String xml = page.getHtmlElementById("foo").getFirstChild().asXml().trim();
+        final HtmlPage page = client.getPage(getDefaultUrl());
+        final String xml = page.<HtmlElement>getHtmlElementById("foo").getFirstChild().asXml().trim();
         assertEquals(expectedValues.length, xml.length());
         int index = 0;
         for (final int expectedValue : expectedValues) {
             assertEquals(expectedValue, xml.codePointAt(index++));
         }
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void splitText() throws Exception {
+        final String html
+            = "<html><head></head><body>\n"
+            + "<br><div id='tag'></div><br></body></html>";
+        final HtmlPage page = loadPage(html);
+
+        final DomNode divNode = page.getDocumentElement().getElementById("tag");
+
+        final DomText node = new DomText(page, "test split");
+        divNode.insertBefore(node);
+
+        final DomNode previousSibling = node.getPreviousSibling();
+        final DomNode nextSibling = node.getNextSibling();
+        final DomNode parent = node.getParentNode();
+
+        // position among parent's children
+        final int position = readPositionAmongParentChildren(node);
+
+        final DomText newNode = node.splitText(5);
+
+        assertSame("new node previous sibling", node, newNode.getPreviousSibling());
+        assertSame("previous sibling", previousSibling, node.getPreviousSibling());
+        assertSame("new node next sibling", nextSibling, newNode.getNextSibling());
+        assertSame("next sibling", newNode, node.getNextSibling());
+        assertSame("parent", parent, newNode.getParentNode());
+        assertSame(node, previousSibling.getNextSibling());
+        assertSame(newNode, nextSibling.getPreviousSibling());
+        assertEquals(position + 1, readPositionAmongParentChildren(newNode));
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void splitLastDomText() throws Exception {
+        final String content
+            = "<html><head></head><body>\n"
+            + "<br><div id='tag'></div><br></body></html>";
+        final HtmlPage page = loadPage(content);
+
+        final DomNode divNode = page.getDocumentElement().getElementById("tag");
+
+        final DomText firstNode = new DomText(page, "test split");
+        divNode.appendChild(firstNode);
+
+        assertNull(firstNode.getPreviousSibling());
+
+        final DomText secondNode = firstNode.splitText(5);
+
+        final DomText thirdNode = new DomText(page, "test split");
+        divNode.appendChild(thirdNode);
+
+        assertSame(secondNode, firstNode.getNextSibling());
+        assertNull(firstNode.getPreviousSibling());
+        assertSame(firstNode, secondNode.getPreviousSibling());
+        assertSame(thirdNode, secondNode.getNextSibling());
+        assertSame(secondNode, thirdNode.getPreviousSibling());
+        assertNull(thirdNode.getNextSibling());
+        assertSame(divNode, secondNode.getParentNode());
+        assertSame(divNode, thirdNode.getParentNode());
+        assertEquals(0, readPositionAmongParentChildren(firstNode));
+        assertEquals(1, readPositionAmongParentChildren(secondNode));
+        assertEquals(2, readPositionAmongParentChildren(thirdNode));
+    }
+
+    /**
+     * Reads the position of the node among the children of its parent
+     * @param node the node to look at
+     * @return the position
+     */
+    private int readPositionAmongParentChildren(final DomNode node) {
+        int i = 0;
+        for (final DomNode child : node.getParentNode().getChildren()) {
+            if (child == node) {
+                return i;
+            }
+            i++;
+        }
+        return -1;
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void splitText2() throws Exception {
+        final String html = "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            + "    var div = document.getElementById('myDiv');\n"
+            + "    div.appendChild(document.createElement('a'));\n"
+            + "    var text = document.createTextNode('123456');\n"
+            + "    div.appendChild(text);\n"
+            + "    div.appendChild(document.createElement('hr'));\n"
+            + "    alert(div.childNodes.length);\n"
+            + "    text.splitText(3);\n"
+            + "    alert(div.childNodes.length);\n"
+            + "    alert(div.childNodes.item(2).nodeValue);\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'>\n"
+            + "  <div id='myDiv'></div>\n"
+            + "</body></html>";
+        final String[] expectedAlerts = {"3", "4", "456"};
+        final List<String> collectedAlerts = new ArrayList<String>();
+        loadPage(html, collectedAlerts);
+        assertEquals(expectedAlerts, collectedAlerts);
     }
 }

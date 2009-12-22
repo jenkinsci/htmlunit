@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import org.apache.commons.lang.time.DateUtils;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
@@ -38,7 +39,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 /**
  * Tests for {@link Cache}.
  *
- * @version $Revision: 3110 $
+ * @version $Revision: 4872 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
@@ -94,8 +95,8 @@ public class CacheTest extends WebTestCase {
                 return contentType[0];
             }
             @Override
-            public URL getUrl() {
-                return url[0];
+            public WebRequestSettings getRequestSettings() {
+                return new WebRequestSettings(url[0]);
             }
         };
 
@@ -139,7 +140,7 @@ public class CacheTest extends WebTestCase {
         final String script2 = "alert('in foo2');";
 
         final WebClient webClient = getWebClient();
-        final MockWebConnection connection = new MockWebConnection(webClient);
+        final MockWebConnection connection = new MockWebConnection();
         webClient.setWebConnection(connection);
 
         final URL urlPage1 = new URL(URL_FIRST, "page1.html");
@@ -155,7 +156,7 @@ public class CacheTest extends WebTestCase {
         final List<String> collectedAlerts = new ArrayList<String>();
         webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
-        final HtmlPage page1 = (HtmlPage) webClient.getPage(urlPage1);
+        final HtmlPage page1 = webClient.getPage(urlPage1);
         final String[] expectedAlerts = {"in foo1", "in foo2"};
         assertEquals(expectedAlerts, collectedAlerts);
 
@@ -180,7 +181,7 @@ public class CacheTest extends WebTestCase {
         final WebClient client = getWebClient();
         client.getCache().setMaxSize(1);
 
-        final MockWebConnection connection = new MockWebConnection(client);
+        final MockWebConnection connection = new MockWebConnection();
         client.setWebConnection(connection);
 
         final URL pageUrl = new URL(URL_FIRST, "page1.html");
@@ -199,7 +200,8 @@ public class CacheTest extends WebTestCase {
     }
 
     /**
-     *@throws Exception if the test fails
+     * TODO: improve CSS caching to cache a COPY of the object as stylesheet objects can be modified dynamically.
+     * @throws Exception if the test fails
      */
     @Test
     public void cssIsCached() throws Exception {
@@ -212,7 +214,7 @@ public class CacheTest extends WebTestCase {
 
         final WebClient client = getWebClient();
 
-        final MockWebConnection connection = new MockWebConnection(client);
+        final MockWebConnection connection = new MockWebConnection();
         client.setWebConnection(connection);
 
         final URL pageUrl = new URL(URL_FIRST, "page1.html");
@@ -226,9 +228,44 @@ public class CacheTest extends WebTestCase {
         assertEquals(2, client.getCache().getSize());
     }
 
+    /**
+     * Test that content retrieved with XHR is cached when right headers are here.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "hello", "hello" })
+    public void xhrContentCached() throws Exception {
+        final String html = "<html><head><title>page 1</title>\n"
+            + "<script>\n"
+            + "  function doTest() {\n"
+            + "    var xhr = window.XMLHttpRequest ? new XMLHttpRequest()"
+            + "      : new ActiveXObject('Microsoft.XMLHTTP');\n"
+            + "    xhr.open('GET', 'foo.txt', false);\n"
+            + "    xhr.send('');\n"
+            + "    alert(xhr.responseText);\n"
+            + "    xhr.send('');\n"
+            + "    alert(xhr.responseText);\n"
+            + "  }\n"
+            + "</script>\n"
+            + "</head>\n"
+            + "<body onload='doTest()'>x</body>\n"
+            + "</html>";
+
+        final MockWebConnection connection = getMockWebConnection();
+
+        final List<Header> headers =
+            Collections.singletonList(new Header("Last-Modified", "Sun, 15 Jul 2007 20:46:27 GMT"));
+        connection.setResponse(new URL(getDefaultUrl(), "foo.txt"), "hello", 200, "OK", "text/plain", headers);
+
+        loadPageWithAlerts(html);
+
+        assertEquals(2, connection.getRequestCount());
+    }
 }
 
 class DummyWebResponse implements WebResponse {
+
+    private static final long serialVersionUID = 631259170130126480L;
 
     public InputStream getContentAsStream() throws IOException {
         throw new RuntimeException("not implemented");
@@ -238,7 +275,23 @@ class DummyWebResponse implements WebResponse {
         throw new RuntimeException("not implemented");
     }
 
+    public String getContentAsString(final String encoding) {
+        throw new RuntimeException("not implemented");
+    }
+
+    public byte[] getContentAsBytes() {
+        throw new RuntimeException("not implemented");
+    }
+
     public String getContentCharSet() {
+        throw new RuntimeException("not implemented");
+    }
+
+    public String getContentCharset() {
+        throw new RuntimeException("not implemented");
+    }
+
+    public String getContentCharsetOrNull() {
         throw new RuntimeException("not implemented");
     }
 
@@ -250,11 +303,16 @@ class DummyWebResponse implements WebResponse {
         throw new RuntimeException("not implemented");
     }
 
-    public HttpMethod getRequestMethod() {
+    public long getLoadTime() {
         throw new RuntimeException("not implemented");
     }
 
-    public byte[] getResponseBody() {
+    /**
+     * {@inheritDoc}
+     * @deprecated As of 2.6, please use {@link #getRequestSettings()}.getHttpMethod()
+     */
+    @Deprecated
+    public HttpMethod getRequestMethod() {
         throw new RuntimeException("not implemented");
     }
 
@@ -274,7 +332,12 @@ class DummyWebResponse implements WebResponse {
         throw new RuntimeException("not implemented");
     }
 
-    public URL getUrl() {
+    /**
+     * {@inheritDoc}
+     * @deprecated As of 2.6, please use {@link #getRequestSettings()}.getUrl()
+     */
+    @Deprecated
+    public URL getRequestUrl() {
         throw new RuntimeException("not implemented");
     }
 

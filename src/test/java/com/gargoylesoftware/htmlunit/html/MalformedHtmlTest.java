@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,13 +20,13 @@ import org.junit.runner.RunWith;
 import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
-import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
 
 /**
  * Set of tests for ill formed HTML code.
- * @version $Revision: 3170 $
+ * @version $Revision: 4801 $
  * @author Marc Guillemot
  * @author Sudhan Moghe
+ * @author Ahmed Ashour
  */
 @RunWith(BrowserRunner.class)
 public class MalformedHtmlTest extends WebTestCase {
@@ -83,16 +83,117 @@ public class MalformedHtmlTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @NotYetImplemented
     @Alerts("Test document")
     public void testTitleAfterInsertedBody() throws Exception {
-        final String content = "<html><head>"
-            + "<noscript><link href='other.css' rel='stylesheet' type='text/css'></noscript>"
-            + "<title>Test document</title>"
+        final String content = "<html><head>\n"
+            + "<noscript><link href='other.css' rel='stylesheet' type='text/css'></noscript>\n"
+            + "<title>Test document</title>\n"
             + "</head><body onload='alert(document.title)'>\n"
             + "foo"
             + "</body></html>";
 
         loadPageWithAlerts(content);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("Test document")
+    public void testTitleTwice() throws Exception {
+        final String content = "<html><head>\n"
+            + "<title>Test document</title>\n"
+            + "<title>2nd title</title>\n"
+            + "</head><body onload='alert(document.title)'>\n"
+            + "foo"
+            + "</body></html>";
+
+        loadPageWithAlerts(content);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void incompleteEntities() throws Exception {
+        final String html = "<html><head>\n"
+            + "<title>Test document</title>\n"
+            + "</head><body>\n"
+            + "<a href='foo?a=1&copy=2&prod=3' id='myLink'>my link</a>\n"
+            + "</body></html>";
+
+        final HtmlPage page = loadPage(getBrowserVersion(), html, null);
+        final HtmlPage page2 = page.getAnchors().get(0).click();
+
+        final String query;
+        if (getBrowserVersion().isIE()) {
+            query = "a=1\u00A9=2&prod=3";
+        }
+        else {
+            query = "a=1%A9=2&prod=3";
+        }
+        assertEquals(query, page2.getWebResponse().getRequestSettings().getUrl().getQuery());
+    }
+
+    /**
+     * Test for <a href="http://sourceforge.net/support/tracker.php?aid=2767865">Bug 2767865</a>.
+     * In fact this is not fully correct because IE (6 at least) does something very strange
+     * and keeps the DIV in TABLE but wraps it in a node without name.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "DIV", "TABLE" })
+    public void div_between_table_and_tr() throws Exception {
+        final String html = "<html><head><script>\n"
+            + "function test(){\n"
+            + "  var c1 = document.body.firstChild;\n"
+            + "  alert(c1.tagName);\n"
+            + "  alert(c1.nextSibling.tagName);\n"
+            + "}\n"
+            + "</script>\n"
+            + "</head><body onload='test()'>"
+            + "<table><div>hello</div>\n"
+            + "<tr><td>world</td></tr></table>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("hello")
+    public void script_between_head_and_body() throws Exception {
+        final String content = "<html><head><title>foo</title></head><script>\n"
+            + "alert('hello');\n"
+            + "</script>\n"
+            + "<body>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts(content);
+    }
+
+    /**
+     * Tests that wrong formed HTML code is parsed like browsers do.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("12345")
+    public void testWrongHtml_TagBeforeHtml() throws Exception {
+        final String html = "<div>\n"
+            + "<html>\n"
+            + "<head><title>foo</title>\n"
+            + "<script>\n"
+            + "var toto = 12345;\n"
+            + "</script>\n"
+            + "</head>\n"
+            + "<body onload='alert(toto)'>\n"
+            + "blabla"
+            + "</body>\n"
+            + "</html>";
+
+        final HtmlPage page = loadPageWithAlerts(html);
+        assertEquals("foo", page.getTitleText());
     }
 }

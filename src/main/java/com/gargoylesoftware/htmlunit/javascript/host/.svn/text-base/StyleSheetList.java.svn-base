@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,15 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
-import java.io.StringReader;
+import net.sourceforge.htmlunit.corejs.javascript.Context;
+import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.Scriptable;
-import org.w3c.css.sac.InputSource;
-import org.w3c.dom.css.CSSStyleSheet;
-
-import com.gargoylesoftware.htmlunit.Cache;
-import com.gargoylesoftware.htmlunit.WebResponse;
-import com.gargoylesoftware.htmlunit.html.DomNode;
-import com.gargoylesoftware.htmlunit.html.HtmlLink;
-import com.gargoylesoftware.htmlunit.html.HtmlStyle;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLCollection;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLDocument;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLLinkElement;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLStyleElement;
 
 /**
  * <p>An ordered list of stylesheets, accessible via <tt>document.styleSheets</tt>, as specified by the
@@ -91,49 +87,24 @@ public class StyleSheetList extends SimpleScriptable {
      * @param index the index of the style sheet to return
      * @return the style sheet at the specified index
      */
-    public Stylesheet jsxFunction_item(final int index) {
-        final Cache cache = getWindow().getWebWindow().getWebClient().getCache();
+    public Object jsxFunction_item(final int index) {
+        if (index < 0) {
+            throw Context.reportRuntimeError("Invalid negative index: " + index);
+        }
+        else if (index >= nodes_.jsxGet_length()) {
+            return Context.getUndefinedValue();
+        }
 
         final HTMLElement element = (HTMLElement) nodes_.jsxFunction_item(new Integer(index));
-        final DomNode node = element.getDomNodeOrDie();
 
-        Stylesheet sheet;
-        if (node instanceof HtmlStyle) {
-            // <style type="text/css"> ... </style>
-            final HtmlStyle style = (HtmlStyle) node;
-            String css = "";
-            if (style.getFirstChild() != null) {
-                css = style.getFirstChild().asText();
-            }
-            final CSSStyleSheet cached = cache.getCachedStyleSheet(css);
-            if (cached != null) {
-                sheet = new Stylesheet(element, cached);
-            }
-            else {
-                final InputSource source = new InputSource(new StringReader(css));
-                sheet = new Stylesheet(element, source);
-                cache.cache(css, sheet.getWrappedSheet());
-            }
+        final Stylesheet sheet;
+        // <style type="text/css"> ... </style>
+        if (element instanceof HTMLStyleElement) {
+            sheet = ((HTMLStyleElement) element).jsxGet_sheet();
         }
         else {
             // <link rel="stylesheet" type="text/css" href="..." />
-            final HtmlLink link = (HtmlLink) node;
-            try {
-                final WebResponse response = link.getWebResponse(true);
-                final String css = response.getContentAsString();
-                final CSSStyleSheet cached = cache.getCachedStyleSheet(css);
-                if (cached != null) {
-                    sheet = new Stylesheet(element, cached);
-                }
-                else {
-                    final InputSource source = new InputSource(new StringReader(css));
-                    sheet = new Stylesheet(element, source);
-                    cache.cache(css, sheet.getWrappedSheet());
-                }
-            }
-            catch (final Exception e) {
-                throw Context.reportRuntimeError("Exception: " + e);
-            }
+            sheet = ((HTMLLinkElement) element).getSheet();
         }
 
         return sheet;

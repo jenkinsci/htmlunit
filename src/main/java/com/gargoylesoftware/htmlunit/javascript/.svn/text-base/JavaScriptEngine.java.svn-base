@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,18 +25,16 @@ import java.util.Map;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.ContextAction;
-import org.mozilla.javascript.ContextFactory;
-import org.mozilla.javascript.Function;
-import org.mozilla.javascript.FunctionObject;
-import org.mozilla.javascript.Script;
-import org.mozilla.javascript.Scriptable;
-import org.mozilla.javascript.ScriptableObject;
+import net.sourceforge.htmlunit.corejs.javascript.Context;
+import net.sourceforge.htmlunit.corejs.javascript.ContextAction;
+import net.sourceforge.htmlunit.corejs.javascript.Function;
+import net.sourceforge.htmlunit.corejs.javascript.FunctionObject;
+import net.sourceforge.htmlunit.corejs.javascript.Script;
+import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
+import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.gargoylesoftware.htmlunit.ScriptException;
-import com.gargoylesoftware.htmlunit.ScriptPreProcessor;
+import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.WebAssert;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebWindow;
@@ -70,8 +68,11 @@ import com.gargoylesoftware.htmlunit.javascript.host.Window;
 public class JavaScriptEngine implements Serializable {
 
     private static final long serialVersionUID = -5414040051465432088L;
+    private static final Log LOG = LogFactory.getLog(JavaScriptEngine.class);
+
     private final WebClient webClient_;
-    private static final Log ScriptEngineLog_ = LogFactory.getLog(JavaScriptEngine.class);
+    private final HtmlUnitContextFactory contextFactory_;
+
     private static final ThreadLocal<Boolean> javaScriptRunning_ = new ThreadLocal<Boolean>();
     private static final ThreadLocal<List<PostponedAction>> postponedActions_
         = new ThreadLocal<List<PostponedAction>>();
@@ -85,21 +86,19 @@ public class JavaScriptEngine implements Serializable {
     public static final String KEY_STARTING_SCOPE = "startingScope";
 
     /**
-     * Initialize a context listener so we can count JS contexts and make sure we
-     * are freeing them as necessary.
+     * Key used to place the {@link HtmlPage} for which the JavaScript code is executed
+     * as thread local attribute in current context.
      */
-    static {
-        final HtmlUnitContextFactory contextFactory = new HtmlUnitContextFactory(getScriptEngineLog());
-        ContextFactory.initGlobal(contextFactory);
-    }
+    public static final String KEY_STARTING_PAGE = "startingPage";
 
     /**
      * Creates an instance for the specified webclient.
      *
-     * @param webClient the webClient that will own this engine
+     * @param webClient the client that will own this engine
      */
     public JavaScriptEngine(final WebClient webClient) {
         webClient_ = webClient;
+        contextFactory_ = new HtmlUnitContextFactory(webClient);
     }
 
     /**
@@ -108,6 +107,14 @@ public class JavaScriptEngine implements Serializable {
      */
     public final WebClient getWebClient() {
         return webClient_;
+    }
+
+    /**
+     * Returns this JavaScript engine's Rhino {@link net.sourceforge.htmlunit.corejs.javascript.ContextFactory}.
+     * @return this JavaScript engine's Rhino {@link net.sourceforge.htmlunit.corejs.javascript.ContextFactory}
+     */
+    public HtmlUnitContextFactory getContextFactory() {
+        return contextFactory_;
     }
 
     /**
@@ -123,7 +130,7 @@ public class JavaScriptEngine implements Serializable {
                     init(webWindow, cx);
                 }
                 catch (final Exception e) {
-                    getLog().error("Exception while initializing JavaScript for the page", e);
+                    LOG.error("Exception while initializing JavaScript for the page", e);
                     throw new ScriptException(null, e); // BUG: null is not useful.
                 }
 
@@ -131,7 +138,7 @@ public class JavaScriptEngine implements Serializable {
             }
         };
 
-        ContextFactory.getGlobal().call(action);
+        getContextFactory().call(action);
     }
 
     /**
@@ -148,7 +155,20 @@ public class JavaScriptEngine implements Serializable {
         final Window window = new Window(this);
         final JavaScriptConfiguration jsConfig = JavaScriptConfiguration.getInstance(webClient.getBrowserVersion());
         context.initStandardObjects(window);
-        PrimitivePrototypeBugFixer.installWorkaround(window);
+
+        // remove some objects, that Rhino defines in top scope but that we don't want
+        final String[] undesirableWindowProps = {"javax", "org", "com", "edu", "net", "JavaAdapter",
+            "JavaImporter", "Continuation"};
+        for (final String property : undesirableWindowProps) {
+            window.delete(property);
+        }
+        if (webClient.getBrowserVersion().isIE()) {
+            final String[] undesirableWindowPropsIE = {"Packages", "java", "getClass", "XML", "XMLList",
+                "Namespace", "QName"};
+            for (final String property : undesirableWindowPropsIE) {
+                window.delete(property);
+            }
+        }
 
         // put custom object to be called as very last prototype to call the fallback getter (if any)
         final Scriptable fallbackCaller = new ScriptableObject() {
@@ -176,24 +196,24 @@ public class JavaScriptEngine implements Serializable {
                 configureConstantsPropertiesAndFunctions(config, window);
             }
             else {
-                Scriptable prototype = configureClass(config, window);
+                final ScriptableObject prototype = configureClass(config, window);
                 if (config.isJsObject()) {
                     // for FF, place object with prototype property in Window scope
                     if (!getWebClient().getBrowserVersion().isIE()) {
-                        final Scriptable obj = config.getLinkedClass().newInstance();
-                        obj.put("prototype", obj, prototype);
-                        obj.setPrototype(prototype);
+                        final SimpleScriptable obj = config.getLinkedClass().newInstance();
+                        prototype.defineProperty("__proto__", prototype, ScriptableObject.DONTENUM);
+                        obj.defineProperty("prototype", prototype, ScriptableObject.DONTENUM); // but not setPrototype!
                         obj.setParentScope(window);
                         ScriptableObject.defineProperty(window, config.getClassName(), obj, ScriptableObject.DONTENUM);
-                        // use this instance in prototype map to allow instanceof to work
-                        prototype = obj;
+                        // this obj won't have prototype, constants need to be configured on it again
+                        configureConstants(config, obj);
 
                         if (obj.getClass() == Element.class && webWindow.getEnclosedPage() instanceof HtmlPage) {
                             final DomNode domNode =
-                                new HtmlElement(null, "", (HtmlPage) webWindow.getEnclosedPage(), null) {
+                                new HtmlElement(null, "", (SgmlPage) webWindow.getEnclosedPage(), null) {
                                     private static final long serialVersionUID = -5614158965497997095L;
                                 };
-                            ((SimpleScriptable) obj).setDomNode(domNode);
+                            obj.setDomNode(domNode);
                         }
                     }
                     prototypes.put(config.getLinkedClass(), prototype);
@@ -220,7 +240,7 @@ public class JavaScriptEngine implements Serializable {
             }
         }
 
-        // eval hack (cf unit tests testEvalScopeOtherWindow and testEvalScopeLocal
+        // eval hack (cf unit tests testEvalScopeOtherWindow and testEvalScopeLocal)
         final Class< ? >[] evalFnTypes = {String.class};
         final Member evalFn = Window.class.getMethod("custom_eval", evalFnTypes);
         final FunctionObject jsCustomEval = new FunctionObject("eval", evalFn, window);
@@ -238,8 +258,31 @@ public class JavaScriptEngine implements Serializable {
             }
         }
 
+        // in IE, not all standard methods exists
+        if (webClient.getBrowserVersion().isIE()) {
+            final String[] objectPropertiesToRemove = {"__defineGetter__", "__defineSetter__", "__lookupGetter__",
+                "__lookupSetter__", "toSource"};
+            removePrototypeProperties(window, "Object", objectPropertiesToRemove);
+            final String[] arrayPropertiesToRemove = {"every", "filter", "forEach", "indexOf", "lastIndexOf", "map",
+                "some", "toSource"};
+            removePrototypeProperties(window, "Array", arrayPropertiesToRemove);
+        }
+
         window.setPrototypes(prototypes);
         window.initialize(webWindow);
+    }
+
+    /**
+     * Removes prototype properties.
+     * @param window the scope
+     * @param className the class for which properties should be removed
+     * @param properties the properties to remove
+     */
+    private void removePrototypeProperties(final Window window, final String className, final String[] properties) {
+        final ScriptableObject prototype = (ScriptableObject) ScriptableObject.getClassPrototype(window, className);
+        for (final String property : properties) {
+            prototype.delete(property);
+        }
     }
 
     /**
@@ -250,7 +293,7 @@ public class JavaScriptEngine implements Serializable {
      * @throws IllegalAccessException if we don't have access to create the new instance
      * @return the created prototype
      */
-    private Scriptable configureClass(final ClassConfiguration config, final Scriptable window)
+    private ScriptableObject configureClass(final ClassConfiguration config, final Scriptable window)
         throws InstantiationException, IllegalAccessException {
 
         final Class< ? > jsHostClass = config.getLinkedClass();
@@ -271,38 +314,40 @@ public class JavaScriptEngine implements Serializable {
             final ScriptableObject scriptable) {
 
         // the constants
+        configureConstants(config, scriptable);
+
+        // the properties
+        for (final String propertyName : config.propertyKeys()) {
+            final Method readMethod = config.getPropertyReadMethod(propertyName);
+            final Method writeMethod = config.getPropertyWriteMethod(propertyName);
+            scriptable.defineProperty(propertyName, null, readMethod, writeMethod, ScriptableObject.EMPTY);
+        }
+
+        int attributes = ScriptableObject.EMPTY;
+        if (webClient_.getBrowserVersion().isIE()) {
+            attributes = ScriptableObject.DONTENUM;
+        }
+        // the functions
+        for (final String functionName : config.functionKeys()) {
+            final Method method = config.getFunctionMethod(functionName);
+            final FunctionObject functionObject = new FunctionObject(functionName, method, scriptable);
+            scriptable.defineProperty(functionName, functionObject, attributes);
+        }
+    }
+
+    private void configureConstants(final ClassConfiguration config,
+            final ScriptableObject scriptable) {
         for (final String constant : config.constants()) {
             final Class< ? > linkedClass = config.getLinkedClass();
             try {
                 final Object value = linkedClass.getField(constant).get(null);
-                scriptable.defineProperty(constant, value, ScriptableObject.CONST);
+                scriptable.defineProperty(constant, value, ScriptableObject.EMPTY);
             }
             catch (final Exception e) {
                 throw Context.reportRuntimeError("Cannot get field '" + constant + "' for type: "
                     + config.getClassName());
             }
         }
-        // the properties
-        for (final String entryKey : config.propertyKeys()) {
-            final Method readMethod = config.getPropertyReadMethod(entryKey);
-            final Method writeMethod = config.getPropertyWriteMethod(entryKey);
-            scriptable.defineProperty(entryKey, null, readMethod, writeMethod, ScriptableObject.EMPTY);
-        }
-
-        // the functions
-        for (final String entryKey : config.functionKeys()) {
-            final Method method = config.getFunctionMethod(entryKey);
-            final FunctionObject functionObject = new FunctionObject(entryKey, method, scriptable);
-            scriptable.defineProperty(entryKey, functionObject, ScriptableObject.EMPTY);
-        }
-    }
-
-    /**
-     * Returns the log object for this class.
-     * @return the log object
-     */
-    protected Log getLog() {
-        return LogFactory.getLog(getClass());
     }
 
     /**
@@ -314,36 +359,10 @@ public class JavaScriptEngine implements Serializable {
      * @param startLine the line at which the script source starts
      * @return the result of executing the specified code
      */
-    public Script compile(final HtmlPage htmlPage,
-                           String sourceCode,
-                           final String sourceName,
-                           final int startLine) {
+    public Script compile(final HtmlPage htmlPage, final String sourceCode,
+                           final String sourceName, final int startLine) {
 
         WebAssert.notNull("sourceCode", sourceCode);
-
-        // Pre process the source code
-        sourceCode = preProcess(htmlPage, sourceCode, sourceName, null);
-
-        // PreProcess IE Conditional Compilation if needed
-        final BrowserVersion browserVersion = htmlPage.getWebClient().getBrowserVersion();
-        if (browserVersion.isIE() && browserVersion.getBrowserVersionNumeric() >= 4) {
-            final ScriptPreProcessor ieCCPreProcessor = new IEConditionalCompilationScriptPreProcessor();
-            sourceCode = ieCCPreProcessor.preProcess(htmlPage, sourceCode, sourceName, null);
-        }
-
-        // Remove HTML comments around the source if needed
-        final String sourceCodeTrimmed = sourceCode.trim();
-        if (sourceCodeTrimmed.startsWith("<!--")) {
-            sourceCode = sourceCode.replaceFirst("<!--", "// <!--");
-        }
-        // IE ignores the last line containing uncommented -->
-        if (getWebClient().getBrowserVersion().isIE() && sourceCodeTrimmed.endsWith("-->")) {
-            final int lastDoubleSlash = sourceCode.lastIndexOf("//");
-            final int lastNewLine = Math.max(sourceCode.lastIndexOf('\n'), sourceCode.lastIndexOf('\r'));
-            if (lastNewLine > lastDoubleSlash) {
-                sourceCode = sourceCode.substring(0, lastNewLine);
-            }
-        }
 
         final Scriptable scope = getScope(htmlPage, null);
         final String source = sourceCode;
@@ -359,7 +378,7 @@ public class JavaScriptEngine implements Serializable {
             }
         };
 
-        return (Script) ContextFactory.getGlobal().call(action);
+        return (Script) getContextFactory().call(action);
     }
 
     /**
@@ -402,7 +421,7 @@ public class JavaScriptEngine implements Serializable {
             }
         };
 
-        return ContextFactory.getGlobal().call(action);
+        return getContextFactory().call(action);
     }
 
     /**
@@ -434,7 +453,7 @@ public class JavaScriptEngine implements Serializable {
                 return cx.decompileFunction(function, 2);
             }
         };
-        return ContextFactory.getGlobal().call(action);
+        return getContextFactory().call(action);
     }
 
     private Scriptable getScope(final HtmlPage htmlPage, final DomNode htmlElement) {
@@ -462,7 +481,9 @@ public class JavaScriptEngine implements Serializable {
             final Scriptable scope, final Scriptable thisObject, final Object[] args) {
 
         synchronized (htmlPage) { // 2 scripts can't be executed in parallel for one page
-            return function.call(context, scope, thisObject, args);
+            final Object result = function.call(context, scope, thisObject, args);
+            processPostponedActions();
+            return result;
         }
     }
 
@@ -473,30 +494,6 @@ public class JavaScriptEngine implements Serializable {
      */
     public boolean isScriptRunning() {
         return Boolean.TRUE.equals(javaScriptRunning_.get());
-    }
-
-    /**
-     * Sets the number of milliseconds a script is allowed to execute before
-     * being terminated. A value of 0 or less means no timeout.
-     *
-     * @param timeout the timeout value
-     * @deprecated use WebClient.setJavaScriptTimeout() instead
-     */
-    @Deprecated
-    public static void setTimeout(final long timeout) {
-        HtmlUnitContextFactory.setTimeout(timeout);
-    }
-
-    /**
-     * Returns the number of milliseconds a script is allowed to execute before
-     * being terminated. A value of 0 or less means no timeout.
-     *
-     * @return the timeout value
-     * @deprecated use WebClient.getJavaScriptTimeout() instead
-     */
-    @Deprecated
-    public static long getTimeout() {
-        return HtmlUnitContextFactory.getTimeout();
     }
 
     /**
@@ -518,41 +515,26 @@ public class JavaScriptEngine implements Serializable {
 
             try {
                 cx.putThreadLocal(KEY_STARTING_SCOPE, scope_);
+                cx.putThreadLocal(KEY_STARTING_PAGE, htmlPage_);
                 synchronized (htmlPage_) { // 2 scripts can't be executed in parallel for one page
                     final Object response = doRun(cx);
-                    processPostponedActions(cx);
+                    processPostponedActions();
                     return response;
                 }
             }
             catch (final Exception e) {
-                final ScriptException scriptException = new ScriptException(htmlPage_, e, getSourceCode(cx));
-                if (getWebClient().isThrowExceptionOnScriptError()) {
-                    throw scriptException;
-                }
-                // use a ScriptException to log it because it provides good information
-                // on the source code
-                getLog().info("Caught script exception", scriptException);
+                handleJavaScriptException(new ScriptException(htmlPage_, e, getSourceCode(cx)));
                 return null;
             }
             catch (final TimeoutError e) {
                 if (getWebClient().isThrowExceptionOnScriptError()) {
                     throw new RuntimeException(e);
                 }
-                getLog().info("Caught script timeout error", e);
+                LOG.info("Caught script timeout error", e);
                 return null;
             }
             finally {
                 javaScriptRunning_.set(javaScriptAlreadyRunning);
-            }
-        }
-
-        private void processPostponedActions(final Context cx) throws Exception {
-            final List<PostponedAction> actions = postponedActions_.get();
-            postponedActions_.set(null);
-            if (actions != null) {
-                for (final PostponedAction action : actions) {
-                    action.execute();
-                }
             }
         }
 
@@ -561,38 +543,19 @@ public class JavaScriptEngine implements Serializable {
         protected abstract String getSourceCode(final Context cx);
     }
 
-    /**
-     * Returns the log object that is being used to log information about the script engine.
-     * @return the log
-     */
-    public static Log getScriptEngineLog() {
-        return ScriptEngineLog_;
-    }
-
-    /**
-     * Pre process the specified source code in the context of the given page using the processor specified
-     * in the webclient. This method delegates to the pre processor handler specified in the
-     * <code>WebClient</code>. If no pre processor handler is defined, the original source code is returned
-     * unchanged.
-     * @param htmlPage the page
-     * @param sourceCode the code to process
-     * @param sourceName a name for the chunk of code (used in error messages)
-     * @param htmlElement the HTML element that will act as the context
-     * @return the source code after being pre processed
-     * @see com.gargoylesoftware.htmlunit.ScriptPreProcessor
-     */
-    public String preProcess(
-        final HtmlPage htmlPage, final String sourceCode, final String sourceName, final HtmlElement htmlElement) {
-
-        String newSourceCode = sourceCode;
-        final ScriptPreProcessor preProcessor = getWebClient().getScriptPreProcessor();
-        if (preProcessor != null) {
-            newSourceCode = preProcessor.preProcess(htmlPage, sourceCode, sourceName, htmlElement);
-            if (newSourceCode == null) {
-                newSourceCode = "";
+    private void processPostponedActions() {
+        final List<PostponedAction> actions = postponedActions_.get();
+        postponedActions_.set(null);
+        if (actions != null) {
+            try {
+                for (final PostponedAction action : actions) {
+                    action.execute();
+                }
+            }
+            catch (final Exception e) {
+                Context.throwAsScriptRuntimeEx(e);
             }
         }
-        return newSourceCode;
     }
 
     /**
@@ -607,4 +570,29 @@ public class JavaScriptEngine implements Serializable {
         }
         actions.add(action);
     }
+
+    /**
+     * Handles an exception that occurred during execution of JavaScript code.
+     * @param scriptException the exception
+     */
+    protected void handleJavaScriptException(final ScriptException scriptException) {
+        // Trigger window.onerror, if it has been set.
+        final HtmlPage page = scriptException.getPage();
+        if (page != null) {
+            final WebWindow window = page.getEnclosingWindow();
+            if (window != null) {
+                final Window w = (Window) window.getScriptObject();
+                if (w != null) {
+                    w.triggerOnError(scriptException);
+                }
+            }
+        }
+        // Throw a Java exception if the user wants us to.
+        if (getWebClient().isThrowExceptionOnScriptError()) {
+            throw scriptException;
+        }
+        // Log the error; ScriptException instances provide good debug info.
+        LOG.info("Caught script exception", scriptException);
+    }
+
 }

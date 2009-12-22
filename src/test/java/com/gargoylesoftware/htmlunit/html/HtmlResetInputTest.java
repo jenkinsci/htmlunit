@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
 /**
  * Tests for {@link HtmlResetInput}.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4002 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Ahmed Ashour
  */
@@ -56,44 +56,44 @@ public class HtmlResetInputTest extends WebTestCase {
             + "</form></body></html>";
         final HtmlPage page = loadPage(htmlContent);
 
-        final HtmlForm form = (HtmlForm) page.getHtmlElementById("form1");
-        final HtmlResetInput resetInput = (HtmlResetInput) form.getInputByName("resetButton");
+        final HtmlForm form = page.getHtmlElementById("form1");
+        final HtmlResetInput resetInput = form.getInputByName("resetButton");
 
         // change all the values to something else
-        ((HtmlRadioButtonInput) form.getFirstByXPath(
-                "//input[@type='radio' and @name='radioButton' and @value='bar']")).setChecked(true);
-        ((HtmlCheckBoxInput) form.getInputByName("checkBox")).setChecked(true);
-        ((HtmlOption) page.getHtmlElementById("option1")).setSelected(false);
-        ((HtmlOption) page.getHtmlElementById("option2")).setSelected(true);
-        ((HtmlTextArea) page.getHtmlElementById("textarea1")).setText("Flintstone");
-        ((HtmlTextInput) page.getHtmlElementById("textfield1")).setValueAttribute("Flintstone");
-        ((HtmlHiddenInput) page.getHtmlElementById("hidden1")).setValueAttribute("Flintstone");
-        ((HtmlPasswordInput) page.getHtmlElementById("password1")).setValueAttribute("Flintstone");
-        ((HtmlIsIndex) page.getHtmlElementById("isindex1")).setValue("Flintstone");
+        form.<HtmlRadioButtonInput>getFirstByXPath(
+                "//input[@type='radio' and @name='radioButton' and @value='bar']").setChecked(true);
+        form.<HtmlCheckBoxInput>getInputByName("checkBox").setChecked(true);
+        page.<HtmlOption>getHtmlElementById("option1").setSelected(false);
+        page.<HtmlOption>getHtmlElementById("option2").setSelected(true);
+        page.<HtmlTextArea>getHtmlElementById("textarea1").setText("Flintstone");
+        page.<HtmlTextInput>getHtmlElementById("textfield1").setValueAttribute("Flintstone");
+        page.<HtmlHiddenInput>getHtmlElementById("hidden1").setValueAttribute("Flintstone");
+        page.<HtmlPasswordInput>getHtmlElementById("password1").setValueAttribute("Flintstone");
+        page.<HtmlIsIndex>getHtmlElementById("isindex1").setValue("Flintstone");
 
         // Check to make sure they did get changed
         assertEquals("bar", form.getCheckedRadioButton("radioButton").getValueAttribute());
-        assertTrue(((HtmlCheckBoxInput) form.getInputByName("checkBox")).isChecked());
-        assertFalse(((HtmlOption) page.getHtmlElementById("option1")).isSelected());
-        assertTrue(((HtmlOption) page.getHtmlElementById("option2")).isSelected());
-        assertEquals("Flintstone", ((HtmlTextArea) page.getHtmlElementById("textarea1")).getText());
-        assertEquals("Flintstone", ((HtmlTextInput) page.getHtmlElementById("textfield1")).getValueAttribute());
-        assertEquals("Flintstone", ((HtmlHiddenInput) page.getHtmlElementById("hidden1")).getValueAttribute());
-        assertEquals("Flintstone", ((HtmlIsIndex) page.getHtmlElementById("isindex1")).getValue());
+        assertTrue(form.<HtmlCheckBoxInput>getInputByName("checkBox").isChecked());
+        assertFalse(page.<HtmlOption>getHtmlElementById("option1").isSelected());
+        assertTrue(page.<HtmlOption>getHtmlElementById("option2").isSelected());
+        assertEquals("Flintstone", page.<HtmlTextArea>getHtmlElementById("textarea1").getText());
+        assertEquals("Flintstone", page.<HtmlTextInput>getHtmlElementById("textfield1").getValueAttribute());
+        assertEquals("Flintstone", page.<HtmlHiddenInput>getHtmlElementById("hidden1").getValueAttribute());
+        assertEquals("Flintstone", page.<HtmlIsIndex>getHtmlElementById("isindex1").getValue());
 
-        final HtmlPage secondPage = (HtmlPage) resetInput.click();
+        final HtmlPage secondPage = resetInput.click();
         assertSame(page, secondPage);
 
         // Check to make sure all the values have been set back to their original values.
         assertEquals("foo", form.getCheckedRadioButton("radioButton").getValueAttribute());
-        assertFalse(((HtmlCheckBoxInput) form.getInputByName("checkBox")).isChecked());
-        assertTrue(((HtmlOption) page.getHtmlElementById("option1")).isSelected());
-        assertFalse(((HtmlOption) page.getHtmlElementById("option2")).isSelected());
-        assertEquals("Foobar", ((HtmlTextArea) page.getHtmlElementById("textarea1")).getText());
-        assertEquals("foo", ((HtmlTextInput) page.getHtmlElementById("textfield1")).getValueAttribute());
-        assertEquals("foo", ((HtmlHiddenInput) page.getHtmlElementById("hidden1")).getValueAttribute());
-        assertEquals("foo", ((HtmlPasswordInput) page.getHtmlElementById("password1")).getValueAttribute());
-        assertEquals("", ((HtmlIsIndex) page.getHtmlElementById("isindex1")).getValue());
+        assertFalse(form.<HtmlCheckBoxInput>getInputByName("checkBox").isChecked());
+        assertTrue(page.<HtmlOption>getHtmlElementById("option1").isSelected());
+        assertFalse(page.<HtmlOption>getHtmlElementById("option2").isSelected());
+        assertEquals("Foobar", page.<HtmlTextArea>getHtmlElementById("textarea1").getText());
+        assertEquals("foo", page.<HtmlTextInput>getHtmlElementById("textfield1").getValueAttribute());
+        assertEquals("foo", page.<HtmlHiddenInput>getHtmlElementById("hidden1").getValueAttribute());
+        assertEquals("foo", page.<HtmlPasswordInput>getHtmlElementById("password1").getValueAttribute());
+        assertEquals("", page.<HtmlIsIndex>getHtmlElementById("isindex1").getValue());
     }
 
     /**
@@ -110,7 +110,7 @@ public class HtmlResetInputTest extends WebTestCase {
         final String[] expectedAlerts = {"1"};
         final List<String> collectedAlerts = new ArrayList<String>();
         final HtmlPage page = loadPage(html, collectedAlerts);
-        final HtmlResetInput input = (HtmlResetInput) page.getHtmlElementById("myInput");
+        final HtmlResetInput input = page.getHtmlElementById("myInput");
         input.click();
 
         assertEquals(expectedAlerts, collectedAlerts);

@@ -1,8 +1,8 @@
-8
+10
 
 dir
-3268
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/yui/2.3.0/build/editor/assets
+5285
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.6/src/test/resources/yui/2.3.0/build/editor/assets
 https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 
 
@@ -12,7 +12,7 @@ https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 sdanig
 
 
-svn:special svn:externals svn:needs-lock
+
 
 
 
@@ -32,11 +32,33 @@ file
 
 
 
-2008-08-19T23:16:57.000000Z
+2009-12-22T19:28:51.000000Z
 5208d21cdbeaa01278b9ad635b32f1fb
 2007-08-15T21:30:20.716980Z
 1741
 sdanig
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+16976
 
 skins
 dir

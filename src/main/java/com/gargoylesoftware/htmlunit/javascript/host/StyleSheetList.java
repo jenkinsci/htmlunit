@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,15 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
-import java.io.StringReader;
-import java.util.logging.Logger;
+import net.sourceforge.htmlunit.corejs.javascript.Context;
+import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.Scriptable;
-import org.w3c.css.sac.InputSource;
-import org.w3c.dom.css.CSSStyleSheet;
-
-import com.gargoylesoftware.htmlunit.Cache;
-import com.gargoylesoftware.htmlunit.WebResponse;
-import com.gargoylesoftware.htmlunit.html.DomNode;
-import com.gargoylesoftware.htmlunit.html.HtmlLink;
-import com.gargoylesoftware.htmlunit.html.HtmlStyle;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLCollection;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLDocument;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLLinkElement;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLStyleElement;
 
 /**
  * <p>An ordered list of stylesheets, accessible via <tt>document.styleSheets</tt>, as specified by the
@@ -39,7 +34,7 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
  * of this class will always be empty. This allows us to check for CSS enablement/disablement in a single
  * location, without having to sprinkle checks throughout the code.</p>
  *
- * @version $Revision: 3174 $
+ * @version $Revision: 4859 $
  * @author Daniel Gredler
  * @author Ahmed Ashour
  */
@@ -92,59 +87,24 @@ public class StyleSheetList extends SimpleScriptable {
      * @param index the index of the style sheet to return
      * @return the style sheet at the specified index
      */
-    public Stylesheet jsxFunction_item(final int index) {
-        final Cache cache = getWindow().getWebWindow().getWebClient().getCache();
+    public Object jsxFunction_item(final int index) {
+        if (index < 0) {
+            throw Context.reportRuntimeError("Invalid negative index: " + index);
+        }
+        else if (index >= nodes_.jsxGet_length()) {
+            return Context.getUndefinedValue();
+        }
 
         final HTMLElement element = (HTMLElement) nodes_.jsxFunction_item(new Integer(index));
-        final DomNode node = element.getDomNodeOrDie();
 
-        Stylesheet sheet;
-        if (node instanceof HtmlStyle) {
-            // <style type="text/css"> ... </style>
-            final HtmlStyle style = (HtmlStyle) node;
-            String css = "";
-            if (style.getFirstChild() != null) {
-                css = style.getFirstChild().asText();
-            }
-            final CSSStyleSheet cached = cache.getCachedStyleSheet(css);
-            if (cached != null) {
-                sheet = new Stylesheet(element, cached);
-            }
-            else {
-                final InputSource source = new InputSource(new StringReader(css));
-                sheet = new Stylesheet(element, source);
-                cache.cache(css, sheet.getWrappedSheet());
-            }
+        final Stylesheet sheet;
+        // <style type="text/css"> ... </style>
+        if (element instanceof HTMLStyleElement) {
+            sheet = ((HTMLStyleElement) element).jsxGet_sheet();
         }
         else {
             // <link rel="stylesheet" type="text/css" href="..." />
-            final HtmlLink link = (HtmlLink) node;
-            try {
-                final WebResponse response = link.getWebResponse(true);
-                String css = response.getContentAsString();
-                final CSSStyleSheet cached = cache.getCachedStyleSheet(css);
-                if (cached != null) {
-                    sheet = new Stylesheet(element, cached);
-                }
-                else {
-                    if(response.getStatusCode()>=400) {
-                        // recover by parsing an empty stylesheet.
-                        // workaround for http://sourceforge.net/tracker/index.php?func=detail&aid=2070940&group_id=47038&atid=448266
-                        LOGGER.warning("Stylesheet reference to "+link.getHrefAttribute()+
-                                " in "+link.getOwnerDocument().getDocumentURI()+
-                                " line "+link.getStartLineNumber()+
-                                " resulted in "+response.getStatusCode());
-                        css = "";
-                    }
-                    final InputSource source = new InputSource(new StringReader(css));
-                    source.setURI(response.getUrl().toExternalForm());
-                    sheet = new Stylesheet(element, source);
-                    cache.cache(css, sheet.getWrappedSheet());
-                }
-            }
-            catch (final Exception e) {
-                throw Context.reportRuntimeError("Exception: " + e);
-            }
+            sheet = ((HTMLLinkElement) element).getSheet();
         }
 
         return sheet;
@@ -160,6 +120,4 @@ public class StyleSheetList extends SimpleScriptable {
         }
         return super.get(index, start);
     }
-
-    private static final Logger LOGGER = Logger.getLogger(StyleSheetList.class.getName());
 }

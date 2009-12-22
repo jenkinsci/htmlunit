@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import javax.xml.transform.dom.DOMResult;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
-import org.mozilla.javascript.Context;
+import net.sourceforge.htmlunit.corejs.javascript.Context;
 import org.w3c.dom.NodeList;
 
 import com.gargoylesoftware.htmlunit.SgmlPage;
@@ -35,13 +35,15 @@ import com.gargoylesoftware.htmlunit.html.DomDocumentFragment;
 import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.html.DomText;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLDocument;
+import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLSerializer;
 import com.gargoylesoftware.htmlunit.xml.XmlPage;
 import com.gargoylesoftware.htmlunit.xml.XmlUtil;
 
 /**
  * A JavaScript object for XSLTProcessor.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4505 $
  * @author Ahmed Ashour
  */
 public class XSLTProcessor extends SimpleScriptable {
@@ -135,6 +137,7 @@ public class XSLTProcessor extends SimpleScriptable {
             throw Context.reportRuntimeError("Exception: " + e);
         }
     }
+
     /**
      * Transforms the node source applying the stylesheet given by the importStylesheet() function.
      * The owner document of the output node owns the returned document fragment.
@@ -159,7 +162,7 @@ public class XSLTProcessor extends SimpleScriptable {
     private void transform(final Node source, final DomNode parent) {
         final Object result = transform(source);
         if (result instanceof org.w3c.dom.Node) {
-            final SgmlPage parentPage = (SgmlPage) parent.getPage();
+            final SgmlPage parentPage = parent.getPage();
             final NodeList children = ((org.w3c.dom.Node) result).getChildNodes();
             for (int i = 0; i < children.getLength(); i++) {
                 XmlUtil.appendChild(parentPage, parent, children.item(i));
@@ -259,7 +262,7 @@ public class XSLTProcessor extends SimpleScriptable {
      */
     public void jsxFunction_transform() {
         final Node input = input_;
-        final SgmlPage page = (SgmlPage) input.getDomNodeOrDie().getPage();
+        final SgmlPage page = input.getDomNodeOrDie().getPage();
 
         if (output_ == null || !(output_ instanceof Node)) {
             final DomDocumentFragment fragment = page.createDomDocumentFragment();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import org.apache.commons.httpclient.NameValuePair;
 /**
  * A holder for a key/value pair that represents a file to upload.
  *
- * @version $Revision: 3158 $
+ * @version $Revision: 4097 $
  * @author Brad Clarke
  * @author David D. Kilzer
  * @author Mike Bowler
@@ -36,7 +36,7 @@ public class KeyDataPair extends NameValuePair {
     private byte[] data_;
 
     /**
-     * Create an instance.
+     * Creates an instance.
      *
      * @param key the key
      * @param file the file

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,8 +26,9 @@ import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
 /**
  * Tests for {@link TextRange}.
  *
- * @version $Revision: 3097 $
+ * @version $Revision: 4800 $
  * @author Marc Guillemot
+ * @author Ahmed Ashour
  */
 @RunWith(BrowserRunner.class)
 public class TextRangeTest extends WebTestCase {
@@ -36,8 +37,8 @@ public class TextRangeTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(value = { Browser.INTERNET_EXPLORER_6, Browser.INTERNET_EXPLORER_7 })
-    @Alerts(IE = { "", "bla bla", "bla blabli bli" })
+    @Browsers(Browser.IE)
+    @Alerts({ "", "bla bla", "bla blabli bli" })
     public void text() throws Exception {
         final String html = "<html>\n"
             + "<head>\n"
@@ -60,6 +61,167 @@ public class TextRangeTest extends WebTestCase {
             + "</body>\n"
             + "</html>";
 
+        loadPageWithAlerts(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Browsers(Browser.IE)
+    @Alerts("BODY")
+    public void parentElement() throws Exception {
+        final String html = "<html>\n"
+            + "<head>\n"
+            + "  <title>test</title>\n"
+            + "  <script>\n"
+            + "    function test() {\n"
+            + "      alert(document.body.createTextRange().parentElement().tagName);\n"
+            + "    }\n"
+            + "  </script>\n"
+            + "</head>\n"
+            + "<body onload='test()'>\n"
+            + "</body>\n"
+            + "</html>";
+
+        loadPageWithAlerts(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Browsers(Browser.IE)
+    @Alerts({ "hello", "" })
+    public void collapse() throws Exception {
+        final String html = "<html>\n"
+            + "<head>\n"
+            + "  <title>test</title>\n"
+            + "  <script>\n"
+            + "    function test() {\n"
+            + "      var f = document.getElementById('foo');\n"
+            + "      f.focus();\n"
+            + "      f.select();\n"
+            + "      var r = document.selection.createRange();\n"
+            + "      alert(r.text);\n"
+            + "      r.collapse();\n"
+            + "      alert(r.text);\n"
+            + "    }\n"
+            + "  </script>\n"
+            + "</head>\n"
+            + "<body onload='test()'>\n"
+            + "<textarea id='foo'>hello</textarea>\n"
+            + "</body>\n"
+            + "</html>";
+
+        loadPageWithAlerts(html);
+    }
+
+    /**
+     * Minimal test: just test that function is available.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Browsers(Browser.IE)
+    @Alerts("")
+    public void select() throws Exception {
+        final String html = "<html>\n"
+            + "<head>\n"
+            + "  <title>test</title>\n"
+            + "  <script>\n"
+            + "    function test() {\n"
+            + "      var r = document.selection.createRange();\n"
+            + "      r.select();\n"
+             + "    }\n"
+            + "  </script>\n"
+            + "</head>\n"
+            + "<body onload='test()'>\n"
+            + "<textarea id='foo'>hello</textarea>\n"
+            + "</body>\n"
+            + "</html>";
+
+        loadPageWithAlerts(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Browsers(Browser.IE)
+    @Alerts({ "hello", "hell", "ell" })
+    public void moveEnd() throws Exception {
+        final String html = "<html>\n"
+            + "<head>\n"
+            + "  <title>test</title>\n"
+            + "  <script>\n"
+            + "    function test() {\n"
+            + "      var f = document.getElementById('foo');\n"
+            + "      f.focus();\n"
+            + "      f.select();\n"
+            + "      var r = document.selection.createRange();\n"
+            + "      alert(r.text);\n"
+            + "      r.moveEnd('character', -1);\n"
+            + "      alert(r.text);\n"
+            + "      r.moveStart('character');\n"
+            + "      alert(r.text);\n"
+            + "    }\n"
+            + "  </script>\n"
+            + "</head>\n"
+            + "<body onload='test()'>\n"
+            + "<textarea id='foo'>hello</textarea>\n"
+            + "</body>\n"
+            + "</html>";
+
+        loadPageWithAlerts(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Browsers(Browser.IE)
+    @Alerts({ "true", "true", "false", "true" })
+    public void inRange() throws Exception {
+        final String html = "<html>\n"
+            + "<head>\n"
+            + "  <title>test</title>\n"
+            + "  <script>\n"
+            + "    function test() {\n"
+            + "      var r1 = document.body.createTextRange();\n"
+            + "      var r2 = r1.duplicate();\n"
+            + "      alert(r1.inRange(r2));\n"
+            + "      alert(r2.inRange(r1));\n"
+            + "      r1.collapse();\n"
+            + "      alert(r1.inRange(r2));\n"
+            + "      alert(r2.inRange(r1));\n"
+            + "    }\n"
+            + "  </script>\n"
+            + "</head>\n"
+            + "<body onload='test()'>\n"
+            + "<textarea id='foo'>hello</textarea>\n"
+            + "</body>\n"
+            + "</html>";
+
+        loadPageWithAlerts(html);
+    }
+
+    /**
+     * Regression test for
+     * <a href="http://sourceforge.net/support/tracker.php?aid=2836591">Bug 2836591</a>.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Browsers(Browser.IE)
+    @Alerts("false")
+    public void inRange2() throws Exception {
+        final String html = "<html><body>"
+            + "<form name='f'><input name='q' value=''></form>"
+            + "<script>"
+            + "  var range = document.f.q.createTextRange();\n"
+            + "  var selectionRange = document.selection.createRange();\n"
+            + "  alert(range.inRange(selectionRange));\n"
+            + "</script>"
+            + "</body></html>";
         loadPageWithAlerts(html);
     }
 }

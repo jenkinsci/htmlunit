@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -74,10 +74,10 @@ public class ClickableElementTest extends WebTestCase {
         */
     private void onClickPageTest(final String htmlContent, final int numClicks,
             final String[] expectedAlerts, final boolean exceptionOnError) throws Exception {
-        final BrowserVersion bv = new BrowserVersion("Netscape", "7", "", "1.2", 7);
+        final BrowserVersion bv = new BrowserVersion("Netscape", "7", "", 7);
         final WebClient client = new WebClient(bv);
 
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setDefaultResponse(htmlContent);
         client.setWebConnection(webConnection);
         client.setThrowExceptionOnScriptError(exceptionOnError);
@@ -86,8 +86,8 @@ public class ClickableElementTest extends WebTestCase {
         final CollectingAlertHandler alertHandler = new CollectingAlertHandler(collectedAlerts);
         client.setAlertHandler(alertHandler);
 
-        final HtmlPage page = (HtmlPage) client.getPage(URL_GARGOYLE);
-        final ClickableElement clickable = (ClickableElement) page.getHtmlElementById("clickId");
+        final HtmlPage page = client.getPage(URL_GARGOYLE);
+        final HtmlElement clickable = page.getHtmlElementById("clickId");
 
         for (int i = 0; i < numClicks; i++) {
             clickable.click();
@@ -992,9 +992,9 @@ public class ClickableElementTest extends WebTestCase {
             + "</body></html>";
 
         final HtmlPage page = loadPage(content);
-        final HtmlBody body = (HtmlBody) page.getHtmlElementById("myBody");
+        final HtmlBody body = page.getHtmlElementById("myBody");
         body.dblClick();
-        final HtmlTextArea textArea = (HtmlTextArea) page.getHtmlElementById("myTextarea");
+        final HtmlTextArea textArea = page.getHtmlElementById("myTextarea");
         assertEquals("click-dblclick-", textArea.getText());
     }
 
@@ -1003,9 +1003,6 @@ public class ClickableElementTest extends WebTestCase {
      */
     @Test
     public void clickOnFocus() throws Exception {
-        if (notYetImplemented()) {
-            return;
-        }
         final String content
             = "<html><head><title>foo</title></head><body>\n"
             + "<form>\n"
@@ -1016,7 +1013,7 @@ public class ClickableElementTest extends WebTestCase {
         final List<String> collectedAlerts = new ArrayList<String>();
         final HtmlPage page = loadPage(content, collectedAlerts);
 
-        ((ClickableElement) page.getHtmlElementById("textfield1")).click();
+        page.<HtmlElement>getHtmlElementById("textfield1").click();
         assertEquals(expectedAlerts, collectedAlerts);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "meta".
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4463 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
@@ -39,7 +39,7 @@ public class HtmlMeta extends HtmlElement {
     public static final String TAG_NAME = "meta";
 
     /**
-     * Create an instance of HtmlMeta
+     * Creates an instance of HtmlMeta
      *
      * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
@@ -63,7 +63,8 @@ public class HtmlMeta extends HtmlElement {
         final String[] parts = getContentAttribute().split("\\s*;\\s*");
         final String name = StringUtils.substringBefore(parts[0], "=");
         final String value = StringUtils.substringAfter(parts[0], "=");
-        final Cookie cookie = new Cookie(getPage().getWebResponse().getUrl().getHost(), name, value);
+        final Cookie cookie = new Cookie(getPage().getWebResponse().getRequestSettings().getUrl().getHost(),
+                name, value);
         for (int i = 1; i < parts.length; i++) {
             final String partName = StringUtils.substringBefore(parts[i], "=").trim().toLowerCase();
             final String partValue = StringUtils.substringAfter(parts[i], "=").trim();
@@ -82,44 +83,8 @@ public class HtmlMeta extends HtmlElement {
             else {
                 notifyIncorrectness("set-cookie http-equiv meta tag: unknown attribute >" + partName + "<");
             }
-            getPage().getWebClient().getWebConnection().getState().addCookie(cookie);
+            getPage().getWebClient().getCookieManager().addCookie(cookie);
         }
-    }
-
-    /**
-     * Returns the value of the attribute "lang". Refer to the
-     * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
-     * documentation for details on the use of this attribute.
-     *
-     * @return the value of the attribute "lang"
-     * or an empty string if that attribute isn't defined.
-     */
-    public final String getLangAttribute() {
-        return getAttributeValue("lang");
-    }
-
-    /**
-     * Returns the value of the attribute "xml:lang". Refer to the
-     * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
-     * documentation for details on the use of this attribute.
-     *
-     * @return the value of the attribute "xml:lang"
-     * or an empty string if that attribute isn't defined.
-     */
-    public final String getXmlLangAttribute() {
-        return getAttributeValue("xml:lang");
-    }
-
-    /**
-     * Returns the value of the attribute "dir". Refer to the
-     * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
-     * documentation for details on the use of this attribute.
-     *
-     * @return the value of the attribute "dir"
-     * or an empty string if that attribute isn't defined.
-     */
-    public final String getTextDirectionAttribute() {
-        return getAttributeValue("dir");
     }
 
     /**
@@ -131,7 +96,7 @@ public class HtmlMeta extends HtmlElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getHttpEquivAttribute() {
-        return getAttributeValue("http-equiv");
+        return getAttribute("http-equiv");
     }
 
     /**
@@ -143,7 +108,7 @@ public class HtmlMeta extends HtmlElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getNameAttribute() {
-        return getAttributeValue("name");
+        return getAttribute("name");
     }
 
     /**
@@ -155,7 +120,7 @@ public class HtmlMeta extends HtmlElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getContentAttribute() {
-        return getAttributeValue("content");
+        return getAttribute("content");
     }
 
     /**
@@ -167,6 +132,6 @@ public class HtmlMeta extends HtmlElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getSchemeAttribute() {
-        return getAttributeValue("scheme");
+        return getAttribute("scheme");
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,22 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import java.io.Serializable;
+
 /**
  * Implementations of this interface receive notifications of changes to the attribute
  * list on the HtmlElement.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4792 $
  * @author Ahmed Ashour
  * @see HtmlAttributeChangeEvent
  */
-public interface HtmlAttributeChangeListener {
+public interface HtmlAttributeChangeListener extends Serializable {
 
     /**
      * Notification that a new attribute was added to the HtmlElement. Called after the attribute is added.
      *
-     * @param event the attibute change event
+     * @param event the attribute change event
      */
     void attributeAdded(final HtmlAttributeChangeEvent event);
 

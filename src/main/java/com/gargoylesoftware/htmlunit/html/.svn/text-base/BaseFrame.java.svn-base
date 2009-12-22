@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,7 +47,8 @@ import com.gargoylesoftware.htmlunit.javascript.PostponedAction;
  */
 public abstract class BaseFrame extends StyledElement {
 
-    private final transient Log mainLog_ = LogFactory.getLog(getClass());
+    private static final long serialVersionUID = -7658106924909626296L;
+    private static final Log LOG = LogFactory.getLog(BaseFrame.class);
     private final WebWindow enclosedWindow_ = new FrameWindow(this);
 
     /**
@@ -66,7 +67,9 @@ public abstract class BaseFrame extends StyledElement {
             // put about:blank in the window to allow JS to run on this frame before the
             // real content is loaded
             final WebClient webClient = getPage().getEnclosingWindow().getWebClient();
-            webClient.getPage(enclosedWindow_, new WebRequestSettings(WebClient.URL_ABOUT_BLANK));
+            final HtmlPage temporaryPage = webClient.getPage(enclosedWindow_,
+                new WebRequestSettings(WebClient.URL_ABOUT_BLANK));
+            temporaryPage.setReadyState(READY_STATE_LOADING);
         }
         catch (final FailingHttpStatusCodeException e) {
             // should never occur
@@ -77,11 +80,10 @@ public abstract class BaseFrame extends StyledElement {
     }
 
     /**
-     * Called after the node for <frame...> or <iframe> has been added to the containing page.
-     * The node needs to be added first to allow js in the frame to see the frame in the parent
-     * @throws FailingHttpStatusCodeException if the server returns a
-     *      failing status code AND the property
-     *      {@link WebClient#setThrowExceptionOnFailingStatusCode(boolean)} is set to true.
+     * Called after the node for the &lt;frame&gt; or &lt;iframe&gt; has been added to the containing page.
+     * The node needs to be added first to allow JavaScript in the frame to see the frame in the parent.
+     * @throws FailingHttpStatusCodeException if the server returns a failing status code AND the property
+     *      {@link WebClient#setThrowExceptionOnFailingStatusCode(boolean)} is set to true
      */
     void loadInnerPage() throws FailingHttpStatusCodeException {
         String source = getSrcAttribute();
@@ -92,12 +94,15 @@ public abstract class BaseFrame extends StyledElement {
         else {
             loadInnerPageIfPossible(source);
         }
+        final Page enclosedPage = getEnclosedPage();
+        if (enclosedPage instanceof HtmlPage) {
+            ((HtmlPage) enclosedPage).setReadyState(READY_STATE_COMPLETE);
+        }
     }
 
     /**
-     * @throws FailingHttpStatusCodeException if the server returns a
-     *      failing status code AND the property
-     *      {@link WebClient#setThrowExceptionOnFailingStatusCode(boolean)} is set to true.
+     * @throws FailingHttpStatusCodeException if the server returns a failing status code AND the property
+     *      {@link WebClient#setThrowExceptionOnFailingStatusCode(boolean)} is set to true
      */
     private void loadInnerPageIfPossible(final String src) throws FailingHttpStatusCodeException {
         if (src.length() != 0) {
@@ -115,13 +120,14 @@ public abstract class BaseFrame extends StyledElement {
             }
             try {
                 final WebRequestSettings settings = new WebRequestSettings(url);
-                settings.addAdditionalHeader("Referer", getPage().getWebResponse().getUrl().toExternalForm());
+                settings.setAdditionalHeader("Referer", getPage().getWebResponse().getRequestSettings().getUrl()
+                        .toExternalForm());
                 getPage().getEnclosingWindow().getWebClient().getPage(enclosedWindow_, settings);
             }
             catch (final IOException e) {
-                if (mainLog_.isErrorEnabled()) {
-                    mainLog_.error("IOException when getting content for " + getTagName()
-                            + ": url=[" + url.toExternalForm() + "]", e);
+                if (LOG.isErrorEnabled()) {
+                    LOG.error("IOException when getting content for " + getTagName()
+                            + ": url=[" + url + "]", e);
                 }
             }
         }
@@ -135,10 +141,11 @@ public abstract class BaseFrame extends StyledElement {
     private boolean isAlreadyLoadedByAncestor(final URL url) {
         WebWindow window = getPage().getEnclosingWindow();
         while (window != null) {
-            if (url.sameFile(window.getEnclosedPage().getWebResponse().getUrl())) {
+            if (url.sameFile(window.getEnclosedPage().getWebResponse().getRequestSettings().getUrl())) {
                 return true;
             }
-            if (window == window.getParentWindow()) { // should getParentWindow() return null on top windows?
+            if (window == window.getParentWindow()) {
+                // TODO: should getParentWindow() return null on top windows?
                 window = null;
             }
             else {
@@ -156,7 +163,7 @@ public abstract class BaseFrame extends StyledElement {
      * @return the value of the attribute "longdesc" or an empty string if that attribute isn't defined
      */
     public final String getLongDescAttribute() {
-        return getAttributeValue("longdesc");
+        return getAttribute("longdesc");
     }
 
     /**
@@ -167,7 +174,7 @@ public abstract class BaseFrame extends StyledElement {
      * @return the value of the attribute "name" or an empty string if that attribute isn't defined
      */
     public final String getNameAttribute() {
-        return getAttributeValue("name");
+        return getAttribute("name");
     }
 
     /**
@@ -176,7 +183,7 @@ public abstract class BaseFrame extends StyledElement {
      * @param name the new window name
      */
     public final void setNameAttribute(final String name) {
-        setAttributeValue("name", name);
+        setAttribute("name", name);
     }
 
     /**
@@ -187,7 +194,7 @@ public abstract class BaseFrame extends StyledElement {
      * @return the value of the attribute "src" or an empty string if that attribute isn't defined
      */
     public final String getSrcAttribute() {
-        return getAttributeValue("src");
+        return getAttribute("src");
     }
 
     /**
@@ -198,7 +205,7 @@ public abstract class BaseFrame extends StyledElement {
      * @return the value of the attribute "frameborder" or an empty string if that attribute isn't defined
      */
     public final String getFrameBorderAttribute() {
-        return getAttributeValue("frameborder");
+        return getAttribute("frameborder");
     }
 
     /**
@@ -209,7 +216,7 @@ public abstract class BaseFrame extends StyledElement {
      * @return the value of the attribute "marginwidth" or an empty string if that attribute isn't defined
      */
     public final String getMarginWidthAttribute() {
-        return getAttributeValue("marginwidth");
+        return getAttribute("marginwidth");
     }
 
     /**
@@ -220,7 +227,7 @@ public abstract class BaseFrame extends StyledElement {
      * @return the value of the attribute "marginheight" or an empty string if that attribute isn't defined
      */
     public final String getMarginHeightAttribute() {
-        return getAttributeValue("marginheight");
+        return getAttribute("marginheight");
     }
 
     /**
@@ -231,7 +238,7 @@ public abstract class BaseFrame extends StyledElement {
      * @return the value of the attribute "noresize" or an empty string if that attribute isn't defined
      */
     public final String getNoResizeAttribute() {
-        return getAttributeValue("noresize");
+        return getAttribute("noresize");
     }
 
     /**
@@ -242,7 +249,7 @@ public abstract class BaseFrame extends StyledElement {
      * @return the value of the attribute "scrolling" or an empty string if that attribute isn't defined
      */
     public final String getScrollingAttribute() {
-        return getAttributeValue("scrolling");
+        return getAttribute("scrolling");
     }
 
     /**
@@ -253,7 +260,7 @@ public abstract class BaseFrame extends StyledElement {
      * @return the value of the attribute "onload" or an empty string if that attribute isn't defined
      */
     public final String getOnLoadAttribute() {
-        return getAttributeValue("onload");
+        return getAttribute("onload");
     }
 
     /**
@@ -279,27 +286,25 @@ public abstract class BaseFrame extends StyledElement {
      * @param attribute the new value of the "src" attribute
      */
     public final void setSrcAttribute(final String attribute) {
-        setAttributeValue("src", attribute);
+        setAttribute("src", attribute);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    protected final void setAttributeValue(final String namespaceURI, final String qualifiedName,
-        String attributeValue, final boolean cloning) {
-
+    public void setAttributeNS(final String namespaceURI, final String qualifiedName,  String attributeValue) {
         if (qualifiedName.equals("src")) {
             attributeValue = attributeValue.trim();
         }
 
-        super.setAttributeValue(namespaceURI, qualifiedName, attributeValue, cloning);
+        super.setAttributeNS(namespaceURI, qualifiedName, attributeValue);
 
-        if (qualifiedName.equals("src") && !cloning) {
+        if (qualifiedName.equals("src")) {
             final JavaScriptEngine jsEngine = getPage().getWebClient().getJavaScriptEngine();
-            // when src is set from a script, loading is postponed until script finishes
-            // in fact this implementation is probably wrong: javascript url should be first evaluated
-            // and only loading, when any, should be postponed
+            // When src is set from a script, loading is postponed until script finishes
+            // in fact this implementation is probably wrong: JavaScript URL should be
+            // first evaluated and only loading, when any, should be postponed.
             if (!jsEngine.isScriptRunning() || attributeValue.startsWith("javascript:")) {
                 loadInnerPageIfPossible(attributeValue);
             }

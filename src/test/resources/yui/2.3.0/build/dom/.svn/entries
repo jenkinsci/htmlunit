@@ -1,8 +1,8 @@
-8
+10
 
 dir
-3268
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/yui/2.3.0/build/dom
+5285
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.6/src/test/resources/yui/2.3.0/build/dom
 https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 
 
@@ -12,7 +12,7 @@ https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 sdanig
 
 
-svn:special svn:externals svn:needs-lock
+
 
 
 
@@ -32,11 +32,33 @@ file
 
 
 
-2008-08-19T23:16:55.000000Z
+2009-12-22T19:28:51.000000Z
 a125be7cf22055aecb61ffcb999dfdad
 2007-08-15T21:30:20.716980Z
 1741
 sdanig
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+47353
 
 dom-min.js
 file
@@ -44,11 +66,33 @@ file
 
 
 
-2008-08-19T23:16:55.000000Z
+2009-12-22T19:28:51.000000Z
 10f6342761c76a447fbf2244e1498ef2
 2007-08-15T21:30:20.716980Z
 1741
 sdanig
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+13736
 
 README
 file
@@ -56,11 +100,33 @@ file
 
 
 
-2008-08-19T23:16:56.000000Z
+2009-12-22T19:28:51.000000Z
 2b3cca6a2e4fcbaa20911395a5904e50
 2007-08-15T21:30:20.716980Z
 1741
 sdanig
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+2946
 
 dom-debug.js
 file
@@ -68,9 +134,31 @@ file
 
 
 
-2008-08-19T23:16:56.000000Z
+2009-12-22T19:28:51.000000Z
 3cd67b5f1d16bea095c3ea70b923ca86
 2007-08-15T21:30:20.716980Z
 1741
 sdanig
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+50433
 

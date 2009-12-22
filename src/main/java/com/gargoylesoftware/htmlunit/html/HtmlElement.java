@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,39 +15,33 @@
 package com.gargoylesoftware.htmlunit.html;
 
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
+import net.sourceforge.htmlunit.corejs.javascript.BaseFunction;
+import net.sourceforge.htmlunit.corejs.javascript.Context;
+import net.sourceforge.htmlunit.corejs.javascript.ContextAction;
+import net.sourceforge.htmlunit.corejs.javascript.ContextFactory;
+import net.sourceforge.htmlunit.corejs.javascript.Function;
+
 import org.apache.commons.collections.map.ListOrderedMap;
 import org.apache.commons.lang.ClassUtils;
-import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.mozilla.javascript.BaseFunction;
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.ContextAction;
-import org.mozilla.javascript.ContextFactory;
-import org.mozilla.javascript.Function;
-import org.w3c.dom.Attr;
 import org.w3c.dom.CDATASection;
 import org.w3c.dom.Comment;
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Element;
 import org.w3c.dom.EntityReference;
 import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 import org.w3c.dom.ProcessingInstruction;
 import org.w3c.dom.Text;
-import org.w3c.dom.TypeInfo;
 
 import com.gargoylesoftware.htmlunit.ElementNotFoundException;
 import com.gargoylesoftware.htmlunit.Page;
@@ -55,16 +49,16 @@ import com.gargoylesoftware.htmlunit.ScriptResult;
 import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.WebAssert;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.javascript.NamedNodeMap;
 import com.gargoylesoftware.htmlunit.javascript.host.Event;
 import com.gargoylesoftware.htmlunit.javascript.host.EventHandler;
-import com.gargoylesoftware.htmlunit.javascript.host.HTMLElement;
 import com.gargoylesoftware.htmlunit.javascript.host.MouseEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.UIEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
 
 /**
  * An abstract wrapper for HTML elements.
  *
- * @version $Revision: 3155 $
+ * @version $Revision: 4792 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:gudujarlson@sf.net">Mike J. Bresnahan</a>
  * @author David K. Taylor
@@ -78,13 +72,10 @@ import com.gargoylesoftware.htmlunit.javascript.host.MouseEvent;
  * @author Dmitri Zoubkov
  * @author Sudhan Moghe
  */
-public abstract class HtmlElement extends DomElement implements Element {
+public abstract class HtmlElement extends DomElement {
 
-    /** Constant meaning that the specified attribute was not defined. */
-    public static final String ATTRIBUTE_NOT_DEFINED = new String("");
-
-    /** Constant meaning that the specified attribute was found but its value was empty. */
-    public static final String ATTRIBUTE_VALUE_EMPTY = new String("");
+    private static final long serialVersionUID = -2841932584831342634L;
+    private static final Log LOG = LogFactory.getLog(HtmlElement.class);
 
     /**
      * Constant indicating that a tab index value is out of bounds (less than <tt>0</tt> or greater
@@ -94,18 +85,11 @@ public abstract class HtmlElement extends DomElement implements Element {
      */
     public static final Short TAB_INDEX_OUT_OF_BOUNDS = new Short(Short.MIN_VALUE);
 
-    private final transient Log mainLog_ = LogFactory.getLog(getClass());
-
-    /** The map holding the attributes, keyed by name. */
-    private Map<String, DomAttr> attributes_;
-
-    /** The map holding the namespaces, keyed by URI. */
-    private Map<String, String> namespaces_ = new HashMap<String, String>();
-
     /** The listeners which are to be notified of attribute changes. */
     private List<HtmlAttributeChangeListener> attributeListeners_;
 
-    private HtmlForm owningForm_; // the owning form for lost form children
+    /** The owning form for lost form children. */
+    private HtmlForm owningForm_;
 
     /**
      * Creates an instance.
@@ -116,181 +100,15 @@ public abstract class HtmlElement extends DomElement implements Element {
      * @param attributes a map ready initialized with the attributes for this element, or
      * <code>null</code>. The map will be stored as is, not copied.
      */
-    protected HtmlElement(final String namespaceURI, final String qualifiedName, final Page page,
+    protected HtmlElement(final String namespaceURI, final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page);
-        if (attributes != null) {
-            attributes_ = attributes;
-            // The HtmlAttr objects are created before the HtmlElement, so we need to go set the
-            // parent HtmlElement, now. Also index the namespaces while we are at it.
-            for (final DomAttr entry : attributes_.values()) {
-                entry.setParentNode(this);
-                final String attrNamespaceURI = entry.getNamespaceURI();
-                if (attrNamespaceURI != null) {
-                    namespaces_.put(attrNamespaceURI, entry.getPrefix());
-                }
+        super(namespaceURI, qualifiedName, page, attributes);
+        if (page != null && page.getWebClient().getBrowserVersion().isFirefox()) {
+            final String value = getAttribute("class");
+            if (value != ATTRIBUTE_NOT_DEFINED) {
+                setAttribute("class", value.trim());
             }
         }
-        else {
-            attributes_ = Collections.emptyMap();
-        }
-    }
-
-    /**
-     * Overrides {@link DomNode#cloneNode(boolean)} so clone gets its own Map of attributes.
-     * {@inheritDoc}
-     */
-    @Override
-    public DomNode cloneNode(final boolean deep) {
-        final HtmlElement newNode = (HtmlElement) super.cloneNode(deep);
-        newNode.attributes_ = createAttributeMap(attributes_.size());
-        for (final DomAttr attr : attributes_.values()) {
-            newNode.setAttributeValue(attr.getNamespaceURI(), attr.getQualifiedName(), attr.getNodeValue(), true);
-        }
-        return newNode;
-    }
-
-    /**
-     * Returns the value of the attribute specified by name or an empty string. If the
-     * result is an empty string then it will be either {@link #ATTRIBUTE_NOT_DEFINED}
-     * if the attribute wasn't specified or {@link #ATTRIBUTE_VALUE_EMPTY} if the
-     * attribute was specified but it was empty.
-     *
-     * @param attributeName the name of the attribute
-     * @return the value of the attribute or {@link #ATTRIBUTE_NOT_DEFINED} or {@link #ATTRIBUTE_VALUE_EMPTY}
-     */
-    public final String getAttribute(final String attributeName) {
-        return getAttributeValue(attributeName);
-    }
-
-    /**
-     * Returns the qualified name (prefix:local) for the namespace and local name.
-     *
-     * @param namespaceURI the URI that identifies an XML namespace
-     * @param localName the name within the namespace
-     * @return the qualified name or just local name if the namespace is not fully defined
-     */
-    private String getQualifiedName(final String namespaceURI, final String localName) {
-        final String qualifiedName;
-        if (namespaceURI != null) {
-            final String prefix = namespaces_.get(namespaceURI);
-            if (prefix != null) {
-                qualifiedName = prefix + ':' + localName;
-            }
-            else {
-                qualifiedName = localName;
-            }
-        }
-        else {
-            qualifiedName = localName;
-        }
-        return qualifiedName;
-    }
-
-    /**
-     * Returns the value of the attribute specified by namespace and local name or an empty
-     * string. If the result is an empty string then it will be either {@link #ATTRIBUTE_NOT_DEFINED}
-     * if the attribute wasn't specified or {@link #ATTRIBUTE_VALUE_EMPTY} if the
-     * attribute was specified but it was empty.
-     *
-     * @param namespaceURI the URI that identifies an XML namespace
-     * @param localName the name within the namespace
-     * @return the value of the attribute or {@link #ATTRIBUTE_NOT_DEFINED} or {@link #ATTRIBUTE_VALUE_EMPTY}
-     */
-    public final String getAttributeNS(final String namespaceURI, final String localName) {
-        return getAttributeValue(getQualifiedName(namespaceURI, localName));
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean hasAttributes() {
-        return !attributes_.isEmpty();
-    }
-
-    /**
-     * Returns whether the attribute specified by name has a value.
-     *
-     * @param attributeName the name of the attribute
-     * @return true if an attribute with the given name is specified on this element or has a
-     * default value, false otherwise.
-     */
-    public final boolean hasAttribute(final String attributeName) {
-        return attributes_.get(attributeName) != null;
-    }
-
-    /**
-     * Returns whether the attribute specified by namespace and local name has a value.
-     *
-     * @param namespaceURI the URI that identifies an XML namespace
-     * @param localName the name within the namespace
-     * @return true if an attribute with the given name is specified on this element or has a
-     * default value, false otherwise.
-     */
-    public final boolean hasAttributeNS(final String namespaceURI, final String localName) {
-        return attributes_.get(getQualifiedName(namespaceURI, localName)) != null;
-    }
-
-    /**
-     * Returns the value of the specified attribute or an empty string. If the
-     * result is an empty string then it will be either {@link #ATTRIBUTE_NOT_DEFINED}
-     * if the attribute wasn't specified or {@link #ATTRIBUTE_VALUE_EMPTY} if the
-     * attribute was specified but it was empty.
-     *
-     * @param attributeName the name of the attribute
-     * @return the value of the attribute or {@link #ATTRIBUTE_NOT_DEFINED} or {@link #ATTRIBUTE_VALUE_EMPTY}
-     */
-    public final String getAttributeValue(final String attributeName) {
-        final DomAttr attr = attributes_.get(attributeName.toLowerCase());
-        if (attr != null) {
-            return attr.getNodeValue();
-        }
-        return ATTRIBUTE_NOT_DEFINED;
-    }
-
-    /**
-     * Sets the value of the attribute specified by name.
-     *
-     * @param attributeName the name of the attribute
-     * @param attributeValue the value of the attribute
-     */
-    public final void setAttribute(final String attributeName, final String attributeValue) {
-        setAttributeValue(null, attributeName, attributeValue);
-    }
-
-    /**
-     * Sets the value of the attribute specified by namespace and qualified name.
-     *
-     * @param namespaceURI the URI that identifies an XML namespace
-     * @param qualifiedName the qualified name (prefix:local) of the attribute
-     * @param attributeValue the value of the attribute
-     */
-    public final void setAttributeNS(final String namespaceURI, final String qualifiedName,
-            final String attributeValue) {
-        setAttributeValue(namespaceURI, qualifiedName, attributeValue);
-    }
-
-    /**
-     * Sets the value of the specified attribute.
-     *
-     * @param attributeName the name of the attribute
-     * @param attributeValue the value of the attribute
-     */
-    public final void setAttributeValue(final String attributeName, final String attributeValue) {
-        setAttributeValue(null, attributeName, attributeValue);
-    }
-
-    /**
-     * Sets the value of the specified attribute.
-     *
-     * @param namespaceURI the URI that identifies an XML namespace
-     * @param qualifiedName the qualified name of the attribute
-     * @param attributeValue the value of the attribute
-     */
-    public final void setAttributeValue(final String namespaceURI, final String qualifiedName,
-        final String attributeValue) {
-        setAttributeValue(namespaceURI, qualifiedName, attributeValue, false);
     }
 
     /**
@@ -302,37 +120,34 @@ public abstract class HtmlElement extends DomElement implements Element {
      * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the attribute
      * @param attributeValue the value of the attribute
-     * @param cloning whether or not this attribute value change is the result of a node clone operation
      */
-    protected void setAttributeValue(final String namespaceURI, final String qualifiedName,
-        final String attributeValue, final boolean cloning) {
+    @Override
+    public void setAttributeNS(final String namespaceURI, final String qualifiedName,
+            final String attributeValue) {
 
-        final String oldAttributeValue = getAttributeValue(qualifiedName);
+        final String oldAttributeValue = getAttribute(qualifiedName);
         String value = attributeValue;
 
-        if (attributes_ == Collections.EMPTY_MAP) {
-            attributes_ = createAttributeMap(1);
+        final boolean mappedElement = (qualifiedName.equals("name") || qualifiedName.equals("id"))
+            && getOwnerDocument() instanceof HtmlPage;
+        if (mappedElement) {
+            ((HtmlPage) getPage()).removeMappedElement(this);
         }
+
+        super.setAttributeNS(namespaceURI, qualifiedName, attributeValue);
         if (value.length() == 0) {
             value = ATTRIBUTE_VALUE_EMPTY;
         }
 
-        // TODO: cleanup. This is a hack for HtmlElement living within an XmlPage
-        if ((getOwnerDocument() instanceof HtmlPage)) {
-            ((HtmlPage) getPage()).removeMappedElement(this);
-        }
-
-        final DomAttr newAttr = addAttributeToMap((Page) getOwnerDocument(), attributes_, namespaceURI,
-            qualifiedName.toLowerCase(), value);
-        if (namespaceURI != null) {
-            namespaces_.put(namespaceURI, newAttr.getPrefix());
-        }
-
-        // TODO: cleanup. This is a hack for HtmlElement living within an XmlPage
+        // TODO: Clean up; this is a hack for HtmlElement living within an XmlPage.
         if (!(getOwnerDocument() instanceof HtmlPage)) {
             return;
         }
-        ((HtmlPage) getPage()).addMappedElement(this);
+
+        final HtmlPage htmlPage = (HtmlPage) getPage();
+        if (mappedElement) {
+            htmlPage.addMappedElement(this);
+        }
 
         final HtmlAttributeChangeEvent htmlEvent;
         if (oldAttributeValue == ATTRIBUTE_NOT_DEFINED) {
@@ -356,26 +171,11 @@ public abstract class HtmlElement extends DomElement implements Element {
     }
 
     /**
-     * {@inheritDoc}
-     */
-    public NodeList getElementsByTagName(final String tagName) {
-        return new DomNodeList(this, "//" + tagName);
-    }
-
-    /**
-     * {@inheritDoc}
-     * Not yet implemented.
-     */
-    public NodeList getElementsByTagNameNS(final String namespace, final String name) {
-        throw new UnsupportedOperationException("HtmlElement.getElementsByTagNameNS is not yet implemented.");
-    }
-
-    /**
      * Returns the HTML elements that are descendants of this element and that have one of the specified tag names.
      * @param tagNames the tag names to match (case-insensitive)
      * @return the HTML elements that are descendants of this element and that have one of the specified tag name
      */
-    public final List< ? extends HtmlElement> getHtmlElementsByTagNames(final List<String> tagNames) {
+    public final List<HtmlElement> getHtmlElementsByTagNames(final List<String> tagNames) {
         final List<HtmlElement> list = new ArrayList<HtmlElement>();
         for (final String tagName : tagNames) {
             list.addAll(getHtmlElementsByTagName(tagName));
@@ -386,82 +186,43 @@ public abstract class HtmlElement extends DomElement implements Element {
     /**
      * Returns the HTML elements that are descendants of this element and that have the specified tag name.
      * @param tagName the tag name to match (case-insensitive)
+     * @param <E> the sub-element type
      * @return the HTML elements that are descendants of this element and that have the specified tag name
      */
-    public final List< ? extends HtmlElement> getHtmlElementsByTagName(final String tagName) {
-        final List<HtmlElement> list = new ArrayList<HtmlElement>();
+    @SuppressWarnings("unchecked")
+    public final <E extends HtmlElement> List<E> getHtmlElementsByTagName(final String tagName) {
+        final List<E> list = new ArrayList<E>();
         final String lowerCaseTagName = tagName.toLowerCase();
-        for (final HtmlElement element : getAllHtmlChildElements()) {
+        final Iterable<HtmlElement> iterable = getAllHtmlChildElements();
+        for (final HtmlElement element : iterable) {
             if (lowerCaseTagName.equals(element.getTagName())) {
-                list.add(element);
+                list.add((E) element);
             }
         }
         return list;
     }
 
     /**
-     * {@inheritDoc}
-     * Not yet implemented.
-     */
-    public Attr setAttributeNodeNS(final Attr attribute) {
-        throw new UnsupportedOperationException("HtmlElement.setAttributeNodeNS is not yet implemented.");
-    }
-
-    /**
-     * {@inheritDoc}
-     * Not yet implemented.
-     */
-    public Attr setAttributeNode(final Attr attribute) {
-        throw new UnsupportedOperationException("HtmlElement.setAttributeNode is not yet implemented.");
-    }
-
-    /**
-     * {@inheritDoc}
-     * Not yet implemented.
-     */
-    public Attr removeAttributeNode(final Attr attribute) {
-        throw new UnsupportedOperationException("HtmlElement.removeAttributeNode is not yet implemented.");
-    }
-
-    /**
-     * {@inheritDoc}
-     * Not yet implemented.
-     */
-    public Attr getAttributeNodeNS(final String namespaceURI, final String localName) {
-        throw new UnsupportedOperationException("HtmlElement.getAttributeNodeNS is not yet implemented.");
-    }
-
-    /**
-     * {@inheritDoc}
-     * Not yet implemented.
-     */
-    public Attr getAttributeNode(final String name) {
-        throw new UnsupportedOperationException("HtmlElement.getAttributeNode is not yet implemented.");
-    }
-
-    /**
      * Removes an attribute specified by name from this element.
      * @param attributeName the attribute attributeName
      */
+    @Override
     public final void removeAttribute(final String attributeName) {
-        final String value = getAttributeValue(attributeName);
+        final String value = getAttribute(attributeName);
 
-        ((HtmlPage) getPage()).removeMappedElement(this);
-        attributes_.remove(attributeName.toLowerCase());
-        ((HtmlPage) getPage()).addMappedElement(this);
+        if (getPage() instanceof HtmlPage) {
+            ((HtmlPage) getPage()).removeMappedElement(this);
+        }
 
-        final HtmlAttributeChangeEvent event = new HtmlAttributeChangeEvent(this, attributeName, value);
-        fireHtmlAttributeRemoved(event);
-        ((HtmlPage) getPage()).fireHtmlAttributeRemoved(event);
-    }
+        super.removeAttribute(attributeName);
 
-    /**
-     * Removes an attribute specified by namespace and local name from this element.
-     * @param namespaceURI the URI that identifies an XML namespace
-     * @param localName the name within the namespace
-     */
-    public final void removeAttributeNS(final String namespaceURI, final String localName) {
-        removeAttribute(getQualifiedName(namespaceURI, localName));
+        if (getPage() instanceof HtmlPage) {
+            ((HtmlPage) getPage()).addMappedElement(this);
+
+            final HtmlAttributeChangeEvent event = new HtmlAttributeChangeEvent(this, attributeName, value);
+            fireHtmlAttributeRemoved(event);
+            ((HtmlPage) getPage()).fireHtmlAttributeRemoved(event);
+        }
     }
 
     /**
@@ -540,78 +301,23 @@ public abstract class HtmlElement extends DomElement implements Element {
     }
 
     /**
-     * Returns true if the specified attribute has been defined. This is necessary
-     * in order to distinguish between an attribute that is set to an empty string
-     * and one that was not defined at all.
-     *
-     * @param attributeName the attribute to check
-     * @return true if the attribute is defined
-     */
-    public boolean isAttributeDefined(final String attributeName) {
-        return attributes_.get(attributeName.toLowerCase()) != null;
-    }
-
-    /**
-     * @return an iterator over the {@link DomAttr} objects representing the
-     * attributes of this element.
-     * The elements are ordered as found in the HTML source code.
-     * @deprecated As of 2.0
-     */
-    @Deprecated
-    public Iterator<DomAttr> getAttributeEntriesIterator() {
-        return getAttributesCollection().iterator();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public org.w3c.dom.NamedNodeMap getAttributes() {
-        return new NamedNodeMap(this);
-    }
-
-    /**
-     * @return a collection of {@link DomAttr} objects representing the
-     * attributes of this element. The elements are ordered as found in the HTML source code.
-     */
-    public Collection<DomAttr> getAttributesCollection() {
-        return attributes_.values();
-    }
-
-    /**
-     * Returns the tag name of this element. The tag name is the actual HTML name. For example
-     * the tag name for HtmlAnchor is "a" and the tag name for HtmlTable is "table".
-     * This tag name will always be in lowercase, no matter what case was used in the original
-     * document, when no namespace is defined.
-     *
-     * @return the tag name of this element
-     */
-    public String getTagName() {
-        if (getNamespaceURI() == null) {
-            return getLocalName().toLowerCase();
-        }
-        return getQualifiedName();
-    }
-
-    /** @return the node type */
-    @Override
-    public short getNodeType() {
-        return org.w3c.dom.Node.ELEMENT_NODE;
-    }
-
-    /**
      * @return the same value as returned by {@link #getTagName()}
      */
     @Override
     public String getNodeName() {
-        return getTagName();
+        String name = getLocalName();
+        if (getPrefix() != null) {
+            name = getPrefix() + ':' + name;
+        }
+        name = name.toLowerCase();
+        return name;
     }
 
     /**
      * @return the identifier of this element
      */
     public final String getId() {
-        return getAttributeValue("id");
+        return getAttribute("id");
     }
 
     /**
@@ -620,40 +326,7 @@ public abstract class HtmlElement extends DomElement implements Element {
      * @param newId the new identifier of this element
      */
     public final void setId(final String newId) {
-        setAttributeValue("id", newId);
-    }
-
-    /**
-     * {@inheritDoc}
-     * Not yet implemented.
-     */
-    public TypeInfo getSchemaTypeInfo() {
-        throw new UnsupportedOperationException("HtmlElement.getSchemaTypeInfo is not yet implemented.");
-    }
-
-    /**
-     * {@inheritDoc}
-     * Not yet implemented.
-     */
-    public final void setIdAttribute(final String name, final boolean isId) throws DOMException {
-        throw new UnsupportedOperationException("HtmlElement.setIdAttribute is not yet implemented.");
-    }
-
-    /**
-     * {@inheritDoc}
-     * Not yet implemented.
-     */
-    public final void setIdAttributeNS(final String namespaceURI, final String localName, final boolean isId)
-        throws DOMException {
-        throw new UnsupportedOperationException("HtmlElement.setIdAttributeNS is not yet implemented.");
-    }
-
-    /**
-     * {@inheritDoc}
-     * Not yet implemented.
-     */
-    public final void setIdAttributeNode(final Attr idAttr, final boolean isId) throws DOMException {
-        throw new UnsupportedOperationException("HtmlElement.setIdAttributeNode is not yet implemented.");
+        setAttribute("id", newId);
     }
 
     /**
@@ -665,7 +338,7 @@ public abstract class HtmlElement extends DomElement implements Element {
      * @return this element's tab index
      */
     public Short getTabIndex() {
-        final String index = getAttributeValue("tabindex");
+        final String index = getAttribute("tabindex");
         if (index == null || index.length() == 0) {
             return null;
         }
@@ -789,14 +462,40 @@ public abstract class HtmlElement extends DomElement implements Element {
             return getPage();
         }
 
-        focus();
-        fireEvent(new Event(this, Event.TYPE_KEY_DOWN, c, shiftKey, ctrlKey, altKey));
-        fireEvent(new Event(this, Event.TYPE_KEY_PRESS, c, shiftKey, ctrlKey, altKey));
-        doType(c, shiftKey, ctrlKey, altKey);
-        fireEvent(new Event(this, Event.TYPE_KEY_UP, c, shiftKey, ctrlKey, altKey));
+        if (((HtmlPage) getPage()).getFocusedElement() != this) {
+            focus();
+        }
+
+        final Event keyDown = new UIEvent(this, Event.TYPE_KEY_DOWN, c, shiftKey, ctrlKey, altKey);
+        final ScriptResult keyDownResult = fireEvent(keyDown);
+
+        final Event keyPress = new UIEvent(this, Event.TYPE_KEY_PRESS, c, shiftKey, ctrlKey, altKey);
+        final ScriptResult keyPressResult = fireEvent(keyPress);
+
+        if (!keyDown.isAborted(keyDownResult) && !keyPress.isAborted(keyPressResult)) {
+            doType(c, shiftKey, ctrlKey, altKey);
+        }
+
+        final boolean ie = getPage().getWebClient().getBrowserVersion().isIE();
+        if (!ie
+            && (this instanceof HtmlTextInput
+            || this instanceof HtmlTextArea
+            || this instanceof HtmlPasswordInput)) {
+            final Event input = new UIEvent(this, Event.TYPE_INPUT, c, shiftKey, ctrlKey, altKey);
+            fireEvent(input);
+        }
+
+        final Event keyUp = new UIEvent(this, Event.TYPE_KEY_UP, c, shiftKey, ctrlKey, altKey);
+        fireEvent(keyUp);
 
         final HtmlForm form = getEnclosingForm();
         if (form != null && c == '\n' && isSubmittableByEnter()) {
+            if (!ie) {
+                final HtmlSubmitInput submit = form.getFirstByXPath(".//input[@type='submit']");
+                if (submit != null) {
+                    return submit.click();
+                }
+            }
             return form.submit((SubmittableElement) this);
         }
         return getPage();
@@ -808,11 +507,9 @@ public abstract class HtmlElement extends DomElement implements Element {
      * @param shiftKey <tt>true</tt> if SHIFT is pressed during the typing
      * @param ctrlKey <tt>true</tt> if CTRL is pressed during the typing
      * @param altKey <tt>true</tt> if ALT is pressed during the typing
-     * @exception IOException if an IO error occurs
      */
-    protected void doType(final char c, final boolean shiftKey, final boolean ctrlKey, final boolean altKey)
-        throws IOException {
-        // nothing
+    protected void doType(final char c, final boolean shiftKey, final boolean ctrlKey, final boolean altKey) {
+        // Empty.
     }
 
     /**
@@ -822,54 +519,6 @@ public abstract class HtmlElement extends DomElement implements Element {
      */
     protected boolean isSubmittableByEnter() {
         return false;
-    }
-
-    /**
-     * Recursively write the XML data for the node tree starting at <code>node</code>.
-     *
-     * @param indent white space to indent child nodes
-     * @param printWriter writer where child nodes are written
-     */
-    @Override
-    protected void printXml(final String indent, final PrintWriter printWriter) {
-        final boolean hasChildren = (getFirstChild() != null);
-        printWriter.print(indent + "<");
-        printOpeningTagContentAsXml(printWriter);
-
-        if (!hasChildren && !isEmptyXmlTagExpanded()) {
-            printWriter.println("/>");
-        }
-        else {
-            printWriter.println(">");
-            printChildrenAsXml(indent, printWriter);
-            printWriter.println(indent + "</" + getTagName() + ">");
-        }
-    }
-
-    /**
-     * Indicates if a node without children should be written in expanded form as XML
-     * (i.e. with closing tag rather than with "/&gt;")
-     * @return <code>false</code> by default
-     */
-    protected boolean isEmptyXmlTagExpanded() {
-        return false;
-    }
-
-    /**
-     * Prints the content between "&lt;" and "&gt;" (or "/&gt;") in the output of the tag name
-     * and its attributes in XML format.
-     * @param printWriter the writer to print in
-     */
-    protected void printOpeningTagContentAsXml(final PrintWriter printWriter) {
-        printWriter.print(getTagName());
-
-        for (final String name : attributes_.keySet()) {
-            printWriter.print(" ");
-            printWriter.print(name);
-            printWriter.print("=\"");
-            printWriter.print(StringEscapeUtils.escapeXml(attributes_.get(name).getNodeValue()));
-            printWriter.print("\"");
-        }
     }
 
     /**
@@ -900,18 +549,19 @@ public abstract class HtmlElement extends DomElement implements Element {
      * @param elementName the name of the element to search for
      * @param attributeName the name of the attribute to search for
      * @param attributeValue the value of the attribute to search for
+     * @param <E> the sub-element type
      * @return the first element which matches the specified search criteria
-     * @exception ElementNotFoundException if no element matches the specified search criteria
+     * @throws ElementNotFoundException if no element matches the specified search criteria
      */
-    public final HtmlElement getOneHtmlElementByAttribute(final String elementName, final String attributeName,
+    public final <E extends HtmlElement> E getOneHtmlElementByAttribute(final String elementName,
+            final String attributeName,
         final String attributeValue) throws ElementNotFoundException {
 
         WebAssert.notNull("elementName", elementName);
         WebAssert.notNull("attributeName", attributeName);
         WebAssert.notNull("attributeValue", attributeValue);
 
-        final List< ? extends HtmlElement> list =
-            getHtmlElementsByAttribute(elementName, attributeName, attributeValue);
+        final List<E> list = getElementsByAttribute(elementName, attributeName, attributeValue);
 
         final int listSize = list.size();
         if (listSize == 0) {
@@ -926,11 +576,13 @@ public abstract class HtmlElement extends DomElement implements Element {
      * has the specified ID (not allowed by the HTML spec), this method returns the first one.
      *
      * @param id the ID value to search for
+     * @param <E> the sub-element type
      * @return the element in this element's page with the specified ID
      * @exception ElementNotFoundException if no element has the specified ID
      */
-    public HtmlElement getHtmlElementById(final String id) throws ElementNotFoundException {
-        return ((HtmlPage) getPage()).getHtmlElementById(id);
+    @SuppressWarnings("unchecked")
+    public <E extends HtmlElement> E getElementById(final String id) throws ElementNotFoundException {
+        return (E) ((HtmlPage) getPage()).getHtmlElementById(id);
     }
 
     /**
@@ -938,7 +590,7 @@ public abstract class HtmlElement extends DomElement implements Element {
      * This method is intended for situations where it is enough to know whether a specific
      * element is present in the document.</p>
      *
-     * <p>Implementation Note: This method calls {@link #getHtmlElementById(String)} internally,
+     * <p>Implementation Note: This method calls {@link #getElementById(String)} internally,
      * so writing code such as the following would be extremely inefficient:</p>
      *
      * <pre>
@@ -953,7 +605,7 @@ public abstract class HtmlElement extends DomElement implements Element {
      */
     public boolean hasHtmlElementWithId(final String id) {
         try {
-            getHtmlElementById(id);
+            getElementById(id);
             return true;
         }
         catch (final ElementNotFoundException e) {
@@ -967,21 +619,23 @@ public abstract class HtmlElement extends DomElement implements Element {
      * @param elementName the name of the element to search for
      * @param attributeName the name of the attribute to search for
      * @param attributeValue the value of the attribute to search for
+     * @param <E> the sub-element type
      * @return all elements which are descendants of this element and match the specified search criteria
      */
-    public final List< ? extends HtmlElement> getHtmlElementsByAttribute(
+    @SuppressWarnings("unchecked")
+    public final <E extends HtmlElement> List<E> getElementsByAttribute(
             final String elementName,
             final String attributeName,
             final String attributeValue) {
 
-        final List<HtmlElement> list = new ArrayList<HtmlElement>();
+        final List<E> list = new ArrayList<E>();
         final String lowerCaseTagName = elementName.toLowerCase();
 
         for (final HtmlElement next : getAllHtmlChildElements()) {
             if (next.getTagName().equals(lowerCaseTagName)) {
-                final String attValue = next.getAttributeValue(attributeName);
+                final String attValue = next.getAttribute(attributeName);
                 if (attValue != null && attValue.equals(attributeValue)) {
-                    list.add(next);
+                    list.add((E) next);
                 }
             }
         }
@@ -998,10 +652,10 @@ public abstract class HtmlElement extends DomElement implements Element {
      */
     public final HtmlElement appendChildIfNoneExists(final String tagName) {
         final HtmlElement child;
-        final List< ? extends HtmlElement> children = getHtmlElementsByTagName(tagName);
+        final List<HtmlElement> children = getHtmlElementsByTagName(tagName);
         if (children.isEmpty()) {
             // Add a new child and return it.
-            child = ((HtmlPage) getPage()).createHtmlElement(tagName);
+            child = ((HtmlPage) getPage()).createElement(tagName);
             appendChild(child);
         }
         else {
@@ -1018,10 +672,9 @@ public abstract class HtmlElement extends DomElement implements Element {
      * @param i the index of the child to remove
      */
     public final void removeChild(final String tagName, final int i) {
-        final List< ? extends HtmlElement> children = getHtmlElementsByTagName(tagName);
+        final List<HtmlElement> children = getHtmlElementsByTagName(tagName);
         if (i >= 0 && i < children.size()) {
-            final HtmlElement child = children.get(i);
-            child.remove();
+            children.get(i).remove();
         }
     }
 
@@ -1037,15 +690,6 @@ public abstract class HtmlElement extends DomElement implements Element {
     }
 
     /**
-     * @return an iterator over the HtmlElement children of this object, i.e. excluding the non-element nodes
-     * @deprecated As of 2.0, use {@link #getChildElements()}.
-     */
-    @Deprecated
-    public final Iterator<HtmlElement> getChildElementsIterator() {
-        return new ChildElementsIterator();
-    }
-
-    /**
      * An iterator over the HtmlElement children.
      */
     protected class ChildElementsIterator implements Iterator<HtmlElement> {
@@ -1053,7 +697,7 @@ public abstract class HtmlElement extends DomElement implements Element {
         private HtmlElement nextElement_;
 
         /** Constructor. */
-        public ChildElementsIterator() {
+        protected ChildElementsIterator() {
             if (getFirstChild() != null) {
                 if (getFirstChild() instanceof HtmlElement) {
                     nextElement_ = (HtmlElement) getFirstChild();
@@ -1115,13 +759,15 @@ public abstract class HtmlElement extends DomElement implements Element {
     }
 
     /**
-      * Add an attribute to the attribute map. This is just used by the element factories.
+     * Adds an attribute to the specified attribute map. This is just used by the element factories.
+     * @param page the page which contains the attribute being created
      * @param attributeMap the attribute map where the attribute will be added
      * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the attribute
      * @param value the value of the attribute
+     * @return the new attribute which was added to the specified attribute map
      */
-    static DomAttr addAttributeToMap(final Page page, final Map<String, DomAttr> attributeMap,
+    static DomAttr addAttributeToMap(final SgmlPage page, final Map<String, DomAttr> attributeMap,
             final String namespaceURI, final String qualifiedName, final String value) {
         final DomAttr newAttr = new DomAttr(page, namespaceURI, qualifiedName, value);
         attributeMap.put(qualifiedName, newAttr);
@@ -1161,8 +807,8 @@ public abstract class HtmlElement extends DomElement implements Element {
     public final void setEventHandler(final String eventName, final String jsSnippet) {
         final BaseFunction function = new EventHandler(this, eventName, jsSnippet);
         setEventHandler(eventName, function);
-        if (mainLog_.isDebugEnabled()) {
-            mainLog_.debug("Created event handler " + function.getFunctionName()
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Created event handler " + function.getFunctionName()
                     + " for " + eventName + " on " + this);
         }
     }
@@ -1226,12 +872,13 @@ public abstract class HtmlElement extends DomElement implements Element {
      * @return the execution result, or <tt>null</tt> if nothing is executed
      */
     public ScriptResult fireEvent(final Event event) {
-        if (!getPage().getWebClient().isJavaScriptEnabled()) {
+        final WebClient client = getPage().getWebClient();
+        if (!client.isJavaScriptEnabled()) {
             return null;
         }
 
-        if (mainLog_.isDebugEnabled()) {
-            mainLog_.debug("Firing " + event);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Firing " + event);
         }
         final HTMLElement jsElt = (HTMLElement) getScriptObject();
         final ContextAction action = new ContextAction() {
@@ -1240,9 +887,9 @@ public abstract class HtmlElement extends DomElement implements Element {
             }
         };
 
-        final ScriptResult result = (ScriptResult) ContextFactory.getGlobal().call(action);
-        final boolean isIE = getPage().getWebClient().getBrowserVersion().isIE();
-        if ((!isIE && event.isPreventDefault()) || (isIE && ScriptResult.isFalse(result))) {
+        final ContextFactory cf = client.getJavaScriptEngine().getContextFactory();
+        final ScriptResult result = (ScriptResult) cf.call(action);
+        if (event.isAborted(result)) {
             preventDefault();
         }
         return result;
@@ -1417,15 +1064,15 @@ public abstract class HtmlElement extends DomElement implements Element {
     public Page rightClick(final boolean shiftKey, final boolean ctrlKey, final boolean altKey) {
         final Page mouseDownPage = mouseDown(shiftKey, ctrlKey, altKey, MouseEvent.BUTTON_RIGHT);
         if (mouseDownPage != getPage()) {
-            if (mainLog_.isDebugEnabled()) {
-                mainLog_.debug("rightClick() is incomplete, as mouseDown() loaded a different page.");
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("rightClick() is incomplete, as mouseDown() loaded a different page.");
             }
             return mouseDownPage;
         }
         final Page mouseUpPage = mouseUp(shiftKey, ctrlKey, altKey, MouseEvent.BUTTON_RIGHT);
         if (mouseUpPage != getPage()) {
-            if (mainLog_.isDebugEnabled()) {
-                mainLog_.debug("rightClick() is incomplete, as mouseUp() loaded a different page.");
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("rightClick() is incomplete, as mouseUp() loaded a different page.");
             }
             return mouseUpPage;
         }
@@ -1436,6 +1083,7 @@ public abstract class HtmlElement extends DomElement implements Element {
      * Simulates the specified mouse event, returning the page which this element's window contains after the event.
      * The returned page may or may not be the same as the original page, depending on JavaScript event handlers, etc.
      *
+     * @param eventType the mouse event type to simulate
      * @param shiftKey <tt>true</tt> if SHIFT is pressed during the mouse event
      * @param ctrlKey <tt>true</tt> if CTRL is pressed during the mouse event
      * @param altKey <tt>true</tt> if ALT is pressed during the mouse event
@@ -1484,14 +1132,6 @@ public abstract class HtmlElement extends DomElement implements Element {
      * {@inheritDoc}
      */
     @Override
-    public SgmlPage getPage() {
-        return (SgmlPage) super.getPage();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     protected void checkChildHierarchy(final Node childNode) throws DOMException {
         if (!((childNode instanceof Element) || (childNode instanceof Text)
             || (childNode instanceof Comment) || (childNode instanceof ProcessingInstruction)
@@ -1502,38 +1142,333 @@ public abstract class HtmlElement extends DomElement implements Element {
         super.checkChildHierarchy(childNode);
     }
 
-    /**
-     * Custom serialization logic which ensures that {@link NonSerializable} {@link HtmlAttributeChangeListener}s
-     * are not serialized.
-     * @param stream the stream to write the object to
-     * @throws IOException if an error occurs during writing
-     */
-    private void writeObject(final ObjectOutputStream stream) throws IOException {
-        synchronized (this) {
-            // Store the original list of listeners in a temporary variable, and then
-            // modify the listener list by removing any NonSerializable listeners.
-            final List<HtmlAttributeChangeListener> temp;
-            if (attributeListeners_ != null) {
-                temp = new ArrayList<HtmlAttributeChangeListener>(attributeListeners_);
-                for (final Iterator<HtmlAttributeChangeListener> i = attributeListeners_.iterator(); i.hasNext();) {
-                    final HtmlAttributeChangeListener listener = i.next();
-                    if (listener instanceof NonSerializable) {
-                        i.remove();
-                    }
-                }
-            }
-            else {
-                temp = null;
-            }
-            // Perform object serialization, now that NonSerializable listeners have been removed.
-            stream.defaultWriteObject();
-            // Restore the old listeners, now that serialization has been performed.
-            attributeListeners_ = temp;
-        }
-    }
-
     void setOwningForm(final HtmlForm form) {
         owningForm_ = form;
     }
 
+    /**
+     * Gets notified that it has lost the focus
+     */
+    void removeFocus() {
+        // nothing
+    }
+
+    /**
+     * Indicates if the attribute names are case sensitive.
+     * @return <code>false</code>
+     */
+    @Override
+    protected boolean isAttributeCaseSensitive() {
+        return false;
+    }
+
+    /**
+     * Simulates clicking on this element, returning the page in the window that has the focus
+     * after the element has been clicked. Note that the returned page may or may not be the same
+     * as the original page, depending on the type of element being clicked, the presence of JavaScript
+     * action listeners, etc.
+     *
+     * @param <P> the page type
+     * @return the page that occupies this element's window after the element has been clicked
+     * @exception IOException if an IO error occurs
+     */
+    @SuppressWarnings("unchecked")
+    public <P extends Page> P click() throws IOException {
+        return (P) click(false, false, false);
+    }
+
+    /**
+     * Simulates clicking on this element, returning the page in the window that has the focus
+     * after the element has been clicked. Note that the returned page may or may not be the same
+     * as the original page, depending on the type of element being clicked, the presence of JavaScript
+     * action listeners, etc.
+     *
+     * @param shiftKey <tt>true</tt> if SHIFT is pressed during the click
+     * @param ctrlKey <tt>true</tt> if CTRL is pressed during the click
+     * @param altKey <tt>true</tt> if ALT is pressed during the click
+     * @param <P> the page type
+     * @return the page that occupies this element's window after the element has been clicked
+     * @exception IOException if an IO error occurs
+     */
+    @SuppressWarnings("unchecked")
+    public <P extends Page> P click(final boolean shiftKey, final boolean ctrlKey, final boolean altKey)
+        throws IOException {
+        if (this instanceof DisabledElement && ((DisabledElement) this).isDisabled()) {
+            return (P) getPage();
+        }
+
+        mouseDown(shiftKey, ctrlKey, altKey, MouseEvent.BUTTON_LEFT);
+        if (this instanceof SubmittableElement) {
+            ((HtmlPage) getPage()).setFocusedElement(this);
+        }
+        mouseUp(shiftKey, ctrlKey, altKey, MouseEvent.BUTTON_LEFT);
+
+        final Event event = new MouseEvent(this, MouseEvent.TYPE_CLICK, shiftKey, ctrlKey, altKey,
+                MouseEvent.BUTTON_LEFT);
+        return (P) click(event);
+    }
+
+    /**
+     * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
+     *
+     * Simulates clicking on this element, returning the page in the window that has the focus
+     * after the element has been clicked. Note that the returned page may or may not be the same
+     * as the original page, depending on the type of element being clicked, the presence of JavaScript
+     * action listeners, etc.
+     *
+     * @param event the click event used
+     * @param <P> the page type
+     * @return the page that occupies this element's window after the element has been clicked
+     * @exception IOException if an IO error occurs
+     */
+    @SuppressWarnings("unchecked")
+    public <P extends Page> P click(final Event event) throws IOException {
+        if (this instanceof DisabledElement && ((DisabledElement) this).isDisabled()) {
+            return (P) getPage();
+        }
+
+        final SgmlPage page = getPage();
+
+        boolean stateUpdated = false;
+        if (isStateUpdateFirst()) {
+            doClickAction(page);
+            stateUpdated = true;
+        }
+        final ScriptResult scriptResult = fireEvent(event);
+        final Page currentPage;
+        if (scriptResult == null) {
+            currentPage = page;
+        }
+        else {
+            currentPage = scriptResult.getNewPage();
+        }
+
+        if (stateUpdated || event.isAborted(scriptResult)) {
+            return (P) currentPage;
+        }
+        return (P) doClickAction(currentPage);
+    }
+
+    /**
+     * Simulates double-clicking on this element, returning the page in the window that has the focus
+     * after the element has been clicked. Note that the returned page may or may not be the same
+     * as the original page, depending on the type of element being clicked, the presence of JavaScript
+     * action listeners, etc. Note also that {@link #click()} is automatically called first.
+     *
+     * @param <P> the page type
+     * @return the page that occupies this element's window after the element has been double-clicked
+     * @exception IOException if an IO error occurs
+     */
+    @SuppressWarnings("unchecked")
+    public <P extends Page> P dblClick() throws IOException {
+        return (P) dblClick(false, false, false);
+    }
+
+    /**
+     * Simulates double-clicking on this element, returning the page in the window that has the focus
+     * after the element has been clicked. Note that the returned page may or may not be the same
+     * as the original page, depending on the type of element being clicked, the presence of JavaScript
+     * action listeners, etc. Note also that {@link #click(boolean, boolean, boolean)} is automatically
+     * called first.
+     *
+     * @param shiftKey <tt>true</tt> if SHIFT is pressed during the double-click
+     * @param ctrlKey <tt>true</tt> if CTRL is pressed during the double-click
+     * @param altKey <tt>true</tt> if ALT is pressed during the double-click
+     * @param <P> the page type
+     * @return the page that occupies this element's window after the element has been double-clicked
+     * @exception IOException if an IO error occurs
+     */
+    @SuppressWarnings("unchecked")
+    public <P extends Page> P dblClick(final boolean shiftKey, final boolean ctrlKey, final boolean altKey)
+        throws IOException {
+        if (this instanceof DisabledElement && ((DisabledElement) this).isDisabled()) {
+            return (P) getPage();
+        }
+
+        //call click event first
+        final Page clickPage = click(shiftKey, ctrlKey, altKey);
+        if (clickPage != getPage()) {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("dblClick() is ignored, as click() loaded a different page.");
+            }
+            return (P) clickPage;
+        }
+
+        final Event event = new MouseEvent(this, MouseEvent.TYPE_DBL_CLICK, shiftKey, ctrlKey, altKey,
+                MouseEvent.BUTTON_LEFT);
+        final ScriptResult scriptResult = fireEvent(event);
+        if (scriptResult == null) {
+            return (P) clickPage;
+        }
+        return (P) scriptResult.getNewPage();
+    }
+
+    /**
+     * <p>This method will be called if there either wasn't an <tt>onclick</tt> handler, or if
+     * there was one, but the result of that handler wasn't <tt>false</tt>. This is the default
+     * behavior of clicking the element.<p>
+     *
+     * <p>The default implementation returns the current page. Subclasses requiring different
+     * behavior (like {@link HtmlSubmitInput}) will override this method.</p>
+     *
+     * @param defaultPage the default page to return if the action does not load a new page
+     * @return the page that is currently loaded after execution of this method
+     * @throws IOException if an IO error occurs
+     */
+    protected Page doClickAction(final Page defaultPage) throws IOException {
+        return defaultPage;
+    }
+
+    /**
+     * Returns the value of the attribute "lang". Refer to the
+     * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
+     * documentation for details on the use of this attribute.
+     *
+     * @return the value of the attribute "lang" or an empty string if that attribute isn't defined
+     */
+    public final String getLangAttribute() {
+        return getAttribute("lang");
+    }
+
+    /**
+     * Returns the value of the attribute "xml:lang". Refer to the
+     * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
+     * documentation for details on the use of this attribute.
+     *
+     * @return the value of the attribute "xml:lang" or an empty string if that attribute isn't defined
+     */
+    public final String getXmlLangAttribute() {
+        return getAttribute("xml:lang");
+    }
+
+    /**
+     * Returns the value of the attribute "dir". Refer to the
+     * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
+     * documentation for details on the use of this attribute.
+     *
+     * @return the value of the attribute "dir" or an empty string if that attribute isn't defined
+     */
+    public final String getTextDirectionAttribute() {
+        return getAttribute("dir");
+    }
+
+    /**
+     * Returns the value of the attribute "onclick". Refer to the
+     * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
+     * documentation for details on the use of this attribute.
+     *
+     * @return the value of the attribute "onclick" or an empty string if that attribute isn't defined
+     */
+    public final String getOnClickAttribute() {
+        return getAttribute("onclick");
+    }
+
+    /**
+     * Returns the value of the attribute "ondblclick". Refer to the
+     * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
+     * documentation for details on the use of this attribute.
+     *
+     * @return the value of the attribute "ondblclick" or an empty string if that attribute isn't defined
+     */
+    public final String getOnDblClickAttribute() {
+        return getAttribute("ondblclick");
+    }
+
+    /**
+     * Returns the value of the attribute "onmousedown". Refer to the
+     * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
+     * documentation for details on the use of this attribute.
+     *
+     * @return the value of the attribute "onmousedown" or an empty string if that attribute isn't defined
+     */
+    public final String getOnMouseDownAttribute() {
+        return getAttribute("onmousedown");
+    }
+
+    /**
+     * Returns the value of the attribute "onmouseup". Refer to the
+     * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
+     * documentation for details on the use of this attribute.
+     *
+     * @return the value of the attribute "onmouseup" or an empty string if that attribute isn't defined
+     */
+    public final String getOnMouseUpAttribute() {
+        return getAttribute("onmouseup");
+    }
+
+    /**
+     * Returns the value of the attribute "onmouseover". Refer to the
+     * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
+     * documentation for details on the use of this attribute.
+     *
+     * @return the value of the attribute "onmouseover" or an empty string if that attribute isn't defined
+     */
+    public final String getOnMouseOverAttribute() {
+        return getAttribute("onmouseover");
+    }
+
+    /**
+     * Returns the value of the attribute "onmousemove". Refer to the
+     * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
+     * documentation for details on the use of this attribute.
+     *
+     * @return the value of the attribute "onmousemove" or an empty string if that attribute isn't defined
+     */
+    public final String getOnMouseMoveAttribute() {
+        return getAttribute("onmousemove");
+    }
+
+    /**
+     * Returns the value of the attribute "onmouseout". Refer to the
+     * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
+     * documentation for details on the use of this attribute.
+     *
+     * @return the value of the attribute "onmouseout" or an empty string if that attribute isn't defined
+     */
+    public final String getOnMouseOutAttribute() {
+        return getAttribute("onmouseout");
+    }
+
+    /**
+     * Returns the value of the attribute "onkeypress". Refer to the
+     * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
+     * documentation for details on the use of this attribute.
+     *
+     * @return the value of the attribute "onkeypress" or an empty string if that attribute isn't defined
+     */
+    public final String getOnKeyPressAttribute() {
+        return getAttribute("onkeypress");
+    }
+
+    /**
+     * Returns the value of the attribute "onkeydown". Refer to the
+     * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
+     * documentation for details on the use of this attribute.
+     *
+     * @return the value of the attribute "onkeydown" or an empty string if that attribute isn't defined
+     */
+    public final String getOnKeyDownAttribute() {
+        return getAttribute("onkeydown");
+    }
+
+    /**
+     * Returns the value of the attribute "onkeyup". Refer to the
+     * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
+     * documentation for details on the use of this attribute.
+     *
+     * @return the value of the attribute "onkeyup" or an empty string if that attribute isn't defined
+     */
+    public final String getOnKeyUpAttribute() {
+        return getAttribute("onkeyup");
+    }
+
+    /**
+     * Returns <tt>true</tt> if state updates should be done before onclick event handling. This method
+     * returns <tt>false</tt> by default, and is expected to be overridden to return <tt>true</tt> by
+     * derived classes like {@link HtmlCheckBoxInput}.
+     * @return <tt>true</tt> if state updates should be done before onclick event handling
+     */
+    protected boolean isStateUpdateFirst() {
+        return false;
+    }
 }

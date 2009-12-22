@@ -1,18 +1,18 @@
-8
+10
 
 dir
-3268
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/main/java/com/gargoylesoftware/htmlunit/ssl
+5285
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.6/src/main/java/com/gargoylesoftware/htmlunit/ssl
 https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 
 
 
-2008-05-19T11:21:15.676906Z
-3026
+2008-12-31T13:57:15.935072Z
+4002
 mguillem
 
 
-svn:special svn:externals svn:needs-lock
+
 
 
 
@@ -32,12 +32,33 @@ file
 
 
 
-2008-08-19T23:17:33.000000Z
-02857916aed1ce525a741a25c9f1a4db
-2008-05-19T11:21:15.676906Z
-3026
+2009-12-22T19:28:53.000000Z
+92a2e0cff4a51263b289760a60b15f65
+2008-12-31T13:57:15.935072Z
+4002
 mguillem
 has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+3129
 
 InsecureTrustManager.java
 file
@@ -45,12 +66,33 @@ file
 
 
 
-2008-08-19T23:17:33.000000Z
-78b95c5dbbb1beaaa27a61a02b111a94
-2008-05-19T11:21:15.676906Z
-3026
+2009-12-22T19:28:53.000000Z
+e4bf163b728f7bf0882aace55414279a
+2008-12-31T13:57:15.935072Z
+4002
 mguillem
 has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1631
 
 package.html
 file
@@ -58,10 +100,31 @@ file
 
 
 
-2008-08-19T23:17:33.000000Z
+2009-12-22T19:28:53.000000Z
 5c695ba2bf54acec88d4103bb731c80b
 2007-10-20T00:29:23.079615Z
 1926
 sdanig
 has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+63
 

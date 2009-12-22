@@ -14,7 +14,7 @@
 
     <body>
         <menu name="SourceForge.net">
-            <item name="SourceForge project page" href="http://www.sourceforge.net/projects/htmlunit"/>
+            <item name="Project Page" href="http://www.sourceforge.net/projects/htmlunit"/>
             <item name="Download" href="http://sourceforge.net/project/showfiles.php?group_id=47038"/>
         </menu>
         <menu name="How do I...">
@@ -24,6 +24,7 @@
             <item name="Use Frames" href="/frame-howto.html"/>
             <item name="Use Windows" href="/window-howto.html"/>
             <item name="Use JavaScript" href="/javascript-howto.html"/>
+            <item name="Use ActiveX" href="/activeX-howto.html"/>
         </menu>
         <menu name="User docs">
             <item name="Logging" href="/logging.html"/>

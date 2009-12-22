@@ -1,8 +1,8 @@
-8
+10
 
 dir
-3268
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/cldr/nls
+5285
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.6/src/test/resources/dojo/1.0.2/dojo/cldr/nls
 https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 
 
@@ -12,7 +12,7 @@ https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 asashour
 
 
-svn:special svn:externals svn:needs-lock
+
 
 
 
@@ -62,11 +62,33 @@ file
 
 
 
-2008-08-19T23:16:16.000000Z
+2009-12-22T19:28:46.000000Z
 d00a59207615701602f657c0c74e8fc8
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1773
 
 ja
 dir
@@ -83,11 +105,33 @@ file
 
 
 
-2008-08-19T23:16:16.000000Z
+2009-12-22T19:28:46.000000Z
 ec35b9b893a7acb8bdbeb2248e506fcf
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+689
 
 en-au
 dir
@@ -98,11 +142,33 @@ file
 
 
 
-2008-08-19T23:16:16.000000Z
+2009-12-22T19:28:46.000000Z
 3b1a7e9073af36f31ac7527cd36a5ae7
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+186
 
 fr
 dir

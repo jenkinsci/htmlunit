@@ -1,8 +1,8 @@
-8
+10
 
 dir
-3268
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/dnd
+5285
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.6/src/test/resources/dojo/1.0.2/dojo/dnd
 https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 
 
@@ -12,7 +12,7 @@ https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 asashour
 
 
-svn:special svn:externals svn:needs-lock
+
 
 
 
@@ -32,11 +32,33 @@ file
 
 
 
-2008-08-19T23:16:25.000000Z
+2009-12-22T19:28:46.000000Z
 aac04f40b7ea71440eacef9580ebb145
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+7230
 
 autoscroll.js
 file
@@ -44,11 +66,33 @@ file
 
 
 
-2008-08-19T23:16:25.000000Z
+2009-12-22T19:28:46.000000Z
 3087c9b89d172282ed3855fd2a9920b9
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+3362
 
 Mover.js
 file
@@ -56,11 +100,33 @@ file
 
 
 
-2008-08-19T23:16:25.000000Z
+2009-12-22T19:28:46.000000Z
 16a0d6f017a57885e55cc33ebee2287a
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+2433
 
 common.js
 file
@@ -68,11 +134,33 @@ file
 
 
 
-2008-08-19T23:16:25.000000Z
+2009-12-22T19:28:46.000000Z
 b88796d47d07c0086ecf7c7460afbb5c
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1097
 
 Manager.js
 file
@@ -80,11 +168,33 @@ file
 
 
 
-2008-08-19T23:16:25.000000Z
+2009-12-22T19:28:46.000000Z
 5b85ec810124a1324932ab9cf7862250
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+5556
 
 Moveable.js
 file
@@ -92,11 +202,33 @@ file
 
 
 
-2008-08-19T23:16:25.000000Z
+2009-12-22T19:28:46.000000Z
 831cc49b3a16cc8f81d8ecd3c6a09098
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+4505
 
 Avatar.js
 file
@@ -104,11 +236,33 @@ file
 
 
 
-2008-08-19T23:16:25.000000Z
+2009-12-22T19:28:46.000000Z
 cee58261c5580067e345840e87971491
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+2576
 
 Selector.js
 file
@@ -116,11 +270,33 @@ file
 
 
 
-2008-08-19T23:16:25.000000Z
+2009-12-22T19:28:46.000000Z
 027d9db489d689d2042a83849913198b
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+7454
 
 Source.js
 file
@@ -128,11 +304,33 @@ file
 
 
 
-2008-08-19T23:16:25.000000Z
+2009-12-22T19:28:46.000000Z
 238a25d04cc31b28b5fa8e6a238decab
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+12366
 
 Container.js
 file
@@ -140,9 +338,31 @@ file
 
 
 
-2008-08-19T23:16:25.000000Z
+2009-12-22T19:28:46.000000Z
 21f8132594a061b98a6eba9f4055ef33
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+9965
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,7 +45,7 @@ import com.gargoylesoftware.htmlunit.javascript.host.Event;
 /**
  * Wrapper for the HTML element "form".
  *
- * @version $Revision: 3106 $
+ * @version $Revision: 4638 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author Brad Clarke
@@ -68,6 +68,8 @@ public class HtmlForm extends ClickableElement {
 
     private final List<HtmlElement> lostChildren_ = new ArrayList<HtmlElement>();
 
+    private boolean isPreventDefault_;
+
     /**
      * Creates an instance.
      *
@@ -82,31 +84,27 @@ public class HtmlForm extends ClickableElement {
     }
 
     /**
-     * Submit this form as if the first &lt;input type="submit" button in the form was clicked.
-     *
-     * @see #submit(SubmittableElement) 
-     */
-    public Page submit() throws IOException {
-        return submit(getSubmitButton());
-    }
-
-    /**
      * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
      *
-     * Submit this form to the appropriate server. If submitElement is null then
-     * treat this as if it was called by JavaScript. In this case, the onsubmit
-     * handler will not get executed.
+     * <p>Submits this form to the server. If <tt>submitElement</tt> is <tt>null</tt>, then
+     * the submission is treated as if it was triggered by JavaScript, and the <tt>onsubmit</tt>
+     * handler will not be executed.</p>
+     *
+     * <p><b>IMPORTANT:</b> Using this method directly is not the preferred way of submitting forms.
+     * Most consumers should emulate the user's actions instead, probably by using something like
+     * {@link HtmlElement#click()} or {@link HtmlElement#dblClick()}.</p>
      *
      * @param submitElement the element that caused the submit to occur
      * @return a new page that reflects the results of this submission
-     * @exception IOException If an IO error occurs
+     * @exception IOException if an IO error occurs
      */
     public Page submit(final SubmittableElement submitElement) throws IOException {
         final HtmlPage htmlPage = (HtmlPage) getPage();
         if (htmlPage.getWebClient().isJavaScriptEnabled()) {
             if (submitElement != null) {
+                isPreventDefault_ = false;
                 final ScriptResult scriptResult = fireEvent(Event.TYPE_SUBMIT);
-                if (scriptResult != null && Boolean.FALSE.equals(scriptResult.getJavaScriptResult())) {
+                if (isPreventDefault_) {
                     return scriptResult.getNewPage();
                 }
             }
@@ -160,7 +158,19 @@ public class HtmlForm extends ClickableElement {
         }
         final URL url;
         try {
-            url = htmlPage.getFullyQualifiedUrl(actionUrl);
+            if (actionUrl.length() == 0) {
+                url = htmlPage.getWebResponse().getRequestSettings().getUrl();
+            }
+            else if (actionUrl.startsWith("?")) {
+                String urlString = htmlPage.getWebResponse().getRequestSettings().getUrl().toExternalForm();
+                if (urlString.indexOf('?') != -1) {
+                    urlString = urlString.substring(0, urlString.indexOf('?'));
+                }
+                url = new URL(urlString + actionUrl);
+            }
+            else {
+                url = htmlPage.getFullyQualifiedUrl(actionUrl);
+            }
         }
         catch (final MalformedURLException e) {
             throw new IllegalArgumentException("Not a valid url: " + actionUrl);
@@ -170,7 +180,8 @@ public class HtmlForm extends ClickableElement {
         settings.setRequestParameters(parameters);
         settings.setEncodingType(FormEncodingType.getInstance(getEnctypeAttribute()));
         settings.setCharset(getSubmitCharset());
-        settings.addAdditionalHeader("Referer", htmlPage.getWebResponse().getUrl().toExternalForm());
+        settings.setAdditionalHeader("Referer", htmlPage.getWebResponse().getRequestSettings().getUrl()
+                .toExternalForm());
 
         final WebWindow webWindow = htmlPage.getEnclosingWindow();
         return htmlPage.getWebClient().getPage(
@@ -226,7 +237,7 @@ public class HtmlForm extends ClickableElement {
     public Page reset() {
         final SgmlPage htmlPage = getPage();
         final ScriptResult scriptResult = fireEvent(Event.TYPE_RESET);
-        if (scriptResult != null && Boolean.FALSE.equals(scriptResult.getJavaScriptResult())) {
+        if (ScriptResult.isFalse(scriptResult)) {
             return scriptResult.getNewPage();
         }
 
@@ -270,7 +281,7 @@ public class HtmlForm extends ClickableElement {
         if (!SUBMITTABLE_ELEMENT_NAMES.contains(tagName)) {
             return false;
         }
-        if (element.isAttributeDefined("disabled")) {
+        if (element.hasAttribute("disabled")) {
             return false;
         }
         // clicked input type="image" is submitted even if it hasn't a name
@@ -278,18 +289,18 @@ public class HtmlForm extends ClickableElement {
             return true;
         }
 
-        if (!tagName.equals("isindex") && !element.isAttributeDefined("name")) {
+        if (!tagName.equals("isindex") && !element.hasAttribute("name")) {
             return false;
         }
 
-        if (!tagName.equals("isindex") && element.getAttributeValue("name").equals("")) {
+        if (!tagName.equals("isindex") && element.getAttribute("name").equals("")) {
             return false;
         }
 
         if (element instanceof HtmlInput) {
-            final String type = element.getAttributeValue("type").toLowerCase();
+            final String type = element.getAttribute("type").toLowerCase();
             if (type.equals("radio") || type.equals("checkbox")) {
-                return element.isAttributeDefined("checked");
+                return element.hasAttribute("checked");
             }
         }
         if (tagName.equals("select")) {
@@ -332,36 +343,13 @@ public class HtmlForm extends ClickableElement {
     }
 
     /**
-     * Returns all the &lt;input type="submit"> elements in this form.
-     */
-    public List<HtmlSubmitInput> getSubmitButtons() throws ElementNotFoundException {
-        final List<HtmlSubmitInput> list = (List<HtmlSubmitInput>) getHtmlElementsByAttribute("input", "type", "submit");
-
-        // collect inputs from lost children
-        for (final HtmlElement elt : getLostChildren()) {
-            if (elt instanceof HtmlSubmitInput) {
-                list.add((HtmlSubmitInput) elt);
-            }
-        }
-        return list;
-    }
-
-    /**
-     * Gets the first &lt;input type="submit"> element in this form.
-     */
-    public HtmlSubmitInput getSubmitButton() throws ElementNotFoundException {
-        return getSubmitButtons().get(0);
-    }
-
-    /**
      * Returns all input elements which are members of this form and have the specified name.
      *
      * @param name the input name to search for
      * @return all input elements which are members of this form and have the specified name
      */
-    @SuppressWarnings("unchecked")
     public List<HtmlInput> getInputsByName(final String name) {
-        final List<HtmlInput> list = (List<HtmlInput>) getHtmlElementsByAttribute("input", "name", name);
+        final List<HtmlInput> list = getElementsByAttribute("input", "name", name);
 
         // collect inputs from lost children
         for (final HtmlElement elt : getLostChildren()) {
@@ -376,16 +364,18 @@ public class HtmlForm extends ClickableElement {
      * Returns the first input element which is a member of this form and has the specified name.
      *
      * @param name the input name to search for
+     * @param <I> the input type
      * @return the first input element which is a member of this form and has the specified name
      * @throws ElementNotFoundException if there is not input in this form with the specified name
      */
-    public final HtmlInput getInputByName(final String name) throws ElementNotFoundException {
-        final List< ? extends HtmlElement> inputs = getInputsByName(name);
+    @SuppressWarnings("unchecked")
+    public final <I extends HtmlInput> I getInputByName(final String name) throws ElementNotFoundException {
+        final List<HtmlInput> inputs = getInputsByName(name);
 
         if (inputs.isEmpty()) {
             throw new ElementNotFoundException("input", "name", name);
         }
-        return (HtmlInput) inputs.get(0);
+        return (I) inputs.get(0);
     }
 
     /**
@@ -394,9 +384,8 @@ public class HtmlForm extends ClickableElement {
      * @param name the name to search for
      * @return all the {@link HtmlSelect} elements in this form that have the specified name
      */
-    @SuppressWarnings("unchecked")
     public List<HtmlSelect> getSelectsByName(final String name) {
-        final List<HtmlSelect> list = (List<HtmlSelect>) getHtmlElementsByAttribute("select", "name", name);
+        final List<HtmlSelect> list = getElementsByAttribute("select", "name", name);
 
         // collect selects from lost children
         for (final HtmlElement elt : getLostChildren()) {
@@ -429,9 +418,8 @@ public class HtmlForm extends ClickableElement {
      * @param name the name to search for
      * @return all the {@link HtmlButton} elements in this form that have the specified name
      */
-    @SuppressWarnings("unchecked")
     public List<HtmlButton> getButtonsByName(final String name) {
-        final List<HtmlButton> list = (List<HtmlButton>) getHtmlElementsByAttribute("button", "name", name);
+        final List<HtmlButton> list = getElementsByAttribute("button", "name", name);
 
         // collect buttons from lost children
         for (final HtmlElement elt : getLostChildren()) {
@@ -464,9 +452,8 @@ public class HtmlForm extends ClickableElement {
      * @param name the name to search for
      * @return all the {@link HtmlTextArea} elements in this form that have the specified name
      */
-    @SuppressWarnings("unchecked")
     public List<HtmlTextArea> getTextAreasByName(final String name) {
-        final List<HtmlTextArea> list = (List<HtmlTextArea>) getHtmlElementsByAttribute("textarea", "name", name);
+        final List<HtmlTextArea> list = getElementsByAttribute("textarea", "name", name);
 
         // collect buttons from lost children
         for (final HtmlElement elt : getLostChildren()) {
@@ -519,7 +506,6 @@ public class HtmlForm extends ClickableElement {
      *
      * @param radioButtonInput the radio button to select
      */
-    @SuppressWarnings("unchecked")
     void setCheckedRadioButton(final HtmlRadioButtonInput radioButtonInput) {
         if (!isAncestorOf(radioButtonInput) && !lostChildren_.contains(radioButtonInput)) {
             throw new IllegalArgumentException("HtmlRadioButtonInput is not child of this HtmlForm");
@@ -528,7 +514,7 @@ public class HtmlForm extends ClickableElement {
 
         for (final HtmlRadioButtonInput input : radios) {
             if (input == radioButtonInput) {
-                input.setAttributeValue("checked", "checked");
+                input.setAttribute("checked", "checked");
             }
             else {
                 input.removeAttribute("checked");
@@ -562,7 +548,7 @@ public class HtmlForm extends ClickableElement {
      * @return the value of the attribute "action" or an empty string if that attribute isn't defined
      */
     public final String getActionAttribute() {
-        return getAttributeValue("action");
+        return getAttribute("action");
     }
 
     /**
@@ -573,7 +559,7 @@ public class HtmlForm extends ClickableElement {
      * @param action the value of the attribute "action"
      */
     public final void setActionAttribute(final String action) {
-        setAttributeValue("action", action);
+        setAttribute("action", action);
     }
 
     /**
@@ -584,7 +570,7 @@ public class HtmlForm extends ClickableElement {
      * @return the value of the attribute "method" or an empty string if that attribute isn't defined
      */
     public final String getMethodAttribute() {
-        return getAttributeValue("method");
+        return getAttribute("method");
     }
 
     /**
@@ -595,7 +581,7 @@ public class HtmlForm extends ClickableElement {
      * @param method the value of the attribute "method"
      */
     public final void setMethodAttribute(final String method) {
-        setAttributeValue("method", method);
+        setAttribute("method", method);
     }
 
     /**
@@ -606,7 +592,7 @@ public class HtmlForm extends ClickableElement {
      * @return the value of the attribute "name" or an empty string if that attribute isn't defined
      */
     public final String getNameAttribute() {
-        return getAttributeValue("name");
+        return getAttribute("name");
     }
 
     /**
@@ -617,7 +603,7 @@ public class HtmlForm extends ClickableElement {
      * @param name the value of the attribute "name"
      */
     public final void setNameAttribute(final String name) {
-        setAttributeValue("name", name);
+        setAttribute("name", name);
     }
 
     /**
@@ -629,7 +615,7 @@ public class HtmlForm extends ClickableElement {
      * @return the value of the attribute "enctype" or an empty string if that attribute isn't defined
      */
     public final String getEnctypeAttribute() {
-        return getAttributeValue("enctype");
+        return getAttribute("enctype");
     }
 
     /**
@@ -641,7 +627,7 @@ public class HtmlForm extends ClickableElement {
      * @param encoding the value of the attribute "enctype"
      */
     public final void setEnctypeAttribute(final String encoding) {
-        setAttributeValue("enctype", encoding);
+        setAttribute("enctype", encoding);
     }
 
     /**
@@ -652,7 +638,7 @@ public class HtmlForm extends ClickableElement {
      * @return the value of the attribute "onsubmit" or an empty string if that attribute isn't defined
      */
     public final String getOnSubmitAttribute() {
-        return getAttributeValue("onsubmit");
+        return getAttribute("onsubmit");
     }
 
     /**
@@ -663,7 +649,7 @@ public class HtmlForm extends ClickableElement {
      * @return the value of the attribute "onreset" or an empty string if that attribute isn't defined
      */
     public final String getOnResetAttribute() {
-        return getAttributeValue("onreset");
+        return getAttribute("onreset");
     }
 
     /**
@@ -674,7 +660,7 @@ public class HtmlForm extends ClickableElement {
      * @return the value of the attribute "accept" or an empty string if that attribute isn't defined
      */
     public final String getAcceptAttribute() {
-        return getAttributeValue("accept");
+        return getAttribute("accept");
     }
 
     /**
@@ -685,7 +671,7 @@ public class HtmlForm extends ClickableElement {
      * @return the value of the attribute "accept-charset" or an empty string if that attribute isn't defined
      */
     public final String getAcceptCharsetAttribute() {
-        return getAttributeValue("accept-charset");
+        return getAttribute("accept-charset");
     }
 
     /**
@@ -696,7 +682,7 @@ public class HtmlForm extends ClickableElement {
      * @return the value of the attribute "target" or an empty string if that attribute isn't defined
      */
     public final String getTargetAttribute() {
-        return getAttributeValue("target");
+        return getAttribute("target");
     }
 
     /**
@@ -707,21 +693,23 @@ public class HtmlForm extends ClickableElement {
      * @param target the value of the attribute "target"
      */
     public final void setTargetAttribute(final String target) {
-        setAttributeValue("target", target);
+        setAttribute("target", target);
     }
 
     /**
      * Returns the first input in this form with the specified value.
      * @param value the value to search for
+     * @param <I> the input type
      * @return the first input in this form with the specified value
      * @throws ElementNotFoundException if this form does not contain any inputs with the specified value
      */
-    public HtmlInput getInputByValue(final String value) throws ElementNotFoundException {
+    @SuppressWarnings("unchecked")
+    public <I extends HtmlInput> I getInputByValue(final String value) throws ElementNotFoundException {
         final List<HtmlInput> list = getInputsByValue(value);
         if (list.isEmpty()) {
             throw new ElementNotFoundException("input", "value", value);
         }
-        return list.get(0);
+        return (I) list.get(0);
     }
 
     /**
@@ -729,9 +717,8 @@ public class HtmlForm extends ClickableElement {
      * @param value the value to search for
      * @return all the inputs in this form with the specified value
      */
-    @SuppressWarnings("unchecked")
     public List<HtmlInput> getInputsByValue(final String value) {
-        final List<HtmlInput> results = (List<HtmlInput>) getHtmlElementsByAttribute("input", "value", value);
+        final List<HtmlInput> results = getElementsByAttribute("input", "value", value);
 
         for (final HtmlElement element : getLostChildren()) {
             if (element instanceof HtmlInput && value.equals(element.getAttribute("value"))) {
@@ -754,10 +741,19 @@ public class HtmlForm extends ClickableElement {
 
     /**
      * Gets the form elements that may be submitted but that don't belong to the form's children
-     * in the DOM due to incorrect html code.
+     * in the DOM due to incorrect HTML code.
      * @return the elements
      */
     public List<HtmlElement> getLostChildren() {
         return lostChildren_;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected void preventDefault() {
+        isPreventDefault_ = true;
+    }
+
 }

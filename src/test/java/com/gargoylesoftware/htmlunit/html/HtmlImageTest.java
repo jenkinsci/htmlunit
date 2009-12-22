@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
 /**
  * Tests for {@link HtmlImage}.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4463 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
@@ -59,18 +59,18 @@ public class HtmlImageTest extends WebTestCase {
             + "</body></html>";
         final HtmlPage page = loadPage(htmlContent);
 
-        final HtmlImage img = (HtmlImage) page.getHtmlElementById(imgId);
+        final HtmlImage img = page.getHtmlElementById(imgId);
 
         final Page page2 = img.click();
         Assert.assertEquals("same page after click", samePage, (page == page2));
         if (!samePage) {
-            assertEquals("http://server/foo" + urlSuffixClick, page2.getWebResponse().getUrl());
+            assertEquals("http://server/foo" + urlSuffixClick, page2.getWebResponse().getRequestSettings().getUrl());
         }
 
         final Page page3 = img.click(25, 30);
         Assert.assertEquals("same page after click(25, 30)", samePage, (page == page3));
         if (!samePage) {
-            assertEquals("http://server/foo" + urlSuffixClickXY, page3.getWebResponse().getUrl());
+            assertEquals("http://server/foo" + urlSuffixClickXY, page3.getWebResponse().getRequestSettings().getUrl());
         }
     }
 
@@ -100,10 +100,10 @@ public class HtmlImageTest extends WebTestCase {
             + "</body></html>";
         final HtmlPage page = loadPage(htmlContent);
 
-        final HtmlImage img = (HtmlImage) page.getHtmlElementById("myImg");
+        final HtmlImage img = page.getHtmlElementById("myImg");
 
         final Page page2 = img.click(x, y);
-        final URL url = page2.getWebResponse().getUrl();
+        final URL url = page2.getWebResponse().getRequestSettings().getUrl();
         assertTrue(url.toExternalForm(), url.toExternalForm().endsWith(urlSuffix));
     }
 
@@ -126,9 +126,7 @@ public class HtmlImageTest extends WebTestCase {
             + "</map>\n"
             + "</body></html>";
         final HtmlPage page = loadPage(htmlContent);
-
-        final HtmlImage img = (HtmlImage) page.getHtmlElementById("myImg");
-
+        final HtmlImage img = page.getHtmlElementById("myImg");
         img.click(0, 0);
     }
 

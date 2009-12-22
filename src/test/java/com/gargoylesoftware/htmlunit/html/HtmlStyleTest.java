@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
 /**
  * Tests for {@link HtmlStyle}.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4681 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
@@ -74,5 +74,29 @@ public class HtmlStyleTest extends WebTestCase {
         final HtmlPage page = loadPage(BrowserVersion.FIREFOX_2, html, collectedAlerts);
         assertTrue(HtmlStyle.class.isInstance(page.getHtmlElementById("myId")));
         assertEquals(expectedAlerts, collectedAlerts);
+    }
+
+    /**
+     * See <a href="http://sourceforge.net/support/tracker.php?aid=2802096">Bug 2802096</a>.
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void testAsXml() throws Exception {
+        final String html
+            = "<html><head><title>foo</title>\n"
+            + "<style type='text/css'></style>\n"
+            + "<style type='text/css'><!-- \n"
+            + "body > p { color: red }\n"
+            + "--></style>\n"
+            + "</head><body>\n"
+            + "</body></html>";
+
+        final HtmlPage page = loadPage(html);
+
+        final String xml = page.asXml();
+        assertTrue("Style node not expanded in: " + xml, xml.contains("</style>"));
+
+        final String xmlWithoutSpace = xml.replaceAll("\\s", "");
+        assertTrue(xml, xmlWithoutSpace.contains("<styletype=\"text/css\"><!--body>p{color:red}--></style>"));
     }
 }

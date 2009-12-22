@@ -1,8 +1,8 @@
-8
+10
 
 dir
-3268
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/tests/nls/en-us-new_york-brooklyn
+5285
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.6/src/test/resources/dojo/1.0.2/dojo/tests/nls/en-us-new_york-brooklyn
 https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 
 
@@ -12,7 +12,7 @@ https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 asashour
 
 
-svn:special svn:externals svn:needs-lock
+
 
 
 
@@ -32,9 +32,31 @@ file
 
 
 
-2008-08-19T23:16:17.000000Z
+2009-12-22T19:28:46.000000Z
 282f0921eed0caad920a8b0ba2e5710c
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+686
 

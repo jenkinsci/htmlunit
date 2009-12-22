@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 /**
  * Tests for the {@link PostponedAction}.
  *
- * @version $Revision: 3177 $
+ * @version $Revision: 4002 $
  * @author Ahmed Ashour
  */
 @RunWith(BrowserRunner.class)
@@ -38,7 +38,7 @@ public class PostponedActionTest extends WebTestCase {
      */
     @Test
     public void loadingJavaScript() throws Exception {
-        final String firstContent = " <html>\n"
+        final String firstContent = "<html>\n"
             + "<head><title>First Page</title>\n"
             + "<script>\n"
             + "  function test() {\n"
@@ -63,14 +63,14 @@ public class PostponedActionTest extends WebTestCase {
             = "<script>parent.document.getElementById('debugDiv').innerHTML += 'third.html, ';</script>";
 
         final WebClient client = getWebClient();
-        final MockWebConnection conn = new MockWebConnection(client);
+        final MockWebConnection conn = new MockWebConnection();
         conn.setResponse(URL_FIRST, firstContent);
         conn.setResponse(URL_SECOND, secondContent);
         conn.setResponse(URL_THIRD, thirdContent);
         client.setWebConnection(conn);
 
-        final HtmlPage page = (HtmlPage) client.getPage(URL_FIRST);
-        final HtmlDivision div = (HtmlDivision) page.getHtmlElementById("debugDiv");
+        final HtmlPage page = client.getPage(URL_FIRST);
+        final HtmlDivision div = page.getHtmlElementById("debugDiv");
         assertEquals("before, after, second.html, third.html, ", div.getFirstChild().getNodeValue());
     }
 
@@ -79,7 +79,7 @@ public class PostponedActionTest extends WebTestCase {
      */
     @Test
     public void loadingJavaScript2() throws Exception {
-        final String firstContent = " <html>\n"
+        final String firstContent = "<html>\n"
             + "<head><title>First Page</title>\n"
             + "<script>\n"
             + "  function test() {\n"
@@ -99,13 +99,13 @@ public class PostponedActionTest extends WebTestCase {
             = "<script>parent.document.getElementById('debugDiv').innerHTML += 'second.html, ';</script>";
 
         final WebClient client = getWebClient();
-        final MockWebConnection conn = new MockWebConnection(client);
+        final MockWebConnection conn = new MockWebConnection();
         conn.setResponse(URL_FIRST, firstContent);
         conn.setResponse(URL_SECOND, secondContent);
         client.setWebConnection(conn);
 
-        final HtmlPage page = (HtmlPage) client.getPage(URL_FIRST);
-        final HtmlDivision div = (HtmlDivision) page.getHtmlElementById("debugDiv");
+        final HtmlPage page = client.getPage(URL_FIRST);
+        final HtmlDivision div = page.getHtmlElementById("debugDiv");
         assertEquals("before, after, second.html, ", div.getFirstChild().getNodeValue());
     }
 }

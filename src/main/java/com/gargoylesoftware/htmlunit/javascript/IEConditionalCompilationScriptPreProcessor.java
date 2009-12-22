@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
  * "@_win16", "@_mac", "@_alpha", "@_mc680x0", "@_PowerPC", "@_debug", "@_fast",
  * "@_win32", "@_x86", "@_jscript", "@_jscript_version" and "@_jscript_build"
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4513 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
  *
@@ -69,15 +69,31 @@ public class IEConditionalCompilationScriptPreProcessor implements ScriptPreProc
         final String body = sourceCode.substring(startPos + 8, endPos);
         sb.append(processConditionalCompilation(body, browserVersion));
         if (endPos < sourceCode.length() - 3) {
-            final String remaining = sourceCode.substring(endPos + 3);
-            sb.append(preProcess(htmlPage, remaining, sourceName, htmlElement));
+            String remaining = sourceCode.substring(endPos + 3);
+            int nextStart = remaining.indexOf("/*@");
+            int nextEnd = remaining.indexOf("@*/", nextStart + 3);
+            // handle other /*@ @*/ blocks
+            while (nextStart >= 0 && nextEnd > 0) {
+                sb.append(remaining.substring(0, nextStart));
+                final String nextBody = remaining.substring(nextStart + 3, nextEnd);
+                sb.append(processConditionalCompilation(nextBody, browserVersion));
+                remaining = remaining.substring(nextEnd + 3);
+                nextStart = remaining.indexOf("/*@");
+                nextEnd = remaining.indexOf("@*/", nextStart + 3);
+            }
+            sb.append(remaining);
         }
         return sb.toString();
     }
 
     private String processConditionalCompilation(final String precompilationBody,
             final BrowserVersion browserVersion) {
-        String body = processIfs(precompilationBody);
+        String body = precompilationBody;
+        if (body.startsWith("cc_on")) {
+            body = body.substring(5);
+        }
+        body = body.replaceAll("/\\*@end", "");
+        body = processIfs(body);
         body = replaceCompilationVariables(body, browserVersion);
         body = processSet(body);
         body = replaceCustomCompilationVariables(body);
@@ -120,7 +136,7 @@ public class IEConditionalCompilationScriptPreProcessor implements ScriptPreProc
         return sb.toString();
     }
 
-    private String processIfs(String code) {
+    private static String processIfs(String code) {
         code = code.replaceAll("@if\\s*\\(([^\\)]+)\\)", "if ($1) {");
         code = code.replaceAll("@elif\\s*\\(([^\\)]+)\\)", "} else if ($1) {");
         code = code.replaceAll("@else", "} else {");
@@ -150,7 +166,7 @@ public class IEConditionalCompilationScriptPreProcessor implements ScriptPreProc
      * @param variable something like "@_win32"
      * @return the value
      */
-    private String replaceOneVariable(final String variable, final BrowserVersion browserVersion) {
+    private static String replaceOneVariable(final String variable, final BrowserVersion browserVersion) {
         final String[] varNaN = {"@_win16", "@_mac", "@_alpha", "@_mc680x0", "@_PowerPC", "@_debug", "@_fast"};
         final String[] varTrue = {"@_win32", "@_x86", "@_jscript"};
 

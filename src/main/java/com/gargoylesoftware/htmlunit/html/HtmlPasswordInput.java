@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,28 +14,38 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
-import java.io.IOException;
 import java.util.Map;
 
-import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.SgmlPage;
 
 /**
  * Wrapper for the HTML element "input".
  *
- * @version $Revision: 3076 $
+ * @version $Revision: 4808 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Daniel Gredler
  * @author Ahmed Ashour
  */
-public class HtmlPasswordInput extends HtmlInput {
+public class HtmlPasswordInput extends HtmlInput implements SelectableTextInput {
 
     private static final long serialVersionUID = -1074283471317076942L;
 
+    private final SelectionDelegate selectionDelegate_ = new SelectionDelegate(this);
+
+    private final DoTypeProcessor doTypeProcessor_ = new DoTypeProcessor() {
+        private static final long serialVersionUID = -1938284467263013958L;
+        @Override
+        void typeDone(final String newValue, final int newCursorPosition) {
+            setAttribute("value", newValue);
+            setSelectionStart(newCursorPosition);
+            setSelectionEnd(newCursorPosition);
+        }
+    };
+
     /**
-     * Create an instance.
+     * Creates an instance.
      * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the page that contains this element
@@ -57,13 +67,50 @@ public class HtmlPasswordInput extends HtmlInput {
     /**
      * {@inheritDoc}
      */
-    @Override
-    public Page type(final char c, final boolean shiftKey, final boolean ctrlKey, final boolean altKey)
-        throws IOException {
-        if (isDisabled()) {
-            return getPage();
-        }
-        return super.type(c, shiftKey, ctrlKey, altKey);
+    public void select() {
+        selectionDelegate_.select();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public String getSelectedText() {
+        return selectionDelegate_.getSelectedText();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public String getText() {
+        return getValueAttribute();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public int getSelectionStart() {
+        return selectionDelegate_.getSelectionStart();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void setSelectionStart(final int selectionStart) {
+        selectionDelegate_.setSelectionStart(selectionStart);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public int getSelectionEnd() {
+        return selectionDelegate_.getSelectionEnd();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void setSelectionEnd(final int selectionEnd) {
+        selectionDelegate_.setSelectionEnd(selectionEnd);
     }
 
     /**
@@ -71,14 +118,8 @@ public class HtmlPasswordInput extends HtmlInput {
      */
     @Override
     protected void doType(final char c, final boolean shiftKey, final boolean ctrlKey, final boolean altKey) {
-        final String value = getValueAttribute();
-        if (c == '\b') {
-            if (value.length() > 0) {
-                setValueAttribute(value.substring(0, value.length() - 1));
-            }
-        }
-        else if ((c == ' ' || !Character.isWhitespace(c))) {
-            setValueAttribute(value + c);
-        }
+        doTypeProcessor_.doType(getValueAttribute(), getSelectionStart(), getSelectionEnd(),
+            c, shiftKey, ctrlKey, altKey);
     }
+
 }

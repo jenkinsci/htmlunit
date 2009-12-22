@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,12 +21,15 @@ import com.gargoylesoftware.htmlunit.WebWindowImpl;
 /**
  * The web window for a frame or iframe.
  *
- * @version $Revision: 3106 $
+ * @version $Revision: 4756 $
  * @author Brad Clarke
  * @author Ahmed Ashour
  */
 public class FrameWindow extends WebWindowImpl {
+
+    private static final long serialVersionUID = -4767759560108055220L;
     private final BaseFrame frame_;
+
     /**
      * Creates an instance for a given frame.
      */

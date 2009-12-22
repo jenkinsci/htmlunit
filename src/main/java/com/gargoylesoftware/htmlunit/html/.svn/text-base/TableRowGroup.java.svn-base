@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,15 +21,18 @@ import java.util.Map;
 import com.gargoylesoftware.htmlunit.SgmlPage;
 
 /**
- * Wrapper for the HTML element "tfoot".
+ * Superclass for the wrappers for the HTML elements "thead", "tbody" and "tfoot".
  *
  * @version $Revision$
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
+ * @author Daniel Gredler
  */
 public abstract class TableRowGroup extends ClickableElement {
+
+    private static final long serialVersionUID = 7770034627964024386L;
 
     /**
      * Creates an instance of TableRowGroup.
@@ -42,6 +45,10 @@ public abstract class TableRowGroup extends ClickableElement {
     protected TableRowGroup(final String namespaceURI, final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
         super(namespaceURI, qualifiedName, page, attributes);
+        final boolean ff = getPage().getWebClient().getBrowserVersion().isFirefox();
+        if (ff && !hasAttribute("align")) {
+            setAttribute("align", "left");
+        }
     }
 
     /**
@@ -70,7 +77,7 @@ public abstract class TableRowGroup extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getAlignAttribute() {
-        return getAttributeValue("align");
+        return getAttribute("align");
     }
 
     /**
@@ -82,7 +89,7 @@ public abstract class TableRowGroup extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getCharAttribute() {
-        return getAttributeValue("char");
+        return getAttribute("char");
     }
 
     /**
@@ -94,7 +101,7 @@ public abstract class TableRowGroup extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getCharoffAttribute() {
-        return getAttributeValue("charoff");
+        return getAttribute("charoff");
     }
 
     /**
@@ -106,6 +113,6 @@ public abstract class TableRowGroup extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getValignAttribute() {
-        return getAttributeValue("valign");
+        return getAttribute("valign");
     }
 }

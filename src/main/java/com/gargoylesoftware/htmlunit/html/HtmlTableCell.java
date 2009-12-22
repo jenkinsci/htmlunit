@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * An abstract cell that provides the implementation for HtmlTableDataCell and HtmlTableHeaderCell.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4002 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -30,6 +30,8 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
  * @see HtmlTableHeaderCell
  */
 public abstract class HtmlTableCell extends ClickableElement {
+
+    private static final long serialVersionUID = -6362606593038086865L;
 
     /**
      * Creates an instance.
@@ -49,7 +51,7 @@ public abstract class HtmlTableCell extends ClickableElement {
      * @return the value of the colspan attribute, or <tt>1</tt> if the attribute wasn't specified
      */
     public int getColumnSpan() {
-        final String spanString = getAttributeValue("colspan");
+        final String spanString = getAttribute("colspan");
         if (spanString == null || spanString.length() == 0) {
             return 1;
         }
@@ -61,7 +63,7 @@ public abstract class HtmlTableCell extends ClickableElement {
      * @return the value of the rowspan attribute, or <tt>1</tt> if the attribute wasn't specified
      */
     public int getRowSpan() {
-        final String spanString = getAttributeValue("rowspan");
+        final String spanString = getAttribute("rowspan");
         if (spanString == null || spanString.length() == 0) {
             return 1;
         }

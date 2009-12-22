@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
 /**
  * Tests for {@link HtmlHiddenInput}.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4002 $
  * @author Marc Guillemot
  */
 public class HtmlHiddenInputTest extends WebTestCase {
@@ -40,7 +40,7 @@ public class HtmlHiddenInputTest extends WebTestCase {
 
         final HtmlPage page = loadPage(htmlContent);
 
-        final HtmlInput input = (HtmlInput) page.getHtmlElementById("foo");
+        final HtmlInput input = page.getHtmlElementById("foo");
         assertEquals("", input.asText());
     }
 }

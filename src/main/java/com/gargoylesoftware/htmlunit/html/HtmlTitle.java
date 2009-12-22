@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "title".
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4794 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Chris Erskine
@@ -70,11 +70,10 @@ public class HtmlTitle extends HtmlElement {
     /**
      * Indicates if a node without children should be written in expanded form as XML
      * (i.e. with closing tag rather than with "/&gt;").
-     * @return <code>true</code> as required by Microsoft Internet Explorer
+     * @return <code>true</code> as required by Internet Explorer
      */
     @Override
     protected boolean isEmptyXmlTagExpanded() {
         return true;
     }
-
 }

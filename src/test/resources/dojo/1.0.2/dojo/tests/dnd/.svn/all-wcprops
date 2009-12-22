@@ -1,101 +1,101 @@
 K 25
 svn:wc:ra_dav:version-url
 V 94
-/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/tests/dnd
+/svnroot/htmlunit/!svn/ver/4905/tags/HtmlUnit-2.6/src/test/resources/dojo/1.0.2/dojo/tests/dnd
 END
 test_box_constraints.html
 K 25
 svn:wc:ra_dav:version-url
 V 120
-/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_box_constraints.html
+/svnroot/htmlunit/!svn/ver/4905/tags/HtmlUnit-2.6/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_box_constraints.html
 END
 test_selector.html
 K 25
 svn:wc:ra_dav:version-url
 V 113
-/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_selector.html
+/svnroot/htmlunit/!svn/ver/4905/tags/HtmlUnit-2.6/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_selector.html
 END
 test_parent_constraints.html
 K 25
 svn:wc:ra_dav:version-url
 V 123
-/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_parent_constraints.html
+/svnroot/htmlunit/!svn/ver/4905/tags/HtmlUnit-2.6/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_parent_constraints.html
 END
 test_container.html
 K 25
 svn:wc:ra_dav:version-url
 V 114
-/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_container.html
+/svnroot/htmlunit/!svn/ver/4905/tags/HtmlUnit-2.6/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_container.html
 END
 test_params.html
 K 25
 svn:wc:ra_dav:version-url
 V 111
-/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_params.html
+/svnroot/htmlunit/!svn/ver/4905/tags/HtmlUnit-2.6/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_params.html
 END
 test_moveable.html
 K 25
 svn:wc:ra_dav:version-url
 V 113
-/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_moveable.html
+/svnroot/htmlunit/!svn/ver/4905/tags/HtmlUnit-2.6/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_moveable.html
 END
 flickr_viewer.html
 K 25
 svn:wc:ra_dav:version-url
 V 113
-/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/tests/dnd/flickr_viewer.html
+/svnroot/htmlunit/!svn/ver/4905/tags/HtmlUnit-2.6/src/test/resources/dojo/1.0.2/dojo/tests/dnd/flickr_viewer.html
 END
 test_selector_markup.html
 K 25
 svn:wc:ra_dav:version-url
 V 120
-/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_selector_markup.html
+/svnroot/htmlunit/!svn/ver/4905/tags/HtmlUnit-2.6/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_selector_markup.html
 END
 dndDefault.css
 K 25
 svn:wc:ra_dav:version-url
 V 109
-/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/tests/dnd/dndDefault.css
+/svnroot/htmlunit/!svn/ver/4905/tags/HtmlUnit-2.6/src/test/resources/dojo/1.0.2/dojo/tests/dnd/dndDefault.css
 END
 test_parent_constraints_margins.html
 K 25
 svn:wc:ra_dav:version-url
 V 131
-/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_parent_constraints_margins.html
+/svnroot/htmlunit/!svn/ver/4905/tags/HtmlUnit-2.6/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_parent_constraints_margins.html
 END
 test_custom_constraints.html
 K 25
 svn:wc:ra_dav:version-url
 V 123
-/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_custom_constraints.html
+/svnroot/htmlunit/!svn/ver/4905/tags/HtmlUnit-2.6/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_custom_constraints.html
 END
 test_container_markup.html
 K 25
 svn:wc:ra_dav:version-url
 V 121
-/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_container_markup.html
+/svnroot/htmlunit/!svn/ver/4905/tags/HtmlUnit-2.6/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_container_markup.html
 END
 test_form.html
 K 25
 svn:wc:ra_dav:version-url
 V 109
-/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_form.html
+/svnroot/htmlunit/!svn/ver/4905/tags/HtmlUnit-2.6/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_form.html
 END
 test_dnd_handles.html
 K 25
 svn:wc:ra_dav:version-url
 V 116
-/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_dnd_handles.html
+/svnroot/htmlunit/!svn/ver/4905/tags/HtmlUnit-2.6/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_dnd_handles.html
 END
 test_dnd.html
 K 25
 svn:wc:ra_dav:version-url
 V 108
-/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_dnd.html
+/svnroot/htmlunit/!svn/ver/4905/tags/HtmlUnit-2.6/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_dnd.html
 END
 test_moveable_markup.html
 K 25
 svn:wc:ra_dav:version-url
 V 120
-/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_moveable_markup.html
+/svnroot/htmlunit/!svn/ver/4905/tags/HtmlUnit-2.6/src/test/resources/dojo/1.0.2/dojo/tests/dnd/test_moveable_markup.html
 END

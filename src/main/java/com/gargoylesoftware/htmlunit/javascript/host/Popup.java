@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,8 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
+import com.gargoylesoftware.htmlunit.History;
 import com.gargoylesoftware.htmlunit.Page;
-import com.gargoylesoftware.htmlunit.ThreadManager;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.WebWindow;
@@ -24,15 +24,17 @@ import com.gargoylesoftware.htmlunit.html.HtmlBody;
 import com.gargoylesoftware.htmlunit.html.HtmlHtml;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.javascript.background.JavaScriptJobManager;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLDocument;
 
 /**
- * A JavaScript object for IE's Popu.
+ * A JavaScript object for IE's Popup.
  *
- * @version $Revision: 3079 $
+ * @version $Revision: 4756 $
  * @author Marc Guillemot
  * @author David K. Taylor
  * @author Ahmed Ashour
- * @see <a href="http://msdn.microsoft.com/workshop/author/dhtml/reference/objects/popup.asp">MSDN documentation</a>
+ * @see <a href="http://msdn.microsoft.com/en-us/library/ms535882.aspx">MSDN documentation</a>
  */
 public class Popup extends SimpleScriptable {
 
@@ -105,16 +107,19 @@ public class Popup extends SimpleScriptable {
 
 /**
  * Simple implementation of {@link WebWindow} to allow the construction of the {@link HtmlPage} associated
- * with a {@link Popup}
+ * with a {@link Popup}.
  */
 class PopupPseudoWebWindow implements WebWindow {
+
+    /** Serial version UID. */
+    private static final long serialVersionUID = 8592029101424531167L;
+
     private final WebClient webClient_;
     private Object scriptObject_;
     private Page enclosedPage_;
 
     PopupPseudoWebWindow(final WebClient webClient) {
         webClient_ = webClient;
-
         webClient_.initialize(this);
     }
 
@@ -147,9 +152,9 @@ class PopupPseudoWebWindow implements WebWindow {
     }
 
     /**
-     * @see com.gargoylesoftware.htmlunit.WebWindow#getThreadManager()
+     * @see com.gargoylesoftware.htmlunit.WebWindow#getJobManager()
      */
-    public ThreadManager getThreadManager() {
+    public JavaScriptJobManager getJobManager() {
         throw new RuntimeException("Not supported");
     }
 
@@ -165,6 +170,13 @@ class PopupPseudoWebWindow implements WebWindow {
      */
     public WebClient getWebClient() {
         return webClient_;
+    }
+
+    /**
+     * @see com.gargoylesoftware.htmlunit.WebWindow#getHistory()
+     */
+    public History getHistory() {
+        throw new RuntimeException("Not supported");
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import com.gargoylesoftware.htmlunit.TextUtil;
 /**
  * A URLConnection for supporting JavaScript URLs.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4002 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  */
 public class JavaScriptURLConnection extends URLConnection {
@@ -40,7 +40,7 @@ public class JavaScriptURLConnection extends URLConnection {
      */
     public JavaScriptURLConnection(final URL newUrl) {
         super(newUrl);
-        content_ = newUrl.toExternalForm().substring("javascript:".length());
+        content_ = newUrl.toExternalForm().substring(JAVASCRIPT_PREFIX.length());
     }
 
     /**

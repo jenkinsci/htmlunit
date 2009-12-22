@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ package com.gargoylesoftware.htmlunit;
 /**
  * An exception that is thrown when a specified XML element cannot be found in the DOM model.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4097 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  */
 public class ElementNotFoundException extends RuntimeException {
@@ -29,7 +29,7 @@ public class ElementNotFoundException extends RuntimeException {
     private final String attributeValue_;
 
     /**
-     * Create an instance from the variables that were used to search for the XML element.
+     * Creates an instance from the variables that were used to search for the XML element.
      *
      * @param elementName the name of the element
      * @param attributeName the name of the attribute

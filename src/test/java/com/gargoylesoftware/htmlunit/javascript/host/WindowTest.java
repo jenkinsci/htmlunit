@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.httpclient.NameValuePair;
-import org.junit.Assert;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
 
 import com.gargoylesoftware.base.testing.EventCatcher;
@@ -38,17 +39,15 @@ import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.PromptHandler;
 import com.gargoylesoftware.htmlunit.StatusHandler;
-import com.gargoylesoftware.htmlunit.ThreadManager;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.WebWindow;
 import com.gargoylesoftware.htmlunit.WebWindowEvent;
 import com.gargoylesoftware.htmlunit.WebWindowNotFoundException;
-import com.gargoylesoftware.htmlunit.html.ClickableElement;
 import com.gargoylesoftware.htmlunit.html.HtmlAnchor;
 import com.gargoylesoftware.htmlunit.html.HtmlButton;
-import com.gargoylesoftware.htmlunit.html.HtmlButtonInput;
 import com.gargoylesoftware.htmlunit.html.HtmlDivision;
+import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlInlineFrame;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.html.HtmlSubmitInput;
@@ -56,7 +55,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlSubmitInput;
 /**
  * Tests for {@link Window}.
  *
- * @version $Revision: 3147 $
+ * @version $Revision: 4900 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:chen_jun@users.sourceforge.net">Chen Jun</a>
  * @author David K. Taylor
@@ -70,13 +69,15 @@ import com.gargoylesoftware.htmlunit.html.HtmlSubmitInput;
  */
 public class WindowTest extends WebTestCase {
 
+    private static final Log LOG = LogFactory.getLog(WindowTest.class);
+
     /**
      * @throws Exception if the test fails
      */
     @Test
-    public void testSetLocation() throws Exception {
+    public void setLocation() throws Exception {
         final WebClient webClient = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final String firstContent
             = "<html><head><title>First</title></head><body>\n"
@@ -91,11 +92,11 @@ public class WindowTest extends WebTestCase {
         webConnection.setResponse(URL_SECOND, secondContent);
         webClient.setWebConnection(webConnection);
 
-        final HtmlPage firstPage = (HtmlPage) webClient.getPage(URL_FIRST);
+        final HtmlPage firstPage = webClient.getPage(URL_FIRST);
         assertEquals("First", firstPage.getTitleText());
 
-        final HtmlAnchor anchor = (HtmlAnchor) firstPage.getHtmlElementById("link");
-        final HtmlPage secondPage = (HtmlPage) anchor.click();
+        final HtmlAnchor anchor = firstPage.getHtmlElementById("link");
+        final HtmlPage secondPage = anchor.click();
         assertNotNull("secondPage", secondPage);
         assertEquals("Second", secondPage.getTitleText());
         assertSame(webClient.getCurrentWindow(), secondPage.getEnclosingWindow());
@@ -105,9 +106,9 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testOpenWindow() throws Exception {
+    public void openWindow() throws Exception {
         final WebClient webClient = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final List<String> collectedAlerts = new ArrayList<String>();
         webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
@@ -131,11 +132,11 @@ public class WindowTest extends WebTestCase {
         webConnection.setResponse(URL_SECOND, secondContent);
         webClient.setWebConnection(webConnection);
 
-        final HtmlPage firstPage = (HtmlPage) webClient.getPage(URL_FIRST);
+        final HtmlPage firstPage = webClient.getPage(URL_FIRST);
         assertEquals("First", firstPage.getTitleText());
 
-        final HtmlAnchor anchor = (HtmlAnchor) firstPage.getHtmlElementById("link");
-        final HtmlPage secondPage = (HtmlPage) anchor.click();
+        final HtmlAnchor anchor = firstPage.getHtmlElementById("link");
+        final HtmlPage secondPage = anchor.click();
         assertNotSame(firstPage, secondPage);
 
         // Expecting contentChanged, opened, contentChanged
@@ -160,9 +161,9 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testOpenWindow_base() throws Exception {
+    public void openWindow_base() throws Exception {
         final WebClient webClient = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final List<String> collectedAlerts = new ArrayList<String>();
         webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
@@ -182,13 +183,13 @@ public class WindowTest extends WebTestCase {
         webConnection.setResponse(URL_SECOND, secondContent);
         webClient.setWebConnection(webConnection);
 
-        final HtmlPage firstPage = (HtmlPage) webClient.getPage(URL_FIRST);
+        final HtmlPage firstPage = webClient.getPage(URL_FIRST);
         assertEquals("First", firstPage.getTitleText());
         final WebWindow firstWebWindow = firstPage.getEnclosingWindow();
         assertEquals(firstWebWindow, firstWebWindow.getTopWindow());
 
-        final HtmlAnchor anchor = (HtmlAnchor) firstPage.getHtmlElementById("link");
-        final HtmlPage secondPage = (HtmlPage) anchor.click();
+        final HtmlAnchor anchor = firstPage.getHtmlElementById("link");
+        final HtmlPage secondPage = anchor.click();
         assertEquals("Second", secondPage.getTitleText());
         assertNotSame(firstPage, secondPage);
 
@@ -206,9 +207,9 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testOpenWindow_blank() throws Exception {
+    public void openWindow_blank() throws Exception {
         final WebClient webClient = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final List<String> collectedAlerts = new ArrayList<String>();
         webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
@@ -232,11 +233,11 @@ public class WindowTest extends WebTestCase {
         webConnection.setResponse(URL_THIRD, thirdContent);
         webClient.setWebConnection(webConnection);
 
-        final HtmlPage firstPage = (HtmlPage) webClient.getPage(URL_FIRST);
+        final HtmlPage firstPage = webClient.getPage(URL_FIRST);
         assertEquals("First", firstPage.getTitleText());
         final WebWindow firstWindow = firstPage.getEnclosingWindow();
 
-        final HtmlInlineFrame secondFrame = (HtmlInlineFrame) firstPage.getHtmlElementById("secondFrame");
+        final HtmlInlineFrame secondFrame = firstPage.getHtmlElementById("secondFrame");
         final HtmlPage secondPage = (HtmlPage) secondFrame.getEnclosedPage();
         assertEquals("Second", secondPage.getTitleText());
         try {
@@ -246,8 +247,8 @@ public class WindowTest extends WebTestCase {
         catch (final WebWindowNotFoundException exception) {
             fail("Expected secondFrame would be found before click.");
         }
-        final HtmlAnchor anchor = (HtmlAnchor) secondPage.getHtmlElementById("link");
-        final HtmlPage thirdPage = (HtmlPage) anchor.click();
+        final HtmlAnchor anchor = secondPage.getHtmlElementById("link");
+        final HtmlPage thirdPage = anchor.click();
         assertEquals("Third", thirdPage.getTitleText());
         final WebWindow thirdWindow = thirdPage.getEnclosingWindow();
         assertNotSame(firstWindow, thirdWindow);
@@ -272,9 +273,9 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testOpenWindow_self() throws Exception {
+    public void openWindow_self() throws Exception {
         final WebClient webClient = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final String firstContent
             = "<html><head><title>First</title></head><body>\n"
@@ -291,15 +292,15 @@ public class WindowTest extends WebTestCase {
         webConnection.setResponse(URL_SECOND, secondContent);
         webClient.setWebConnection(webConnection);
 
-        final HtmlPage firstPage = (HtmlPage) webClient.getPage(URL_FIRST);
+        final HtmlPage firstPage = webClient.getPage(URL_FIRST);
         assertEquals("First", firstPage.getTitleText());
 
         eventCatcher.listenTo(webClient);
 
         final WebWindow firstWebWindow = firstPage.getEnclosingWindow();
 
-        final HtmlAnchor anchor = (HtmlAnchor) firstPage.getHtmlElementById("link");
-        final HtmlPage secondPage = (HtmlPage) anchor.click();
+        final HtmlAnchor anchor = firstPage.getHtmlElementById("link");
+        final HtmlPage secondPage = anchor.click();
         assertEquals("First", firstPage.getTitleText());
         assertEquals("Second", secondPage.getTitleText());
 
@@ -316,9 +317,9 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testOpenWindow_top() throws Exception {
+    public void openWindow_top() throws Exception {
         final WebClient webClient = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final String firstContent
             = "<html><head><title>First</title></head><body>\n"
@@ -338,26 +339,26 @@ public class WindowTest extends WebTestCase {
         webConnection.setResponse(URL_FIRST, firstContent);
         webConnection.setResponse(URL_SECOND, secondContent);
         webConnection.setResponse(URL_THIRD, thirdContent);
-        webConnection.setResponse(new URL("http://fourth"), fourthContent);
+        webConnection.setResponse(new URL("http://fourth/"), fourthContent);
         webClient.setWebConnection(webConnection);
 
-        final HtmlPage firstPage = (HtmlPage) webClient.getPage(URL_FIRST);
+        final HtmlPage firstPage = webClient.getPage(URL_FIRST);
         assertEquals("First", firstPage.getTitleText());
 
         final WebWindow firstWebWindow = firstPage.getEnclosingWindow();
         assertEquals("First", firstPage.getTitleText());
-        final HtmlInlineFrame secondFrame = (HtmlInlineFrame) firstPage.getHtmlElementById("secondFrame");
+        final HtmlInlineFrame secondFrame = firstPage.getHtmlElementById("secondFrame");
         final HtmlPage secondPage = (HtmlPage) secondFrame.getEnclosedPage();
         assertEquals("Second", secondPage.getTitleText());
-        final HtmlInlineFrame thirdFrame = (HtmlInlineFrame) secondPage.getHtmlElementById("thirdFrame");
+        final HtmlInlineFrame thirdFrame = secondPage.getHtmlElementById("thirdFrame");
         final HtmlPage thirdPage = (HtmlPage) thirdFrame.getEnclosedPage();
         assertEquals("Third", thirdPage.getTitleText());
 
         assertSame(webClient.getCurrentWindow(), firstWebWindow);
         assertNotSame(firstWebWindow, secondPage);
 
-        final HtmlAnchor anchor = (HtmlAnchor) thirdPage.getHtmlElementById("link");
-        final HtmlPage fourthPage = (HtmlPage) anchor.click();
+        final HtmlAnchor anchor = thirdPage.getHtmlElementById("link");
+        final HtmlPage fourthPage = anchor.click();
         final WebWindow fourthWebWindow = fourthPage.getEnclosingWindow();
         assertSame(firstWebWindow, fourthWebWindow);
         assertSame(fourthWebWindow, fourthWebWindow.getTopWindow());
@@ -383,9 +384,9 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testOpenWindow_parent() throws Exception {
+    public void openWindow_parent() throws Exception {
         final WebClient webClient = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final String firstContent
             = "<html><head><title>First</title></head><body>\n"
@@ -405,26 +406,26 @@ public class WindowTest extends WebTestCase {
         webConnection.setResponse(URL_FIRST, firstContent);
         webConnection.setResponse(URL_SECOND, secondContent);
         webConnection.setResponse(URL_THIRD, thirdContent);
-        webConnection.setResponse(new URL("http://fourth"), fourthContent);
+        webConnection.setResponse(new URL("http://fourth/"), fourthContent);
         webClient.setWebConnection(webConnection);
 
-        final HtmlPage firstPage = (HtmlPage) webClient.getPage(URL_FIRST);
+        final HtmlPage firstPage = webClient.getPage(URL_FIRST);
         assertEquals("First", firstPage.getTitleText());
 
         final WebWindow firstWebWindow = firstPage.getEnclosingWindow();
         assertEquals("First", firstPage.getTitleText());
-        final HtmlInlineFrame secondFrame = (HtmlInlineFrame) firstPage.getHtmlElementById("secondFrame");
+        final HtmlInlineFrame secondFrame = firstPage.getHtmlElementById("secondFrame");
         final HtmlPage secondPage = (HtmlPage) secondFrame.getEnclosedPage();
         assertEquals("Second", secondPage.getTitleText());
-        final HtmlInlineFrame thirdFrame = (HtmlInlineFrame) secondPage.getHtmlElementById("thirdFrame");
+        final HtmlInlineFrame thirdFrame = secondPage.getHtmlElementById("thirdFrame");
         final HtmlPage thirdPage = (HtmlPage) thirdFrame.getEnclosedPage();
         assertEquals("Third", thirdPage.getTitleText());
 
         assertSame(webClient.getCurrentWindow(), firstWebWindow);
         assertNotSame(firstWebWindow, secondFrame);
 
-        final HtmlAnchor anchor = (HtmlAnchor) thirdPage.getHtmlElementById("link");
-        final HtmlPage fourthPage = (HtmlPage) anchor.click();
+        final HtmlAnchor anchor = thirdPage.getHtmlElementById("link");
+        final HtmlPage fourthPage = anchor.click();
         final WebWindow fourthWebWindow = fourthPage.getEnclosingWindow();
         assertSame(secondFrame.getEnclosedWindow(), fourthWebWindow);
         try {
@@ -451,11 +452,10 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testOpenWindow_existingWindow() throws Exception {
+    public void openWindow_existingWindow() throws Exception {
         final String content
             = "<html><head><script>\n"
-            + "function test()\n"
-            + "{\n"
+            + "function test() {\n"
             + "  var w1 = window.open('about:blank', 'foo');\n"
             + "  alert(w1 != null);\n"
             + "  var w2 = window.open('', 'foo');\n"
@@ -479,7 +479,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testOpenWindow_emptyUrl() throws Exception {
+    public void openWindow_emptyUrl() throws Exception {
         final String content
             = "<html><head><script>\n"
             + "var w = window.open('');\n"
@@ -494,7 +494,7 @@ public class WindowTest extends WebTestCase {
         assertEquals(expectedAlerts, collectedAlerts);
 
         collectedAlerts.clear();
-        loadPage(BrowserVersion.INTERNET_EXPLORER_6_0, content, collectedAlerts);
+        loadPage(BrowserVersion.INTERNET_EXPLORER_6, content, collectedAlerts);
         createTestPageForRealBrowserIfNeeded(content, expectedAlerts);
         assertEquals(expectedAlerts, collectedAlerts);
     }
@@ -504,7 +504,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    public void testOpenWindow_blocked() throws Exception {
+    public void openWindow_blocked() throws Exception {
         final String html =
             "<html>\n"
             + "<head>\n"
@@ -524,11 +524,11 @@ public class WindowTest extends WebTestCase {
         client.setPopupBlockerEnabled(true);
         client.setAlertHandler(new CollectingAlertHandler(actual));
 
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setDefaultResponse(html);
         client.setWebConnection(webConnection);
 
-        final HtmlPage page = (HtmlPage) client.getPage("http://foo");
+        final HtmlPage page = client.getPage("http://foo");
         ((HtmlDivision) page.getHtmlElementById("d")).click();
         final String[] expected = {"null"};
         assertEquals(expected, actual);
@@ -539,12 +539,12 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testAlert_NoAlertHandler() throws Exception {
+    public void alert_NoAlertHandler() throws Exception {
         final String firstContent
             = "<html><head><title>First</title><script>function doTest(){alert('foo')}</script></head>\n"
             + "<body onload='doTest()'></body></html>";
 
-        getLog().warn("Warning for no alert handler expected next");
+        LOG.warn("Warning for no alert handler expected next");
         final HtmlPage firstPage = loadPage(firstContent);
         assertEquals("First", firstPage.getTitleText());
     }
@@ -553,7 +553,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testParentAndTop() throws Exception {
+    public void parentAndTop() throws Exception {
         final String firstContent
             = "<html><head><title>First</title></head><body>\n"
             + "  <iframe name='left' src='" + URL_SECOND + "' />\n"
@@ -579,19 +579,19 @@ public class WindowTest extends WebTestCase {
         final List<String> collectedAlerts = new ArrayList<String>();
         webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
         webConnection.setResponse(URL_SECOND, secondContent);
         webConnection.setResponse(URL_THIRD, thirdContent);
 
         webClient.setWebConnection(webConnection);
 
-        final HtmlPage firstPage = (HtmlPage) webClient.getPage(URL_FIRST);
+        final HtmlPage firstPage = webClient.getPage(URL_FIRST);
         assertEquals("First", firstPage.getTitleText());
 
         final WebWindow innermostWebWindow = webClient.getWebWindowByName("innermost");
         final HtmlPage innermostPage = (HtmlPage) innermostWebWindow.getEnclosedPage();
-        ((HtmlAnchor) innermostPage.getHtmlElementById("clickme")).click();
+        innermostPage.<HtmlAnchor>getHtmlElementById("clickme").click();
 
         assertNotSame(innermostWebWindow.getParentWindow(), innermostWebWindow);
         assertNotSame(innermostWebWindow.getTopWindow(), innermostWebWindow);
@@ -605,9 +605,9 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testConfirm() throws Exception {
+    public void confirm() throws Exception {
         final WebClient webClient = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
         final List<String> collectedAlerts = new ArrayList<String>();
         final List<String> collectedConfirms = new ArrayList<String>();
 
@@ -626,7 +626,7 @@ public class WindowTest extends WebTestCase {
         webConnection.setResponse(URL_FIRST, firstContent);
         webClient.setWebConnection(webConnection);
 
-        final HtmlPage firstPage = (HtmlPage) webClient.getPage(URL_FIRST);
+        final HtmlPage firstPage = webClient.getPage(URL_FIRST);
         assertEquals("First", firstPage.getTitleText());
 
         assertEquals(new String[] {"foo"}, collectedConfirms);
@@ -637,12 +637,12 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testConfirm_noConfirmHandler() throws Exception {
+    public void confirm_noConfirmHandler() throws Exception {
         final String html
             = "<html><head><title>First</title><script>function doTest(){alert(confirm('foo'))}</script>\n"
             + "</head><body onload='doTest()'></body></html>";
 
-        getLog().warn("Warning for no confirm handler expected next");
+        LOG.warn("Warning for no confirm handler expected next");
         final List<String> collectedAlerts = new ArrayList<String>();
         loadPage(html, collectedAlerts);
 
@@ -653,9 +653,9 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testPrompt() throws Exception {
+    public void prompt() throws Exception {
         final WebClient webClient = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
         final List<String> collectedAlerts = new ArrayList<String>();
         final List<String> collectedPrompts = new ArrayList<String>();
 
@@ -674,7 +674,7 @@ public class WindowTest extends WebTestCase {
         webConnection.setResponse(URL_FIRST, firstContent);
         webClient.setWebConnection(webConnection);
 
-        final HtmlPage firstPage = (HtmlPage) webClient.getPage(URL_FIRST);
+        final HtmlPage firstPage = webClient.getPage(URL_FIRST);
         assertEquals("First", firstPage.getTitleText());
 
         assertEquals(new String[] {"foo"}, collectedPrompts);
@@ -685,9 +685,9 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testPrompt_noPromptHandler() throws Exception {
+    public void prompt_noPromptHandler() throws Exception {
         final WebClient webClient = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
         final List<String> collectedAlerts = new ArrayList<String>();
         final List<String> collectedPrompts = new ArrayList<String>();
 
@@ -699,9 +699,9 @@ public class WindowTest extends WebTestCase {
 
         webConnection.setResponse(URL_FIRST, firstContent);
         webClient.setWebConnection(webConnection);
-        getLog().warn("Warning for no prompt handler expected next");
+        LOG.warn("Warning for no prompt handler expected next");
 
-        final HtmlPage firstPage = (HtmlPage) webClient.getPage(URL_FIRST);
+        final HtmlPage firstPage = webClient.getPage(URL_FIRST);
         assertEquals("First", firstPage.getTitleText());
 
         assertEquals(Collections.EMPTY_LIST, collectedPrompts);
@@ -712,9 +712,9 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testOpener() throws Exception {
+    public void opener() throws Exception {
         final WebClient webClient = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
         final List<String> collectedAlerts = new ArrayList<String>();
 
         webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
@@ -753,7 +753,7 @@ public class WindowTest extends WebTestCase {
         webConnection.setResponse(URL_THIRD, thirdContent);
         webClient.setWebConnection(webConnection);
 
-        final HtmlPage firstPage = (HtmlPage) webClient.getPage(URL_FIRST);
+        final HtmlPage firstPage = webClient.getPage(URL_FIRST);
         assertEquals("First", firstPage.getTitleText());
 
         final String[] expectedAlerts = {"null", "one", "two", "three"};
@@ -764,209 +764,10 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testSetTimeout() throws Exception {
-        final String content
-            = "<html><body><script language='JavaScript'>window.setTimeout('alert(\"Yo!\")',1);\n"
-            + "</script></body></html>";
-
-        final List<String> collectedAlerts = Collections.synchronizedList(new ArrayList<String>());
-        final HtmlPage page = loadPage(content, collectedAlerts);
-        assertTrue("thread failed to stop in 1 second", page.getEnclosingWindow().getThreadManager().joinAll(1000));
-        assertEquals(new String[] {"Yo!"}, collectedAlerts);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testSetTimeoutByReference() throws Exception {
-        final String content = "<html><body><script language='JavaScript'>\n"
-            + "function doTimeout() {alert('Yo!');}\n"
-            + "window.setTimeout(doTimeout,1);\n"
-            + "</script></body></html>";
-
-        final List<String> collectedAlerts = Collections.synchronizedList(new ArrayList<String>());
-        final HtmlPage page = loadPage(content, collectedAlerts);
-        assertTrue("thread failed to stop in 1 second", page.getEnclosingWindow().getThreadManager().joinAll(1000));
-        assertEquals(new String[] {"Yo!"}, collectedAlerts);
-    }
-
-    /**
-     * Just tests that setting and clearing an interval doesn't throw an exception.
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testSetAndClearInterval() throws Exception {
-        final String content
-            = "<html><body>\n"
-            + "<script>\n"
-            + "window.setInterval('alert(\"Yo!\")', 500);\n"
-            + "function foo() { alert('Yo2'); }\n"
-            + "var i = window.setInterval(foo, 500);\n"
-            + "window.clearInterval(i);\n"
-            + "</script></body></html>";
-
-        final List<String> collectedAlerts = Collections.synchronizedList(new ArrayList<String>());
-        loadPage(content, collectedAlerts);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testSetIntervalFunctionReference() throws Exception {
-        final String content = "<html>\n"
-            + "<head>\n"
-            + "  <title>test</title>\n"
-            + "  <script>\n"
-            + "    var threadID;\n"
-            + "    function test() {\n"
-            + "      threadID = setInterval(doAlert, 100);\n"
-            + "    }\n"
-            + "    var iterationNumber=0;\n"
-            + "    function doAlert() {\n"
-            + "      alert('blah');\n"
-            + "      if (++iterationNumber >= 3) {\n"
-            + "        clearInterval(threadID);\n"
-            + "      }\n"
-            + "    }\n"
-            + "  </script>\n"
-            + "</head>\n"
-            + "<body onload='test()'>\n"
-            + "</body>\n"
-            + "</html>";
-
-        final List<String> collectedAlerts = Collections.synchronizedList(new ArrayList<String>());
-        final HtmlPage page = loadPage(content, collectedAlerts);
-        final ThreadManager threadManager = page.getEnclosingWindow().getThreadManager();
-        threadManager.joinAll(1000);
-        assertEquals(0, threadManager.activeCount());
-        assertEquals(Collections.nCopies(3, "blah"), collectedAlerts);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testClearInterval() throws Exception {
-        final String html = "<html><body onload='test()'><script>\n"
-            + "  var count;\n"
-            + "  var id;\n"
-            + "  function test() {\n"
-            + "    count = 0;\n"
-            + "    id = setInterval(callback, 100);\n"
-            + "  };\n"
-            + "  function callback() {\n"
-            + "    count++;\n"
-            + "    clearInterval(id);\n"
-            + "    // Give the callback time to show its ugly face.\n"
-            + "    // If it fires between now and then, we'll know.\n"
-            + "    setTimeout('alert(count)', 500);\n"
-            + "  }\n"
-            + "</script></body></html>";
-        final String[] expected = {"1"};
-        final List<String> actual = Collections.synchronizedList(new ArrayList<String>());
-        final HtmlPage page = loadPage(html, actual);
-        final ThreadManager threadManager = page.getEnclosingWindow().getThreadManager();
-        threadManager.joinAll(1000);
-        assertEquals(0, threadManager.activeCount());
-        assertEquals(expected, actual);
-    }
-
-    /**
-     * Test that a script started by a timer is stopped if the page that started it
-     * is not loaded anymore.
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testSetTimeoutStopped() throws Exception {
-        //TODO: This test fails with eclipse (sometimes), but never with ant!!!!
-        final String firstContent
-            = "<html><head>\n"
-            + "<script language='JavaScript'>window.setTimeout('alert(\"Yo!\")', 1000);</script>\n"
-            + "</head><body onload='document.location.replace(\"" + URL_SECOND + "\")'></body></html>";
-        final String secondContent = "<html><head><title>Second</title></head><body></body></html>";
-
-        final WebClient webClient = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
-        final List<String> collectedAlerts = Collections.synchronizedList(new ArrayList<String>());
-
-        webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-
-        webConnection.setResponse(URL_FIRST, firstContent);
-        webConnection.setResponse(URL_SECOND, secondContent);
-        webClient.setWebConnection(webConnection);
-
-        final HtmlPage page = (HtmlPage) webClient.getPage(URL_FIRST);
-        page.getEnclosingWindow().getThreadManager().joinAll(2000);
-        assertEquals("Second", page.getTitleText());
-        Assert.assertEquals("no thread should be running",
-                0, page.getEnclosingWindow().getThreadManager().activeCount());
-        assertEquals(Collections.EMPTY_LIST, collectedAlerts);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testClearTimeout() throws Exception {
-        final String content =
-              "<html>\n"
-            + "<head>\n"
-            + "  <title>test</title>\n"
-            + "  <script>\n"
-            + "    function test() {\n"
-            + "      var id = setTimeout('doAlert()', 2000);\n"
-            + "      clearTimeout(id);\n"
-            + "    }\n"
-            + "    function doAlert() {\n"
-            + "      alert('blah');\n"
-            + "    }\n"
-            + "  </script>\n"
-            + "</head>\n"
-            + "<body onload='test()'>\n"
-            + "</body>\n"
-            + "</html>";
-        final List<String> collectedAlerts = Collections.synchronizedList(new ArrayList<String>());
-        final HtmlPage page = loadPage(content, collectedAlerts);
-        page.getEnclosingWindow().getThreadManager().joinAll(2000);
-        assertEquals(Collections.EMPTY_LIST, collectedAlerts);
-    }
-
-    /**
-     * Verifies that calling clearTimeout() on a callback which has already fired
-     * does not affect said callback.
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testClearTimeout_DoesNotStopExecutingCallback() throws Exception {
-        final String html = "<html><body onload='test()'><script>\n"
-            + "  var id;\n"
-            + "  function test() {\n"
-            + "    id = setTimeout(callback, 1);\n"
-            + "  };\n"
-            + "  function callback() {\n"
-            + "    alert(id != 0);\n"
-            + "    clearTimeout(id);\n"
-            + "    // Make sure we weren't stopped.\n"
-            + "    alert('completed');\n"
-            + "  }\n"
-            + "</script><div id='a'></div></body></html>";
-        final String[] expected = {"true", "completed"};
-        final List<String> actual = Collections.synchronizedList(new ArrayList<String>());
-        final HtmlPage page = loadPage(html, actual);
-        page.getEnclosingWindow().getThreadManager().joinAll(5000);
-        assertEquals(expected, actual);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testAboutURL() throws Exception {
+    public void aboutURL() throws Exception {
         final WebClient webClient = new WebClient();
         final MockWebConnection webConnection =
-            new MockWebConnection(webClient);
+            new MockWebConnection();
         final String firstContent =
             "<html><body><script language='JavaScript'>\n"
             + "w2 = window.open('about:blank', 'AboutBlank');\n"
@@ -989,7 +790,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testWindowFrames() throws Exception {
+    public void windowFrames() throws Exception {
         final String firstContent =
             "<html><body><script language='JavaScript'>\n"
             + "if (typeof top.frames['anyXXXname'] == 'undefined') {\n"
@@ -1002,43 +803,12 @@ public class WindowTest extends WebTestCase {
     }
 
     /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testWindowFramesLive() throws Exception {
-        final String content =
-            "<html>\n"
-            + "<script>\n"
-            + "var oFrames = window.frames;\n"
-            + "alert(oFrames.length);\n"
-            + "function test()\n"
-            + "{\n"
-            + "    alert(oFrames.length);\n"
-            + "    alert(window.frames.length);\n"
-            + "    alert(oFrames == window.frames);\n"
-            + "}\n"
-            + "</script>\n"
-            + "<frameset rows='50,*' onload='test()'>\n"
-            + "<frame src='about:blank'/>\n"
-            + "<frame src='about:blank'/>\n"
-            + "</frameset>\n"
-            + "</html>";
-
-        final String[] expectedAlerts = {"0", "2", "2", "true"};
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(content, collectedAlerts);
-
-        assertEquals(expectedAlerts, collectedAlerts);
-    }
-
-    /**
      * Variables that are defined inside JavaScript should be accessible through the
      * window object (ie window.myVariable). Test that this works.
      * @throws Exception if the test fails
      */
     @Test
-    public void testJavascriptVariableFromWindow() throws Exception {
+    public void javascriptVariableFromWindow() throws Exception {
         final String firstContent =
             "<html><head><title>first</title></head><body><script>\n"
             + "myVariable = 'foo';\n"
@@ -1057,9 +827,9 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testJavascriptVariableFromTopAndParentFrame() throws Exception {
+    public void javascriptVariableFromTopAndParentFrame() throws Exception {
         final WebClient webClient = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
         final List<String> collectedAlerts = new ArrayList<String>();
 
         webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
@@ -1092,7 +862,7 @@ public class WindowTest extends WebTestCase {
 
         webClient.setWebConnection(webConnection);
 
-        final HtmlPage page = (HtmlPage) webClient.getPage(URL_FIRST);
+        final HtmlPage page = webClient.getPage(URL_FIRST);
         assertEquals("First", page.getTitleText());
 
         final String[] expectedAlerts = {
@@ -1108,9 +878,9 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testJavascriptVariableFromNamedFrame() throws Exception {
+    public void javascriptVariableFromNamedFrame() throws Exception {
         final WebClient webClient = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
         final List<String> collectedAlerts = new ArrayList<String>();
 
         webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
@@ -1146,11 +916,11 @@ public class WindowTest extends WebTestCase {
             + "alert('parent.third.myVariable = ' + parent.third.myVariable);\n"
             + "}\n"
             + "</script></body></html>";
-        webConnection.setResponse(new URL("http://fourth"), fourthContent);
+        webConnection.setResponse(new URL("http://fourth/"), fourthContent);
 
         webClient.setWebConnection(webConnection);
 
-        final HtmlPage page = (HtmlPage) webClient.getPage(URL_FIRST);
+        final HtmlPage page = webClient.getPage(URL_FIRST);
         assertEquals("first", page.getTitleText());
 
         final String[] expectedAlerts = {
@@ -1165,7 +935,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testJavascriptVariableFromWindow_NotFound() throws Exception {
+    public void javascriptVariableFromWindow_NotFound() throws Exception {
         final String firstContent =
             "<html><head><title>first</title></head><body><script>\n"
             + "myVariable = 'foo';\n"
@@ -1182,9 +952,9 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testGetFrameByName() throws Exception {
+    public void getFrameByName() throws Exception {
         final WebClient webClient = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
         final List<String> collectedAlerts = new ArrayList<String>();
 
         webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
@@ -1213,11 +983,11 @@ public class WindowTest extends WebTestCase {
             + "alert('fourth-third='+parent.third.document.location);\n"
             + "}\n"
             + "</script></body></html>";
-        webConnection.setResponse(new URL("http://fourth"), fourthContent);
+        webConnection.setResponse(new URL("http://fourth/"), fourthContent);
 
         webClient.setWebConnection(webConnection);
 
-        final HtmlPage page = (HtmlPage) webClient.getPage(URL_FIRST);
+        final HtmlPage page = webClient.getPage(URL_FIRST);
         assertEquals("first", page.getTitleText());
 
         final String[] expectedAlerts = {"fourth-second=" + URL_SECOND, "fourth-third=" + URL_THIRD};
@@ -1228,9 +998,9 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testSetOpenerLocationHrefRelative() throws Exception {
+    public void setOpenerLocationHrefRelative() throws Exception {
         final WebClient webClient = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final String aContent
             = "<html><head><title>A</title></head><body>\n"
@@ -1252,16 +1022,16 @@ public class WindowTest extends WebTestCase {
 
         webClient.setWebConnection(webConnection);
 
-        final HtmlPage firstPage = (HtmlPage) webClient.getPage("http://opener/test/a.html");
+        final HtmlPage firstPage = webClient.getPage("http://opener/test/a.html");
         assertEquals("A", firstPage.getTitleText());
 
-        final HtmlButton buttonA = (HtmlButton) firstPage.getHtmlElementById("clickme");
-        final HtmlPage secondPage = (HtmlPage) buttonA.click();
+        final HtmlButton buttonA = firstPage.getHtmlElementById("clickme");
+        final HtmlPage secondPage = buttonA.click();
         assertNotNull("B", secondPage);
         assertEquals("B", secondPage.getTitleText());
 
-        final HtmlButton buttonB = (HtmlButton) secondPage.getHtmlElementById("clickme");
-        final HtmlPage thirdPage = (HtmlPage) buttonB.click();
+        final HtmlButton buttonB = secondPage.getHtmlElementById("clickme");
+        final HtmlPage thirdPage = buttonB.click();
         assertNotNull("C", thirdPage);
         assertEquals("C", thirdPage.getTitleText());
     }
@@ -1271,11 +1041,10 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testClosed() throws Exception {
+    public void closed() throws Exception {
         final String content = "<html><head>\n"
             + "<script>\n"
-            + "function test()\n"
-            + "{\n"
+            + "function test() {\n"
             + "  alert(window.closed);\n"
             + "  var newWindow = window.open('about:blank', 'foo');\n"
             + "  alert(newWindow.closed);\n"
@@ -1301,9 +1070,9 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testClose() throws Exception {
+    public void close() throws Exception {
         final WebClient webClient = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final List<String> collectedAlerts = new ArrayList<String>();
         webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
@@ -1323,7 +1092,7 @@ public class WindowTest extends WebTestCase {
         webConnection.setResponse(URL_SECOND, secondContent);
         webClient.setWebConnection(webConnection);
 
-        final HtmlPage firstPage = (HtmlPage) webClient.getPage(URL_FIRST);
+        final HtmlPage firstPage = webClient.getPage(URL_FIRST);
         assertEquals("First", firstPage.getTitleText());
         assertEquals(1, webClient.getWebWindows().size());
         final WebWindow firstWindow = firstPage.getEnclosingWindow();
@@ -1351,58 +1120,11 @@ public class WindowTest extends WebTestCase {
     }
 
     /**
-     * Test that length of frames collection is retrieved.
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testFramesLengthZero() throws Exception {
-        final String content
-            = "<html><head><title>foo</title><script>\n"
-            + "alert(window.frames.length)\n"
-            + "</script></head><body>\n"
-            + "</body></html>";
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(content, collectedAlerts);
-
-        final String[] expectedAlerts = {"0"};
-        assertEquals(expectedAlerts, collectedAlerts);
-    }
-
-    /**
-     * Test that length of frames collection is retrieved when there are frames.
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testFramesLengthAndFrameAccess() throws Exception {
-        final String content =
-            "<html>\n"
-            + "<script>\n"
-            + "function test()\n"
-            + "{\n"
-            + "    alert(window.frames.length);\n"
-            + "    alert(window.frames[0].name);\n"
-            + "    alert(window.frames.frame2.name);\n"
-            + "}\n"
-            + "</script>\n"
-            + "<frameset rows='50,*' onload='test()'>\n"
-            + "<frame name='frame1' src='about:blank'/>\n"
-            + "<frame name='frame2' src='about:blank'/>\n"
-            + "</frameset>\n"
-            + "</html>";
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(content, collectedAlerts);
-
-        final String[] expectedAlerts = {"2", "frame1", "frame2"};
-        assertEquals(expectedAlerts, collectedAlerts);
-    }
-
-    /**
      * Test that Window.moveTo method gets correctly called and handled by the scripting engine.
      * @throws Exception if the test fails
      */
     @Test
-    public void testMoveTo() throws Exception {
+    public void moveTo() throws Exception {
         final String content
             = "<html><head><title>foo</title><script>\n"
             + "window.moveTo(10, 20)\n"
@@ -1416,7 +1138,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testMoveBy() throws Exception {
+    public void moveBy() throws Exception {
         final String content
             = "<html><head><title>foo</title><script>\n"
             + "window.moveBy(10, 20)\n"
@@ -1430,7 +1152,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testResizeTo() throws Exception {
+    public void resizeTo() throws Exception {
         final String content = "<html><head><title>foo</title><script>\n"
             + "window.resizeTo(10, 20);\n"
             + "window.resizeTo(-10, 20);\n"
@@ -1443,7 +1165,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testResizeBy() throws Exception {
+    public void resizeBy() throws Exception {
         final String content = "<html><head><title>foo</title><script>\n"
             + "window.resizeBy(10, 20);\n"
             + "window.resizeBy(-10, 20);\n"
@@ -1456,7 +1178,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testScroll() throws Exception {
+    public void scroll() throws Exception {
         final String content
             = "<html><head><title>foo</title><script>\n"
             + "window.scroll(10, 20);\n"
@@ -1470,7 +1192,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testScrollBy() throws Exception {
+    public void scrollBy() throws Exception {
         final String content
             = "<html><head><title>foo</title><script>\n"
             + "window.scrollBy(10, 20);\n"
@@ -1484,7 +1206,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testScrollByLines() throws Exception {
+    public void scrollByLines() throws Exception {
         final String content
             = "<html><head><title>foo</title><script>\n"
             + "window.scrollByLines(2);\n"
@@ -1498,7 +1220,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testScrollByPages() throws Exception {
+    public void scrollByPages() throws Exception {
         final String content
             = "<html><head><title>foo</title><script>\n"
             + "window.scrollByPages(2);\n"
@@ -1512,7 +1234,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testScrollTo() throws Exception {
+    public void scrollTo() throws Exception {
         final String content
             = "<html><head><title>foo</title><script>\n"
             + "window.scrollTo(10, 20);\n"
@@ -1524,13 +1246,13 @@ public class WindowTest extends WebTestCase {
      /**
      * All elements should be accessible via the window object by their name, both in qualified
      * format (<tt>window.elementName</tt>) and unqualified format (<tt>elementName</tt>), if we
-     * are emulating Microsoft Internet Explorer. Both of these expressions are therefore equivalent
+     * are emulating Internet Explorer. Both of these expressions are therefore equivalent
      * to <tt>document.getElementsByName(elementName)</tt> in IE, and should return a collection of
      * elements if there is more than one with the specified name.
      * @throws Exception if the test fails
      */
     @Test
-    public void testElementByNameFromWindow() throws Exception {
+    public void elementByNameFromWindow() throws Exception {
         final String content = "<html>\n"
             + "<head><title>test</title>\n"
             + "<script>\n"
@@ -1554,7 +1276,7 @@ public class WindowTest extends WebTestCase {
         final List<String> collectedAlerts = new ArrayList<String>();
         final String[] expectedAlerts = {"form1", "form2", "2", "4"};
         createTestPageForRealBrowserIfNeeded(content, expectedAlerts);
-        loadPage(content, collectedAlerts);
+        loadPage(BrowserVersion.INTERNET_EXPLORER_6, content, collectedAlerts);
         assertEquals(expectedAlerts, collectedAlerts);
     }
 
@@ -1563,7 +1285,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testElementByIdFromWindow() throws Exception {
+    public void elementByIdFromWindow() throws Exception {
         final String content = "<html>\n"
             + "<head><title>test</title>\n"
             + "<script>\n"
@@ -1588,7 +1310,7 @@ public class WindowTest extends WebTestCase {
         final String[] expectedAlerts = {"form1", "form2", "1", "DIV"};
         createTestPageForRealBrowserIfNeeded(content, expectedAlerts);
         final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(content, collectedAlerts);
+        loadPage(BrowserVersion.INTERNET_EXPLORER_6, content, collectedAlerts);
         assertEquals(expectedAlerts, collectedAlerts);
     }
 
@@ -1599,7 +1321,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testFF_ElementByIdOrNameFromWindow() throws Exception {
+    public void ff_ElementByIdOrNameFromWindow() throws Exception {
         final String content = "<html>\n"
             + "<head><title>test</title>\n"
             + "<script>\n"
@@ -1632,7 +1354,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testExecScript() throws Exception {
+    public void execScript() throws Exception {
         final String content = "<html>\n"
             + "<head><title>test</title>\n"
             + "<script>\n"
@@ -1657,7 +1379,7 @@ public class WindowTest extends WebTestCase {
         final String[] expectedAlerts = {"JavaScript", "JScript", "Invalid class string"};
         createTestPageForRealBrowserIfNeeded(content, expectedAlerts);
         final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(content, collectedAlerts);
+        loadPage(BrowserVersion.INTERNET_EXPLORER_6, content, collectedAlerts);
         assertEquals(expectedAlerts, collectedAlerts);
     }
 
@@ -1665,7 +1387,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testOnLoadFunction() throws Exception {
+    public void onLoadFunction() throws Exception {
         final String content = "<html>\n"
             + "<head><title>test</title>\n"
             + "<script>\n"
@@ -1700,7 +1422,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    public void testOnloadNotAFunction() throws Exception {
+    public void onloadNotAFunction() throws Exception {
         final String html = "<html><body><script>\n"
             + "window.onload = new function() {alert('a')};\n"
             + "window.onload = undefined;\n"
@@ -1720,7 +1442,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testAddOnLoadEventListener() throws Exception {
+    public void addOnLoadEventListener() throws Exception {
         final String content = "<html>\n"
             + "<head><title>test</title>\n"
             + "<script>\n"
@@ -1749,7 +1471,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testAttachOnLoadEvent() throws Exception {
+    public void attachOnLoadEvent() throws Exception {
         final String content = "<html>\n"
             + "<head><title>test</title>\n"
             + "<script>\n"
@@ -1771,7 +1493,7 @@ public class WindowTest extends WebTestCase {
             "onload", "test1, param null: false", "test2"};
         createTestPageForRealBrowserIfNeeded(content, expectedAlerts);
         final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(BrowserVersion.INTERNET_EXPLORER_6_0, content, collectedAlerts);
+        loadPage(BrowserVersion.INTERNET_EXPLORER_6, content, collectedAlerts);
         assertEquals(expectedAlerts, collectedAlerts);
     }
 
@@ -1780,12 +1502,11 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testDetachEventInAttachEvent() throws Exception {
+    public void detachEventInAttachEvent() throws Exception {
         final String content = "<html>\n"
             + "<head><title>test</title>\n"
             + "<script>\n"
-            + "function test()\n"
-            + "{\n"
+            + "function test() {\n"
             + "  window.detachEvent('onload', test);\n"
             + "  alert('detached');\n"
             + "}\n"
@@ -1795,7 +1516,7 @@ public class WindowTest extends WebTestCase {
         final String[] expectedAlerts = {"detached"};
         createTestPageForRealBrowserIfNeeded(content, expectedAlerts);
         final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(BrowserVersion.INTERNET_EXPLORER_6_0, content, collectedAlerts);
+        loadPage(BrowserVersion.INTERNET_EXPLORER_6, content, collectedAlerts);
         assertEquals(expectedAlerts, collectedAlerts);
     }
 
@@ -1803,9 +1524,9 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testStatus() throws Exception {
+    public void status() throws Exception {
         final WebClient webClient = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final String firstContent
             = "<html><head><title>First</title><script>\n"
@@ -1830,7 +1551,7 @@ public class WindowTest extends WebTestCase {
                 collectedStatus.add(message);
             }
         });
-        final HtmlPage firstPage = (HtmlPage) webClient.getPage(URL_FIRST);
+        final HtmlPage firstPage = webClient.getPage(URL_FIRST);
         assertEquals("First", firstPage.getTitleText());
 
         final String[] expectedAlerts = {"", "newStatus"};
@@ -1846,7 +1567,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testWindowName() throws Exception {
+    public void windowName() throws Exception {
         final String windowName = "main";
         final String content = "<html>\n"
             + "<head><title>window.name test</title></head>\n"
@@ -1870,7 +1591,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testMozillaViewport() throws Exception {
+    public void mozillaViewport() throws Exception {
         final String content = "<html>\n"
             + "<head></head>\n"
             + "<body>\n"
@@ -1893,7 +1614,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testPrint() throws Exception {
+    public void print() throws Exception {
         final String content = "<html>\n"
             + "<head></head>\n"
             + "<body>\n"
@@ -1912,9 +1633,9 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testOpenWindow_image() throws Exception {
+    public void openWindow_image() throws Exception {
         final WebClient webClient = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final String firstContent = "<html><head><title>First</title></head><body>\n"
             + "<form name='form1'>\n"
@@ -1937,14 +1658,14 @@ public class WindowTest extends WebTestCase {
         webConnection.setResponse(URL_SECOND, secondContent, 200, "OK", "image/gif", emptyList);
         webClient.setWebConnection(webConnection);
 
-        final HtmlPage firstPage = (HtmlPage) webClient.getPage(URL_FIRST);
+        final HtmlPage firstPage = webClient.getPage(URL_FIRST);
         assertEquals("First", firstPage.getTitleText());
 
         eventCatcher.listenTo(webClient);
 
         final WebWindow firstWebWindow = firstPage.getEnclosingWindow();
 
-        final HtmlAnchor anchor = (HtmlAnchor) firstPage.getHtmlElementById("link");
+        final HtmlAnchor anchor = firstPage.getHtmlElementById("link");
         final Page secondPage = anchor.click();
         assertEquals("First", firstPage.getTitleText());
         assertEquals("image/gif", secondPage.getWebResponse().getContentType());
@@ -1963,9 +1684,9 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testOpenWindow_text() throws Exception {
+    public void openWindow_text() throws Exception {
         final WebClient webClient = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final String firstContent = "<html><head><title>First</title></head><body>\n"
             + "<form name='form1'>\n"
@@ -1982,14 +1703,14 @@ public class WindowTest extends WebTestCase {
         webConnection.setResponse(URL_SECOND, secondContent, 200, "OK", "text/plain", emptyList);
         webClient.setWebConnection(webConnection);
 
-        final HtmlPage firstPage = (HtmlPage) webClient.getPage(URL_FIRST);
+        final HtmlPage firstPage = webClient.getPage(URL_FIRST);
         assertEquals("First", firstPage.getTitleText());
 
         eventCatcher.listenTo(webClient);
 
         final WebWindow firstWebWindow = firstPage.getEnclosingWindow();
 
-        final HtmlAnchor anchor = (HtmlAnchor) firstPage.getHtmlElementById("link");
+        final HtmlAnchor anchor = firstPage.getHtmlElementById("link");
         final Page secondPage = anchor.click();
         assertEquals("First", firstPage.getTitleText());
         assertEquals("text/plain", secondPage.getWebResponse().getContentType());
@@ -2008,9 +1729,9 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testOpenWindow_xml() throws Exception {
+    public void openWindow_xml() throws Exception {
         final WebClient webClient = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final String firstContent = "<html><head><title>First</title></head><body>\n"
             + "<form name='form1'>\n"
@@ -2027,14 +1748,14 @@ public class WindowTest extends WebTestCase {
         webConnection.setResponse(URL_SECOND, secondContent, 200, "OK", "text/xml", emptyList);
         webClient.setWebConnection(webConnection);
 
-        final HtmlPage firstPage = (HtmlPage) webClient.getPage(URL_FIRST);
+        final HtmlPage firstPage = webClient.getPage(URL_FIRST);
         assertEquals("First", firstPage.getTitleText());
 
         eventCatcher.listenTo(webClient);
 
         final WebWindow firstWebWindow = firstPage.getEnclosingWindow();
 
-        final HtmlAnchor anchor = (HtmlAnchor) firstPage.getHtmlElementById("link");
+        final HtmlAnchor anchor = firstPage.getHtmlElementById("link");
         final Page secondPage = anchor.click();
         assertEquals("First", firstPage.getTitleText());
         assertEquals("text/xml", secondPage.getWebResponse().getContentType());
@@ -2053,9 +1774,9 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testOpenWindow_javascript() throws Exception {
+    public void openWindow_javascript() throws Exception {
         final WebClient webClient = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final String firstContent = "<html><head><title>First</title></head><body>\n"
             + "<form name='form1'>\n"
@@ -2072,14 +1793,14 @@ public class WindowTest extends WebTestCase {
         webConnection.setResponse(URL_SECOND, secondContent, 200, "OK", "text/javascript", emptyList);
         webClient.setWebConnection(webConnection);
 
-        final HtmlPage firstPage = (HtmlPage) webClient.getPage(URL_FIRST);
+        final HtmlPage firstPage = webClient.getPage(URL_FIRST);
         assertEquals("First", firstPage.getTitleText());
 
         eventCatcher.listenTo(webClient);
 
         final WebWindow firstWebWindow = firstPage.getEnclosingWindow();
 
-        final HtmlAnchor anchor = (HtmlAnchor) firstPage.getHtmlElementById("link");
+        final HtmlAnchor anchor = firstPage.getHtmlElementById("link");
         final Page secondPage = anchor.click();
         assertEquals("First", firstPage.getTitleText());
         assertEquals("text/javascript", secondPage.getWebResponse().getContentType());
@@ -2098,9 +1819,9 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testOpenWindow_html() throws Exception {
+    public void openWindow_html() throws Exception {
         final WebClient webClient = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final String firstContent = "<html><head><title>First</title></head><body>\n"
             + "<form name='form1'>\n"
@@ -2118,14 +1839,14 @@ public class WindowTest extends WebTestCase {
         webConnection.setResponse(URL_SECOND, secondContent);
         webClient.setWebConnection(webConnection);
 
-        final HtmlPage firstPage = (HtmlPage) webClient.getPage(URL_FIRST);
+        final HtmlPage firstPage = webClient.getPage(URL_FIRST);
         assertEquals("First", firstPage.getTitleText());
 
         eventCatcher.listenTo(webClient);
 
         final WebWindow firstWebWindow = firstPage.getEnclosingWindow();
 
-        final HtmlAnchor anchor = (HtmlAnchor) firstPage.getHtmlElementById("link");
+        final HtmlAnchor anchor = firstPage.getHtmlElementById("link");
         final Page secondPage = anchor.click();
         assertEquals("First", firstPage.getTitleText());
         assertEquals("text/html", secondPage.getWebResponse().getContentType());
@@ -2143,10 +1864,10 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testOpenWindow_refererHeader() throws Exception {
+    public void openWindow_refererHeader() throws Exception {
         final String headerIE = null;
-        testOpenWindow_refererHeader(BrowserVersion.INTERNET_EXPLORER_6_0, headerIE);
-        testOpenWindow_refererHeader(BrowserVersion.INTERNET_EXPLORER_7_0, headerIE);
+        testOpenWindow_refererHeader(BrowserVersion.INTERNET_EXPLORER_6, headerIE);
+        testOpenWindow_refererHeader(BrowserVersion.INTERNET_EXPLORER_7, headerIE);
         final String headerFF = URL_FIRST.toString();
         testOpenWindow_refererHeader(BrowserVersion.FIREFOX_2, headerFF);
     }
@@ -2165,14 +1886,14 @@ public class WindowTest extends WebTestCase {
             = "<html><head><title>Second</title></head><body></body></html>";
 
         final WebClient client = new WebClient(browser);
-        final MockWebConnection conn = new MockWebConnection(client);
+        final MockWebConnection conn = new MockWebConnection();
         client.setWebConnection(conn);
 
         conn.setResponse(URL_FIRST, firstContent);
         conn.setResponse(URL_SECOND, secondContent);
 
-        final HtmlPage firstPage = (HtmlPage) client.getPage(URL_FIRST);
-        final HtmlButton buttonA = (HtmlButton) firstPage.getHtmlElementById("clickme");
+        final HtmlPage firstPage = client.getPage(URL_FIRST);
+        final HtmlButton buttonA = firstPage.getHtmlElementById("clickme");
 
         buttonA.click();
         final Map<String, String> lastAdditionalHeaders = conn.getLastAdditionalHeaders();
@@ -2180,38 +1901,10 @@ public class WindowTest extends WebTestCase {
     }
 
     /**
-     * Tests that nested setTimeouts that are deeper than Thread.MAX_PRIORITY
-     * do not cause an exception.
      * @throws Exception if the test fails
      */
     @Test
-    public void testNestedSetTimeoutAboveMaxPriority() throws Exception {
-        final int max = Thread.MAX_PRIORITY + 1;
-        final String content = "<html><body><script language='JavaScript'>\n"
-            + "var depth = 0;\n"
-            + "var maxdepth = " + max + ";\n"
-            + "function addAnother() {\n"
-            + "  if (depth < maxdepth) {\n"
-            + "    window.alert('ping');\n"
-            + "    depth++;\n"
-            + "    window.setTimeout('addAnother();', 1);\n"
-            + "  }\n"
-            + "}\n"
-            + "addAnother();\n"
-            + "</script></body></html>";
-
-        final List<String> collectedAlerts = Collections.synchronizedList(new ArrayList<String>());
-        final HtmlPage page = loadPage(content, collectedAlerts);
-        assertTrue("threads did not stop in time", page.getEnclosingWindow()
-                .getThreadManager().joinAll((max + 1) * 1000));
-        assertEquals(Collections.nCopies(max, "ping"), collectedAlerts);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testEvalScopeOtherWindow() throws Exception {
+    public void evalScopeOtherWindow() throws Exception {
         final String content = "<html><body>\n"
             + "<iframe src='iframe.html'></iframe>\n"
             + "</body></html>";
@@ -2226,7 +1919,7 @@ public class WindowTest extends WebTestCase {
         final List<String> collectedAlerts = new ArrayList<String>();
         webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, content);
         webConnection.setDefaultResponse(iframe);
         webClient.setWebConnection(webConnection);
@@ -2242,7 +1935,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testEvalScopeLocal() throws Exception {
+    public void evalScopeLocal() throws Exception {
         final String content = "<html><body><form id='formtest'><input id='element' value='elementValue'/></form>\n"
             + "<script> \n"
             + "var docPatate = 'patate';\n"
@@ -2270,7 +1963,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testEvalScopeEvent() throws Exception {
+    public void evalScopeEvent() throws Exception {
         final String html = "<html><body onload='test()'><script>\n"
             + "   function test() {\n"
             + "      var s = 'string';\n"
@@ -2292,7 +1985,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testFunctionEquality() throws Exception {
+    public void functionEquality() throws Exception {
         final String content = "<html><body>\n"
             + "<script>\n"
             + "alert(window.focus == window.focus)\n"
@@ -2311,13 +2004,10 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testCaptureEvents() throws Exception {
+    public void captureEvents() throws Exception {
         final String content = "<html><head><title>foo</title>\n"
             + "<script>\n"
-            + "function t()\n"
-            + "{\n"
-            + "    alert('captured');\n"
-            + "}\n"
+            + "function t() { alert('captured'); }\n"
             + "window.captureEvents(Event.CLICK);\n"
             + "window.onclick = t;\n"
             + "</script></head><body>\n"
@@ -2326,7 +2016,7 @@ public class WindowTest extends WebTestCase {
 
         final List<String> collectedAlerts = new ArrayList<String>();
         final HtmlPage page = loadPage(BrowserVersion.FIREFOX_2, content, collectedAlerts);
-        ((ClickableElement) page.getHtmlElementById("theDiv")).click();
+        page.<HtmlElement>getHtmlElementById("theDiv").click();
 
         final String[] expectedAlerts = {"123", "captured"};
         assertEquals(expectedAlerts, collectedAlerts);
@@ -2336,10 +2026,10 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testGetComputedStyle() throws Exception {
+    public void getComputedStyle() throws Exception {
         testGetComputedStyle(BrowserVersion.FIREFOX_2);
         try {
-            testGetComputedStyle(BrowserVersion.INTERNET_EXPLORER_6_0);
+            testGetComputedStyle(BrowserVersion.INTERNET_EXPLORER_6);
             fail("'getComputedStyle' is not defined for IE");
         }
         catch (final Exception e) {
@@ -2371,7 +2061,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    public void testGetComputedStyle_WithComputedColor() throws Exception {
+    public void getComputedStyle_WithComputedColor() throws Exception {
         final String html =
               "<html>\n"
             + "  <head>\n"
@@ -2393,7 +2083,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    public void testOnLoadContext() throws Exception {
+    public void onLoadContext() throws Exception {
         final String html = "<html><body><script>\n"
             + "var x = function() { alert(this==window) };\n"
             + "window.onload = x;\n"
@@ -2411,7 +2101,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testEval() throws Exception {
+    public void eval() throws Exception {
         final String content = "<html><body>\n"
             + "<input type='button' id='myButton' value='Click Me' onclick='test(this)'>\n"
             + "<script>\n"
@@ -2425,7 +2115,7 @@ public class WindowTest extends WebTestCase {
 
         final List<String> collectedAlerts = new ArrayList<String>();
         final HtmlPage page = loadPage(content, collectedAlerts);
-        ((ClickableElement) page.getHtmlElementById("myButton")).click();
+        page.<HtmlElement>getHtmlElementById("myButton").click();
         assertEquals(expectedAlerts, collectedAlerts);
     }
 
@@ -2433,7 +2123,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testUndefinedProperty() throws Exception {
+    public void undefinedProperty() throws Exception {
         final String content = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
             + "    alert(window['something']);\n"
@@ -2449,33 +2139,10 @@ public class WindowTest extends WebTestCase {
     }
 
     /**
-     * Regression test for https://sf.net/tracker/index.php?func=detail&aid=1153708&group_id=47038&atid=448266
-     * and https://bugzilla.mozilla.org/show_bug.cgi?id=443491.
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testOverwriteFunctions() throws Exception {
-        final String content = "<html><head><script language='JavaScript'>\n"
-            + "function alert()\n"
-            + "{\n"
-            + "  scroll = 'xxx';\n"
-            + "  document.write(scroll);\n"
-            + "}\n"
-            + "function navigator()\n"
-            + "{\n"
-            + "  alert('xxx');\n"
-            + "}\n"
-            + "navigator();\n"
-            + "</script></head><body></body></html>";
-        final HtmlPage page = loadPage(content);
-        assertEquals("xxx", page.getBody().asText());
-    }
-
-    /**
      * @throws Exception if an error occurs
      */
     @Test
-    public void testFrames() throws Exception {
+    public void frames() throws Exception {
         final String framesetContent =
             "<html><head><title>First</title></head>\n"
             + "<frameset id='fs' rows='20%,*'>\n"
@@ -2498,7 +2165,7 @@ public class WindowTest extends WebTestCase {
         final WebClient webClient = new WebClient();
         webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, framesetContent);
         webConnection.setResponse(URL_SECOND, frameContent);
         webClient.setWebConnection(webConnection);
@@ -2514,7 +2181,7 @@ public class WindowTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    public void testFunctionPrototypeArguments() throws Exception {
+    public void functionPrototypeArguments() throws Exception {
         if (notYetImplemented()) {
             return;
         }
@@ -2543,119 +2210,24 @@ public class WindowTest extends WebTestCase {
     }
 
     /**
-     * Test window properties that match Prototypes.
-     *
      * @throws Exception if the test fails
      */
     @Test
-    public void testWindowProperties() throws Exception {
-        testWindowProperties(BrowserVersion.INTERNET_EXPLORER_7_0, new String[] {"undefined", "undefined"});
-        testWindowProperties(BrowserVersion.FIREFOX_2, new String[] {"[Node]", "[Element]"});
-    }
-
-    private void testWindowProperties(final BrowserVersion browserVersion, final String[] expectedAlerts)
-        throws Exception {
-        final String html = "<html><head><title>foo</title><script>\n"
-            + "  function test() {\n"
-            + "    alert(window.Node);\n"
-            + "    alert(window.Element);\n"
-            + "  }\n"
+    public void openWindow_numericName() throws Exception {
+        final String html
+            = "<html><head><script>\n"
+            + "function test() {\n"
+            + "  var w1 = window.open('about:blank', 1);\n"
+            + "  alert(w1 != null);\n"
+            + "}\n"
             + "</script></head><body onload='test()'>\n"
-            + "<form name='myForm'></form>\n"
+            + "<iframe name='myFrame' id='myFrame'></iframe>\n"
             + "</body></html>";
 
         final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(browserVersion, html, collectedAlerts);
-        assertEquals(expectedAlerts, collectedAlerts);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testEval_localVariable() throws Exception {
-        final String html = "<html><head><title>foo</title><script>\n"
-            + "  function test() {\n"
-            + "    var f = document.getElementById('testForm1');\n"
-            + "    alert(f.text1.value);\n"
-            + "    eval('f.text_' + 1).value = 'changed';\n"
-            + "    alert(f.text1.value);\n"
-            + "  }\n"
-            + "</script></head><body onload='test()'>\n"
-            + "  <form id='testForm1'>\n"
-            + "    <input id='text1' type='text' name='text_1' value='original'>\n"
-            + "  </form>\n"
-            + "</body></html>";
-
-        final String[] expectedAlerts = {"original", "changed"};
-        final List<String> collectedAlerts = new ArrayList<String>();
+        final String[] expectedAlerts = {"true"};
         loadPage(html, collectedAlerts);
         assertEquals(expectedAlerts, collectedAlerts);
     }
 
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testCollectGarbage() throws Exception {
-        testCollectGarbage(BrowserVersion.INTERNET_EXPLORER_6_0, "function");
-        testCollectGarbage(BrowserVersion.FIREFOX_2, "undefined");
-    }
-
-    private void testCollectGarbage(final BrowserVersion browser, final String expectedType) throws Exception {
-        final String html = "<html><head><title>foo</title><script>\n"
-            + "  function test() {\n"
-            + "    alert(typeof CollectGarbage);\n"
-            + "  }\n"
-            + "</script></head><body onload='test()'>\n"
-            + "</body></html>";
-
-        final String[] expectedAlerts = {expectedType};
-        createTestPageForRealBrowserIfNeeded(html, expectedAlerts);
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(browser, html, collectedAlerts);
-        assertEquals(expectedAlerts, collectedAlerts);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void open_FF() throws Exception {
-        final String html = "<html><head><title>foo</title><script>\n"
-            + "  function performAction() {\n"
-            + "    actionwindow = window.open('', '1205399746518', "
-            + "'location=no,scrollbars=no,resizable=no,width=200,height=275');\n"
-            + "    actionwindow.document.writeln('Please wait while connecting to server...');\n"
-            + "    actionwindow.focus();\n"
-            + "    actionwindow.close();\n"
-            + "  }\n"
-            + "</script></head><body>\n"
-            + "    <input value='Click Me' type=button onclick='performAction()'>\n"
-            + "</body></html>";
-
-        final HtmlPage page = loadPage(BrowserVersion.FIREFOX_2, html, null);
-        final HtmlButtonInput input = (HtmlButtonInput) page.getFirstByXPath("//input");
-        input.click();
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void execScript() throws Exception {
-        final String html = "<html><head><title>foo</title><script>\n"
-            + "  function test() {\n"
-            + "    window.execScript('alert(1);');\n"
-            + "  }\n"
-            + "</script></head><body onload='test()'>\n"
-            + "</body></html>";
-
-        final String[] expectedAlerts = {"1"};
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(BrowserVersion.INTERNET_EXPLORER_7_0, html, collectedAlerts);
-        assertEquals(expectedAlerts, collectedAlerts);
-    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "col".
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4097 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -35,7 +35,7 @@ public class HtmlTableColumn extends ClickableElement {
     public static final String TAG_NAME = "col";
 
     /**
-     * Create an instance of HtmlTableColumn
+     * Creates an instance of HtmlTableColumn
      *
      * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
@@ -56,7 +56,7 @@ public class HtmlTableColumn extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getSpanAttribute() {
-        return getAttributeValue("span");
+        return getAttribute("span");
     }
 
     /**
@@ -68,7 +68,7 @@ public class HtmlTableColumn extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getWidthAttribute() {
-        return getAttributeValue("width");
+        return getAttribute("width");
     }
 
     /**
@@ -80,7 +80,7 @@ public class HtmlTableColumn extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getAlignAttribute() {
-        return getAttributeValue("align");
+        return getAttribute("align");
     }
 
     /**
@@ -92,7 +92,7 @@ public class HtmlTableColumn extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getCharAttribute() {
-        return getAttributeValue("char");
+        return getAttribute("char");
     }
 
     /**
@@ -104,7 +104,7 @@ public class HtmlTableColumn extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getCharoffAttribute() {
-        return getAttributeValue("charoff");
+        return getAttribute("charoff");
     }
 
     /**
@@ -116,6 +116,6 @@ public class HtmlTableColumn extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getValignAttribute() {
-        return getAttributeValue("valign");
+        return getAttribute("valign");
     }
 }

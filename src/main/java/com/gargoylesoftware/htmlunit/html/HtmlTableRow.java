@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
-import java.util.Map;
-import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 import com.gargoylesoftware.htmlunit.SgmlPage;
@@ -26,7 +26,7 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "tr".
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4794 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -96,7 +96,7 @@ public class HtmlTableRow extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getAlignAttribute() {
-        return getAttributeValue("align");
+        return getAttribute("align");
     }
 
     /**
@@ -108,7 +108,7 @@ public class HtmlTableRow extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getCharAttribute() {
-        return getAttributeValue("char");
+        return getAttribute("char");
     }
 
     /**
@@ -120,7 +120,7 @@ public class HtmlTableRow extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getCharoffAttribute() {
-        return getAttributeValue("charoff");
+        return getAttribute("charoff");
     }
 
     /**
@@ -132,7 +132,7 @@ public class HtmlTableRow extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getValignAttribute() {
-        return getAttributeValue("valign");
+        return getAttribute("valign");
     }
 
     /**
@@ -152,7 +152,7 @@ public class HtmlTableRow extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getBgcolorAttribute() {
-        return getAttributeValue("bgcolor");
+        return getAttribute("bgcolor");
     }
 
     /**

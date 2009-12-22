@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
 /**
  * Tests for {@link HtmlButtonInput}.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4002 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  */
 public class HtmlButtonInputTest extends WebTestCase {
@@ -44,9 +44,9 @@ public class HtmlButtonInputTest extends WebTestCase {
             + "</form></body></html>";
         final List<String> collectedAlerts = new ArrayList<String>();
         final HtmlPage page = loadPage(htmlContent, collectedAlerts);
-        final HtmlButtonInput button = (HtmlButtonInput) page.getHtmlElementById("button");
+        final HtmlButtonInput button = page.getHtmlElementById("button");
 
-        final HtmlPage secondPage = (HtmlPage) button.click();
+        final HtmlPage secondPage = button.click();
 
         final String[] expectedAlerts = {"foo"};
         assertEquals(expectedAlerts, collectedAlerts);

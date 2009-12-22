@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,7 +65,7 @@ public class DefaultElementFactoryTest extends WebTestCase {
      */
     private void verifyAttributes(final HtmlAnchor anchor) {
         // Get the attributes iterator
-        final Iterator<DomAttr> attributeEntriesIterator = anchor.getAttributesCollection().iterator();
+        final Iterator<DomAttr> attributeEntriesIterator = anchor.getAttributesMap().values().iterator();
 
         // Verify if the attributes are in ascending order of name.
         DomAttr htmlAttr = attributeEntriesIterator.next();
@@ -91,7 +91,7 @@ public class DefaultElementFactoryTest extends WebTestCase {
             + "<a href='http://www.google.com' tabindex='2' accesskey='F'>foo</a>\n"
             + "</body></html>";
         final HtmlPage page = loadPage(html);
-        final HtmlAnchor anchor = page.getFirstAnchorByText("foo");
+        final HtmlAnchor anchor = page.getAnchorByText("foo");
 
         verifyAttributes(anchor);
     }

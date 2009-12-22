@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,14 +18,17 @@ package com.gargoylesoftware.htmlunit;
  * A generic page that will be returned for any text related content.
  * Specifically any content types that start with "text/"
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4756 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  */
 public class TextPage implements Page {
+
+    /** Serial version UID. */
+    private static final long serialVersionUID = -3338485355330723848L;
+
     private final WebResponse webResponse_;
     private final String content_;
-
     private WebWindow enclosingWindow_;
 
     /**

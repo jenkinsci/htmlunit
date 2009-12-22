@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,26 +19,34 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
 
 /**
  * Tests for {@link com.gargoylesoftware.htmlunit.javascript.NamedNodeMap}.
  *
- * @version $Revision: 3038 $
+ * @version $Revision: 4476 $
  * @author Marc Guillemot
  * @author Daniel Gredler
+ * @author Ahmed Ashour
  */
+@RunWith(BrowserRunner.class)
 public class NamedNodeMapTest extends WebTestCase {
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
+    @NotYetImplemented(Browser.IE)
+    @Alerts(FF = { "name=f", "id=f", "foo=bar", "baz=blah" }, IE = { "CORRECT THE EXPECTATION PLEASE!!!!" })
     public void testAttributes() throws Exception {
         final String html =
               "<html>\n"
@@ -56,16 +64,15 @@ public class NamedNodeMapTest extends WebTestCase {
             + "<form name='f' id='f' foo='bar' baz='blah'></form>\n"
             + "</body>\n"
             + "</html>";
-        final List<String> actual = new ArrayList<String>();
-        loadPage(html, actual);
-        final String[] expected = {"name=f", "id=f", "foo=bar", "baz=blah"};
-        assertEquals(expected, actual);
+
+        loadPageWithAlerts(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
+    @Alerts({ "name", "f", "name", "f", "name", "f", "name", "f", "null" })
     public void testGetNamedItem_HTML() throws Exception {
         final String html =
               "<html>\n"
@@ -89,12 +96,8 @@ public class NamedNodeMapTest extends WebTestCase {
             + "<form name='f' id='f' foo='bar' baz='blah'></form>\n"
             + "</body>\n"
             + "</html>";
-        final String[] expected = {"name", "f", "name", "f", "name", "f", "name", "f", "null"};
-        createTestPageForRealBrowserIfNeeded(html, expected);
 
-        final List<String> actual = new ArrayList<String>();
-        loadPage(html, actual);
-        assertEquals(expected, actual);
+        loadPageWithAlerts(html);
     }
 
     /**
@@ -131,9 +134,9 @@ public class NamedNodeMapTest extends WebTestCase {
 
         final String[] expectedAlerts = new String[] {"name", "y", "name", "y", "null", "undefined", "null"};
         final List<String> collectedAlerts = new ArrayList<String>();
-        final WebClient client = new WebClient(BrowserVersion.FIREFOX_2);
+        final WebClient client = getWebClient();
         client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection(client);
+        final MockWebConnection conn = new MockWebConnection();
         conn.setResponse(firstURL, html);
         conn.setResponse(secondURL, xml, "text/xml");
         client.setWebConnection(conn);
@@ -142,4 +145,27 @@ public class NamedNodeMapTest extends WebTestCase {
         assertEquals(expectedAlerts, collectedAlerts);
     }
 
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(IE = { "[object]", "[object]", "[object]" }, FF = { "undefined", "undefined", "undefined" })
+    public void unspecifiedAttributes() throws Exception {
+        final String html =
+              "<html>\n"
+            + "<head>\n"
+            + "<script>\n"
+            + "  function test() {\n"
+            + "    alert(document.body.attributes.language);\n"
+            + "    alert(document.body.attributes.id);\n"
+            + "    alert(document.body.attributes.dir);\n"
+            + "  }\n"
+            + "</script>\n"
+            + "</head>\n"
+            + "<body onload='test()'>\n"
+            + "</body>\n"
+            + "</html>";
+
+        loadPageWithAlerts(html);
+    }
 }

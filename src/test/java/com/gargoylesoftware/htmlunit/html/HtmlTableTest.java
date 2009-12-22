@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,9 +29,10 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
 /**
  * Tests for {@link HtmlTable}.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4781 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Ahmed Ashour
+ * @author Marc Guillemot
  */
 public class HtmlTableTest extends WebTestCase {
 
@@ -50,7 +51,7 @@ public class HtmlTableTest extends WebTestCase {
             + "</body></html>";
         final HtmlPage page = loadPage(htmlContent);
 
-        final HtmlTable table = (HtmlTable) page.getHtmlElementById("table1");
+        final HtmlTable table = page.getHtmlElementById("table1");
 
         final HtmlTableCell cell1 = table.getCellAt(0, 0);
         Assert.assertEquals("cell1 contents", "cell1", cell1.asText());
@@ -83,7 +84,7 @@ public class HtmlTableTest extends WebTestCase {
             + "</body></html>";
         final HtmlPage page = loadPage(htmlContent);
 
-        final HtmlTable table = (HtmlTable) page.getHtmlElementById("table1");
+        final HtmlTable table = page.getHtmlElementById("table1");
 
         final HtmlTableCell cell1 = table.getCellAt(0, 0);
         Assert.assertEquals("cell (0,0) contents", "row 1 col 1", cell1.asText());
@@ -118,7 +119,7 @@ public class HtmlTableTest extends WebTestCase {
             + "</body></html>";
         final HtmlPage page = loadPage(htmlContent);
 
-        final HtmlTable table = (HtmlTable) page.getHtmlElementById("table1");
+        final HtmlTable table = page.getHtmlElementById("table1");
 
         final HtmlTableCell cell = table.getCellAt(99, 0);
         Assert.assertNull("cell", cell);
@@ -142,7 +143,7 @@ public class HtmlTableTest extends WebTestCase {
             + "</body></html>";
         final HtmlPage page = loadPage(htmlContent);
 
-        final HtmlTable table = (HtmlTable) page.getHtmlElementById("table1");
+        final HtmlTable table = page.getHtmlElementById("table1");
 
         final List<HtmlTableRow> expectedRows = new ArrayList<HtmlTableRow>();
         expectedRows.add(table.getRowById("row1"));
@@ -179,7 +180,7 @@ public class HtmlTableTest extends WebTestCase {
             + "</body></html>";
         final HtmlPage page = loadPage(htmlContent);
 
-        final HtmlTable table = (HtmlTable) page.getHtmlElementById("table1");
+        final HtmlTable table = page.getHtmlElementById("table1");
 
         final List<HtmlTableRow> expectedRows = new ArrayList<HtmlTableRow>();
         expectedRows.add(table.getRowById("row1"));
@@ -218,7 +219,7 @@ public class HtmlTableTest extends WebTestCase {
             + "</body></html>";
         final HtmlPage page = loadPage(htmlContent);
 
-        final HtmlTable table = (HtmlTable) page.getHtmlElementById("table1");
+        final HtmlTable table = page.getHtmlElementById("table1");
 
         assertNotNull(table.getHeader());
         assertNotNull(table.getFooter());
@@ -247,7 +248,7 @@ public class HtmlTableTest extends WebTestCase {
             + "</body></html>";
         final HtmlPage page = loadPage(htmlContent);
 
-        final HtmlTable table = (HtmlTable) page.getHtmlElementById("table1");
+        final HtmlTable table = page.getHtmlElementById("table1");
 
         assertEquals(null, table.getHeader());
         assertEquals(null, table.getFooter());
@@ -269,7 +270,7 @@ public class HtmlTableTest extends WebTestCase {
             + "</body></html>";
         final HtmlPage page = loadPage(htmlContent);
 
-        final HtmlTable table = (HtmlTable) page.getHtmlElementById("table1");
+        final HtmlTable table = page.getHtmlElementById("table1");
 
         assertEquals("MyCaption", table.getCaptionText());
     }
@@ -294,13 +295,13 @@ public class HtmlTableTest extends WebTestCase {
         final HtmlPage page = loadPage(htmlContent);
 
         // Check that a <tbody> was inserted properly
-        final HtmlTableDataCell cell1 = (HtmlTableDataCell) page.getHtmlElementById("cell1");
+        final HtmlTableDataCell cell1 = page.getHtmlElementById("cell1");
         assertTrue(HtmlTableRow.class.isInstance(cell1.getParentNode()));
         assertTrue(HtmlTableBody.class.isInstance(cell1.getParentNode().getParentNode()));
         assertTrue(HtmlTable.class.isInstance(cell1.getParentNode().getParentNode().getParentNode()));
 
         // Check that the existing <tbody> wasn't messed up.
-        final HtmlTableDataCell cell2 = (HtmlTableDataCell) page.getHtmlElementById("cell2");
+        final HtmlTableDataCell cell2 = page.getHtmlElementById("cell2");
         assertTrue(HtmlTableRow.class.isInstance(cell2.getParentNode()));
         assertTrue(HtmlTableBody.class.isInstance(cell2.getParentNode().getParentNode()));
         assertTrue(HtmlTable.class.isInstance(cell2.getParentNode().getParentNode().getParentNode()));
@@ -349,8 +350,58 @@ public class HtmlTableTest extends WebTestCase {
 
         final String[] expectedAlerts = {"[object HTMLTableElement]"};
         final List<String> collectedAlerts = new ArrayList<String>();
+        createTestPageForRealBrowserIfNeeded(html, expectedAlerts);
         final HtmlPage page = loadPage(BrowserVersion.FIREFOX_2, html, collectedAlerts);
         assertTrue(HtmlTable.class.isInstance(page.getHtmlElementById("myId")));
         assertEquals(expectedAlerts, collectedAlerts);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void asText() throws Exception {
+        final String html = "<html><head>\n"
+            + "</head><body>\n"
+            + "  <table id='myId'>\n"
+            + "  <caption>This is the caption</caption>\n"
+            + "  <tr>\n"
+            + "  <td>cell 1,1</td>\n"
+            + "  <td>cell 1,2</td>\n"
+            + "  </tr>\n"
+            + "  <tr>\n"
+            + "  <td>cell 2,1</td>\n"
+            + "  <td>cell 2,2</td>\n"
+            + "  </tr>\n"
+            + "  </table>\n"
+            + "</body></html>";
+
+        final HtmlPage page = loadPage(html);
+        final HtmlElement table = page.getHtmlElementById("myId");
+        final String expectedText = "This is the caption" + LINE_SEPARATOR
+            + "cell 1,1\tcell 1,2" + LINE_SEPARATOR
+            + "cell 2,1\tcell 2,2";
+
+        assertEquals(expectedText, table.asText());
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void asXml_emptyTable() throws Exception {
+        final String html = "<html>\n"
+            + "<head/>\n"
+            + "<body>\n"
+            + "<div style=\"visibility: hidden\">\n"
+            + "<table>\n"
+            + "</table>\n"
+            + "</div>\n"
+            + "after the div\n"
+            + "</body>\n"
+            + "</html>";
+
+        final HtmlPage page = loadPage(html);
+        assertTrue(page.asXml().contains("</table>"));
     }
 }

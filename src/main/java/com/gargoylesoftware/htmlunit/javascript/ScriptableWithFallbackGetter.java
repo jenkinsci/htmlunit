@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  */
 package com.gargoylesoftware.htmlunit.javascript;
 
-import org.mozilla.javascript.Scriptable;
+import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 
 /**
  * Provides a clean way to specify a fallback property getter when the "normal way" failed.
@@ -22,7 +22,7 @@ import org.mozilla.javascript.Scriptable;
  * able to return a value that has not been configured as a property (ex: the DOM node whose
  * ID or name matches the property name).
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4402 $
  * @author Marc Guillemot
  */
 public interface ScriptableWithFallbackGetter extends Scriptable {

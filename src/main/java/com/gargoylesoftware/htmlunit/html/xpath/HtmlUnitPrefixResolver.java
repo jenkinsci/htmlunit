@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,14 +20,14 @@ import org.apache.xml.utils.PrefixResolverDefault;
 import org.w3c.dom.Node;
 
 import com.gargoylesoftware.htmlunit.html.DomAttr;
+import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.DomNode;
-import com.gargoylesoftware.htmlunit.xml.XmlElement;
 import com.gargoylesoftware.htmlunit.xml.XmlPage;
 
 /**
  * Custom {@link PrefixResolverDefault} extension.
  *
- * @version $Revision: 3173 $
+ * @version $Revision: 4002 $
  * @author Ahmed Ashour
  */
 final class HtmlUnitPrefixResolver extends PrefixResolverDefault {
@@ -36,7 +36,7 @@ final class HtmlUnitPrefixResolver extends PrefixResolverDefault {
      * Creates a new instance.
      * @param xpathExpressionContext the context from which XPath expression prefixes will be resolved
      */
-    public HtmlUnitPrefixResolver(final Node xpathExpressionContext) {
+    HtmlUnitPrefixResolver(final Node xpathExpressionContext) {
         super(xpathExpressionContext);
     }
 
@@ -48,19 +48,19 @@ final class HtmlUnitPrefixResolver extends PrefixResolverDefault {
         String namespace = super.getNamespaceForPrefix(prefix, namespaceContext);
         if (namespace == null) {
             if (namespaceContext instanceof XmlPage) {
-                final XmlElement documentElement = ((XmlPage) namespaceContext).getDocumentXmlElement();
+                final DomElement documentElement = ((XmlPage) namespaceContext).getDocumentElement();
                 if (documentElement != null) {
                     namespace = getNamespace(documentElement, prefix);
                 }
             }
-            else if (namespaceContext instanceof XmlElement) {
-                namespace = getNamespace((XmlElement) namespaceContext, prefix);
+            else if (namespaceContext instanceof DomElement) {
+                namespace = getNamespace((DomElement) namespaceContext, prefix);
             }
         }
         return namespace;
     }
 
-    private String getNamespace(final XmlElement element, final String prefix) {
+    private String getNamespace(final DomElement element, final String prefix) {
         final Map<String, DomAttr> attributes = element.getAttributesMap();
         for (final String name : attributes.keySet()) {
             if (name.startsWith("xmlns:")) {
@@ -70,8 +70,8 @@ final class HtmlUnitPrefixResolver extends PrefixResolverDefault {
             }
         }
         for (final DomNode child : element.getChildren()) {
-            if (child instanceof XmlElement) {
-                final String namespace = getNamespace((XmlElement) child, prefix);
+            if (child instanceof DomElement) {
+                final String namespace = getNamespace((DomElement) child, prefix);
                 if (namespace != null) {
                     return namespace;
                 }

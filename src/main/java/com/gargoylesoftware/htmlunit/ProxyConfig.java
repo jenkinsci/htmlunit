@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
  * Class which centralizes proxy configuration, in an effort to reduce clutter in the {@link WebClient}
  * class. One instance of this class exists for each <tt>WebClient</tt> instance.
  *
- * @version $Revision: 3187 $
+ * @version $Revision: 4595 $
  * @author Daniel Gredler
  * @see WebClient#getProxyConfig()
  */
@@ -34,6 +34,8 @@ public class ProxyConfig implements Serializable {
     private String proxyHost_;
     private int proxyPort_;
     private final Map<String, Pattern> proxyBypassHosts_;
+    private String proxyAutoConfigUrl_;
+    private String proxyAutoConfigContent_;
 
     /**
      * Creates a new instance.
@@ -122,4 +124,36 @@ public class ProxyConfig implements Serializable {
         return bypass;
     }
 
+    /**
+     * Returns the proxy auto-config URL.
+     * @return the proxy auto-config URL
+     */
+    public String getProxyAutoConfigUrl() {
+        return proxyAutoConfigUrl_;
+    }
+
+    /**
+     * Sets the proxy auto-config URL.
+     * @param proxyAutoConfigUrl the proxy auto-config URL
+     */
+    public void setProxyAutoConfigUrl(final String proxyAutoConfigUrl) {
+        proxyAutoConfigUrl_ = proxyAutoConfigUrl;
+        setProxyAutoConfigContent(null);
+    }
+
+    /**
+     * Returns the proxy auto-config content.
+     * @return the proxy auto-config content
+     */
+    protected String getProxyAutoConfigContent() {
+        return proxyAutoConfigContent_;
+    }
+
+    /**
+     * Sets the proxy auto-config content.
+     * @param proxyAutoConfigContent the proxy auto-config content
+     */
+    protected void setProxyAutoConfigContent(final String proxyAutoConfigContent) {
+        proxyAutoConfigContent_ = proxyAutoConfigContent;
+    }
 }

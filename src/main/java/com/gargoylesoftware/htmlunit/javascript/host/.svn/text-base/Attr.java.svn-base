@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,8 @@ package com.gargoylesoftware.htmlunit.javascript.host;
 
 import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.DomNode;
-import com.gargoylesoftware.htmlunit.html.HtmlElement;
+import com.gargoylesoftware.htmlunit.html.DomText;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
-import com.gargoylesoftware.htmlunit.xml.XmlElement;
 
 /**
  * A JavaScript object for an Attribute.
@@ -31,7 +30,7 @@ import com.gargoylesoftware.htmlunit.xml.XmlElement;
  * @author Ahmed Ashour
  * @author Sudhan Moghe
  */
-public class Attr extends SimpleScriptable {
+public class Attr extends Node {
 
     private static final long serialVersionUID = 3256441425892750900L;
 
@@ -55,7 +54,7 @@ public class Attr extends SimpleScriptable {
     private DomElement parent_;
 
     /**
-     * Create an instance. JavaScript objects must have a default constructor.
+     * Creates an instance. JavaScript objects must have a default constructor.
      */
     public Attr() { }
 
@@ -73,7 +72,8 @@ public class Attr extends SimpleScriptable {
     }
 
     /**
-     * Ensures that all attributes are initialized correctly via {@link #init(String, HtmlElement)}.
+     * Ensures that all attributes are initialized correctly via
+     * {@link #init(String, com.gargoylesoftware.htmlunit.html.HtmlElement)}.
      *
      * {@inheritDoc}
      */
@@ -91,14 +91,17 @@ public class Attr extends SimpleScriptable {
      */
     public void detachFromParent() {
         if (parent_ != null) {
-            if (parent_ instanceof HtmlElement) {
-                value_ = ((HtmlElement) parent_).getAttributeValue(name_);
-            }
-            else {
-                value_ = ((XmlElement) parent_).getAttributeValue(name_);
-            }
+            value_ = parent_.getAttribute(name_);
         }
         parent_ = null;
+    }
+
+    /**
+     * Returns <tt>true</tt> if this attribute is an ID.
+     * @return <tt>true</tt> if this attribute is an ID
+     */
+    public boolean jsxGet_isId() {
+        return "id".equals(name_);
     }
 
     /**
@@ -110,22 +113,6 @@ public class Attr extends SimpleScriptable {
     }
 
     /**
-     * Returns <code>null</code>.
-     * @return <code>null</code>
-     */
-    public Object jsxGet_firstChild() {
-        return null;
-    }
-
-    /**
-     * Returns <code>null</code>.
-     * @return <code>null</code>
-     */
-    public Object jsxGet_lastChild() {
-        return null;
-    }
-
-    /**
      * Returns the name of the attribute.
      * @return the name of the attribute
      */
@@ -134,26 +121,11 @@ public class Attr extends SimpleScriptable {
     }
 
     /**
-     * Returns <code>null</code>.
-     * @return <code>null</code>
-     */
-    public Object jsxGet_nextSibling() {
-        return null;
-    }
-
-    /**
-     * Returns the name of this attribute.
-     * @return the name of this attribute
-     */
-    public String jsxGet_nodeName() {
-        return jsxGet_name();
-    }
-
-    /**
      * Returns the type of DOM node this attribute represents.
      * @return the type of DOM node this attribute represents
      */
-    public int jsxGet_nodeType() {
+    @Override
+    public short jsxGet_nodeType() {
         return org.w3c.dom.Node.ATTRIBUTE_NODE;
     }
 
@@ -161,35 +133,28 @@ public class Attr extends SimpleScriptable {
      * Returns the value of this attribute.
      * @return the value of this attribute
      */
+    @Override
     public String jsxGet_nodeValue() {
         return jsxGet_value();
     }
 
     /**
-     * Returns the containing document.
-     * @return the containing document
+     * Returns the owner element.
+     * @return the owner element
      */
-    public Object jsxGet_ownerDocument() {
+    public SimpleScriptable jsxGet_ownerElement() {
         if (parent_ != null) {
-            final SimpleScriptable documentScriptable = getScriptableFor(parent_.getPage());
-            return documentScriptable;
+            return getScriptableFor(parent_);
         }
         return null;
     }
 
     /**
-     * Returns <code>null</code>.
+     * {@inheritDoc}
      * @return <code>null</code>
      */
-    public Object jsxGet_parentNode() {
-        return null;
-    }
-
-    /**
-     * Returns <code>null</code>.
-     * @return <code>null</code>
-     */
-    public Object jsxGet_previousSibling() {
+    @Override
+    public Node jsxGet_parentNode() {
         return null;
     }
 
@@ -198,6 +163,9 @@ public class Attr extends SimpleScriptable {
      * @return <tt>true</tt> if this attribute has been specified
      */
     public boolean jsxGet_specified() {
+        if (parent_ != null) {
+            return parent_.hasAttribute(name_);
+        }
         return true;
     }
 
@@ -207,10 +175,7 @@ public class Attr extends SimpleScriptable {
      */
     public String jsxGet_value() {
         if (parent_ != null) {
-            if (parent_ instanceof HtmlElement) {
-                return ((HtmlElement) parent_).getAttributeValue(name_);
-            }
-            return ((XmlElement) parent_).getAttributeValue(name_);
+            return parent_.getAttribute(name_);
         }
         return value_;
     }
@@ -221,13 +186,30 @@ public class Attr extends SimpleScriptable {
      */
     public void jsxSet_value(final String value) {
         if (parent_ != null) {
-            if (parent_ instanceof HtmlElement) {
-                ((HtmlElement) parent_).setAttributeValue(name_, value);
-            }
-            ((XmlElement) parent_).setAttributeValue(name_, value);
+            parent_.setAttribute(name_, value);
         }
         else {
             value_ = value;
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Node jsxGet_firstChild() {
+        return jsxGet_lastChild();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Node jsxGet_lastChild() {
+        if (getBrowserVersion().isFirefox()) {
+            final DomText text = new DomText(getDomNodeOrDie().getPage(), jsxGet_nodeValue());
+            return (Node) text.getScriptObject();
+        }
+        return null;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ import org.apache.commons.httpclient.protocol.SecureProtocolSocketFactory;
  * thereof. This is especially useful when you are trying to connect to a server with expired or
  * corrupt certificates... this class doesn't care!
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4002 $
  * @author Daniel Gredler
  * @created Nov 12, 2004
  * @see com.gargoylesoftware.htmlunit.WebClient#setUseInsecureSSL(boolean)

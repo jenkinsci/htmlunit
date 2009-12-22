@@ -1,8 +1,8 @@
-8
+10
 
 dir
-3268
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/cldr/nls/ko
+5285
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.6/src/test/resources/dojo/1.0.2/dojo/cldr/nls/ko
 https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 
 
@@ -12,7 +12,7 @@ https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 asashour
 
 
-svn:special svn:externals svn:needs-lock
+
 
 
 
@@ -32,11 +32,33 @@ file
 
 
 
-2008-08-19T23:16:15.000000Z
+2009-12-22T19:28:46.000000Z
 93c99ef02935e550435096a5deed7f08
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+397
 
 gregorian.js
 file
@@ -44,9 +66,31 @@ file
 
 
 
-2008-08-19T23:16:15.000000Z
+2009-12-22T19:28:46.000000Z
 fce06d3a195eb3b093edb532833ac8ed
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+2084
 

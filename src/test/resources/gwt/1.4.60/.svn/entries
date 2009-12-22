@@ -1,62 +1,0 @@
-8
-
-dir
-3268
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/gwt/1.4.60
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
-
-
-
-2008-05-02T07:21:08.416169Z
-3000
-asashour
-
-
-svn:special svn:externals svn:needs-lock
-
-
-
-
-
-
-
-
-
-
-
-797ba2fd-6919-0410-a55a-8c1f0daf9432
-
-I18N
-dir
-
-Mail
-dir
-
-DynaTable
-dir
-
-Hello
-dir
-
-JSON
-dir
-
-KitchenSink
-dir
-
-SimpleXML
-dir
-
-gwt-servlet.jar
-file
-
-
-
-
-2008-08-19T23:16:34.000000Z
-44ebfa75a98b68d62952eb885cd3794e
-2007-09-14T19:20:27.829000Z
-1877
-asashour
-has-props
-

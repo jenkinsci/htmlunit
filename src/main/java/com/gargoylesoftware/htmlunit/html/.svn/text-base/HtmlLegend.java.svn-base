@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ public class HtmlLegend extends ClickableElement {
     public static final String TAG_NAME = "legend";
 
     /**
-     * Create an instance of HtmlLegend
+     * Creates an instance of HtmlLegend
      *
      * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
@@ -56,7 +56,7 @@ public class HtmlLegend extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getAccessKeyAttribute() {
-        return getAttributeValue("accesskey");
+        return getAttribute("accesskey");
     }
 
     /**
@@ -68,6 +68,6 @@ public class HtmlLegend extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getAlignAttribute() {
-        return getAttributeValue("align");
+        return getAttribute("align");
     }
 }

@@ -1,35 +1,23 @@
 K 25
 svn:wc:ra_dav:version-url
 V 97
-/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/main/java/com/gargoylesoftware/htmlunit/xml
-END
-XmlElement.java
-K 25
-svn:wc:ra_dav:version-url
-V 113
-/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/main/java/com/gargoylesoftware/htmlunit/xml/XmlElement.java
-END
-XmlAttr.java
-K 25
-svn:wc:ra_dav:version-url
-V 110
-/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/main/java/com/gargoylesoftware/htmlunit/xml/XmlAttr.java
+/svnroot/htmlunit/!svn/ver/4905/tags/HtmlUnit-2.6/src/main/java/com/gargoylesoftware/htmlunit/xml
 END
 XmlPage.java
 K 25
 svn:wc:ra_dav:version-url
 V 110
-/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/main/java/com/gargoylesoftware/htmlunit/xml/XmlPage.java
+/svnroot/htmlunit/!svn/ver/4905/tags/HtmlUnit-2.6/src/main/java/com/gargoylesoftware/htmlunit/xml/XmlPage.java
 END
 XmlUtil.java
 K 25
 svn:wc:ra_dav:version-url
 V 110
-/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/main/java/com/gargoylesoftware/htmlunit/xml/XmlUtil.java
+/svnroot/htmlunit/!svn/ver/4905/tags/HtmlUnit-2.6/src/main/java/com/gargoylesoftware/htmlunit/xml/XmlUtil.java
 END
 package.html
 K 25
 svn:wc:ra_dav:version-url
 V 110
-/svnroot/htmlunit/!svn/ver/3199/tags/HtmlUnit-2.2/src/main/java/com/gargoylesoftware/htmlunit/xml/package.html
+/svnroot/htmlunit/!svn/ver/4905/tags/HtmlUnit-2.6/src/main/java/com/gargoylesoftware/htmlunit/xml/package.html
 END

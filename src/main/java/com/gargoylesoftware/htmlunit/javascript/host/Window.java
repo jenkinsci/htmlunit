@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
 package com.gargoylesoftware.htmlunit.javascript.host;
 
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.Serializable;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.HashMap;
@@ -23,18 +25,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 
+import net.sourceforge.htmlunit.corejs.javascript.Context;
+import net.sourceforge.htmlunit.corejs.javascript.Function;
+import net.sourceforge.htmlunit.corejs.javascript.Script;
+import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
+import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
+import net.sourceforge.htmlunit.corejs.javascript.Undefined;
+
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.collections.Transformer;
 import org.apache.commons.lang.StringUtils;
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.Function;
-import org.mozilla.javascript.Scriptable;
-import org.mozilla.javascript.Undefined;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import com.gargoylesoftware.htmlunit.AlertHandler;
 import com.gargoylesoftware.htmlunit.ConfirmHandler;
+import com.gargoylesoftware.htmlunit.DialogWindow;
 import com.gargoylesoftware.htmlunit.ElementNotFoundException;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.PromptHandler;
+import com.gargoylesoftware.htmlunit.ScriptException;
+import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.StatusHandler;
 import com.gargoylesoftware.htmlunit.TopLevelWindow;
 import com.gargoylesoftware.htmlunit.WebAssert;
@@ -52,15 +63,23 @@ import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlLink;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.html.HtmlStyle;
-import com.gargoylesoftware.htmlunit.html.NonSerializable;
 import com.gargoylesoftware.htmlunit.javascript.JavaScriptEngine;
 import com.gargoylesoftware.htmlunit.javascript.ScriptableWithFallbackGetter;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.javascript.background.JavaScriptFunctionJob;
+import com.gargoylesoftware.htmlunit.javascript.background.JavaScriptStringJob;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSStyleDeclaration;
+import com.gargoylesoftware.htmlunit.javascript.host.css.ComputedCSSStyleDeclaration;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLCollection;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLDocument;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLUnknownElement;
+import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLDocument;
 
 /**
  * A JavaScript object for a Window.
  *
- * @version $Revision: 3127 $
+ * @version $Revision: 4820 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:chen_jun@users.sourceforge.net">Chen Jun</a>
  * @author David K. Taylor
@@ -72,25 +91,36 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
  * @author David D. Kilzer
  * @author Chris Erskine
  * @author Ahmed Ashour
- * @see <a href="http://msdn.microsoft.com/workshop/author/dhtml/reference/objects/obj_window.asp">
- * MSDN documentation</a>
+ * @see <a href="http://msdn.microsoft.com/en-us/library/ms535873.aspx">MSDN documentation</a>
  */
-public class Window extends SimpleScriptable implements ScriptableWithFallbackGetter {
+public class Window extends SimpleScriptable implements ScriptableWithFallbackGetter, Function {
 
     private static final long serialVersionUID = -7730298149962810325L;
+    private static final Log LOG = LogFactory.getLog(Window.class);
+
+    /**
+     * The minimum delay that can be used with setInterval() or setTimeout(). Browser minimums are
+     * usually in the 10ms to 15ms range, but there's really no reason for us to waste that much time.
+     * http://jsninja.com/Timers#Minimum_Timer_Delay_and_Reliability
+     */
+    private static final int MIN_TIMER_DELAY = 1;
+
     private HTMLDocument document_;
     private Navigator navigator_;
     private WebWindow webWindow_;
     private Screen screen_;
     private History history_;
     private Location location_;
-    private Object event_;
+    private OfflineResourceList applicationCache_;
+    private Selection selection_;
+    private Event currentEvent_;
     private String status_ = "";
     private HTMLCollection frames_; // has to be a member to have equality (==) working
     private Map<Class< ? extends SimpleScriptable>, Scriptable> prototypes_ =
         new HashMap<Class< ? extends SimpleScriptable>, Scriptable>();
     private final JavaScriptEngine scriptEngine_;
     private EventListenersContainer eventListenersContainer_;
+    private Object controllers_;
 
     /**
      * Cache computed styles when possible, because their calculation is very expensive, involving lots
@@ -98,8 +128,19 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * then evaluated). We use a weak hash map because we don't want this cache to be the only reason
      * nodes are kept around in the JVM, if all other references to them are gone.
      */
-    private Map<Node, ComputedCSSStyleDeclaration> computedStyles_ =
+    private transient WeakHashMap<Node, ComputedCSSStyleDeclaration> computedStyles_ =
         new WeakHashMap<Node, ComputedCSSStyleDeclaration>();
+
+    /**
+     * Restores the transient {@link #computedStyles_} map during deserialization.
+     * @param stream the stream to read the object from
+     * @throws IOException if an IO error occurs
+     * @throws ClassNotFoundException if a class is not found
+     */
+    private void readObject(final ObjectInputStream stream) throws IOException, ClassNotFoundException {
+        stream.defaultReadObject();
+        computedStyles_ = new WeakHashMap<Node, ComputedCSSStyleDeclaration>();
+    }
 
     /**
      * Creates an instance.
@@ -146,11 +187,29 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
         final String stringMessage = Context.toString(message);
         final AlertHandler handler = getWebWindow().getWebClient().getAlertHandler();
         if (handler == null) {
-            getLog().warn("window.alert(\"" + stringMessage + "\") no alert handler installed");
+            LOG.warn("window.alert(\"" + stringMessage + "\") no alert handler installed");
         }
         else {
             handler.handleAlert(document_.getHtmlPage(), stringMessage);
         }
+    }
+
+    /**
+     * Creates a base-64 encoded ASCII string from a string of binary data.
+     * @param stringToEncode string to encode
+     * @return the encoded string
+     */
+    public String jsxFunction_btoa(final String stringToEncode) {
+        return new String(Base64.encodeBase64(stringToEncode.getBytes()));
+    }
+
+    /**
+     * Decodes a string of data which has been encoded using base-64 encoding..
+     * @param encodedData the encoded string
+     * @return the decoded value
+     */
+    public String jsxFunction_atob(final String encodedData) {
+        return new String(Base64.decodeBase64(encodedData.getBytes()));
     }
 
     /**
@@ -161,7 +220,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
     public boolean jsxFunction_confirm(final String message) {
         final ConfirmHandler handler = getWebWindow().getWebClient().getConfirmHandler();
         if (handler == null) {
-            getLog().warn("window.confirm(\""
+            LOG.warn("window.confirm(\""
                     + message + "\") no confirm handler installed, simulating the OK button");
             return true;
         }
@@ -176,7 +235,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
     public String jsxFunction_prompt(final String message) {
         final PromptHandler handler = getWebWindow().getWebClient().getPromptHandler();
         if (handler == null) {
-            getLog().warn("window.prompt(\"" + message + "\") no prompt handler installed");
+            LOG.warn("window.prompt(\"" + message + "\") no prompt handler installed");
             return null;
         }
         return handler.handlePrompt(document_.getHtmlPage(), message);
@@ -191,58 +250,86 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
     }
 
     /**
-     * Returns the current event.
-     * @return <code>null</code> if no event is currently available
+     * Returns the application cache.
+     * @return the application cache
+     */
+    public OfflineResourceList jsxGet_applicationCache() {
+        return applicationCache_;
+    }
+
+    /**
+     * Returns the current event (used by JavaScript only when emulating IE).
+     * @return the current event, or <tt>null</tt> if no event is currently available
      */
     public Object jsxGet_event() {
-        return event_;
+        return currentEvent_;
+    }
+
+    /**
+     * Returns the current event (used internally regardless of the emulation mode).
+     * @return the current event, or <tt>null</tt> if no event is currently available
+     */
+    public Event getCurrentEvent() {
+        return currentEvent_;
     }
 
     /**
      * Sets the current event.
-     * @param event the event
+     * @param event the current event
      */
-    public void setEvent(final Object event) {
-        event_ = event;
+    void setCurrentEvent(final Event event) {
+        currentEvent_ = event;
     }
 
     /**
      * Opens a new window.
      *
-     * @param context the JavaScript Context
-     * @param scriptable the object that the function was called on
-     * @param args the arguments passed to the function
-     * @param function the function object that was invoked
+     * @param url when a new document is opened, <i>url</i> is a String that specifies a MIME type for the document.
+     *        When a new window is opened, <i>url</i> is a String that specifies the URL to render in the new window
+     * @param name the name
+     * @param features the features
+     * @param replace whether to replace in the history list or no
      * @return the newly opened window, or <tt>null</tt> if popup windows have been disabled
      * @see WebClient#isPopupBlockerEnabled()
+     * @see <a href="http://msdn.microsoft.com/en-us/library/ms536651.aspx">MSDN documentation</a>
      */
-    public static Object jsxFunction_open(
-        final Context context, final Scriptable scriptable, final Object[] args, final Function function) {
-
-        final String url = getStringArg(0, args, null);
-        final String windowName = getStringArg(1, args, "");
-        final String features = getStringArg(2, args, null);
-        final boolean replaceCurrentEntryInBrowsingHistory = getBooleanArg(3, args, false);
-        final Window thisWindow = (Window) scriptable;
-        final WebClient webClient = thisWindow.webWindow_.getWebClient();
+    public Object jsxFunction_open(final Object url, final Object name, final Object features,
+            final Object replace) {
+        String urlString = null;
+        if (url != Undefined.instance) {
+            urlString = (String) url;
+        }
+        String windowName = "";
+        if (name != Undefined.instance) {
+            windowName = Context.toString(name);
+        }
+        String featuresString = null;
+        if (features != Undefined.instance) {
+            featuresString = (String) features;
+        }
+        boolean replaceCurrentEntryInBrowsingHistory = false;
+        if (replace != Undefined.instance) {
+            replaceCurrentEntryInBrowsingHistory = (Boolean) replace;
+        }
+        final WebClient webClient = webWindow_.getWebClient();
 
         if (webClient.isPopupBlockerEnabled()) {
-            thisWindow.getLog().debug("Ignoring window.open() invocation because popups are blocked.");
+            LOG.debug("Ignoring window.open() invocation because popups are blocked.");
             return null;
         }
 
-        if (features != null || replaceCurrentEntryInBrowsingHistory) {
-            thisWindow.getLog().debug(
-                "Window.open: features and replaceCurrentEntryInBrowsingHistory "
-                + "not implemented: url=[" + url
+        if (featuresString != null || replaceCurrentEntryInBrowsingHistory) {
+            LOG.debug(
+                "window.open: features and replaceCurrentEntryInBrowsingHistory "
+                + "not implemented: url=[" + urlString
                 + "] windowName=[" + windowName
-                + "] features=[" + features
+                + "] features=[" + featuresString
                 + "] replaceCurrentEntry=[" + replaceCurrentEntryInBrowsingHistory
                 + "]");
         }
 
         // if specified name is the name of an existing window, then hold it
-        if (StringUtils.isEmpty(url) && !"".equals(windowName)) {
+        if (StringUtils.isEmpty(urlString) && !"".equals(windowName)) {
             final WebWindow webWindow;
             try {
                 webWindow = webClient.getWebWindowByName(windowName);
@@ -252,31 +339,21 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
                 // nothing
             }
         }
-        final URL newUrl = thisWindow.makeUrlForOpenWindow(url);
-        final WebWindow newWebWindow = webClient.openWindow(newUrl, windowName, thisWindow.webWindow_);
+        final URL newUrl = makeUrlForOpenWindow(urlString);
+        final WebWindow newWebWindow = webClient.openWindow(newUrl, windowName, webWindow_);
         return newWebWindow.getScriptObject();
     }
 
     /**
-     * Creates a popup window Open a new window.
-     * @see <a href="http://msdn.microsoft.com/workshop/author/dhtml/reference/methods/createpopup.asp">
-     * MSDN documentation</a>
-     * @param context the JavaScript Context
-     * @param scriptable the object that the function was called on
-     * @param args the arguments passed to the function
-     * @param function the function object that was invoked
+     * Creates a popup window.
+     * @see <a href="http://msdn.microsoft.com/en-us/library/ms536392.aspx">MSDN documentation</a>
      * @return the created popup
      */
-    public static Popup jsxFunction_createPopup(
-        final Context context, final Scriptable scriptable, final Object[] args, final Function function) {
-
-        final Window thisWindow = (Window) scriptable;
-
+    public Popup jsxFunction_createPopup() {
         final Popup popup = new Popup();
-        popup.setParentScope(thisWindow);
-        popup.setPrototype(thisWindow.getPrototype(Popup.class));
-        popup.init(thisWindow);
-
+        popup.setParentScope(this);
+        popup.setPrototype(getPrototype(Popup.class));
+        popup.init(this);
         return popup;
     }
 
@@ -293,7 +370,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
             return new URL(urlString);
         }
         catch (final MalformedURLException e) {
-            getLog().error("Unable to create URL for openWindow: relativeUrl=[" + urlString + "]", e);
+            LOG.error("Unable to create URL for openWindow: relativeUrl=[" + urlString + "]", e);
             return null;
         }
     }
@@ -303,24 +380,36 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * The invocation occurs only if the window is opened after the delay
      * and does not contain an other page than the one that originated the setTimeout.
      *
-     * JavaScript param 1: The code to execute, either a String or a Function.
-     * JavaScript param 2: the delay in milliseconds to wait before executing the code.
-     *
-     * @param context the JavaScript Context
-     * @param scriptable the object that the function was called on
-     * @param args the arguments passed to the function
-     * @param function the function object that was invoked
+     * @param code specifies the function pointer or string that indicates the code to be executed
+     *        when the specified interval has elapsed
+     * @param timeout specifies the number of milliseconds
+     * @param language specifies language
      * @return the id of the created timer
      */
-    public static int jsxFunction_setTimeout(final Context context, final Scriptable scriptable,
-            final Object[] args, final Function function) {
-        final Window thisWindow = (Window) scriptable;
-        final Object codeToExec = getObjectArg(0, args, null);
-        final int timeout = getIntArg(1, args, 0);
-
-        thisWindow.getLog().debug("setTimeout(" + codeToExec + ", " + timeout + ")");
-        final int id = thisWindow.getWebWindow().getThreadManager()
-            .registerJob(codeToExec, timeout, "window.setTimeout");
+    public int jsxFunction_setTimeout(final Object code, int timeout, final Object language) {
+        if (timeout < MIN_TIMER_DELAY) {
+            timeout = MIN_TIMER_DELAY;
+        }
+        final int id;
+        final WebWindow w = getWebWindow();
+        final Page page = (Page) getDomNodeOrNull();
+        final String description = "window.setTimeout(" + timeout + ")";
+        if (code == null) {
+            throw Context.reportRuntimeError("Function not provided.");
+        }
+        else if (code instanceof String) {
+            final String s = (String) code;
+            final JavaScriptStringJob job = new JavaScriptStringJob(timeout, null, description, w, s);
+            id = getWebWindow().getJobManager().addJob(job, page);
+        }
+        else if (code instanceof Function) {
+            final Function f = (Function) code;
+            final JavaScriptFunctionJob job = new JavaScriptFunctionJob(timeout, null, description, w, f);
+            id = getWebWindow().getJobManager().addJob(job, page);
+        }
+        else {
+            throw Context.reportRuntimeError("Unknown type for function.");
+        }
         return id;
     }
 
@@ -330,15 +419,35 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @param timeoutId identifier for the timeout to clear (returned by <tt>setTimeout</tt>)
      */
     public void jsxFunction_clearTimeout(final int timeoutId) {
-        getWebWindow().getThreadManager().removeJob(timeoutId);
+        LOG.debug("clearTimeout(" + timeoutId + ")");
+        getWebWindow().getJobManager().removeJob(timeoutId);
     }
 
     /**
      * Returns the JavaScript property "navigator".
-     * @return the document
+     * @return the navigator
      */
     public Navigator jsxGet_navigator() {
         return navigator_;
+    }
+
+    /**
+     * Returns the JavaScript property "clientInformation".
+     * @return the client information
+     */
+    public Navigator jsxGet_clientInformation() {
+        return navigator_;
+    }
+
+    /**
+     * Returns the JavaScript property "clipboardData".
+     * @return the ClipboardData
+     */
+    public ClipboardData jsxGet_clipboardData() {
+        final ClipboardData clipboardData = new ClipboardData();
+        clipboardData.setParentScope(this);
+        clipboardData.setPrototype(getPrototype(clipboardData.getClass()));
+        return clipboardData;
     }
 
     /**
@@ -391,11 +500,10 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
     }
 
     /**
-     * Initialize the object.
-     * @param webWindow the web window containing the JavaScript
-     * @exception Exception If an error occurs.
+     * Initializes this window.
+     * @param webWindow the web window corresponding to this window
      */
-    public void initialize(final WebWindow webWindow) throws Exception {
+    public void initialize(final WebWindow webWindow) {
         webWindow_ = webWindow;
         webWindow_.setScriptObject(this);
 
@@ -403,16 +511,15 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
         document_.setParentScope(this);
         document_.setPrototype(getPrototype(HTMLDocument.class));
         document_.setWindow(this);
-        if (webWindow.getEnclosedPage() instanceof DomNode) {
-            document_.setDomNode((DomNode) webWindow.getEnclosedPage());
-        }
+        if (webWindow.getEnclosedPage() instanceof SgmlPage) {
+            final SgmlPage page = (SgmlPage) webWindow.getEnclosedPage();
+            document_.setDomNode(page);
 
-        final DomHtmlAttributeChangeListenerImpl listener = new DomHtmlAttributeChangeListenerImpl();
-        final DomNode docNode = document_.getDomNodeOrNull();
-        if (docNode != null) {
-            docNode.addDomChangeListener(listener);
-            if (docNode instanceof HtmlElement) {
-                ((HtmlElement) docNode).addHtmlAttributeChangeListener(listener);
+            final DomHtmlAttributeChangeListenerImpl listener = new DomHtmlAttributeChangeListenerImpl();
+            page.addDomChangeListener(listener);
+
+            if (page instanceof HtmlPage) {
+                ((HtmlPage) page).addHtmlAttributeChangeListener(listener);
             }
         }
 
@@ -432,6 +539,14 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
         location_.setParentScope(this);
         location_.setPrototype(getPrototype(Location.class));
         location_.initialize(this);
+
+        applicationCache_ = new OfflineResourceList();
+        applicationCache_.setParentScope(this);
+        applicationCache_.setPrototype(getPrototype(OfflineResourceList.class));
+
+        // like a JS new Object()
+        final Context ctx = Context.getCurrentContext();
+        controllers_ = ctx.newObject(this);
     }
 
     /**
@@ -454,9 +569,10 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
     }
 
     /**
-     * Initialize the object. Only call for Windows with no contents.
+     * Initializes the object. Only called for Windows with no contents.
      */
     public void initialize() {
+        // Empty.
     }
 
     /**
@@ -506,24 +622,32 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
 
     /**
      * Returns the value of the frames property.
-     * @return the live collection of frames
+     * @return the value of the frames property
      */
-    public HTMLCollection jsxGet_frames() {
+    public Object jsxGet_frames() {
+        return new WindowProxy(getWebWindow());
+    }
+
+    /**
+     * Returns the number of frames contained by this window.
+     * @return the number of frames contained by this window
+     */
+    public int jsxGet_length() {
+        return getFrames().jsxGet_length();
+    }
+
+    /**
+     * Returns the live collection of frames contained by this window.
+     * @return the live collection of frames contained by this window
+     */
+    private HTMLCollection getFrames() {
         if (frames_ == null) {
             final String xpath = ".//*[(name() = 'frame' or name() = 'iframe')]";
             final HtmlPage page = (HtmlPage) getWebWindow().getEnclosedPage();
             frames_ = new HTMLCollection(this);
-            final Transformer toEnclosedWindow = new Transformer() {
-                public Object transform(final Object obj) {
-                    if (obj instanceof BaseFrame) {
-                        return ((BaseFrame) obj).getEnclosedWindow();
-                    }
-                    return ((FrameWindow) obj).getFrameElement().getEnclosedWindow();
-                }
-            };
+            final Transformer toEnclosedWindow = new FrameToWindowTransformer();
             frames_.init(page, xpath, toEnclosedWindow);
         }
-
         return frames_;
     }
 
@@ -546,14 +670,20 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * Removes focus from this element.
      */
     public void jsxFunction_blur() {
-        getLog().debug("Window.blur() not implemented");
+        LOG.debug("window.blur() not implemented");
     }
 
     /**
      * Closes this window.
      */
     public void jsxFunction_close() {
-        getWebWindow().getWebClient().deregisterWebWindow(getWebWindow());
+        final WebWindow webWindow = getWebWindow();
+        if (webWindow instanceof TopLevelWindow) {
+            ((TopLevelWindow) webWindow).close();
+        }
+        else {
+            webWindow.getWebClient().deregisterWebWindow(webWindow);
+        }
     }
 
     /**
@@ -570,7 +700,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @param y the vertical position
      */
     public void jsxFunction_moveTo(final int x, final int y) {
-        getLog().debug("Window.moveTo() not implemented");
+        LOG.debug("window.moveTo() not implemented");
     }
 
     /**
@@ -579,7 +709,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @param y the vertical position
      */
     public void jsxFunction_moveBy(final int x, final int y) {
-        getLog().debug("Window.moveBy() not implemented");
+        LOG.debug("window.moveBy() not implemented");
     }
 
     /**
@@ -588,7 +718,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @param height the height offset
      */
     public void jsxFunction_resizeBy(final int width, final int height) {
-        getLog().debug("Window.resizeBy() not implemented");
+        LOG.debug("window.resizeBy() not implemented");
     }
 
     /**
@@ -597,7 +727,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @param height the height of the Window in pixel after resize
      */
     public void jsxFunction_resizeTo(final int width, final int height) {
-        getLog().debug("Window.resizeTo() not implemented");
+        LOG.debug("window.resizeTo() not implemented");
     }
 
     /**
@@ -606,7 +736,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @param y the vertical position to scroll to
      */
     public void jsxFunction_scroll(final int x, final int y) {
-        getLog().debug("Window.scroll() not implemented");
+        LOG.debug("window.scroll() not implemented");
     }
 
     /**
@@ -615,7 +745,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @param y the vertical distance to scroll by
      */
     public void jsxFunction_scrollBy(final int x, final int y) {
-        getLog().debug("Window.scrollBy() not implemented");
+        LOG.debug("window.scrollBy() not implemented");
     }
 
     /**
@@ -623,7 +753,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @param lines the number of lines to scroll down
      */
     public void jsxFunction_scrollByLines(final int lines) {
-        getLog().debug("Window.scrollByLines() not implemented");
+        LOG.debug("window.scrollByLines() not implemented");
     }
 
     /**
@@ -631,7 +761,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @param pages the number of pages to scroll down
      */
     public void jsxFunction_scrollByPages(final int pages) {
-        getLog().debug("Window.scrollByPages() not implemented");
+        LOG.debug("window.scrollByPages() not implemented");
     }
 
     /**
@@ -640,7 +770,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @param y the vertical position to scroll to
      */
     public void jsxFunction_scrollTo(final int x, final int y) {
-        getLog().debug("Window.scrollTo() not implemented");
+        LOG.debug("window.scrollTo() not implemented");
     }
 
     /**
@@ -707,7 +837,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * Gets the container for event listeners.
      * @return the container (newly created if needed)
      */
-    EventListenersContainer getEventListenersContainer() {
+    public EventListenersContainer getEventListenersContainer() {
         if (eventListenersContainer_ == null) {
             eventListenersContainer_ = new EventListenersContainer(this);
         }
@@ -718,8 +848,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * Allows the registration of event listeners on the event target.
      * @param type the event type to listen for (like "load")
      * @param listener the event listener
-     * @see <a href="http://msdn.microsoft.com/workshop/author/dhtml/reference/methods/attachevent.asp">
-     * MSDN documentation</a>
+     * @see <a href="http://msdn.microsoft.com/en-us/library/ms536343.aspx">MSDN documentation</a>
      * @return <code>true</code> if the listener has been added
      */
     public boolean jsxFunction_attachEvent(final String type, final Function listener) {
@@ -741,8 +870,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * Allows the removal of event listeners on the event target.
      * @param type the event type to listen for (like "onload")
      * @param listener the event listener
-     * @see <a href="http://msdn.microsoft.com/workshop/author/dhtml/reference/methods/detachevent.asp">
-     * MSDN documentation</a>
+     * @see <a href="http://msdn.microsoft.com/en-us/library/ms536411.aspx">MSDN documentation</a>
      */
     public void jsxFunction_detachEvent(final String type, final Function listener) {
         getEventListenersContainer().removeEventListener(StringUtils.substring(type, 2), listener, false);
@@ -760,40 +888,114 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
     }
 
     /**
-     * Returns the value of the name property.
-     * @return the window name
+     * Returns the value of the window's <tt>name</tt> property.
+     * @return the value of the window's <tt>name</tt> property
      */
     public String jsxGet_name() {
         return webWindow_.getName();
     }
 
      /**
-     * Sets the value of the newName property.
-     * @param newName the new window name
+     * Sets the value of the window's <tt>name</tt> property.
+     * @param name the value of the window's <tt>name</tt> property
      */
-    public void jsxSet_name(final String newName) {
-        webWindow_.setName(newName);
+    public void jsxSet_name(final String name) {
+        webWindow_.setName(name);
     }
 
     /**
-     * Returns the value of the onerror property.
-     * @return the value
+     * Returns the value of the window's <tt>onbeforeunload</tt> property.
+     * @return the value of the window's <tt>onbeforeunload</tt> property
      */
-    public String jsxGet_onerror() {
-        getLog().debug("Window.onerror not implemented");
-        return "";
+    public Object jsxGet_onbeforeunload() {
+        return getHandlerForJavaScript("beforeunload");
     }
 
     /**
-     * Sets the value of the onerror property.
-     * @param newValue the value
+     * Sets the value of the window's <tt>onbeforeunload</tt> property.
+     * @param onbeforeunload the value of the window's <tt>onbeforeunload</tt> property
      */
-    public void jsxSet_onerror(final String newValue) {
-        getLog().debug("Window.onerror not implemented");
+    public void jsxSet_onbeforeunload(final Object onbeforeunload) {
+        setHandlerForJavaScript("beforeunload", onbeforeunload);
     }
 
     /**
-     * Looks at attributes with the specified name.
+     * Returns the value of the window's <tt>onerror</tt> property.
+     * @return the value of the window's <tt>onerror</tt> property
+     */
+    public Object jsxGet_onerror() {
+        return getHandlerForJavaScript("error");
+    }
+
+    /**
+     * Sets the value of the window's <tt>onerror</tt> property.
+     * @param onerror the value of the window's <tt>onerror</tt> property
+     */
+    public void jsxSet_onerror(final Object onerror) {
+        setHandlerForJavaScript("error", onerror);
+    }
+
+    /**
+     * Triggers the <tt>onerror</tt> handler, if one has been set.
+     * @param e the error that needs to be reported
+     */
+    public void triggerOnError(final ScriptException e) {
+        final Object o = jsxGet_onerror();
+        if (o instanceof Function) {
+            final Function f = (Function) o;
+            final String msg = e.getMessage();
+            final String url = e.getPage().getWebResponse().getRequestSettings().getUrl().toExternalForm();
+            final int line = e.getFailingLineNumber();
+            final Object[] args = new Object[] {msg, url, line};
+            f.call(Context.getCurrentContext(), this, this, args);
+        }
+    }
+
+    private Object getHandlerForJavaScript(final String eventName) {
+        Object handler = getEventListenersContainer().getEventHandlerProp(eventName);
+        if (handler == null && !getBrowserVersion().isIE()) {
+            handler = Scriptable.NOT_FOUND;
+        }
+        return handler;
+    }
+
+    private void setHandlerForJavaScript(final String eventName, final Object handler) {
+        if (handler instanceof Function) {
+            getEventListenersContainer().setEventHandlerProp(eventName, handler);
+        }
+        // Otherwise, fail silently.
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public Object call(final Context cx, final Scriptable scope, final Scriptable thisObj, final Object[] args) {
+        if (!getBrowserVersion().isIE()) {
+            throw Context.reportRuntimeError("Window is not a function.");
+        }
+        if (args.length > 0) {
+            final Object arg = args[0];
+            if (arg instanceof String) {
+                return ScriptableObject.getProperty(this, (String) arg);
+            }
+            else if (arg instanceof Number) {
+                return ScriptableObject.getProperty(this, ((Number) arg).intValue());
+            }
+        }
+        return Context.getUndefinedValue();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public Scriptable construct(final Context cx, final Scriptable scope, final Object[] args) {
+        if (!getBrowserVersion().isIE()) {
+            throw Context.reportRuntimeError("Window is not a function.");
+        }
+        return null;
+    }
+
+    /**
      * {@inheritDoc}
      */
     public Object getWithFallback(final String name) {
@@ -804,7 +1006,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
 
             // May be attempting to retrieve a frame by name.
             final HtmlPage page = (HtmlPage) domNode.getPage();
-            result = getFrameByName(page, name);
+            result = getFrameWindowByName(page, name);
 
             if (result == NOT_FOUND) {
                 // May be attempting to retrieve element(s) by name. IMPORTANT: We're using map-backed operations
@@ -812,7 +1014,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
                 // overhead. We only use an XPath-based operation when we have to (where there is more than one
                 // matching element). This optimization appears to improve performance in certain situations by ~15%
                 // vs using XPath-based operations throughout.
-                final List<HtmlElement> elements = page.getHtmlElementsByName(name);
+                final List<HtmlElement> elements = page.getElementsByName(name);
                 if (elements.size() == 1) {
                     result = getScriptableFor(elements.get(0));
                 }
@@ -820,7 +1022,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
                     result = document_.jsxFunction_getElementsByName(name);
                 }
                 else {
-                    // May be attempting to retrieve element by ID (again, try a map-back operation instead of XPath).
+                    // May be attempting to retrieve element by ID (try map-backed operation again instead of XPath).
                     try {
                         final HtmlElement htmlElement = page.getHtmlElementById(name);
                         result = getScriptableFor(htmlElement);
@@ -830,9 +1032,39 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
                     }
                 }
             }
+
+            if (result instanceof Window) {
+                final WebWindow webWindow = ((Window) result).getWebWindow();
+                result = new WindowProxy(webWindow);
+            }
+            else if (result instanceof HTMLUnknownElement && getBrowserVersion().isIE()) {
+                final HtmlElement unknownElement = ((HTMLUnknownElement) result).getDomNodeOrDie();
+                if (unknownElement.getNodeName().equals("xml")) {
+                    final XMLDocument document = ActiveXObject.buildXMLDocument(getWebWindow());
+                    document.setParentScope(this);
+                    final Iterator<HtmlElement> children = unknownElement.getAllHtmlChildElements().iterator();
+                    if (children.hasNext()) {
+                        final HtmlElement root = children.next();
+                        document.jsxFunction_loadXML(root.asXml().trim());
+                    }
+                    result = document;
+                }
+            }
         }
 
         return result;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Object get(final int index, final Scriptable start) {
+        final HTMLCollection frames = getFrames();
+        if (index >= frames.jsxGet_length()) {
+            return Context.getUndefinedValue();
+        }
+        return frames.jsxFunction_item(index);
     }
 
     /**
@@ -855,28 +1087,10 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
         else if ("Image".equals(name)) {
             name = "HTMLImageElement";
         }
-        final Object superValue = super.get(name, start);
-        if (superValue == NOT_FOUND && getWebWindow() != null && getBrowserVersion().isIE()) {
-            final Object element = jsxGet_document().jsxFunction_getElementById(name);
-            if (element instanceof HTMLUnknownElement) {
-                final HtmlElement unknownElement = ((HTMLUnknownElement) element).getHtmlElementOrDie();
-                if (unknownElement.getNodeName().equals("xml")) {
-                    final XMLDocument document = ActiveXObject.buildXMLDocument(getWebWindow());
-                    document.setParentScope(this);
-                    final Iterator<HtmlElement> children = unknownElement.getAllHtmlChildElements().iterator();
-                    if (children.hasNext()) {
-                        final HtmlElement root = children.next();
-                        document.jsxFunction_loadXML(root.asXml().trim());
-                    }
-                    return document;
-                }
-            }
-
-        }
-        return superValue;
+        return super.get(name, start);
     }
 
-    private Scriptable getTopScope(final Scriptable s) {
+    private static Scriptable getTopScope(final Scriptable s) {
         Scriptable top = s;
         while (top != null && top.getParentScope() != null) {
             top = top.getParentScope();
@@ -884,7 +1098,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
         return top;
     }
 
-    private Object getFrameByName(final HtmlPage page, final String name) {
+    private static Object getFrameWindowByName(final HtmlPage page, final String name) {
         try {
             return page.getFrameByName(name).getScriptObject();
         }
@@ -909,7 +1123,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
             return null;
         }
         else if ("vbscript".equalsIgnoreCase(languageStr)) {
-            getLog().warn("VBScript not supported in Window.execScript().");
+            LOG.warn("VBScript not supported in Window.execScript().");
         }
         else {
             // Unrecognized language: use the IE error message ("Invalid class string").
@@ -926,7 +1140,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      */
     public Object custom_eval(final String scriptCode) {
         final Context context = Context.getCurrentContext();
-        final org.mozilla.javascript.Script script = context.compileString(scriptCode, "eval body", 0, null);
+        final Script script = context.compileString(scriptCode, "eval body", 0, null);
         return script.exec(context, this);
     }
 
@@ -952,30 +1166,42 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
     }
 
     /**
-     * Sets a chunk of JavaScript to be invoked each time a specified number of milliseconds has elapsed
-     * Current implementation does nothing.
+     * Sets a chunk of JavaScript to be invoked each time a specified number of milliseconds has elapsed.
      *
-     * JavaScript param 1: The code to execute, either a String or a Function.
-     * JavaScript param 2: the delay in milliseconds to wait before executing the code.
-     *
-     * @see <a href="http://msdn.microsoft.com/workshop/author/dhtml/reference/methods/setinterval.asp">
-     * MSDN documentation</a>
-     *
-     * @param context the JavaScript Context
-     * @param scriptable the object that the function was called on
-     * @param args the arguments passed to the function
-     * @param function the function object that was invoked
+     * @see <a href="http://msdn.microsoft.com/en-us/library/ms536749.aspx">MSDN documentation</a>
+     * @param code specifies the function pointer or string that indicates the code to be executed
+     *        when the specified interval has elapsed
+     * @param timeout specifies the number of milliseconds
+     * @param language specifies language
      * @return the id of the created interval
      */
-    public static int jsxFunction_setInterval(final Context context, final Scriptable scriptable,
-            final Object[] args, final Function function) {
-        final Window thisWindow = (Window) scriptable;
-        final Object codeToExec = getObjectArg(0, args, null);
-        final int timeout = getIntArg(1, args, 0);
-
-        thisWindow.getLog().debug("setInterval(" + codeToExec + ", " + timeout + ")");
-        final int id = thisWindow.getWebWindow().getThreadManager()
-            .registerRecurringJob(codeToExec, timeout, "window.setInterval");
+    public int jsxFunction_setInterval(final Object code, int timeout, final Object language) {
+        if (timeout == 0 && getBrowserVersion().isIE()) {
+            return jsxFunction_setTimeout(code, timeout, language);
+        }
+        if (timeout < MIN_TIMER_DELAY) {
+            timeout = MIN_TIMER_DELAY;
+        }
+        final int id;
+        final WebWindow w = getWebWindow();
+        final Page page = (Page) getDomNodeOrNull();
+        final String description = "window.setInterval(" + timeout + ")";
+        if (code == null) {
+            throw Context.reportRuntimeError("Function not provided.");
+        }
+        else if (code instanceof String) {
+            final String s = (String) code;
+            final JavaScriptStringJob job = new JavaScriptStringJob(timeout, timeout, description, w, s);
+            id = getWebWindow().getJobManager().addJob(job, page);
+        }
+        else if (code instanceof Function) {
+            final Function f = (Function) code;
+            final JavaScriptFunctionJob job = new JavaScriptFunctionJob(timeout, timeout, description, w, f);
+            id = getWebWindow().getJobManager().addJob(job, page);
+        }
+        else {
+            throw Context.reportRuntimeError("Unknown type for function.");
+        }
         return id;
     }
 
@@ -983,11 +1209,11 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * Cancels the interval previously started using the setInterval method.
      * Current implementation does nothing.
      * @param intervalID specifies the interval to cancel as returned by the setInterval method
-     * @see <a href="http://msdn.microsoft.com/workshop/author/dhtml/reference/methods/clearinterval.asp">
-     * MSDN documentation</a>
+     * @see <a href="http://msdn.microsoft.com/en-us/library/ms536353.aspx">MSDN documentation</a>
      */
     public void jsxFunction_clearInterval(final int intervalID) {
-        getWebWindow().getThreadManager().removeJob(intervalID);
+        LOG.debug("clearInterval(" + intervalID + ")");
+        getWebWindow().getJobManager().removeJob(intervalID);
     }
 
     /**
@@ -1030,19 +1256,19 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * Prints the current page. The current implementation does nothing.
      * @see <a href="http://www.mozilla.org/docs/dom/domref/dom_window_ref85.html">
      * Mozilla documentation</a>
-     * @see <a href="http://msdn.microsoft.com/workshop/author/dhtml/reference/methods/print.asp">
-     * MSDN documentation</a>
+     * @see <a href="http://msdn.microsoft.com/en-us/library/ms536672.aspx">MSDN documentation</a>
      */
     public void jsxFunction_print() {
-        getLog().debug("window.print() not implemented");
+        LOG.debug("window.print() not implemented");
     }
 
     /**
      * Does nothing special anymore... just like FF.
-     * @param type the type of events
+     * @param type the type of events to capture
+     * @see Document#jsxFunction_captureEvents(String)
      */
     public void jsxFunction_captureEvents(final String type) {
-        // nothing
+        // Empty.
     }
 
     /**
@@ -1058,29 +1284,122 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * that of <tt>element.style</tt>, but the value returned by this method is read-only.
      *
      * @param element the element
-     * @param pseudoElt a string specifying the pseudo-element to match (may be <tt>null</tt>)
+     * @param pseudo a string specifying the pseudo-element to match (may be <tt>null</tt>)
      * @return the computed style
      */
-    public ComputedCSSStyleDeclaration jsxFunction_getComputedStyle(final Node element, final String pseudoElt) {
-        ComputedCSSStyleDeclaration style = computedStyles_.get(element);
+    public ComputedCSSStyleDeclaration jsxFunction_getComputedStyle(final HTMLElement element, final String pseudo) {
+        ComputedCSSStyleDeclaration style;
+
+        synchronized (computedStyles_) {
+            style = computedStyles_.get(element);
+        }
         if (style != null) {
             return style;
         }
 
-        final HTMLElement e = (HTMLElement) element;
-        final CSSStyleDeclaration original = e.jsxGet_style();
+        final CSSStyleDeclaration original = element.jsxGet_style();
         style = new ComputedCSSStyleDeclaration(original);
 
         final StyleSheetList sheets = document_.jsxGet_styleSheets();
         for (int i = 0; i < sheets.jsxGet_length(); i++) {
-            final Stylesheet sheet = sheets.jsxFunction_item(i);
-            getLog().debug("modifyIfNecessary: " + sheet + ", " + style + ", " + e);
-            sheet.modifyIfNecessary(style, e);
+            final Stylesheet sheet = (Stylesheet) sheets.jsxFunction_item(i);
+            LOG.debug("modifyIfNecessary: " + sheet + ", " + style + ", " + element);
+            sheet.modifyIfNecessary(style, element);
         }
 
-        computedStyles_.put(element, style);
+        synchronized (computedStyles_) {
+            computedStyles_.put(element, style);
+        }
 
         return style;
+    }
+
+    /**
+     * Returns the current selection.
+     * @return the current selection
+     */
+    public Selection jsxFunction_getSelection() {
+        return getSelection();
+    }
+
+    /**
+     * Returns the current selection.
+     * @return the current selection
+     */
+    public Selection getSelection() {
+        if (selection_ == null) {
+            selection_ = new Selection();
+            selection_.setParentScope(this);
+            selection_.setPrototype(getPrototype(selection_.getClass()));
+        }
+        return selection_;
+    }
+
+    /**
+     * Creates a modal dialog box that displays the specified HTML document.
+     * @param url the URL of the document to load and display
+     * @param arguments object to be made available via <tt>window.dialogArguments</tt> in the dialog window
+     * @param features string that specifies the window ornaments for the dialog window
+     * @return the value of the <tt>returnValue</tt> property as set by the modal dialog's window
+     * @see <a href="http://msdn.microsoft.com/en-us/library/ms536759.aspx">MSDN Documentation</a>
+     * @see <a href="https://developer.mozilla.org/en/DOM/window.showModalDialog">Mozilla Documentation</a>
+     */
+    public Object jsxFunction_showModalDialog(final String url, final Object arguments, final String features) {
+        final WebWindow ww = getWebWindow();
+        final WebClient client = ww.getWebClient();
+        try {
+            final URL completeUrl = ((HtmlPage) getDomNodeOrDie()).getFullyQualifiedUrl(url);
+            final DialogWindow dialog = client.openDialogWindow(completeUrl, ww, arguments);
+            // TODO: Theoretically, we shouldn't return until the dialog window has been close()'ed...
+            // But we have to return so that the window can be close()'ed...
+            // Maybe we can use Rhino's continuation support to save state and restart when
+            // the dialog window is close()'ed? Would only work in interpreted mode, though.
+            final ScriptableObject jsDialog = (ScriptableObject) dialog.getScriptObject();
+            return jsDialog.get("returnValue", jsDialog);
+        }
+        catch (final IOException e) {
+            throw Context.throwAsScriptRuntimeEx(e);
+        }
+    }
+
+    /**
+     * Creates a modeless dialog box that displays the specified HTML document.
+     * @param url the URL of the document to load and display
+     * @param arguments object to be made available via <tt>window.dialogArguments</tt> in the dialog window
+     * @param features string that specifies the window ornaments for the dialog window
+     * @return a reference to the new window object created for the modeless dialog
+     * @see <a href="http://msdn.microsoft.com/en-us/library/ms536761.aspx">MSDN Documentation</a>
+     */
+    public Object jsxFunction_showModelessDialog(final String url, final Object arguments, final String features) {
+        final WebWindow ww = getWebWindow();
+        final WebClient client = ww.getWebClient();
+        try {
+            final URL completeUrl = ((HtmlPage) getDomNodeOrDie()).getFullyQualifiedUrl(url);
+            final DialogWindow dialog = client.openDialogWindow(completeUrl, ww, arguments);
+            final Window jsDialog = (Window) dialog.getScriptObject();
+            return jsDialog;
+        }
+        catch (final IOException e) {
+            throw Context.throwAsScriptRuntimeEx(e);
+        }
+    }
+
+    /**
+     * Gets the controllers. The result doesn't currently matter but it is important to return an
+     * object as some JavaScript libraries check it.
+     * @see <a href="https://developer.mozilla.org/En/DOM/Window.controllers">Mozilla documentation</a>
+     * @return some object
+     */
+    public Object jsxGet_controllers() {
+        return controllers_;
+    }
+
+    /**
+     * Sets the controllers.
+     * @param value the new value
+     */
+    public void jsxSet_controllers(final Object value) {
+        controllers_ = value;
     }
 
     /**
@@ -1117,7 +1436,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * removed, all elements should be removed from the computed style cache.</p>
      */
     private class DomHtmlAttributeChangeListenerImpl implements DomChangeListener, HtmlAttributeChangeListener,
-        NonSerializable {
+        Serializable {
 
         private static final long serialVersionUID = -4651000523078926322L;
 
@@ -1159,27 +1478,47 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
         private void nodeChanged(final DomNode changed) {
             // If a stylesheet was changed, all of our calculations could be off; clear the cache.
             if (changed instanceof HtmlStyle) {
-                computedStyles_.clear();
+                synchronized (computedStyles_) {
+                    computedStyles_.clear();
+                }
                 return;
             }
             if (changed instanceof HtmlLink) {
                 final String rel = ((HtmlLink) changed).getRelAttribute().toLowerCase();
                 if ("stylesheet".equals(rel)) {
-                    computedStyles_.clear();
+                    synchronized (computedStyles_) {
+                        computedStyles_.clear();
+                    }
                     return;
                 }
             }
             // Apparently it wasn't a stylesheet that changed; be semi-smart about what we evict and when.
-            final Iterator<Map.Entry<Node, ComputedCSSStyleDeclaration>> i = computedStyles_.entrySet().iterator();
-            while (i.hasNext()) {
-                final Map.Entry<Node, ComputedCSSStyleDeclaration> entry = i.next();
-                final DomNode node = entry.getKey().getDomNodeOrDie();
-                if (changed == node
-                    || changed.getParentNode() == node.getParentNode()
-                    || changed.isAncestorOf(node)) {
-                    i.remove();
+            synchronized (computedStyles_) {
+                final Iterator<Map.Entry<Node, ComputedCSSStyleDeclaration>> i = computedStyles_.entrySet().iterator();
+                while (i.hasNext()) {
+                    final Map.Entry<Node, ComputedCSSStyleDeclaration> entry = i.next();
+                    final DomNode node = entry.getKey().getDomNodeOrDie();
+                    if (changed == node
+                        || changed.getParentNode() == node.getParentNode()
+                        || changed.isAncestorOf(node)) {
+                        i.remove();
+                    }
                 }
             }
         }
     }
+
+    /**
+     * Transforms frames to windows.
+     */
+    private static class FrameToWindowTransformer implements Transformer, Serializable {
+        private static final long serialVersionUID = -8504605115217901029L;
+        public Object transform(final Object obj) {
+            if (obj instanceof BaseFrame) {
+                return ((BaseFrame) obj).getEnclosedWindow();
+            }
+            return ((FrameWindow) obj).getFrameElement().getEnclosedWindow();
+        }
+    }
+
 }

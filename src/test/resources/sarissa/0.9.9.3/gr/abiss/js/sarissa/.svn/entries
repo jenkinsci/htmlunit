@@ -1,8 +1,8 @@
-8
+10
 
 dir
-3268
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/sarissa/0.9.9.3/gr/abiss/js/sarissa
+5285
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.6/src/test/resources/sarissa/0.9.9.3/gr/abiss/js/sarissa
 https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 
 
@@ -12,7 +12,7 @@ https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 asashour
 
 
-svn:special svn:externals svn:needs-lock
+
 
 
 
@@ -32,11 +32,33 @@ file
 
 
 
-2008-08-19T23:16:50.000000Z
+2009-12-22T19:28:44.000000Z
 032074b8e90a34c5c0995ad64a96f617
 2008-03-27T16:37:25.925546Z
 2728
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+41310
 
 sarissa-compressed.js
 file
@@ -44,11 +66,33 @@ file
 
 
 
-2008-08-19T23:16:50.000000Z
+2009-12-22T19:28:44.000000Z
 1f62e3171a8ea0a0515662dab31e717f
 2008-03-27T16:37:25.925546Z
 2728
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+19091
 
 sarissa-table-utils.js
 file
@@ -56,11 +100,33 @@ file
 
 
 
-2008-08-19T23:16:50.000000Z
+2009-12-22T19:28:44.000000Z
 c5ae6f80ea2e78f7f16a5924342a91d9
 2008-03-27T16:37:25.925546Z
 2728
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+11685
 
 sarissa-table-utils-compressed.js
 file
@@ -68,11 +134,33 @@ file
 
 
 
-2008-08-19T23:16:50.000000Z
+2009-12-22T19:28:44.000000Z
 b151f72f7b3a8a565bbe091b1f881ef7
 2008-03-27T16:37:25.925546Z
 2728
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+4937
 
 sarissa_ieemu_xpath.js
 file
@@ -80,11 +168,33 @@ file
 
 
 
-2008-08-19T23:16:50.000000Z
+2009-12-22T19:28:44.000000Z
 214db1b32be69937561b8683364f11da
 2008-03-27T16:37:25.925546Z
 2728
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+9784
 
 sarissa_ieemu_xpath-compressed.js
 file
@@ -92,9 +202,31 @@ file
 
 
 
-2008-08-19T23:16:50.000000Z
+2009-12-22T19:28:44.000000Z
 bb2c1c2079e7a74134d7644d81dd5837
 2008-03-27T16:37:25.925546Z
 2728
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+3551
 

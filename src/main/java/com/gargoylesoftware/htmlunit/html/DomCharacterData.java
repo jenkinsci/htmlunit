@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,18 +16,19 @@ package com.gargoylesoftware.htmlunit.html;
 
 import org.w3c.dom.CharacterData;
 
-import com.gargoylesoftware.htmlunit.Page;
+import com.gargoylesoftware.htmlunit.SgmlPage;
 
 /**
  * Wrapper for the DOM node CharacterData.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4002 $
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
  */
 public abstract class DomCharacterData extends DomNode implements CharacterData {
 
+    private static final long serialVersionUID = -1880335251566663985L;
     /** The data string. */
     private String data_;
 
@@ -37,7 +38,7 @@ public abstract class DomCharacterData extends DomNode implements CharacterData 
      * @param page the Page that contains this element
      * @param data the data string wrapped by this node
      */
-    public DomCharacterData(final Page page, final String data) {
+    public DomCharacterData(final SgmlPage page, final String data) {
         super(page);
         data_ = data;
     }

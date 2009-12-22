@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import java.io.PrintWriter;
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Text;
 
-import com.gargoylesoftware.htmlunit.Page;
+import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.util.StringUtils;
 
 /**
@@ -30,6 +30,7 @@ import com.gargoylesoftware.htmlunit.util.StringUtils;
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Rodney Gitzel
  * @author Ahmed Ashour
+ * @author Sudhan Moghe
  */
 public class DomText extends DomCharacterData implements Text {
 
@@ -44,15 +45,27 @@ public class DomText extends DomCharacterData implements Text {
      * @param page the Page that contains this element
      * @param data the string data held by this node
      */
-    public DomText(final Page page, final String data) {
+    public DomText(final SgmlPage page, final String data) {
         super(page, data);
     }
 
     /**
      * {@inheritDoc}
      */
-    public Text splitText(final int offset) {
-        return splitDomText(offset);
+    public DomText splitText(final int offset) {
+        if (offset < 0 || offset > getLength()) {
+            throw new IllegalArgumentException("offset: " + offset + " data.length: " + getLength());
+        }
+
+        // split text into two separate nodes
+        final DomText newText = createSplitTextNode(offset);
+        setData(getData().substring(0, offset));
+
+        // insert new text node
+        if (getParentNode() != null) {
+            getParentNode().insertBefore(newText, getNextSibling());
+        }
+        return newText;
     }
 
     /**
@@ -70,25 +83,11 @@ public class DomText extends DomCharacterData implements Text {
      * Splits a DomText node in two.
      * @param offset the character position at which to split the DomText node
      * @return the DomText node that was split from this node
+     * @deprecated as of 2.6, please use {@link #splitText(int)} instead
      */
+    @Deprecated
     public DomText splitDomText(final int offset) {
-        if (offset < 0 || offset > getLength()) {
-            throw new IllegalArgumentException("offset: " + offset + " data.length: " + getLength());
-        }
-
-        // split text into two separate nodes
-        final DomText newText = createSplitTextNode(offset);
-        setData(getData().substring(0, offset));
-
-        // insert new text node
-        if (getParentNode() != null) {
-            newText.setParentNode(getParentNode());
-            newText.setPreviousSibling(this);
-            newText.setNextSibling(getNextSibling());
-            setNextSibling(newText);
-        }
-
-        return newText;
+        return splitText(offset);
     }
 
     /**
@@ -113,19 +112,6 @@ public class DomText extends DomCharacterData implements Text {
      */
     public Text replaceWholeText(final String content) throws DOMException {
         throw new UnsupportedOperationException("DomText.replaceWholeText is not yet implemented.");
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String asText() {
-        String text = getData();
-        if (!(getParentNode() instanceof HtmlTextArea)) {
-            // Remove extra whitespace
-            text = reduceWhitespace(text);
-        }
-        return text;
     }
 
     /**
@@ -154,7 +140,11 @@ public class DomText extends DomCharacterData implements Text {
     protected void printXml(final String indent, final PrintWriter printWriter) {
         if (getData().trim().length() != 0) {
             printWriter.print(indent);
-            printWriter.println(StringUtils.escapeXmlChars(getData()));
+            String data = getData();
+            if (!(getParentNode() instanceof HtmlStyle) || !data.startsWith("<!--") || !data.endsWith("-->")) {
+                data = StringUtils.escapeXmlChars(data);
+            }
+            printWriter.println(data);
         }
         printChildrenAsXml(indent, printWriter);
     }

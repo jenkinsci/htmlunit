@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,11 +18,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.collections.ListUtils;
-import org.mozilla.javascript.Context;
+import net.sourceforge.htmlunit.corejs.javascript.Context;
 
-import com.gargoylesoftware.htmlunit.Page;
+import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.html.DomDocumentFragment;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
 
 /**
  * The JavaScript object that represents a Range.
@@ -30,7 +31,7 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
  * @see <a href="http://www.xulplanet.com/references/objref/Range.html">XULPlanet</a>
  * @see <a href="http://www.w3.org/TR/DOM-Level-2-Traversal-Range/ranges.html">
  * DOM-Level-2-Traversal-Range</a>
- * @version $Revision: 3075 $
+ * @version $Revision: 4506 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
@@ -40,7 +41,7 @@ public class Range extends SimpleScriptable {
     private int startOffset_, endOffset_;
 
     /**
-     * Create an instance.
+     * Creates an instance.
      */
     public Range() {
     }
@@ -98,7 +99,7 @@ public class Range extends SimpleScriptable {
      * @param refNode the reference node
      */
     public void jsxFunction_setStartAfter(final Node refNode) {
-        startContainer_ = (Node) refNode.jsxGet_parentNode();
+        startContainer_ = refNode.jsxGet_parentNode();
         startOffset_ = getPositionInContainer(refNode) + 1;
     }
 
@@ -107,7 +108,7 @@ public class Range extends SimpleScriptable {
      * @param refNode the reference node
      */
     public void jsxFunction_setStartBefore(final Node refNode) {
-        startContainer_ = (Node) refNode.jsxGet_parentNode();
+        startContainer_ = refNode.jsxGet_parentNode();
         startOffset_ = getPositionInContainer(refNode);
     }
 
@@ -115,7 +116,7 @@ public class Range extends SimpleScriptable {
         int i = 0;
         Node node = refNode;
         while (node.jsxGet_previousSibling() != null) {
-            node = (Node) node.jsxGet_previousSibling();
+            node = node.jsxGet_previousSibling();
             ++i;
         }
         return i;
@@ -144,7 +145,7 @@ public class Range extends SimpleScriptable {
      * @param refNode the reference node
      */
     public void jsxFunction_setEndAfter(final Node refNode) {
-        endContainer_ = (Node) refNode.jsxGet_parentNode();
+        endContainer_ = refNode.jsxGet_parentNode();
         endOffset_ = getPositionInContainer(refNode) + 1;
     }
 
@@ -153,7 +154,7 @@ public class Range extends SimpleScriptable {
      * @param refNode the reference node
      */
     public void jsxFunction_setEndBefore(final Node refNode) {
-        startContainer_ = (Node) refNode.jsxGet_parentNode();
+        startContainer_ = refNode.jsxGet_parentNode();
         startOffset_ = getPositionInContainer(refNode);
     }
 
@@ -165,7 +166,7 @@ public class Range extends SimpleScriptable {
         startContainer_ = refNode;
         startOffset_ = 0;
         endContainer_ = refNode;
-        endOffset_ = ((HTMLCollection) refNode.jsxGet_childNodes()).jsxGet_length();
+        endOffset_ = refNode.jsxGet_childNodes().jsxGet_length();
     }
 
     /**
@@ -219,7 +220,7 @@ public class Range extends SimpleScriptable {
         Node ancestor = node;
         while (ancestor != null) {
             ancestors.add(0, ancestor);
-            ancestor = (Node) ancestor.jsxGet_parentNode();
+            ancestor = ancestor.jsxGet_parentNode();
         }
         return ancestors;
     }
@@ -231,7 +232,7 @@ public class Range extends SimpleScriptable {
      * @see <a href="http://developer.mozilla.org/en/docs/DOM:range.createContextualFragment">Mozilla documentation</a>
      */
     public Object jsxFunction_createContextualFragment(final String valueAsString) {
-        final Page page = startContainer_.getDomNodeOrDie().getPage();
+        final SgmlPage page = startContainer_.getDomNodeOrDie().getPage();
         final DomDocumentFragment fragment = new DomDocumentFragment(page);
         HTMLElement.parseHtmlSnippet(fragment, true, valueAsString);
         return fragment.getScriptObject();

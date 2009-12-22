@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,30 +14,25 @@
  */
 package com.gargoylesoftware.htmlunit.javascript;
 
-import org.apache.commons.logging.Log;
-import org.mozilla.javascript.ErrorReporter;
-import org.mozilla.javascript.EvaluatorException;
+import java.io.Serializable;
 
-import com.gargoylesoftware.htmlunit.WebAssert;
+import net.sourceforge.htmlunit.corejs.javascript.ErrorReporter;
+import net.sourceforge.htmlunit.corejs.javascript.EvaluatorException;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * A JavaScript error reporter that will log all warnings and errors, no matter how trivial.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4789 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
+ * @author Marc Guillemot
  */
-public class StrictErrorReporter implements ErrorReporter {
-    private final Log log_;
+public class StrictErrorReporter implements ErrorReporter, Serializable {
 
-    /**
-     * Creates an instance.
-     *
-     * @param log the log to use when reporting errors
-     */
-    public StrictErrorReporter(final Log log) {
-        WebAssert.notNull("log", log);
-        log_ = log;
-    }
+    private static final long serialVersionUID = 2165290829783324770L;
+    private static final Log LOG = LogFactory.getLog(StrictErrorReporter.class);
 
     /**
      * Logs a warning.
@@ -51,7 +46,7 @@ public class StrictErrorReporter implements ErrorReporter {
     public void warning(
             final String message, final String sourceName, final int line,
             final String lineSource, final int lineOffset) {
-        log_.warn(format("warning", message, sourceName, line, lineSource, lineOffset));
+        LOG.warn(format("warning", message, sourceName, line, lineSource, lineOffset));
     }
 
     /**
@@ -66,8 +61,7 @@ public class StrictErrorReporter implements ErrorReporter {
     public void error(
             final String message, final String sourceName, final int line,
             final String lineSource, final int lineOffset) {
-
-        log_.error(format("error", message, sourceName, line, lineSource, lineOffset));
+        LOG.error(format("error", message, sourceName, line, lineSource, lineOffset));
         throw new EvaluatorException(message, sourceName, line, lineSource, lineOffset);
     }
 
@@ -84,15 +78,13 @@ public class StrictErrorReporter implements ErrorReporter {
     public EvaluatorException runtimeError(
             final String message, final String sourceName, final int line,
             final String lineSource, final int lineOffset) {
-
-        log_.error(format("runtimeError", message, sourceName, line, lineSource, lineOffset));
+        LOG.error(format("runtimeError", message, sourceName, line, lineSource, lineOffset));
         return new EvaluatorException(message, sourceName, line, lineSource, lineOffset);
     }
 
     private String format(
             final String prefix, final String message, final String sourceName,
             final int line, final String lineSource, final int lineOffset) {
-
         return prefix + ": message=[" + message + "] sourceName=[" + sourceName + "] line=[" + line
             + "] lineSource=[" + lineSource + "] lineOffset=[" + lineOffset + "]";
     }

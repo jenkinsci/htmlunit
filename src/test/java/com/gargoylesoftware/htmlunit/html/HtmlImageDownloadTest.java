@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,29 +14,33 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import java.io.IOException;
+import java.net.URL;
+
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.Before;
-import org.junit.After;
-import org.mortbay.jetty.Server;
 
-import com.gargoylesoftware.htmlunit.WebTestCase;
-import com.gargoylesoftware.htmlunit.HttpWebConnectionTest;
-
-import java.net.URL;
-import java.io.IOException;
+import com.gargoylesoftware.htmlunit.WebResponse;
+import com.gargoylesoftware.htmlunit.WebServerTestCase;
 
 /**
  * Tests for {@link HtmlImage}.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4713 $
  * @author Knut Johannes Dahle
+ * @author Ahmed Ashour
+ * @author Marc Guillemot
  */
+public class HtmlImageDownloadTest extends WebServerTestCase {
+    private static final String base_file_path_ = "src/test/resources/com/gargoylesoftware/htmlunit/html";
 
-public class HtmlImageDownloadTest extends WebTestCase {
-    private Server server_;
-    private final String base_file_path_ = "src/test/resources/com/gargoylesoftware/htmlunit/html";
-    private URL url_;
+    /**
+     * Constructor.
+     * @throws Exception if an exception occurs
+     */
+    public HtmlImageDownloadTest() throws Exception {
+        startWebServer(base_file_path_);
+    }
 
     /**
      * @throws Exception if the test fails
@@ -62,7 +66,7 @@ public class HtmlImageDownloadTest extends WebTestCase {
     @Test
     public void testImageFileSize() throws Exception {
         final HtmlImage htmlimage = getHtmlElementToTest("image1");
-        Assert.assertEquals("Image filesize", 140144, htmlimage.getWebResponse(true).getResponseBody().length);
+        Assert.assertEquals("Image filesize", 140144, htmlimage.getWebResponse(true).getContentAsBytes().length);
     }
 
     /**
@@ -97,38 +101,21 @@ public class HtmlImageDownloadTest extends WebTestCase {
     @Test
     public void testGetWebResponse() throws Exception {
         final HtmlImage htmlimage = getHtmlElementToTest("image1");
+        final URL url = htmlimage.getPage().getWebResponse().getRequestSettings().getUrl();
         Assert.assertNull(htmlimage.getWebResponse(false));
-        Assert.assertNotNull(htmlimage.getWebResponse(true));
+        final WebResponse resp = htmlimage.getWebResponse(true);
+        Assert.assertNotNull(resp);
+        assertEquals(url.toExternalForm(), resp.getRequestSettings().getAdditionalHeaders().get("Referer"));
     }
 
     /**
-     * Performs pre-test initialization.
-     * @throws Exception if an error occurs
-     */
-    @Before
-    public void setup() throws Exception {
-        server_ = HttpWebConnectionTest.startWebServer(base_file_path_);
-        url_ = new URL("http", "localhost", HttpWebConnectionTest.PORT, "");
-    }
-
-    /**
-     * Performs post-test deconstruction.
-     * @throws Exception if an error occurs
-     */
-    @After
-    public void teardown() throws Exception {
-        HttpWebConnectionTest.stopWebServer(server_);
-        server_ = null;
-    }
-
-    /**
-     * Common code for the tests to load the testpage and fecth the HtmlImage object.
-     * @param id value of img id attribute
+     * Common code for the tests to load the testpage and fetch the HtmlImage object.
+     * @param id value of image id attribute
      * @return the found HtmlImage
      * @throws Exception if an error occurs
      */
     private HtmlImage getHtmlElementToTest(final String id) throws Exception {
-        final String url = url_.toString() + "/HtmlImageDownloadTest.html";
+        final String url = "http://localhost:" + PORT + "/HtmlImageDownloadTest.html";
         final HtmlPage page = loadUrl(url);
         return (HtmlImage) page.getElementById(id);
     }

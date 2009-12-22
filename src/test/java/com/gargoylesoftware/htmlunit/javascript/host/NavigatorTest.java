@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,22 +18,28 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
 
 /**
  * Tests for {@link Navigator}.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4900 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Daniel Gredler
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
+@RunWith(BrowserRunner.class)
 public class NavigatorTest extends WebTestCase {
 
     /**
@@ -42,7 +48,7 @@ public class NavigatorTest extends WebTestCase {
      */
     @Test
     public void testAppCodeName() throws Exception {
-        testAttribute("appCodeName", BrowserVersion.getDefault().getApplicationCodeName());
+        testAttribute("appCodeName", getBrowserVersion().getApplicationCodeName());
     }
 
     /**
@@ -51,7 +57,7 @@ public class NavigatorTest extends WebTestCase {
      */
     @Test
     public void testAppMinorVersion() throws Exception {
-        testAttribute("appMinorVersion", BrowserVersion.getDefault().getApplicationMinorVersion());
+        testAttribute("appMinorVersion", getBrowserVersion().getApplicationMinorVersion());
     }
 
     /**
@@ -60,7 +66,7 @@ public class NavigatorTest extends WebTestCase {
      */
     @Test
     public void testAppName() throws Exception {
-        testAttribute("appName", BrowserVersion.getDefault().getApplicationName());
+        testAttribute("appName", getBrowserVersion().getApplicationName());
     }
 
     /**
@@ -69,7 +75,7 @@ public class NavigatorTest extends WebTestCase {
      */
     @Test
     public void testAppVersion() throws Exception {
-        testAttribute("appVersion", BrowserVersion.getDefault().getApplicationVersion());
+        testAttribute("appVersion", getBrowserVersion().getApplicationVersion());
     }
 
     /**
@@ -77,8 +83,19 @@ public class NavigatorTest extends WebTestCase {
      * @throws Exception on test failure
      */
     @Test
-    public void testBrowserLanguage() throws Exception {
-        testAttribute("browserLanguage", BrowserVersion.getDefault().getBrowserLanguage());
+    @Browsers(Browser.IE)
+    public void testBrowserLanguage_IE() throws Exception {
+        testAttribute("browserLanguage", getBrowserVersion().getBrowserLanguage());
+    }
+
+    /**
+     * Tests the "browserLanguage" property.
+     * @throws Exception on test failure
+     */
+    @Test
+    @Browsers(Browser.FF)
+    public void testBrowserLanguage_FF() throws Exception {
+        testAttribute("browserLanguage", "undefined");
     }
 
     /**
@@ -93,22 +110,21 @@ public class NavigatorTest extends WebTestCase {
 
     private void testCookieEnabled(final boolean cookieEnabled) throws Exception {
         final String content
-            = "<html><head><title>First</title></head>\n"
+            = "<html><head><title>First</title>\n"
             + "<script>\n"
-            + "function test()\n"
-            + "{\n"
+            + "function test() {\n"
             + "  alert(navigator.cookieEnabled);\n"
             + "}\n"
             + "</script>\n"
-            + "<body onload='test()'></body>\n"
+            + "</head><body onload='test()'></body>\n"
             + "</html>";
 
         final String[] expectedAlerts = {Boolean.toString(cookieEnabled)};
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
         if (!cookieEnabled) {
-            webClient.setCookiesEnabled(cookieEnabled);
+            webClient.getCookieManager().setCookiesEnabled(cookieEnabled);
         }
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final List<String> collectedAlerts = new ArrayList<String>();
         webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
@@ -126,7 +142,7 @@ public class NavigatorTest extends WebTestCase {
      */
     @Test
     public void testCpuClass() throws Exception {
-        testAttribute("cpuClass", BrowserVersion.getDefault().getCpuClass());
+        testAttribute("cpuClass", getBrowserVersion().getCpuClass());
     }
 
     /**
@@ -135,7 +151,7 @@ public class NavigatorTest extends WebTestCase {
      */
     @Test
     public void testOnLine() throws Exception {
-        testAttribute("onLine", String.valueOf(BrowserVersion.getDefault().isOnLine()));
+        testAttribute("onLine", String.valueOf(getBrowserVersion().isOnLine()));
     }
 
     /**
@@ -144,7 +160,7 @@ public class NavigatorTest extends WebTestCase {
      */
     @Test
     public void testPlatform() throws Exception {
-        testAttribute("platform", BrowserVersion.getDefault().getPlatform());
+        testAttribute("platform", getBrowserVersion().getPlatform());
     }
 
     /**
@@ -153,7 +169,7 @@ public class NavigatorTest extends WebTestCase {
      */
     @Test
     public void testSystemLanguage() throws Exception {
-        testAttribute("systemLanguage", BrowserVersion.getDefault().getSystemLanguage());
+        testAttribute("systemLanguage", getBrowserVersion().getSystemLanguage());
     }
 
     /**
@@ -162,7 +178,7 @@ public class NavigatorTest extends WebTestCase {
      */
     @Test
     public void testUserAgent() throws Exception {
-        testAttribute("userAgent", BrowserVersion.getDefault().getUserAgent());
+        testAttribute("userAgent", getBrowserVersion().getUserAgent());
     }
 
     /**
@@ -171,7 +187,7 @@ public class NavigatorTest extends WebTestCase {
      */
     @Test
     public void testUserLanguage() throws Exception {
-        testAttribute("userLanguage", BrowserVersion.getDefault().getUserLanguage());
+        testAttribute("userLanguage", getBrowserVersion().getUserLanguage());
     }
 
     /**
@@ -180,7 +196,7 @@ public class NavigatorTest extends WebTestCase {
      */
     @Test
     public void testPlugins() throws Exception {
-        testAttribute("plugins.length", "0");
+        testAttribute("plugins.length", String.valueOf(getBrowserVersion().getPlugins().size()));
     }
 
     /**
@@ -190,6 +206,9 @@ public class NavigatorTest extends WebTestCase {
     @Test
     public void testJavaEnabled() throws Exception {
         testAttribute("javaEnabled()", "false");
+        final WebClient webClient = getWebClient();
+        webClient.setAppletEnabled(true);
+        testAttribute(webClient, "javaEnabled()", "true");
     }
 
     /**
@@ -208,6 +227,17 @@ public class NavigatorTest extends WebTestCase {
      * @throws Exception on test failure
      */
     private void testAttribute(final String name, final String value) throws Exception {
+        testAttribute(getWebClient(), name, value);
+    }
+
+    /**
+     * Generic method for testing the value of a specific navigator attribute.
+     * @param webClient the web client to use to load the page
+     * @param name the name of the attribute to test
+     * @param value the expected value for the named attribute
+     * @throws Exception on test failure
+     */
+    private void testAttribute(final WebClient webClient, final String name, final String value) throws Exception {
         final String content = "<html>\n"
                 + "<head>\n"
                 + "    <title>test</title>\n"
@@ -221,8 +251,9 @@ public class NavigatorTest extends WebTestCase {
                 + "</body>\n"
                 + "</html>";
         final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(content, collectedAlerts);
+        loadPage(webClient, content, collectedAlerts);
         final String[] expectedAlerts = {name + " = " + value};
+        createTestPageForRealBrowserIfNeeded(content, expectedAlerts);
         assertEquals(expectedAlerts, collectedAlerts);
     }
 
@@ -231,25 +262,14 @@ public class NavigatorTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts(FF = "Netscape", IE = "Microsoft Internet Explorer")
     public void testUseConfiguredBrowser() throws Exception {
-        final WebClient webClient = new WebClient(BrowserVersion.FIREFOX_2);
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-        webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-
-        final String content
+        final String html
             = "<html><head><title>First</title></head>\n"
             + "<body onload='alert(window.navigator.appName)'></body>\n"
             + "</html>";
 
-        webConnection.setDefaultResponse(content);
-        webClient.setWebConnection(webConnection);
-
-        webClient.getPage(URL_FIRST);
-
-        final String[] expectedAlerts = {"Netscape"};
-        assertEquals(expectedAlerts, collectedAlerts);
+        loadPageWithAlerts(html);
     }
 
     /**
@@ -257,25 +277,14 @@ public class NavigatorTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts(FF = BrowserVersion.LANGUAGE_ENGLISH_US, IE = "undefined")
     public void testLanguage() throws Exception {
-        final WebClient webClient = new WebClient(BrowserVersion.FIREFOX_2);
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-        webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-
-        final String content
+        final String html
             = "<html><head><title>First</title></head>\n"
             + "<body onload='alert(window.navigator.language)'></body>\n"
             + "</html>";
 
-        webConnection.setDefaultResponse(content);
-        webClient.setWebConnection(webConnection);
-
-        webClient.getPage(URL_FIRST);
-
-        final String[] expectedAlerts = {BrowserVersion.FIREFOX_2.getBrowserLanguage()};
-        assertEquals(expectedAlerts, collectedAlerts);
+        loadPageWithAlerts(html);
     }
 
     /**
@@ -283,25 +292,39 @@ public class NavigatorTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts({ "number", "number" })
     public void testMozilla() throws Exception {
-        final String content
-            = "<html><head><title>First</title></head>\n"
+        final String html
+            = "<html><head><title>First</title>\n"
             + "<script>\n"
-            + "function test()\n"
-            + "{\n"
+            + "function test() {\n"
             + "  alert(typeof window.navigator.mimeTypes.length);\n"
             + "  alert(typeof window.navigator.plugins.length);\n"
             + "}\n"
             + "</script>\n"
-            + "<body onload='test()'></body>\n"
+            + "</head><body onload='test()'></body>\n"
             + "</html>";
 
-        final String[] expectedAlerts = {"number", "number"};
-        createTestPageForRealBrowserIfNeeded(content, expectedAlerts);
+        loadPageWithAlerts(html);
+    }
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(BrowserVersion.FIREFOX_2, content, collectedAlerts);
+    /**
+     * Test some Mozilla properties (minimal tests are support is not completed).
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(FF = "Gecko", IE = "undefined")
+    public void product() throws Exception {
+        final String html
+            = "<html><head><title>First</title>\n"
+            + "<script>\n"
+            + "function test() {\n"
+            + "  alert(navigator.product);\n"
+            + "}\n"
+            + "</script>\n"
+            + "</head><body onload='test()'></body>\n"
+            + "</html>";
 
-        assertEquals(expectedAlerts, collectedAlerts);
+        loadPageWithAlerts(html);
     }
 }

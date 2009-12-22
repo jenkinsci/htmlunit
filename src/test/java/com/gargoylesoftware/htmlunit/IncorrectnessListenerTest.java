@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import org.junit.runner.RunWith;
 /**
  * Tests for {@link IncorrectnessListener}.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4002 $
  * @author Marc Guillemot
  */
 @RunWith(BrowserRunner.class)
@@ -48,7 +48,7 @@ public final class IncorrectnessListenerTest extends WebTestCase {
         };
         webClient.setIncorrectnessListener(listener);
 
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
         webClient.setWebConnection(webConnection);
         webConnection.setDefaultResponse(html);
         webClient.getPage(URL_FIRST);

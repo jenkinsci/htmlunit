@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
 /**
  * Tests for {@link HtmlOptionGroup}.
  *
- * @version $Revision: 3065 $
+ * @version $Revision: 4002 $
  * @author Ahmed Ashour
  * @author Daniel Gredler
  */
@@ -63,8 +63,8 @@ public class HtmlOptionGroupTest extends WebTestCase {
     @Test
     public void testDisabled() throws Exception {
         testDisabled(BrowserVersion.FIREFOX_2, true, false);
-        testDisabled(BrowserVersion.INTERNET_EXPLORER_6_0, false, false);
-        testDisabled(BrowserVersion.INTERNET_EXPLORER_7_0, false, false);
+        testDisabled(BrowserVersion.INTERNET_EXPLORER_6, false, false);
+        testDisabled(BrowserVersion.INTERNET_EXPLORER_7, false, false);
     }
 
     private void testDisabled(final BrowserVersion version, final boolean d1, final boolean d2) throws Exception {

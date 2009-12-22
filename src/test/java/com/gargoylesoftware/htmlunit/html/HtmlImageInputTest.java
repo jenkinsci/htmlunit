@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,18 +22,21 @@ import java.util.List;
 
 import org.apache.commons.httpclient.NameValuePair;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.WebTestCase;
 
 /**
  * Tests for {@link HtmlImageInput}.
  *
- * @version $Revision: 3150 $
+ * @version $Revision: 4782 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
+@RunWith(BrowserRunner.class)
 public class HtmlImageInputTest extends WebTestCase {
 
     /**
@@ -48,19 +51,21 @@ public class HtmlImageInputTest extends WebTestCase {
             + "<input type='image' name='button' value='foo'/>\n"
             + "<input type='image' name='anotherButton' value='foo'/>\n"
             + "</form></body></html>";
-        final HtmlPage page = loadPage(htmlContent);
+        final HtmlPage page = loadPageWithAlerts(htmlContent);
         final MockWebConnection webConnection = getMockConnection(page);
 
-        final HtmlForm form = (HtmlForm) page.getHtmlElementById("form1");
+        final HtmlForm form = page.getHtmlElementById("form1");
 
-        final HtmlImageInput imageInput = (HtmlImageInput) form.getInputByName("button");
+        final HtmlImageInput imageInput = form.getInputByName("button");
         final HtmlPage secondPage = (HtmlPage) imageInput.click();
         assertNotNull(secondPage);
 
-        final List<NameValuePair> expectedPairs = Arrays.asList(new NameValuePair[]{
-            new NameValuePair("button.x", "0"),
-            new NameValuePair("button.y", "0")
-        });
+        final List<NameValuePair> expectedPairs = new ArrayList<NameValuePair>();
+        expectedPairs.add(new NameValuePair("button.x", "0"));
+        expectedPairs.add(new NameValuePair("button.y", "0"));
+        if (getBrowserVersion().isFirefox()) {
+            expectedPairs.add(new NameValuePair("button", "foo"));
+        }
 
         assertEquals(
             expectedPairs,
@@ -72,26 +77,28 @@ public class HtmlImageInputTest extends WebTestCase {
      */
     @Test
     public void testClick_WithPosition() throws Exception {
-        final String htmlContent
+        final String html
             = "<html><head><title>foo</title></head><body>\n"
             + "<form id='form1' method='post'>\n"
             + "<input type='image' name='aButton' value='foo'/>\n"
             + "<input type='image' name='button' value='foo'/>\n"
             + "<input type='image' name='anotherButton' value='foo'/>\n"
             + "</form></body></html>";
-        final HtmlPage page = loadPage(htmlContent);
+        final HtmlPage page = loadPageWithAlerts(html);
         final MockWebConnection webConnection = getMockConnection(page);
 
-        final HtmlForm form = (HtmlForm) page.getHtmlElementById("form1");
+        final HtmlForm form = page.getHtmlElementById("form1");
 
-        final HtmlImageInput imageInput = (HtmlImageInput) form.getInputByName("button");
+        final HtmlImageInput imageInput = form.getInputByName("button");
         final HtmlPage secondPage = (HtmlPage) imageInput.click(100, 200);
         assertNotNull(secondPage);
 
-        final List<NameValuePair> expectedPairs = Arrays.asList(new NameValuePair[]{
-            new NameValuePair("button.x", "100"),
-            new NameValuePair("button.y", "200")
-        });
+        final List<NameValuePair> expectedPairs = new ArrayList<NameValuePair>();
+        expectedPairs.add(new NameValuePair("button.x", "100"));
+        expectedPairs.add(new NameValuePair("button.y", "200"));
+        if (getBrowserVersion().isFirefox()) {
+            expectedPairs.add(new NameValuePair("button", "foo"));
+        }
 
         assertEquals(
             expectedPairs,
@@ -105,17 +112,17 @@ public class HtmlImageInputTest extends WebTestCase {
      */
     @Test
     public void testNoNameClick_WithPosition() throws Exception {
-        final String htmlContent
+        final String html
             = "<html><head><title>foo</title></head><body>\n"
             + "<form id='form1' method='post'>\n"
             + "<input type='image' value='foo'/>\n"
             + "</form></body></html>";
-        final HtmlPage page = loadPage(htmlContent);
+        final HtmlPage page = loadPageWithAlerts(html);
         final MockWebConnection webConnection = getMockConnection(page);
 
-        final HtmlForm form = (HtmlForm) page.getHtmlElementById("form1");
+        final HtmlForm form = page.getHtmlElementById("form1");
 
-        final HtmlImageInput imageInput = (HtmlImageInput) form.getInputByValue("foo");
+        final HtmlImageInput imageInput = form.getInputByValue("foo");
         final HtmlPage secondPage = (HtmlPage) imageInput.click(100, 200);
         assertNotNull(secondPage);
 
@@ -142,8 +149,8 @@ public class HtmlImageInputTest extends WebTestCase {
 
         final String[] expectedAlerts = {"1"};
         final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(html, collectedAlerts);
-        final HtmlImageInput input = (HtmlImageInput) page.getHtmlElementById("myInput");
+        final HtmlPage page = loadPage(getBrowserVersion(), html, collectedAlerts);
+        final HtmlImageInput input = page.getHtmlElementById("myInput");
         input.click();
 
         assertEquals(expectedAlerts, collectedAlerts);
@@ -155,15 +162,11 @@ public class HtmlImageInputTest extends WebTestCase {
      */
     @Test
     public void testClickFiresOnMouseDown() throws Exception {
-        if (notYetImplemented()) {
-            return;
-        }
         final String s = "<html><body><input type='image' src='x.png' id='i' onmousedown='alert(1)'></body></html>";
         final String[] expectedAlerts = {"1"};
         final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(s, collectedAlerts);
-        final ClickableElement element = (ClickableElement) page.getHtmlElementById("i");
-        element.click();
+        final HtmlPage page = loadPage(getBrowserVersion(), s, collectedAlerts);
+        page.<HtmlElement>getHtmlElementById("i").click();
         assertEquals(expectedAlerts, collectedAlerts);
     }
 
@@ -173,15 +176,11 @@ public class HtmlImageInputTest extends WebTestCase {
      */
     @Test
     public void testClickFiresOnMouseUp() throws Exception {
-        if (notYetImplemented()) {
-            return;
-        }
         final String s = "<html><body><input type='image' src='x.png' id='i' onmouseup='alert(1)'></body></html>";
         final String[] expectedAlerts = {"1"};
         final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(s, collectedAlerts);
-        final ClickableElement element = (ClickableElement) page.getHtmlElementById("i");
-        element.click();
+        final HtmlPage page = loadPage(getBrowserVersion(), s, collectedAlerts);
+        page.<HtmlElement>getHtmlElementById("i").click();
         assertEquals(expectedAlerts, collectedAlerts);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ public final class MimeType extends SimpleScriptable {
     private Plugin enabledPlugin_;
 
     /**
-     * Create an instance. JavaScript objects must have a default constructor.
+     * Creates an instance. JavaScript objects must have a default constructor.
      */
     public MimeType() {
         // nothing

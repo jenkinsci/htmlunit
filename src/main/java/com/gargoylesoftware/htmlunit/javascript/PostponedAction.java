@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package com.gargoylesoftware.htmlunit.javascript;
  * An action triggered by a script execution but that should be executed first when the script is finished.
  * Example: when a script sets the source of an (i)frame, the request to the specified page will be first
  * triggered after the script execution.
- * @version $Revision: 3128 $
+ * @version $Revision: 4002 $
  * @author Marc Guillemot
  */
 public interface PostponedAction {

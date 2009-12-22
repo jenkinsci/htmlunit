@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,20 +16,33 @@ package com.gargoylesoftware.htmlunit.javascript.host;
 
 import java.io.IOException;
 
-import org.mozilla.javascript.Context;
+import net.sourceforge.htmlunit.corejs.javascript.Context;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.gargoylesoftware.htmlunit.ElementNotFoundException;
 import com.gargoylesoftware.htmlunit.SgmlPage;
+import com.gargoylesoftware.htmlunit.html.DomAttr;
+import com.gargoylesoftware.htmlunit.html.DomComment;
 import com.gargoylesoftware.htmlunit.html.DomDocumentFragment;
+import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.html.DomText;
+import com.gargoylesoftware.htmlunit.html.FrameWindow;
+import com.gargoylesoftware.htmlunit.html.HTMLParser;
+import com.gargoylesoftware.htmlunit.html.HtmlDivision;
+import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLCollection;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
+import com.gargoylesoftware.htmlunit.xml.XmlUtil;
 
 /**
  * A JavaScript object for a Document.
  *
- * @version $Revision: 3079 $
+ * @version $Revision: 4789 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:chen_jun@users.sourceforge.net">Chen Jun</a>
@@ -41,21 +54,23 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
  * @author <a href="mailto:george@murnock.com">George Murnock</a>
  * @author Ahmed Ashour
  * @author Rob Di Marco
- * @see <a href="http://msdn.microsoft.com/workshop/author/dhtml/reference/objects/obj_document.asp">
- * MSDN documentation</a>
- * @see <a href="http://www.w3.org/TR/2000/WD-DOM-Level-1-20000929/level-one-html.html#ID-7068919">
- * W3C Dom Level 1</a>
+ * @see <a href="http://msdn.microsoft.com/en-us/library/ms531073.aspx">MSDN documentation</a>
+ * @see <a href="http://www.w3.org/TR/2000/WD-DOM-Level-1-20000929/level-one-html.html#ID-7068919">W3C Dom Level 1</a>
  */
 public class Document extends EventNode {
+
     private static final long serialVersionUID = 3700830050839613384L;
+    private static final Log LOG = LogFactory.getLog(Document.class);
+
     private Window window_;
     private DOMImplementation implementation_;
+    private String designMode_;
 
     /**
      * Sets the Window JavaScript object that encloses this document.
      * @param window the Window JavaScript object that encloses this document
      */
-    void setWindow(final Window window) {
+    public void setWindow(final Window window) {
         window_ = window;
     }
 
@@ -71,8 +86,7 @@ public class Document extends EventNode {
      * Sets the value of the "location" property. The location's default property is "href",
      * so setting "document.location='http://www.sf.net'" is equivalent to setting
      * "document.location.href='http://www.sf.net'".
-     * @see <a href="http://msdn.microsoft.com/workshop/author/dhtml/reference/objects/obj_location.asp">
-     * MSDN documentation</a>
+     * @see <a href="http://msdn.microsoft.com/en-us/library/ms535866.aspx">MSDN documentation</a>
      * @param location the location to navigate to
      * @throws IOException when location loading fails
      */
@@ -85,7 +99,7 @@ public class Document extends EventNode {
      * @return the value of the "referrer" property
      */
     public String jsxGet_referrer() {
-        final String referrer = getPage().getWebResponse().getResponseHeaderValue("referrer");
+        final String referrer = getPage().getWebResponse().getRequestSettings().getAdditionalHeaders().get("Referer");
         if (referrer == null) {
             return "";
         }
@@ -96,13 +110,87 @@ public class Document extends EventNode {
      * Gets the JavaScript property "documentElement" for the document.
      * @return the root node for the document
      */
-    public SimpleScriptable jsxGet_documentElement() {
+    public Element jsxGet_documentElement() {
         final Object documentElement = getPage().getDocumentElement();
         if (documentElement == null) {
             // for instance with an XML document with parsing error
             return null;
         }
-        return getScriptableFor(documentElement);
+        return (Element) getScriptableFor(documentElement);
+    }
+
+    /**
+     * Gets the JavaScript property "doctype" for the document.
+     * @return the DocumentType of the document
+     */
+    public SimpleScriptable jsxGet_doctype() {
+        final Object documentType = getPage().getDoctype();
+        if (documentType == null) {
+            return null;
+        }
+        return getScriptableFor(documentType);
+    }
+
+    /**
+     * Returns a value which indicates whether or not the document can be edited.
+     * @return a value which indicates whether or not the document can be edited
+     */
+    public String jsxGet_designMode() {
+        if (designMode_ == null) {
+            if (getBrowserVersion().isIE()) {
+                if (getWindow().getWebWindow() instanceof FrameWindow) {
+                    designMode_ = "Inherit";
+                }
+                else {
+                    designMode_ = "Off";
+                }
+            }
+            else {
+                designMode_ = "off";
+            }
+        }
+        return designMode_;
+    }
+
+    /**
+     * Sets a value which indicates whether or not the document can be edited.
+     * @param mode a value which indicates whether or not the document can be edited
+     */
+    public void jsxSet_designMode(final String mode) {
+        final boolean ie = getBrowserVersion().isIE();
+        if (ie) {
+            if (!"on".equalsIgnoreCase(mode) && !"off".equalsIgnoreCase(mode) && !"inherit".equalsIgnoreCase(mode)) {
+                throw Context.reportRuntimeError("Invalid document.designMode value '" + mode + "'.");
+            }
+            else if (!(getWindow().getWebWindow() instanceof FrameWindow)) {
+                // IE ignores designMode changes for documents that aren't in frames.
+                return;
+            }
+            else if ("on".equalsIgnoreCase(mode)) {
+                designMode_ = "On";
+            }
+            else if ("off".equalsIgnoreCase(mode)) {
+                designMode_ = "Off";
+            }
+            else if ("inherit".equalsIgnoreCase(mode)) {
+                designMode_ = "Inherit";
+            }
+        }
+        else {
+            if ("on".equalsIgnoreCase(mode)) {
+                designMode_ = "on";
+                final SgmlPage page = getPage();
+                if (page instanceof HtmlPage) {
+                    final HtmlPage htmlPage = (HtmlPage) page;
+                    final DomNode child = htmlPage.getBody().getFirstChild();
+                    htmlPage.getSelection().setStart(child, 0);
+                    htmlPage.getSelection().collapse(true);
+                }
+            }
+            else if ("off".equalsIgnoreCase(mode)) {
+                designMode_ = "off";
+            }
+        }
     }
 
     /**
@@ -126,7 +214,7 @@ public class Document extends EventNode {
      * @return a newly created document fragment
      */
     public Object jsxFunction_createDocumentFragment() {
-        final DomDocumentFragment fragment = ((SgmlPage) getDomNodeOrDie().getPage()).createDomDocumentFragment();
+        final DomDocumentFragment fragment = getDomNodeOrDie().getPage().createDomDocumentFragment();
         final DocumentFragment node = new DocumentFragment();
         node.setParentScope(getParentScope());
         node.setPrototype(getPrototype(node.getClass()));
@@ -141,11 +229,8 @@ public class Document extends EventNode {
      * @return an attribute with the specified name
      */
     public Attr jsxFunction_createAttribute(final String attributeName) {
-        final Attr att = new Attr();
-        att.setPrototype(getPrototype(Attr.class));
-        att.setParentScope(getWindow());
-        att.init(attributeName, null);
-        return att;
+        final DomAttr attr = new DomAttr(getPage(), null, attributeName, null);
+        return (Attr) attr.getScriptObject();
     }
 
     /**
@@ -185,6 +270,15 @@ public class Document extends EventNode {
     }
 
     /**
+     * Does nothing special anymore... just like FF.
+     * @param type the type of events to capture
+     * @see Window#jsxFunction_captureEvents(String)
+     */
+    public void jsxFunction_captureEvents(final String type) {
+        // Empty.
+    }
+
+    /**
      * Adapts any DOM node to resolve namespaces so that an XPath expression can be easily
      * evaluated relative to the context of the node where it appeared within the document.
      * @param nodeResolver the node to be used as a context for namespace resolution
@@ -212,7 +306,7 @@ public class Document extends EventNode {
             final Object jsElement = getScriptableFor(domNode);
 
             if (jsElement == NOT_FOUND) {
-                getLog().debug("createTextNode(" + newData
+                LOG.debug("createTextNode(" + newData
                     + ") cannot return a result as there isn't a JavaScript object for the DOM node "
                     + domNode.getClass().getName());
             }
@@ -224,6 +318,16 @@ public class Document extends EventNode {
             // Just fall through - result is already set to NOT_FOUND
         }
         return result;
+    }
+
+    /**
+     * Creates a new Comment.
+     * @param comment the comment text
+     * @return the new Comment
+     */
+    public Object jsxFunction_createComment(final String comment) {
+        final DomNode domNode = new DomComment(getDomNodeOrDie().getPage(), comment);
+        return getScriptableFor(domNode);
     }
 
     /**
@@ -259,10 +363,10 @@ public class Document extends EventNode {
         try {
             final BrowserVersion browserVersion = getBrowserVersion();
 
-            if (tagName.startsWith("<") && tagName.endsWith(">") && browserVersion.isNetscape()) {
+            if (tagName.startsWith("<") && tagName.endsWith(">") && browserVersion.isFirefox()) {
                 tagName = tagName.substring(1, tagName.length() - 1);
                 if (!tagName.matches("\\w+")) {
-                    getLog().error("Unexpected exception occurred while parsing HTML snippet");
+                    LOG.error("Unexpected exception occurred while parsing HTML snippet");
                     throw Context.reportRuntimeError("Unexpected exception occurred while parsing HTML snippet: "
                             + tagName);
                 }
@@ -273,7 +377,7 @@ public class Document extends EventNode {
             final Object jsElement = getScriptableFor(element);
 
             if (jsElement == NOT_FOUND) {
-                getLog().debug("createElement(" + tagName
+                LOG.debug("createElement(" + tagName
                         + ") cannot return a result as there isn't a JavaScript object for the element "
                         + element.getClass().getName());
             }
@@ -285,5 +389,68 @@ public class Document extends EventNode {
             // Just fall through - result is already set to NOT_FOUND
         }
         return result;
+    }
+
+    /**
+     * Creates a new HTML element with the given tag name, and name.
+     *
+     * @param namespaceURI the URI that identifies an XML namespace
+     * @param qualifiedName the qualified name of the element type to instantiate
+     * @return the new HTML element, or NOT_FOUND if the tag is not supported
+     */
+    public Object jsxFunction_createElementNS(final String namespaceURI, final String qualifiedName) {
+        final org.w3c.dom.Element element;
+        if (getBrowserVersion().isFirefox()
+                && "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul".equals(namespaceURI)) {
+            // simple hack, no need to implement the XUL objects (at least in a first time)
+            element = new HtmlDivision(namespaceURI, qualifiedName, getPage(), null);
+        }
+        else if (HTMLParser.XHTML_NAMESPACE.equals(namespaceURI)) {
+            element = getPage().createElementNS(namespaceURI, qualifiedName);
+        }
+        else {
+            element = new DomElement(namespaceURI, qualifiedName, getPage(), null);
+        }
+        return getScriptableFor(element);
+    }
+
+    /**
+     * Returns all the descendant elements with the specified tag name.
+     * @param tagName the name to search for
+     * @return all the descendant elements with the specified tag name
+     */
+    public HTMLCollection jsxFunction_getElementsByTagName(final String tagName) {
+        final HTMLCollection collection = new HTMLCollection(this);
+        final String exp;
+        if (tagName.equals("*")) {
+            exp = "//*";
+        }
+        else {
+            exp = "//*[lower-case(local-name()) = '" + tagName.toLowerCase() + "']";
+        }
+        collection.init(getDomNodeOrDie(), exp);
+        return collection;
+    }
+
+    /**
+     * Returns a list of elements with the given tag name belonging to the given namespace.
+     * @param namespaceURI the namespace URI of elements to look for
+     * @param localName is either the local name of elements to look for or the special value "*",
+     *                  which matches all elements.
+     * @return a live NodeList of found elements in the order they appear in the tree
+     */
+    public Object jsxFunction_getElementsByTagNameNS(final Object namespaceURI, final String localName) {
+        final DomNode domNode = getDomNodeOrDie();
+        final HTMLCollection collection = new HTMLCollection(this);
+        final String xpath;
+        if (namespaceURI == null || namespaceURI.equals("*")) {
+            xpath = ".//*[local-name()='" + localName + "']";
+        }
+        else {
+            final String prefix = XmlUtil.lookupPrefix((DomElement) domNode, Context.toString(namespaceURI));
+            xpath = ".//" + prefix + ':' + localName;
+        }
+        collection.init(domNode, xpath);
+        return collection;
     }
 }

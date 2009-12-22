@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * An element that is returned for an HTML tag that is not supported by this framework.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4002 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -54,14 +54,6 @@ public class HtmlUnknownElement extends ClickableElement {
     HtmlUnknownElement(final SgmlPage page, final String namespaceURI, final String qualifiedName,
             final Map<String, DomAttr> attributes) {
         super(namespaceURI, qualifiedName, page, attributes);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected boolean isRenderedVisible() {
-        return false;
     }
 
     /**

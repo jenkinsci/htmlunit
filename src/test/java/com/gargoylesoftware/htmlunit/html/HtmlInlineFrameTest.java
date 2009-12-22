@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
 /**
  * Unit tests for {@link HtmlInlineFrame}.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4463 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Ahmed Ashour
  * @author Marc Guillemot
@@ -51,17 +51,17 @@ public class HtmlInlineFrameTest extends WebTestCase {
         final String thirdContent = "<html><head><title>Third</title></head><body></body></html>";
         final WebClient client = new WebClient();
 
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
         webConnection.setResponse(URL_SECOND, secondContent);
         webConnection.setResponse(URL_THIRD, thirdContent);
 
         client.setWebConnection(webConnection);
 
-        final HtmlPage page = (HtmlPage) client.getPage(URL_FIRST);
+        final HtmlPage page = client.getPage(URL_FIRST);
         assertEquals("First", page.getTitleText());
 
-        final HtmlInlineFrame iframe = (HtmlInlineFrame) page.getHtmlElementById("iframe1");
+        final HtmlInlineFrame iframe = page.getHtmlElementById("iframe1");
         assertEquals(URL_SECOND.toExternalForm(), iframe.getSrcAttribute());
         assertEquals("Second", ((HtmlPage) iframe.getEnclosedPage()).getTitleText());
 
@@ -83,17 +83,17 @@ public class HtmlInlineFrameTest extends WebTestCase {
         final String thirdContent = "<html><head><title>Third</title></head><body></body></html>";
         final WebClient client = new WebClient();
 
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
         webConnection.setResponse(URL_SECOND, secondContent);
         webConnection.setResponse(URL_THIRD, thirdContent);
 
         client.setWebConnection(webConnection);
 
-        final HtmlPage page = (HtmlPage) client.getPage(URL_FIRST);
+        final HtmlPage page = client.getPage(URL_FIRST);
         assertEquals("First", page.getTitleText());
 
-        final HtmlInlineFrame iframe = (HtmlInlineFrame) page.getHtmlElementById("iframe1");
+        final HtmlInlineFrame iframe = page.getHtmlElementById("iframe1");
         assertEquals(URL_SECOND.toExternalForm(), iframe.getSrcAttribute());
         assertEquals("Second", ((HtmlPage) iframe.getEnclosedPage()).getTitleText());
 
@@ -112,7 +112,7 @@ public class HtmlInlineFrameTest extends WebTestCase {
     public void testRecursiveSrcAttribute() throws Exception {
         final String html = "<html><body><iframe id='a' src='#abc'></body></html>";
         final HtmlPage page = loadPage(html);
-        final HtmlInlineFrame iframe = (HtmlInlineFrame) page.getHtmlElementById("a");
+        final HtmlInlineFrame iframe = page.getHtmlElementById("a");
         assertNotNull(iframe.getEnclosedPage());
     }
 
@@ -130,24 +130,24 @@ public class HtmlInlineFrameTest extends WebTestCase {
             + "<body><iframe id='iframe2_1' src='" + URL_FIRST + "'></iframe></body></html>";
         final WebClient client = new WebClient();
 
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
         webConnection.setResponse(URL_SECOND, secondContent);
 
         client.setWebConnection(webConnection);
 
-        final HtmlPage page = (HtmlPage) client.getPage(URL_FIRST);
+        final HtmlPage page = client.getPage(URL_FIRST);
         assertEquals("First", page.getTitleText());
 
-        final HtmlInlineFrame iframe = (HtmlInlineFrame) page.getHtmlElementById("iframe1");
+        final HtmlInlineFrame iframe = page.getHtmlElementById("iframe1");
         assertEquals(URL_SECOND.toExternalForm(), iframe.getSrcAttribute());
         final HtmlPage iframePage = (HtmlPage) iframe.getEnclosedPage();
         assertEquals("Second", iframePage.getTitleText());
 
         // the nested frame should not have been loaded
-        final HtmlInlineFrame iframeIn2 = (HtmlInlineFrame) iframePage.getHtmlElementById("iframe2_1");
+        final HtmlInlineFrame iframeIn2 = iframePage.getHtmlElementById("iframe2_1");
         assertEquals(URL_FIRST.toExternalForm(), iframeIn2.getSrcAttribute());
-        assertEquals("about:blank", iframeIn2.getEnclosedPage().getWebResponse().getUrl());
+        assertEquals("about:blank", iframeIn2.getEnclosedPage().getWebResponse().getRequestSettings().getUrl());
     }
 
     /**
@@ -160,7 +160,7 @@ public class HtmlInlineFrameTest extends WebTestCase {
     public void testInvalidSrcAttribute() throws Exception {
         final String html = "<html><body><iframe id='a' src='foo://bar'></body></html>";
         final HtmlPage page = loadPage(html);
-        final HtmlInlineFrame iframe = (HtmlInlineFrame) page.getHtmlElementById("a");
+        final HtmlInlineFrame iframe = page.getHtmlElementById("a");
         assertNotNull(iframe.getEnclosedPage());
     }
 
@@ -178,17 +178,17 @@ public class HtmlInlineFrameTest extends WebTestCase {
         final String thirdContent = "<html><head><title>Third</title></head><body></body></html>";
         final WebClient client = new WebClient();
 
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
         webConnection.setResponse(URL_SECOND, secondContent);
         webConnection.setResponse(URL_THIRD, thirdContent);
 
         client.setWebConnection(webConnection);
 
-        final HtmlPage page = (HtmlPage) client.getPage(URL_FIRST);
+        final HtmlPage page = client.getPage(URL_FIRST);
         assertEquals("First", page.getTitleText());
 
-        final HtmlInlineFrame iframe = (HtmlInlineFrame) page.getHtmlElementById("iframe1");
+        final HtmlInlineFrame iframe = page.getHtmlElementById("iframe1");
         assertEquals(URL_THIRD.toExternalForm(), iframe.getSrcAttribute());
         assertEquals("Third", ((HtmlPage) iframe.getEnclosedPage()).getTitleText());
     }
@@ -211,7 +211,7 @@ public class HtmlInlineFrameTest extends WebTestCase {
             = "alert('3');";
         final WebClient client = new WebClient();
 
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
         webConnection.setResponse(URL_SECOND, secondContent);
         webConnection.setResponse(URL_THIRD, thirdContent, "text/javascript");
@@ -259,12 +259,12 @@ public class HtmlInlineFrameTest extends WebTestCase {
 
         final WebClient client = new WebClient();
 
-        final MockWebConnection conn = new MockWebConnection(client);
+        final MockWebConnection conn = new MockWebConnection();
         conn.setResponse(URL_FIRST, html1);
         conn.setResponse(URL_SECOND, html2);
         client.setWebConnection(conn);
 
-        final HtmlPage page = (HtmlPage) client.getPage(URL_FIRST);
+        final HtmlPage page = client.getPage(URL_FIRST);
         assertEquals(2, conn.getRequestCount());
 
         page.cloneNode(true);
@@ -285,15 +285,14 @@ public class HtmlInlineFrameTest extends WebTestCase {
 
         final WebClient client = new WebClient();
 
-        final MockWebConnection conn = new MockWebConnection(client);
+        final MockWebConnection conn = new MockWebConnection();
         conn.setResponse(URL_FIRST, html1);
         conn.setResponse(URL_SECOND, html2);
         client.setWebConnection(conn);
 
-        final HtmlPage page = (HtmlPage) client.getPage(URL_FIRST);
+        final HtmlPage page = client.getPage(URL_FIRST);
         assertEquals("iframe", page.getElementById("f").getTagName());
 
-        page.getEnclosingWindow().getThreadManager().joinAll(3000);
         assertEquals(2, conn.getRequestCount());
     }
 

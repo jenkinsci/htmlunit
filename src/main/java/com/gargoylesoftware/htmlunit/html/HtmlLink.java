@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package com.gargoylesoftware.htmlunit.html;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Map;
 
@@ -27,11 +28,12 @@ import com.gargoylesoftware.htmlunit.WebResponse;
  * Wrapper for the HTML element "link". <b>Note:</b> This is not a clickable link,
  * that one is an HtmlAnchor
  *
- * @version $Revision: 3174 $
+ * @version $Revision: 4873 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
+ * @author Marc Guillemot
  */
 public class HtmlLink extends ClickableElement {
 
@@ -42,7 +44,7 @@ public class HtmlLink extends ClickableElement {
     private WebResponse cachedWebResponse_;
 
     /**
-     * Create an instance of HtmlLink
+     * Creates an instance of HtmlLink
      *
      * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
@@ -63,7 +65,7 @@ public class HtmlLink extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getCharsetAttribute() {
-        return getAttributeValue("charset");
+        return getAttribute("charset");
     }
 
     /**
@@ -75,7 +77,7 @@ public class HtmlLink extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getHrefAttribute() {
-        return getAttributeValue("href");
+        return getAttribute("href");
     }
 
     /**
@@ -87,7 +89,7 @@ public class HtmlLink extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getHrefLangAttribute() {
-        return getAttributeValue("hreflang");
+        return getAttribute("hreflang");
     }
 
     /**
@@ -99,7 +101,7 @@ public class HtmlLink extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getTypeAttribute() {
-        return getAttributeValue("type");
+        return getAttribute("type");
     }
 
     /**
@@ -111,7 +113,7 @@ public class HtmlLink extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getRelAttribute() {
-        return getAttributeValue("rel");
+        return getAttribute("rel");
     }
 
     /**
@@ -123,7 +125,7 @@ public class HtmlLink extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getRevAttribute() {
-        return getAttributeValue("rev");
+        return getAttribute("rev");
     }
 
     /**
@@ -135,7 +137,7 @@ public class HtmlLink extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getMediaAttribute() {
-        return getAttributeValue("media");
+        return getAttribute("media");
     }
 
     /**
@@ -147,11 +149,11 @@ public class HtmlLink extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getTargetAttribute() {
-        return getAttributeValue("target");
+        return getAttribute("target");
     }
 
     /**
-     * <span style="color:red">POTENIAL PERFORMANCE KILLER - DOWNLOADS THE IMAGE - USE AT YOUR OWN RISK.</span><br/>
+     * <span style="color:red">POTENIAL PERFORMANCE KILLER - DOWNLOADS THE RESOURCE - USE AT YOUR OWN RISK.</span><br/>
      * If the linked content is not already downloaded it triggers a download. Then it stores the response
      * for later use.<br/>
      *
@@ -162,12 +164,22 @@ public class HtmlLink extends ClickableElement {
      */
     public WebResponse getWebResponse(final boolean downloadIfNeeded) throws IOException {
         if (downloadIfNeeded && cachedWebResponse_ == null) {
-            final HtmlPage page = (HtmlPage) getPage();
-            final WebClient webclient = page.getWebClient();
-
-            final URL url = page.getFullyQualifiedUrl(getHrefAttribute());
-            cachedWebResponse_ = webclient.loadWebResponse(new WebRequestSettings(url));
+            final WebClient webclient = getPage().getWebClient();
+            cachedWebResponse_ = webclient.loadWebResponse(getWebRequestSettings());
         }
         return cachedWebResponse_;
+    }
+
+    /**
+     * Returns the request settings which will allow us to retrieve the content referenced by the "href" attribute.
+     * @return the request settings which will allow us to retrieve the content referenced by the "href" attribute
+     * @throws MalformedURLException in case of problem resolving the URL
+     */
+    public WebRequestSettings getWebRequestSettings() throws MalformedURLException {
+        final HtmlPage page = (HtmlPage) getPage();
+        final URL url = page.getFullyQualifiedUrl(getHrefAttribute());
+        final WebRequestSettings request = new WebRequestSettings(url);
+        request.setAdditionalHeader("Referer", page.getWebResponse().getRequestSettings().getUrl().toExternalForm());
+        return request;
     }
 }

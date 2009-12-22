@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,19 +23,15 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.w3c.dom.Attr;
-import org.w3c.dom.CDATASection;
 import org.w3c.dom.Comment;
 import org.w3c.dom.DOMConfiguration;
-import org.w3c.dom.DOMException;
 import org.w3c.dom.DOMImplementation;
 import org.w3c.dom.Document;
 import org.w3c.dom.DocumentFragment;
-import org.w3c.dom.DocumentType;
 import org.w3c.dom.Element;
 import org.w3c.dom.EntityReference;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.w3c.dom.ProcessingInstruction;
 import org.w3c.dom.Text;
 import org.xml.sax.SAXException;
 
@@ -43,27 +39,28 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.WebWindow;
 import com.gargoylesoftware.htmlunit.html.DomAttr;
-import com.gargoylesoftware.htmlunit.html.DomNode;
+import com.gargoylesoftware.htmlunit.html.DomCDataSection;
+import com.gargoylesoftware.htmlunit.html.DomDocumentType;
+import com.gargoylesoftware.htmlunit.html.DomElement;
+import com.gargoylesoftware.htmlunit.html.DomProcessingInstruction;
 
 /**
  * A page that will be returned for response with content type "text/xml".
- * It doesn't implement itself {@link org.w3c.dom.Document} to allow to see the source of badly formed
- * XML responses.
  *
  * @version $Revision$
  * @author Marc Guillemot
  * @author David K. Taylor
  * @author Ahmed Ashour
  */
-public class XmlPage extends SgmlPage implements Document {
-    private static final long serialVersionUID = -1430136241030261308L;
-    private Node node_;
-    private Element documentElement_;
+public class XmlPage extends SgmlPage {
 
-    private final transient Log mainLog_ = LogFactory.getLog(getClass());
+    private static final long serialVersionUID = -1430136241030261308L;
+    private static final Log LOG = LogFactory.getLog(XmlPage.class);
+
+    private Node node_;
 
     /**
-     * Create an instance.
+     * Creates an instance.
      * A warning is logged if an exception is thrown while parsing the XML content
      * (for instance when the content is not a valid XML and can't be parsed).
      *
@@ -76,7 +73,7 @@ public class XmlPage extends SgmlPage implements Document {
     }
 
     /**
-     * Create an instance.
+     * Creates an instance.
      * A warning is logged if an exception is thrown while parsing the XML content
      * (for instance when the content is not a valid XML and can't be parsed).
      *
@@ -92,7 +89,7 @@ public class XmlPage extends SgmlPage implements Document {
     }
 
     /**
-     * Create an instance.
+     * Creates an instance.
      * A warning is logged if an exception is thrown while parsing the XML content
      * (for instance when the content is not a valid XML and can't be parsed).
      *
@@ -106,9 +103,9 @@ public class XmlPage extends SgmlPage implements Document {
         super(webResponse, enclosingWindow);
 
         try {
-            if (webResponse == null || webResponse.getContentAsString().trim().length() == 0) {
-                node_ =
-                    DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument().getDocumentElement();
+            if (webResponse == null || webResponse.getContentAsString() == null
+                    || webResponse.getContentAsString().trim().length() == 0) {
+                node_ = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument().getDocumentElement();
             }
             else {
                 node_ = XmlUtil.buildDocument(webResponse).getDocumentElement();
@@ -118,18 +115,28 @@ public class XmlPage extends SgmlPage implements Document {
             }
         }
         catch (final SAXException e) {
-            if (mainLog_.isWarnEnabled()) {
-                mainLog_.warn("Failed parsing XML document " + webResponse.getUrl() + ": " + e.getMessage());
+            if (LOG.isWarnEnabled()) {
+                LOG.warn("Failed parsing XML document " + webResponse.getRequestSettings().getUrl()
+                        + ": " + e.getMessage());
             }
             if (!ignoreSAXException) {
                 throw new IOException(e.getMessage());
             }
         }
         catch (final ParserConfigurationException e) {
-            if (mainLog_.isWarnEnabled()) {
-                mainLog_.warn("Failed parsing XML document " + webResponse.getUrl() + ": " + e.getMessage());
+            if (LOG.isWarnEnabled()) {
+                LOG.warn("Failed parsing XML document " + webResponse.getRequestSettings().getUrl()
+                        + ": " + e.getMessage());
             }
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean hasCaseSensitiveTagNames() {
+        return true;
     }
 
     /**
@@ -152,61 +159,31 @@ public class XmlPage extends SgmlPage implements Document {
     }
 
     /**
-     * Gets the root XmlElement of this document.
-     * @return the root element
-     */
-    //TODO: should be removed later to SgmlPage
-    public XmlElement getDocumentXmlElement() {
-        DomNode childNode = getFirstChild();
-        while (childNode != null && !(childNode instanceof XmlElement)) {
-            childNode = childNode.getNextSibling();
-        }
-        return (XmlElement) childNode;
-    }
-
-    /**
-     * Create a new XML element with the given tag name.
+     * Creates a new XML element with the given tag name.
      *
      * @param tagName the tag name
      * @return the new XML element
      */
-    public XmlElement createXmlElement(final String tagName) {
+    public DomElement createXmlElement(final String tagName) {
         return createXmlElementNS(null, tagName);
     }
 
     /**
-     * Create a new HtmlElement with the given namespace and qualified name.
+     * Creates a new XML element with the given namespace and qualified name.
      *
      * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
-     * @return the new HTML element
+     * @return the new XML element
      */
-    public XmlElement createXmlElementNS(final String namespaceURI, final String qualifiedName) {
-        return new XmlElement(namespaceURI, qualifiedName, this, new HashMap<String, DomAttr>());
-    }
-
-    /**
-     * {@inheritDoc}.
-     * Exactly behaves as {@link #asXml()}.
-     */
-    @Override
-    public String asText() {
-        return asXml();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String asXml() {
-        return getDocumentXmlElement().asXml();
+    public DomElement createXmlElementNS(final String namespaceURI, final String qualifiedName) {
+        return new DomElement(namespaceURI, qualifiedName, this, new HashMap<String, DomAttr>());
     }
 
     /**
      * {@inheritDoc}
      * Not yet implemented.
      */
-    public Node adoptNode(final Node source) throws DOMException {
+    public Node adoptNode(final Node source) {
         throw new UnsupportedOperationException("XmlPage.adoptNode is not yet implemented.");
     }
 
@@ -214,7 +191,7 @@ public class XmlPage extends SgmlPage implements Document {
      * {@inheritDoc}
      * Not yet implemented.
      */
-    public Attr createAttribute(final String name) throws DOMException {
+    public Attr createAttribute(final String name) {
         throw new UnsupportedOperationException("XmlPage.createAttribute is not yet implemented.");
     }
 
@@ -222,16 +199,15 @@ public class XmlPage extends SgmlPage implements Document {
      * {@inheritDoc}
      * Not yet implemented.
      */
-    public Attr createAttributeNS(final String namespaceURI, final String qualifiedName) throws DOMException {
+    public Attr createAttributeNS(final String namespaceURI, final String qualifiedName) {
         throw new UnsupportedOperationException("XmlPage.createAttributeNS is not yet implemented.");
     }
 
     /**
      * {@inheritDoc}
-     * Not yet implemented.
      */
-    public CDATASection createCDATASection(final String data) throws DOMException {
-        throw new UnsupportedOperationException("XmlPage.createCDATASection is not yet implemented.");
+    public DomCDataSection createCDATASection(final String data) {
+        return new DomCDataSection(this, data);
     }
 
     /**
@@ -254,7 +230,7 @@ public class XmlPage extends SgmlPage implements Document {
      * {@inheritDoc}
      */
     @Override
-    public Element createElement(final String tagName) throws DOMException {
+    public Element createElement(final String tagName) {
         return createXmlElement(tagName);
     }
 
@@ -262,7 +238,8 @@ public class XmlPage extends SgmlPage implements Document {
      * {@inheritDoc}
      * Not yet implemented.
      */
-    public Element createElementNS(final String namespaceURI, final String qualifiedName) throws DOMException {
+    @Override
+    public Element createElementNS(final String namespaceURI, final String qualifiedName) {
         throw new UnsupportedOperationException("XmlPage.createElementNS is not yet implemented.");
     }
 
@@ -270,17 +247,15 @@ public class XmlPage extends SgmlPage implements Document {
      * {@inheritDoc}
      * Not yet implemented.
      */
-    public EntityReference createEntityReference(final String name) throws DOMException {
+    public EntityReference createEntityReference(final String name) {
         throw new UnsupportedOperationException("XmlPage.createEntityReference is not yet implemented.");
     }
 
     /**
      * {@inheritDoc}
-     * Not yet implemented.
      */
-    public ProcessingInstruction createProcessingInstruction(final String target, final String data)
-        throws DOMException {
-        throw new UnsupportedOperationException("XmlPage.createProcessingInstruction is not yet implemented.");
+    public DomProcessingInstruction createProcessingInstruction(final String target, final String data) {
+        return new DomProcessingInstruction(this, target, data);
     }
 
     /**
@@ -289,29 +264,6 @@ public class XmlPage extends SgmlPage implements Document {
      */
     public Text createTextNode(final String data) {
         throw new UnsupportedOperationException("XmlPage.createTextNode is not yet implemented.");
-    }
-
-    /**
-     * {@inheritDoc}
-     * Not yet implemented.
-     */
-    public DocumentType getDoctype() {
-        throw new UnsupportedOperationException("XmlPage.getDoctype is not yet implemented.");
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Element getDocumentElement() {
-        if (documentElement_ == null) {
-            DomNode childNode = getFirstChild();
-            while (childNode != null && !(childNode instanceof Element)) {
-                childNode = childNode.getNextSibling();
-            }
-            documentElement_ = (Element) childNode;
-        }
-        return documentElement_;
     }
 
     /**
@@ -406,7 +358,7 @@ public class XmlPage extends SgmlPage implements Document {
      * {@inheritDoc}
      * Not yet implemented.
      */
-    public Node importNode(final Node importedNode, final boolean deep) throws DOMException {
+    public Node importNode(final Node importedNode, final boolean deep) {
         throw new UnsupportedOperationException("XmlPage.importNode is not yet implemented.");
     }
 
@@ -414,15 +366,7 @@ public class XmlPage extends SgmlPage implements Document {
      * {@inheritDoc}
      * Not yet implemented.
      */
-    public void normalizeDocument() {
-        throw new UnsupportedOperationException("XmlPage.normalizeDocument is not yet implemented.");
-    }
-
-    /**
-     * {@inheritDoc}
-     * Not yet implemented.
-     */
-    public Node renameNode(final Node n, final String namespaceURI, final String qualifiedName) throws DOMException {
+    public Node renameNode(final Node n, final String namespaceURI, final String qualifiedName) {
         throw new UnsupportedOperationException("XmlPage.renameNode is not yet implemented.");
     }
 
@@ -446,7 +390,7 @@ public class XmlPage extends SgmlPage implements Document {
      * {@inheritDoc}
      * Not yet implemented.
      */
-    public void setXmlStandalone(final boolean xmlStandalone) throws DOMException {
+    public void setXmlStandalone(final boolean xmlStandalone) {
         throw new UnsupportedOperationException("XmlPage.setXmlStandalone is not yet implemented.");
     }
 
@@ -454,7 +398,7 @@ public class XmlPage extends SgmlPage implements Document {
      * {@inheritDoc}
      * Not yet implemented.
      */
-    public void setXmlVersion(final String xmlVersion) throws DOMException {
+    public void setXmlVersion(final String xmlVersion) {
         throw new UnsupportedOperationException("XmlPage.setXmlVersion is not yet implemented.");
     }
 
@@ -465,5 +409,13 @@ public class XmlPage extends SgmlPage implements Document {
     @Override
     public String getPageEncoding() {
         throw new UnsupportedOperationException("XmlPage.getPageEncoding is not yet implemented.");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected void setDocumentType(final DomDocumentType type) {
+        super.setDocumentType(type);
     }
 }

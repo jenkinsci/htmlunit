@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,13 +21,16 @@ import java.io.InputStream;
  * A generic page that is returned whenever an unexpected content type is
  * returned by the server.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4756 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  */
 public class UnexpectedPage implements Page {
-    private final WebResponse webResponse_;
 
+    /** Serial version UID. */
+    private static final long serialVersionUID = -4072615208727355040L;
+
+    private final WebResponse webResponse_;
     private WebWindow enclosingWindow_;
 
     /**

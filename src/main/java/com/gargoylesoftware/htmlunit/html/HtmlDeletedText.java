@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "del".
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4002 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -55,7 +55,7 @@ public class HtmlDeletedText extends ClickableElement {
      * @return the value of the attribute "cite" or an empty string if that attribute isn't defined
      */
     public final String getCiteAttribute() {
-        return getAttributeValue("cite");
+        return getAttribute("cite");
     }
 
     /**
@@ -66,6 +66,6 @@ public class HtmlDeletedText extends ClickableElement {
      * @return the value of the attribute "datetime" or an empty string if that attribute isn't defined
      */
     public final String getDateTimeAttribute() {
-        return getAttributeValue("datetime");
+        return getAttribute("datetime");
     }
 }

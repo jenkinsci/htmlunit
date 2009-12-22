@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,16 +17,22 @@ package com.gargoylesoftware.htmlunit.javascript.host;
 import java.lang.reflect.Method;
 import java.util.Map;
 
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.Function;
-import org.mozilla.javascript.FunctionObject;
-import org.mozilla.javascript.Scriptable;
+import net.sourceforge.htmlunit.corejs.javascript.Context;
+import net.sourceforge.htmlunit.corejs.javascript.Function;
+import net.sourceforge.htmlunit.corejs.javascript.FunctionObject;
+import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebWindow;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 import com.gargoylesoftware.htmlunit.javascript.configuration.ClassConfiguration;
 import com.gargoylesoftware.htmlunit.javascript.configuration.JavaScriptConfiguration;
+import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLDocument;
+import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLHttpRequest;
 
 /**
  * This is the host object that allows JavaScript to instantiate java objects via the ActiveXObject
@@ -40,7 +46,10 @@ import com.gargoylesoftware.htmlunit.javascript.configuration.JavaScriptConfigur
  * @author Ahmed Ashour
  */
 public class ActiveXObject extends SimpleScriptable {
+
     private static final long serialVersionUID = 7327032075131452226L;
+
+    private static final Log LOG = LogFactory.getLog(ActiveXObject.class);
 
     /**
      * The default constructor.
@@ -90,26 +99,36 @@ public class ActiveXObject extends SimpleScriptable {
             return buildXSLTemplate();
         }
 
-        final Map<String, String> map = getWindow(ctorObj).getWebWindow().getWebClient().getActiveXObjectMap();
-        if (map == null) {
-            throw Context.reportRuntimeError("ActiveXObject Error: the map is null.");
+        final WebClient webClient = getWindow(ctorObj).getWebWindow().getWebClient();
+        final Map<String, String> map = webClient.getActiveXObjectMap();
+        if (map != null) {
+            final Object mapValue = map.get(activeXName);
+            if (mapValue != null) {
+                final String xClassString = (String) mapValue;
+                Object object = null;
+                try {
+                    final Class< ? > xClass = Class.forName(xClassString);
+                    object = xClass.newInstance();
+                }
+                catch (final Exception e) {
+                    throw Context.reportRuntimeError("ActiveXObject Error: failed instantiating class " + xClassString
+                            + " because " + e.getMessage() + ".");
+                }
+                return Context.toObject(object, ctorObj);
+            }
         }
-        final Object mapValue = map.get(activeXName);
-        if (mapValue == null) {
-            throw Context.reportRuntimeError("ActiveXObject Error: no value for " + activeXName + ".");
+        if (webClient.isActiveXNative() && System.getProperty("os.name").contains("Windows")) {
+            try {
+                return new ActiveXObjectImpl(activeXName);
+            }
+            catch (final Exception e) {
+                if (LOG.isWarnEnabled()) {
+                    LOG.warn("Error initiating Jacob", e);
+                }
+            }
         }
 
-        final String xClassString = (String) mapValue;
-        Object object = null;
-        try {
-            final Class< ? > xClass = Class.forName(xClassString);
-            object = xClass.newInstance();
-        }
-        catch (final Exception e) {
-            throw Context.reportRuntimeError("ActiveXObject Error: failed instantiating class " + xClassString
-                    + " because " + e.getMessage() + ".");
-        }
-        return Context.toObject(object, ctorObj);
+        throw Context.throwAsScriptRuntimeEx(new Exception("Automation server can't create object"));
     }
 
     /**
@@ -154,7 +173,9 @@ public class ActiveXObject extends SimpleScriptable {
     }
 
     private static Scriptable buildXMLHttpRequest() {
-        final SimpleScriptable scriptable = new XMLHttpRequest();
+        final SimpleScriptable scriptable = new XMLHttpRequest(false);
+
+        // Don't forget to update XMLHttpRequest.ALL_PROPERTIES_
 
         // the properties
         addProperty(scriptable, "onreadystatechange", true, true);
@@ -184,7 +205,12 @@ public class ActiveXObject extends SimpleScriptable {
         return scriptable;
     }
 
-    static XMLDocument buildXMLDocument(final WebWindow enclosingWindow) {
+    /**
+     * Builds XMLDocument.
+     * @param enclosingWindow the window
+     * @return the document
+     */
+    public static XMLDocument buildXMLDocument(final WebWindow enclosingWindow) {
         final XMLDocument document = new XMLDocument(enclosingWindow);
 
         // the properties
@@ -194,15 +220,18 @@ public class ActiveXObject extends SimpleScriptable {
         addProperty(document, "xml", true, false);
 
         // the functions
+        addFunction(document, "createCDATASection");
+        addFunction(document, "createProcessingInstruction");
         addFunction(document, "getElementsByTagName");
         addFunction(document, "load");
         addFunction(document, "loadXML");
+        addFunction(document, "nodeFromID");
         addFunction(document, "selectNodes");
         addFunction(document, "selectSingleNode");
         addFunction(document, "setProperty");
 
         final JavaScriptConfiguration jsConfig =
-            JavaScriptConfiguration.getInstance(BrowserVersion.INTERNET_EXPLORER_7_0);
+            JavaScriptConfiguration.getInstance(BrowserVersion.INTERNET_EXPLORER_7);
 
         for (String className = "Document"; className.trim().length() != 0;) {
             final ClassConfiguration classConfig = jsConfig.getClassConfiguration(className);
@@ -232,7 +261,14 @@ public class ActiveXObject extends SimpleScriptable {
         scriptable.defineProperty(jsMethodName, fo, READONLY);
     }
 
-    static void addProperty(final SimpleScriptable scriptable, final String propertyName,
+    /**
+     * Adds a specific property to this object.
+     * @param scriptable the scriptable
+     * @param propertyName the property name
+     * @param isGetter is getter
+     * @param isSetter is setter
+     */
+    public static void addProperty(final SimpleScriptable scriptable, final String propertyName,
             final boolean isGetter, final boolean isSetter) {
         String getterName = null;
         if (isGetter) {

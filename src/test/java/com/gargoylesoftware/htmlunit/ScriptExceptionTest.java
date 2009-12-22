@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,13 +27,13 @@ import org.apache.commons.io.IOUtils;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.html.ClickableElement;
+import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 
 /**
  * Tests for {@link ScriptException}.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4731 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
@@ -61,12 +61,11 @@ public final class ScriptExceptionTest extends WebTestCase {
     @Test
     public void getPage() throws Exception {
         final String html = "<html><script>notExisting()</script></html>";
-
         try {
             loadPage(getBrowserVersion(), html, null);
         }
         catch (final ScriptException e) {
-            assertEquals(URL_GARGOYLE, e.getPage().getWebResponse().getUrl());
+            assertEquals(getDefaultUrl(), e.getPage().getWebResponse().getRequestSettings().getUrl());
         }
     }
 
@@ -128,8 +127,8 @@ public final class ScriptExceptionTest extends WebTestCase {
         final URL url = getClass().getClassLoader().getResource(fileName);
         assertNotNull(url);
         try {
-            final HtmlPage page = (HtmlPage) webClient.getPage(url);
-            ((ClickableElement) page.getHtmlElementById("clickMe")).click();
+            final HtmlPage page = webClient.getPage(url);
+            page.<HtmlElement>getHtmlElementById("clickMe").click();
             fail();
         }
         catch (final ScriptException e) {

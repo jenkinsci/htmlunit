@@ -4,7 +4,7 @@
     <properties>
         <title>HtmlUnit Coding Conventions</title>
         <author email="mbowler@GargoyleSoftware.com">Mike Bowler</author>
-        <revision>$Revision: 2826 $</revision>
+        <revision>$Revision: 4314 $</revision>
     </properties>
 
     <body>
@@ -100,7 +100,7 @@
 
             <p>
                 Declare method parameters method final to indicate that they will not be changed.
-                <source>public void setFooList( final List fooList ) {</source>
+                <source>public void setFooList(final List fooList) {</source>
             </p>
 
             <p>

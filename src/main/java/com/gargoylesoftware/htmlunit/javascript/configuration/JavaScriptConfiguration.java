@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,8 +38,24 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXParseException;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.html.HtmlAbbreviated;
+import com.gargoylesoftware.htmlunit.html.HtmlAcronym;
+import com.gargoylesoftware.htmlunit.html.HtmlAddress;
+import com.gargoylesoftware.htmlunit.html.HtmlBackgroundSound;
+import com.gargoylesoftware.htmlunit.html.HtmlBidirectionalOverride;
+import com.gargoylesoftware.htmlunit.html.HtmlBig;
+import com.gargoylesoftware.htmlunit.html.HtmlBlink;
 import com.gargoylesoftware.htmlunit.html.HtmlBlockQuote;
+import com.gargoylesoftware.htmlunit.html.HtmlBold;
+import com.gargoylesoftware.htmlunit.html.HtmlCenter;
+import com.gargoylesoftware.htmlunit.html.HtmlCitation;
+import com.gargoylesoftware.htmlunit.html.HtmlCode;
+import com.gargoylesoftware.htmlunit.html.HtmlDefinition;
+import com.gargoylesoftware.htmlunit.html.HtmlDefinitionDescription;
+import com.gargoylesoftware.htmlunit.html.HtmlDefinitionTerm;
+import com.gargoylesoftware.htmlunit.html.HtmlDivision;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
+import com.gargoylesoftware.htmlunit.html.HtmlEmphasis;
 import com.gargoylesoftware.htmlunit.html.HtmlHeading1;
 import com.gargoylesoftware.htmlunit.html.HtmlHeading2;
 import com.gargoylesoftware.htmlunit.html.HtmlHeading3;
@@ -47,25 +63,55 @@ import com.gargoylesoftware.htmlunit.html.HtmlHeading4;
 import com.gargoylesoftware.htmlunit.html.HtmlHeading5;
 import com.gargoylesoftware.htmlunit.html.HtmlHeading6;
 import com.gargoylesoftware.htmlunit.html.HtmlInlineQuotation;
+import com.gargoylesoftware.htmlunit.html.HtmlItalic;
+import com.gargoylesoftware.htmlunit.html.HtmlKeyboard;
+import com.gargoylesoftware.htmlunit.html.HtmlListing;
+import com.gargoylesoftware.htmlunit.html.HtmlMarquee;
+import com.gargoylesoftware.htmlunit.html.HtmlMultiColumn;
+import com.gargoylesoftware.htmlunit.html.HtmlNoBreak;
+import com.gargoylesoftware.htmlunit.html.HtmlNoEmbed;
+import com.gargoylesoftware.htmlunit.html.HtmlNoFrames;
+import com.gargoylesoftware.htmlunit.html.HtmlNoScript;
+import com.gargoylesoftware.htmlunit.html.HtmlPlainText;
+import com.gargoylesoftware.htmlunit.html.HtmlS;
+import com.gargoylesoftware.htmlunit.html.HtmlSample;
+import com.gargoylesoftware.htmlunit.html.HtmlSmall;
+import com.gargoylesoftware.htmlunit.html.HtmlSpan;
+import com.gargoylesoftware.htmlunit.html.HtmlStrike;
+import com.gargoylesoftware.htmlunit.html.HtmlStrong;
+import com.gargoylesoftware.htmlunit.html.HtmlSubscript;
+import com.gargoylesoftware.htmlunit.html.HtmlSuperscript;
 import com.gargoylesoftware.htmlunit.html.HtmlTableBody;
+import com.gargoylesoftware.htmlunit.html.HtmlTableColumn;
+import com.gargoylesoftware.htmlunit.html.HtmlTableColumnGroup;
 import com.gargoylesoftware.htmlunit.html.HtmlTableFooter;
 import com.gargoylesoftware.htmlunit.html.HtmlTableHeader;
+import com.gargoylesoftware.htmlunit.html.HtmlTeletype;
+import com.gargoylesoftware.htmlunit.html.HtmlUnderlined;
+import com.gargoylesoftware.htmlunit.html.HtmlVariable;
+import com.gargoylesoftware.htmlunit.html.HtmlExample;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 import com.gargoylesoftware.htmlunit.javascript.StrictErrorHandler;
-import com.gargoylesoftware.htmlunit.javascript.host.HTMLHeadingElement;
-import com.gargoylesoftware.htmlunit.javascript.host.HTMLQuoteElement;
-import com.gargoylesoftware.htmlunit.javascript.host.HTMLTableSectionElement;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLDivElement;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLHeadingElement;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLQuoteElement;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLSpanElement;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLTableColElement;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLTableSectionElement;
 
 /**
  * A container for all the JavaScript configuration information.
  * TODO - Need to add the logic to support the browser and JavaScript conditionals in the Class elements.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4806 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Chris Erskine
  * @author Ahmed Ashour
  */
 public final class JavaScriptConfiguration {
+
+    private static final Log LOG = LogFactory.getLog(JavaScriptConfiguration.class);
+
     private static Document XmlDocument_;
 
     /** Constant indicating that this function/property is used by the specified browser version. */
@@ -135,7 +181,7 @@ public final class JavaScriptConfiguration {
         try {
             final Reader reader = getConfigurationFileAsReader();
             if (reader == null) {
-                getLog().error("Unable to load JavaScriptConfiguration.xml");
+                LOG.error("Unable to load JavaScriptConfiguration.xml");
             }
             else {
                 loadConfiguration(reader);
@@ -143,7 +189,7 @@ public final class JavaScriptConfiguration {
             }
         }
         catch (final Exception e) {
-            getLog().error("Error when loading JavascriptConfiguration.xml", e);
+            LOG.error("Error when loading JavascriptConfiguration.xml", e);
             e.printStackTrace();
         }
     }
@@ -167,13 +213,13 @@ public final class JavaScriptConfiguration {
             XmlDocument_ = documentBuilder.parse(inputSource);
         }
         catch (final SAXParseException parseException) {
-            getLog().error("line=[" + parseException.getLineNumber()
+            LOG.error("line=[" + parseException.getLineNumber()
                     + "] columnNumber=[" + parseException.getColumnNumber()
                     + "] systemId=[" + parseException.getSystemId()
                     + "] publicId=[" + parseException.getPublicId() + "]", parseException);
         }
         catch (final Exception e) {
-            getLog().error("Error when loading JavascriptConfiguration.xml", e);
+            LOG.error("Error when loading JavascriptConfiguration.xml", e);
         }
     }
 
@@ -204,10 +250,6 @@ public final class JavaScriptConfiguration {
     static JavaScriptConfiguration getAllEntries() {
         final JavaScriptConfiguration configuration = new JavaScriptConfiguration(null);
         return configuration;
-    }
-
-    private static Log getLog() {
-        return LogFactory.getLog(JavaScriptConfiguration.class);
     }
 
     private static Reader getConfigurationFileAsReader() {
@@ -311,11 +353,8 @@ public final class JavaScriptConfiguration {
                 else if (tagName.equals("constant")) {
                     parseConstantElement(classConfiguration, childElement);
                 }
-                else if (tagName.equals("javascript")) {
-                    getLog().debug("javascript tag not yet handled for class " + linkedClassname);
-                }
                 else if (tagName.equals("browser")) {
-                    getLog().debug("browser tag not yet handled for class " + linkedClassname);
+                    LOG.debug("browser tag not yet handled for class " + linkedClassname);
                 }
                 else if (tagName.equals("doclink")) {
                     // ignore this link
@@ -403,8 +442,6 @@ public final class JavaScriptConfiguration {
         Node node = element.getFirstChild();
         boolean browserConstraint = false;
         boolean allowBrowser = false;
-        boolean javascriptConstraint = false;
-        boolean allowJavascriptConstraint = false;
         while (node != null) {
             if (node instanceof Element) {
                 final Element childElement = (Element) node;
@@ -414,19 +451,10 @@ public final class JavaScriptConfiguration {
                         allowBrowser = true;
                     }
                 }
-                else if (childElement.getTagName().equals("javascript")) {
-                    javascriptConstraint = true;
-                    if (testToIncludeForJSConstraint(childElement, browser_)) {
-                        allowJavascriptConstraint = true;
-                    }
-                }
             }
             node = node.getNextSibling();
         }
         if (browserConstraint && !allowBrowser) {
-            return true;
-        }
-        if (javascriptConstraint && !allowJavascriptConstraint) {
             return true;
         }
         return false;
@@ -462,8 +490,8 @@ public final class JavaScriptConfiguration {
     }
 
     private boolean testToIncludeForBrowserConstraint(final Element element, final BrowserVersion browser) {
-        if (!browser.getApplicationName().equals(element.getAttribute("name"))
-            && (!browser.isNetscape() || !"Firefox".equals(element.getAttribute("name")))) {
+        if ((!browser.isIE() || !"Internet Explorer".equals(element.getAttribute("name")))
+            && (!browser.isFirefox() || !"Firefox".equals(element.getAttribute("name")))) {
             return false;
         }
         final String max = element.getAttribute("max-version");
@@ -487,33 +515,6 @@ public final class JavaScriptConfiguration {
             minVersion = Float.parseFloat(min);
         }
         if ((minVersion > 0) && (browser.getBrowserVersionNumeric() < minVersion)) {
-            return false;
-        }
-        return true;
-    }
-
-    private boolean testToIncludeForJSConstraint(final Element element, final BrowserVersion browser) {
-        final String max = element.getAttribute("max-version");
-        float maxVersion;
-        if (max.length() == 0) {
-            maxVersion = 0;
-        }
-        else {
-            maxVersion = Float.parseFloat(max);
-        }
-        if ((maxVersion > 0) && (browser.getJavaScriptVersionNumeric() > maxVersion)) {
-            return false;
-        }
-
-        float minVersion;
-        final String min = element.getAttribute("min-version");
-        if (min.length() == 0) {
-            minVersion = 0;
-        }
-        else {
-            minVersion = Float.parseFloat(min);
-        }
-        if ((minVersion > 0) && (browser.getJavaScriptVersionNumeric() < minVersion)) {
             return false;
         }
         return true;
@@ -712,7 +713,7 @@ public final class JavaScriptConfiguration {
                     final Class< ? extends HtmlElement> htmlClass =
                         (Class< ? extends HtmlElement>) Class.forName(htmlClassname);
                     // preload and validate that the class exists
-                    getLog().debug("Mapping " + htmlClass.getName() + " to " + jsClassname);
+                    LOG.debug("Mapping " + htmlClass.getName() + " to " + jsClassname);
                     while (!classConfig.isJsObject()) {
                         jsClassname = classConfig.getExtendedClass();
                         classConfig = configuration.getClassConfiguration(jsClassname);
@@ -734,9 +735,52 @@ public final class JavaScriptConfiguration {
         map.put(HtmlInlineQuotation.class, HTMLQuoteElement.class);
         map.put(HtmlBlockQuote.class, HTMLQuoteElement.class);
 
+        map.put(HtmlAbbreviated.class, HTMLSpanElement.class);
+        map.put(HtmlAcronym.class, HTMLSpanElement.class);
+        map.put(HtmlAddress.class, HTMLSpanElement.class);
+        map.put(HtmlBackgroundSound.class, HTMLSpanElement.class);
+        map.put(HtmlBidirectionalOverride.class, HTMLSpanElement.class);
+        map.put(HtmlBig.class, HTMLSpanElement.class);
+        map.put(HtmlBold.class, HTMLSpanElement.class);
+        map.put(HtmlBlink.class, HTMLSpanElement.class);
+        map.put(HtmlCenter.class, HTMLSpanElement.class);
+        map.put(HtmlCitation.class, HTMLSpanElement.class);
+        map.put(HtmlCode.class, HTMLSpanElement.class);
+        map.put(HtmlDefinition.class, HTMLSpanElement.class);
+        map.put(HtmlDefinitionDescription.class, HTMLSpanElement.class);
+        map.put(HtmlDefinitionTerm.class, HTMLSpanElement.class);
+        map.put(HtmlEmphasis.class, HTMLSpanElement.class);
+        map.put(HtmlItalic.class, HTMLSpanElement.class);
+        map.put(HtmlKeyboard.class, HTMLSpanElement.class);
+        map.put(HtmlListing.class, HTMLSpanElement.class);
+        map.put(HtmlMultiColumn.class, HTMLSpanElement.class);
+        map.put(HtmlNoBreak.class, HTMLSpanElement.class);
+        map.put(HtmlPlainText.class, HTMLSpanElement.class);
+        map.put(HtmlS.class, HTMLSpanElement.class);
+        map.put(HtmlSample.class, HTMLSpanElement.class);
+        map.put(HtmlSmall.class, HTMLSpanElement.class);
+        map.put(HtmlSpan.class, HTMLSpanElement.class);
+        map.put(HtmlStrike.class, HTMLSpanElement.class);
+        map.put(HtmlStrong.class, HTMLSpanElement.class);
+        map.put(HtmlSubscript.class, HTMLSpanElement.class);
+        map.put(HtmlSuperscript.class, HTMLSpanElement.class);
+        map.put(HtmlTeletype.class, HTMLSpanElement.class);
+        map.put(HtmlUnderlined.class, HTMLSpanElement.class);
+        map.put(HtmlVariable.class, HTMLSpanElement.class);
+        map.put(HtmlExample.class, HTMLSpanElement.class);
+
+        map.put(HtmlDivision.class, HTMLDivElement.class);
+        map.put(HtmlMarquee.class, HTMLDivElement.class);
+        map.put(HtmlNoEmbed.class, HTMLDivElement.class);
+        map.put(HtmlNoFrames.class, HTMLDivElement.class);
+        map.put(HtmlNoScript.class, HTMLDivElement.class);
+
         map.put(HtmlTableBody.class, HTMLTableSectionElement.class);
         map.put(HtmlTableHeader.class, HTMLTableSectionElement.class);
         map.put(HtmlTableFooter.class, HTMLTableSectionElement.class);
+
+        map.put(HtmlTableColumn.class, HTMLTableColElement.class);
+        map.put(HtmlTableColumnGroup.class, HTMLTableColElement.class);
 
         HtmlJavaScriptMap_ = Collections.unmodifiableMap(map);
         return HtmlJavaScriptMap_;

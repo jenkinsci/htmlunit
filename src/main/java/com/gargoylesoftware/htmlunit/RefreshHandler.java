@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,10 +18,9 @@ import java.io.IOException;
 import java.net.URL;
 
 /**
- * A handler for page refreshes. A refresh can be triggered by a response header
- * or a meta tag.
+ * A handler for page refreshes. A refresh can be triggered by a response header or a meta tag.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4324 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Daniel Gredler
  */

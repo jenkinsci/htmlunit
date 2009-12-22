@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@ package com.gargoylesoftware.htmlunit.javascript.host;
 
 /**
  * A JavaScript object for a document.navigator.plugins.
- * @version $Revision: 3026 $
+ * @version $Revision: 4002 $
  * @author Marc Guillemot
  *
  * @see <a href="http://www.xulplanet.com/references/objref/MimeTypeArray.html">XUL Planet</a>

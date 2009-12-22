@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 /**
  * Specifies a rectangle that contains a line of text in either an element or a TextRange object.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4002 $
  * @author Ahmed Ashour
  * @see <a href="http://msdn2.microsoft.com/en-us/library/ms535906.aspx">MSDN Documentation</a>
  */

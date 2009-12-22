@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,23 @@
  */
 package com.gargoylesoftware.htmlunit.javascript;
 
-import java.util.ArrayList;
+import java.io.StringWriter;
+import java.net.URL;
 
+import org.apache.commons.io.IOUtils;
+import org.apache.log4j.Appender;
+import org.apache.log4j.Layout;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+import org.apache.log4j.PatternLayout;
+import org.apache.log4j.WriterAppender;
 import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.MockWebConnection;
+import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.WebConnection;
 import com.gargoylesoftware.htmlunit.WebTestCase;
 
 /**
@@ -36,26 +44,26 @@ public class DebugFrameImplTest extends WebTestCase {
     private final Logger loggerDebugFrameImpl_ = Logger.getLogger(DebugFrameImpl.class);
 
     private Level originalLogLevel_;
+    private WebClient client_;
 
     /**
-     * Prepares the log to trigger problematic code.
-     * @throws Exception when a problem occurs
+     * Constructor.
+     * @throws Exception if an exception occurs
      */
-    @Before
-    public void setUp() throws Exception {
-        HtmlUnitContextFactory.setDebuggerEnabled(true);
-
+    public DebugFrameImplTest() throws Exception {
+        client_ = new WebClient(BrowserVersion.FIREFOX_2);
+        client_.getJavaScriptEngine().getContextFactory().setDebugger(new DebuggerImpl());
         originalLogLevel_ = loggerDebugFrameImpl_.getLevel();
         loggerDebugFrameImpl_.setLevel(Level.TRACE);
     }
 
     /**
-     * Resets the log to its original state.
+     * Cleans up the client, and resets the log to its original state.
      * @throws Exception when a problem occurs
      */
     @After
     public void tearDown() throws Exception {
-        HtmlUnitContextFactory.setDebuggerEnabled(false);
+        client_.getJavaScriptEngine().getContextFactory().setDebugger(null);
         loggerDebugFrameImpl_.setLevel(originalLogLevel_);
     }
 
@@ -70,8 +78,36 @@ public class DebugFrameImplTest extends WebTestCase {
             + "window.__defineGetter__('foo', function(a) { return counter++ });"
             + "alert(window.foo);"
             + "</script></head><body></body></html>";
-
-        loadPage(BrowserVersion.FIREFOX_2, content, new ArrayList<String>());
+        final WebConnection old = client_.getWebConnection();
+        try {
+            final MockWebConnection mock = new MockWebConnection();
+            mock.setDefaultResponse(content);
+            client_.setWebConnection(mock);
+            client_.getPage(URL_FIRST);
+        }
+        finally {
+            client_.setWebConnection(old);
+        }
     }
 
+    /**
+     * @throws Exception if the test fails
+     */
+    void loggedCalls() throws Exception {
+        final URL url = getClass().getResource("debugFrameImplTest.html");
+        final String expectedLog = IOUtils.toString(getClass().getResourceAsStream("debugFrameImplTest.txt"));
+
+        final StringWriter sw = new StringWriter();
+        final Layout layout = new PatternLayout("%m%n");
+        final Appender appender = new WriterAppender(layout, sw);
+        loggerDebugFrameImpl_.addAppender(appender);
+        try {
+            client_.getPage(url);
+        }
+        finally {
+            loggerDebugFrameImpl_.removeAppender(appender);
+        }
+
+        assertEquals(expectedLog, sw.toString());
+    }
 }

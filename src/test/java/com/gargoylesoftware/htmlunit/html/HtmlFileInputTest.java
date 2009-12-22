@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,29 +41,24 @@ import org.apache.commons.httpclient.methods.PostMethod;
 import org.apache.commons.httpclient.methods.multipart.FilePart;
 import org.apache.commons.httpclient.methods.multipart.MultipartRequestEntity;
 import org.apache.commons.httpclient.methods.multipart.Part;
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
-import org.mortbay.jetty.Server;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
-import com.gargoylesoftware.htmlunit.HttpWebConnectionTest;
 import com.gargoylesoftware.htmlunit.KeyDataPair;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebServerTestCase;
 import com.gargoylesoftware.htmlunit.util.ServletContentWrapper;
 
 /**
  * Tests for {@link HtmlFileInput}.
  *
- * @version $Revision: 3158 $
+ * @version $Revision: 4002 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
-public class HtmlFileInputTest extends WebTestCase {
-
-    private Server server_;
+public class HtmlFileInputTest extends WebServerTestCase {
 
     /**
      * @throws Exception if the test fails
@@ -104,15 +99,15 @@ public class HtmlFileInputTest extends WebTestCase {
         final String secondContent = "<html><head><title>second</title></head></html>";
         final WebClient client = new WebClient();
 
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
         webConnection.setResponse(URL_SECOND, secondContent);
 
         client.setWebConnection(webConnection);
 
-        final HtmlPage firstPage = (HtmlPage) client.getPage(URL_FIRST);
+        final HtmlPage firstPage = client.getPage(URL_FIRST);
         final HtmlForm f = firstPage.getForms().get(0);
-        final HtmlFileInput fileInput = (HtmlFileInput) f.getInputByName("image");
+        final HtmlFileInput fileInput = f.getInputByName("image");
         fileInput.setValueAttribute("dummy.txt");
         fileInput.setContentType("text/csv");
         fileInput.setData("My file data".getBytes());
@@ -132,15 +127,15 @@ public class HtmlFileInputTest extends WebTestCase {
         final String secondContent = "<html><head><title>second</title></head></html>";
         final WebClient client = new WebClient();
 
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
         webConnection.setResponse(URL_SECOND, secondContent);
 
         client.setWebConnection(webConnection);
 
-        final HtmlPage firstPage = (HtmlPage) client.getPage(URL_FIRST);
+        final HtmlPage firstPage = client.getPage(URL_FIRST);
         final HtmlForm f = firstPage.getForms().get(0);
-        final HtmlFileInput fileInput = (HtmlFileInput) f.getInputByName("image");
+        final HtmlFileInput fileInput = f.getInputByName("image");
         fileInput.setValueAttribute(fileURL);
         f.submit((SubmittableElement) null);
         final KeyDataPair pair = (KeyDataPair) webConnection.getLastParameters().get(0);
@@ -163,15 +158,15 @@ public class HtmlFileInputTest extends WebTestCase {
         final String secondContent = "<html><head><title>second</title></head></html>";
         final WebClient client = new WebClient();
 
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
         webConnection.setResponse(URL_SECOND, secondContent);
 
         client.setWebConnection(webConnection);
 
-        final HtmlPage firstPage = (HtmlPage) client.getPage(URL_FIRST);
+        final HtmlPage firstPage = client.getPage(URL_FIRST);
         final HtmlForm f = firstPage.getForms().get(0);
-        f.submit((SubmittableElement) null);
+        f.submit(null);
         final KeyDataPair pair = (KeyDataPair) webConnection.getLastParameters().get(0);
         assertEquals("image", pair.getName());
         assertNull(pair.getFile());
@@ -191,15 +186,15 @@ public class HtmlFileInputTest extends WebTestCase {
         final String secondContent = "<html><head><title>second</title></head></html>";
         final WebClient client = new WebClient();
 
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
         webConnection.setResponse(URL_SECOND, secondContent);
 
         client.setWebConnection(webConnection);
 
-        final HtmlPage firstPage = (HtmlPage) client.getPage(URL_FIRST);
+        final HtmlPage firstPage = client.getPage(URL_FIRST);
         final HtmlForm f = firstPage.getForms().get(0);
-        final HtmlFileInput fileInput = (HtmlFileInput) f.getInputByName("image");
+        final HtmlFileInput fileInput = f.getInputByName("image");
 
         final URL fileURL = getClass().getClassLoader().getResource("testfiles/empty.png");
 
@@ -238,8 +233,8 @@ public class HtmlFileInputTest extends WebTestCase {
         final Map<String, Class< ? extends Servlet>> servlets = new HashMap<String, Class< ? extends Servlet>>();
         servlets.put("/upload2", Upload2Servlet.class);
 
-        server_ = HttpWebConnectionTest.startWebServer("./", null, servlets);
-        final PostMethod filePost = new PostMethod("http://localhost:" + HttpWebConnectionTest.PORT + "/upload2");
+        startWebServer("./", null, servlets);
+        final PostMethod filePost = new PostMethod("http://localhost:" + PORT + "/upload2");
 
         final FilePart part = new FilePart("myInput", file);
         part.setCharSet("UTF-8");
@@ -265,10 +260,10 @@ public class HtmlFileInputTest extends WebTestCase {
         final Map<String, Class< ? extends Servlet>> servlets = new HashMap<String, Class< ? extends Servlet>>();
         servlets.put("/upload1", Upload1Servlet.class);
         servlets.put("/upload2", Upload2Servlet.class);
-        server_ = HttpWebConnectionTest.startWebServer("./", null, servlets);
+        startWebServer("./", null, servlets);
 
         testUploadFileWithNonASCIIName(BrowserVersion.FIREFOX_2);
-        testUploadFileWithNonASCIIName(BrowserVersion.INTERNET_EXPLORER_7_0);
+        testUploadFileWithNonASCIIName(BrowserVersion.INTERNET_EXPLORER_7);
     }
 
     private void testUploadFileWithNonASCIIName(final BrowserVersion browserVersion) throws Exception {
@@ -278,15 +273,14 @@ public class HtmlFileInputTest extends WebTestCase {
         assertTrue(file.exists());
 
         final WebClient client = new WebClient(browserVersion);
-        final HtmlPage firstPage = (HtmlPage) client.getPage(
-                new URL("http://localhost:" + HttpWebConnectionTest.PORT + "/upload1"));
+        final HtmlPage firstPage = client.getPage("http://localhost:" + PORT + "/upload1");
 
         final HtmlForm form = firstPage.getForms().get(0);
-        final HtmlFileInput fileInput = (HtmlFileInput) form.getInputByName("myInput");
+        final HtmlFileInput fileInput = form.getInputByName("myInput");
         fileInput.setValueAttribute(path);
 
-        final HtmlSubmitInput submitInput = (HtmlSubmitInput) form.getInputByValue("Upload");
-        final HtmlPage secondPage = (HtmlPage) submitInput.click();
+        final HtmlSubmitInput submitInput = form.getInputByValue("Upload");
+        final HtmlPage secondPage = submitInput.click();
 
         final String response = secondPage.getWebResponse().getContentAsString();
 
@@ -363,15 +357,5 @@ public class HtmlFileInputTest extends WebTestCase {
             }
             writer.close();
         }
-    }
-
-    /**
-     * Performs post-test deconstruction.
-     * @throws Exception if an error occurs
-     */
-    @After
-    public void tearDown() throws Exception {
-        HttpWebConnectionTest.stopWebServer(server_);
-        server_ = null;
     }
 }

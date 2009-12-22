@@ -4,7 +4,7 @@
     <properties>
         <title>Getting Started with HtmlUnit</title>
         <author email="mbowler@GargoyleSoftware.com">Mike Bowler</author>
-        <revision>$Revision: 2480 $</revision>
+        <revision>$Revision: 4314 $</revision>
     </properties>
 
     <body>
@@ -29,9 +29,10 @@
                 type of text/html so we cast the result to an <javadoc>com.gargoylesoftware.htmlunit.html.HtmlPage</javadoc>.
             </p>
             <source><![CDATA[
-public void testHomePage() throws Exception {
+@Test
+public void homePage() throws Exception {
     final WebClient webClient = new WebClient();
-    final HtmlPage page = (HtmlPage) webClient.getPage("http://htmlunit.sourceforge.net");
+    final HtmlPage page = webClient.getPage("http://htmlunit.sourceforge.net");
     assertEquals("HtmlUnit - Welcome to HtmlUnit", page.getTitleText());
 }]]></source>
         </section>
@@ -44,15 +45,50 @@ public void testHomePage() throws Exception {
                 version by instantiating a BrowserVersion.
             </p>
             <source><![CDATA[
-public void testHomePage() throws Exception {
+@Test
+public void homePage_Firefox() throws Exception {
     final WebClient webClient = new WebClient(BrowserVersion.FIREFOX_2);
-    final HtmlPage page = (HtmlPage) webClient.getPage("http://htmlunit.sourceforge.net");
+    final HtmlPage page = webClient.getPage("http://htmlunit.sourceforge.net");
     assertEquals("HtmlUnit - Welcome to HtmlUnit", page.getTitleText());
 }]]></source>
             <p>
                 Specifying this BrowserVersion will change the user agent header that is sent up to the
-                server and will change the behaviour of some of the JavaScript.
+                server and will change the behavior of some of the JavaScript.
             </p>
+        </section>
+
+        <section name="Finding a specific element">
+            <p>
+                Once you have a reference to an HtmlPage, you can search for a specific HtmlElement by one of
+                'get' methods, or by using XPath.
+            </p>
+            <p>
+                Below is an example of finding a 'div' by an ID, and getting an anchor by name:
+            </p>
+            <source><![CDATA[
+@Test
+public void getElements() throws Exception {
+    final WebClient webClient = new WebClient();
+    final HtmlPage page = webClient.getPage("http://htmlunit.sourceforge.net");
+    final HtmlDivision div = page.getHtmlElementById("some_div_id");
+    final HtmlAnchor anchor = page.getAnchorByName("anchor_name");
+}]]></source>
+            <p>
+                XPath is a suggested way for more complex searches, a brief tutorial can be found in
+                <a href="http://www.w3schools.com/XPath/default.asp">W3Schools</a>
+            </p>
+            <source><![CDATA[
+@Test
+public void xpath() throws Exception {
+    final WebClient webClient = new WebClient();
+    final HtmlPage page = webClient.getPage("http://htmlunit.sourceforge.net");
+
+    //get list of all divs
+    final List<?> divs = page.getByXPath("//div");
+
+    //get div which has a 'name' attribute of 'John'
+    final HtmlDivision div = (HtmlDivision) page.getByXPath("//div[@name='John']").get(0);
+}]]></source>
         </section>
 
         <section name="Using a proxy server">
@@ -61,9 +97,15 @@ public void testHomePage() throws Exception {
                 where you need to connect through one.
             </p>
             <source><![CDATA[
-public void testHomePage() throws Exception {
-    final WebClient webClient = new WebClient(BrowserVersion.FIREFOX_2, "http://myproxyserver", 8000);
-    final HtmlPage page = (HtmlPage) webClient.getPage("http://htmlunit.sourceforge.net");
+@Test
+public void homePage_proxy() throws Exception {
+    final WebClient webClient = new WebClient(BrowserVersion.FIREFOX_2, "http://myproxyserver", myProxyPort);
+
+    //set proxy username and password 
+    final DefaultCredentialsProvider credentialsProvider = (DefaultCredentialsProvider) webClient.getCredentialsProvider();
+    credentialsProvider.addProxyCredentials("username", "password");
+
+    final HtmlPage page = webClient.getPage("http://htmlunit.sourceforge.net");
     assertEquals("HtmlUnit - Welcome to HtmlUnit", page.getTitleText());
 }]]></source>
             <p>
@@ -78,24 +120,25 @@ public void testHomePage() throws Exception {
                 following example shows how you might do this.
             </p>
             <source><![CDATA[
-public void testHomePage() throws Exception {
+@Test
+public void submittingForm() throws Exception {
     final WebClient webClient = new WebClient();
 
     // Get the first page
-    final HtmlPage page1 = (HtmlPage) webClient.getPage("http://some_url");
+    final HtmlPage page1 = webClient.getPage("http://some_url");
 
     // Get the form that we are dealing with and within that form, 
     // find the submit button and the field that we want to change.
     final HtmlForm form = page1.getFormByName("myform");
 
-    final HtmlSubmitInput button = (HtmlSubmitInput) form.getInputByName("submitbutton");
-    final HtmlTextInput textField = (HtmlTextInput) form.getInputByName("userid");
+    final HtmlSubmitInput button = form.getInputByName("submitbutton");
+    final HtmlTextInput textField = form.getInputByName("userid");
 
     // Change the value of the text field
     textField.setValueAttribute("root");
 
     // Now submit the form by clicking the button and get back the second page.
-    final HtmlPage page2 = (HtmlPage) button.click();
+    final HtmlPage page2 = button.click();
 }]]></source>
 
         </section>

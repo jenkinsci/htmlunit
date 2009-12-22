@@ -1,18 +1,18 @@
-8
+10
 
 dir
-3268
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/main/java/com/gargoylesoftware/htmlunit/xml
+5285
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.6/src/main/java/com/gargoylesoftware/htmlunit/xml
 https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 
 
 
-2008-07-17T05:32:31.359556Z
-3173
-sudhan_moghe
+2009-08-15T03:51:40.923760Z
+4806
+sdanig
 
 
-svn:special svn:externals svn:needs-lock
+
 
 
 
@@ -26,44 +26,39 @@ svn:special svn:externals svn:needs-lock
 
 797ba2fd-6919-0410-a55a-8c1f0daf9432
 
-XmlElement.java
-file
-
-
-
-
-2008-08-19T23:17:33.000000Z
-1c0cdca71b304c6e7c55688b78f7b1e5
-2008-07-17T05:32:31.359556Z
-3173
-sudhan_moghe
-has-props
-
-XmlAttr.java
-file
-
-
-
-
-2008-08-19T23:17:33.000000Z
-506c14c86af2c183ef877f8e4b658cac
-2008-07-16T05:43:38.904437Z
-3163
-sudhan_moghe
-has-props
-
 XmlPage.java
 file
 
 
 
 
-2008-08-19T23:17:33.000000Z
-718974ad898077b050153fd152bd73dd
-2008-07-17T05:32:31.359556Z
-3173
-sudhan_moghe
+2009-12-22T19:28:53.000000Z
+f103940f2be215934b5b123155df7e05
+2009-08-12T20:42:53.281176Z
+4794
+mguillem
 has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+13172
 
 XmlUtil.java
 file
@@ -71,12 +66,33 @@ file
 
 
 
-2008-08-19T23:17:33.000000Z
-795101533d137d7a667f6ca8a52d888b
-2008-07-17T05:32:31.359556Z
-3173
-sudhan_moghe
+2009-12-22T19:28:53.000000Z
+963e162965bfa49979f40cb593faf82d
+2009-08-15T03:51:40.923760Z
+4806
+sdanig
 has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+11111
 
 package.html
 file
@@ -84,10 +100,31 @@ file
 
 
 
-2008-08-19T23:17:33.000000Z
+2009-12-22T19:28:53.000000Z
 70bc363902ec6b308341e34473f465da
 2004-11-30T10:32:58.000000Z
 667
 mguillem
 has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+72
 

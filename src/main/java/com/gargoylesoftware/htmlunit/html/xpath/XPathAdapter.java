@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,19 +37,12 @@ import org.apache.xpath.res.XPATHErrorResources;
 /**
  * XPath adapter implementation for HtmlUnit.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4229 $
  * @author Ahmed Ashour
  */
 class XPathAdapter {
     private Expression mainExp_;
-
-    private transient FunctionTable funcTable_;
-
-    /** Represents a select type expression. */
-    public static final int SELECT = 0;
-
-    /** Represents a match type expression. */
-    public static final int MATCH = 1;
+    private FunctionTable funcTable_;
 
     /**
      * Initiates the function table.
@@ -57,6 +50,7 @@ class XPathAdapter {
     private void initFunctionTable() {
         funcTable_ = new FunctionTable();
         funcTable_.installFunction("lower-case", LowerCaseFunction.class);
+        funcTable_.installFunction("is-descendant-of-contextual-form", IsDescendantOfContextualFormFunction.class);
     }
 
     /**
@@ -64,31 +58,27 @@ class XPathAdapter {
      * @param exprString the XPath expression
      * @param locator the location of the expression, may be <tt>null</tt>
      * @param prefixResolver a prefix resolver to use to resolve prefixes to namespace URIs
-     * @param type one of {@link #SELECT} or {@link #MATCH}
      * @param errorListener the error listener, or <tt>null</tt> if default should be used
+     * @param caseSensitive whether or not the XPath expression should be case-sensitive
      * @throws TransformerException if a syntax or other error occurs
      */
     XPathAdapter(String exprString, final SourceLocator locator, final PrefixResolver prefixResolver,
-            final int type, ErrorListener errorListener) throws TransformerException {
+        ErrorListener errorListener, final boolean caseSensitive) throws TransformerException {
+
         initFunctionTable();
+
         if (errorListener == null) {
             errorListener = new DefaultErrorHandler();
         }
-        exprString = preProcessXPath(exprString);
+
+        if (!caseSensitive) {
+            exprString = preProcessXPath(exprString);
+        }
 
         final XPathParser parser = new XPathParser(errorListener, locator);
         final Compiler compiler = new Compiler(errorListener, locator, funcTable_);
 
-        if (SELECT == type) {
-            parser.initXPath(compiler, exprString, prefixResolver);
-        }
-        else if (MATCH == type) {
-            parser.initMatchPattern(compiler, exprString, prefixResolver);
-        }
-        else {
-            throw new RuntimeException(XSLMessages.createXPATHMessage(
-                XPATHErrorResources.ER_CANNOT_DEAL_XPATH_TYPE, new Object[]{Integer.toString(type)}));
-        }
+        parser.initXPath(compiler, exprString, prefixResolver);
 
         final Expression expr = compiler.compile(0);
 
@@ -100,18 +90,52 @@ class XPathAdapter {
     }
 
     /**
-     * Processes the XPath string before passing it to the engine.
-     * The current implementation lower-case the attribute name.
+     * Pre-processes the specified case-insensitive XPath expression before passing it to the engine.
+     * The current implementation lower-cases the attribute name, and anything outside the brackets.
+     *
+     * @param xpath the XPath expression to pre-process
+     * @return the processed XPath expression
      */
-    private String preProcessXPath(String string) {
-        //Not a very clean way
+    private static String preProcessXPath(String xpath) {
+        final char[] charArray = xpath.toCharArray();
+        processOutsideBrackets(charArray);
+        xpath = new String(charArray);
+
         final Pattern pattern = Pattern.compile("(@[a-zA-Z]+)");
-        final Matcher matcher = pattern.matcher(string);
+        final Matcher matcher = pattern.matcher(xpath);
         while (matcher.find()) {
             final String attribute = matcher.group(1);
-            string = string.replace(attribute, attribute.toLowerCase());
+            xpath = xpath.replace(attribute, attribute.toLowerCase());
         }
-        return string;
+        return xpath;
+    }
+
+    /**
+     * Lower case any character outside the brackets.
+     * @param array the array to change
+     */
+    private static void processOutsideBrackets(final char[] array) {
+        final int length = array.length;
+        int insideBrackets = 0;
+        for (int i = 0; i < length; i++) {
+            final char ch = array[i];
+            switch (ch) {
+                case '[':
+                case '(':
+                    insideBrackets++;
+                    break;
+
+                case ']':
+                case ')':
+                    insideBrackets--;
+                    break;
+
+                default:
+                    if (insideBrackets == 0) {
+                        array[i] = Character.toLowerCase(ch);
+                    }
+            }
+        }
     }
 
     /**
@@ -151,9 +175,7 @@ class XPathAdapter {
             String msg = e.getMessage();
 
             if (msg == null || msg.length() == 0) {
-                msg = XSLMessages.createXPATHMessage(
-                        XPATHErrorResources.ER_XPATH_ERROR, null);
-
+                msg = XSLMessages.createXPATHMessage(XPATHErrorResources.ER_XPATH_ERROR, null);
             }
             final TransformerException te = new TransformerException(msg, mainExp_, e);
             final ErrorListener el = xpathContext.getErrorListener();

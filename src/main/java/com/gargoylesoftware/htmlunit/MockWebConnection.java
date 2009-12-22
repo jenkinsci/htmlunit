@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,56 +22,38 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.httpclient.HttpState;
 import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 /**
- * A fake WebConnection designed to mock out the actual HTTP connections.
+ * A fake {@link WebConnection} designed to mock out the actual HTTP connections.
  *
- * @version $Revision: 3067 $
+ * @version $Revision: 4789 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Noboru Sinohara
  * @author Marc Guillemot
  * @author Brad Clarke
  * @author Ahmed Ashour
  */
-public class MockWebConnection extends WebConnectionImpl {
+public class MockWebConnection implements WebConnection {
+
+    private static final Log LOG = LogFactory.getLog(MockWebConnection.class);
 
     private final Map<String, WebResponseData> responseMap_ = new HashMap<String, WebResponseData>(10);
     private WebResponseData defaultResponse_;
     private WebRequestSettings lastRequest_;
-    private HttpState httpState_ = new HttpState();
     private int requestCount_ = 0;
-
-    /**
-     * Creates an instance.
-     *
-     * @param webClient the web client
-     */
-    public MockWebConnection(final WebClient webClient) {
-        super(webClient);
-    }
-
-    /**
-     * Returns the log that is being used for all scripting objects.
-     * @return the log
-     */
-    protected final Log getLog() {
-        return LogFactory.getLog(getClass());
-    }
 
     /**
      * {@inheritDoc}
      */
-    @Override
-    public WebResponse getResponse(final WebRequestSettings webRequestSettings) throws IOException {
-        final URL url = webRequestSettings.getUrl();
+    public WebResponse getResponse(final WebRequestSettings settings) throws IOException {
+        final URL url = settings.getUrl();
 
-        getLog().debug("Getting response for " + url.toExternalForm());
+        LOG.debug("Getting response for " + url.toExternalForm());
 
-        lastRequest_ = webRequestSettings;
+        lastRequest_ = settings;
         requestCount_++;
 
         WebResponseData response = responseMap_.get(url.toExternalForm());
@@ -84,7 +66,7 @@ public class MockWebConnection extends WebConnectionImpl {
             }
         }
 
-        return new WebResponseImpl(response, webRequestSettings.getCharset(), webRequestSettings, 0);
+        return new WebResponseImpl(response, settings, 0);
     }
 
     /**
@@ -121,6 +103,29 @@ public class MockWebConnection extends WebConnectionImpl {
         setResponse(
                 url,
                 TextUtil.stringToByteArray(content),
+                statusCode,
+                statusMessage,
+                contentType,
+                responseHeaders);
+    }
+
+    /**
+     * Sets the response that will be returned when the specified URL is requested.
+     * @param url the URL that will return the given response
+     * @param content the content to return
+     * @param statusCode the status code to return
+     * @param statusMessage the status message to return
+     * @param contentType the content type to return
+     * @param charset the name of a supported charset
+     * @param responseHeaders the response headers to return
+     */
+    public void setResponse(final URL url, final String content, final int statusCode,
+            final String statusMessage, final String contentType, final String charset,
+            final List< ? extends NameValuePair> responseHeaders) {
+
+        setResponse(
+                url,
+                TextUtil.stringToByteArray(content, charset),
                 statusCode,
                 statusMessage,
                 contentType,
@@ -171,6 +176,21 @@ public class MockWebConnection extends WebConnectionImpl {
     public void setResponse(final URL url, final String content, final String contentType) {
         final List< ? extends NameValuePair> emptyList = Collections.emptyList();
         setResponse(url, content, 200, "OK", contentType, emptyList);
+    }
+
+    /**
+     * Convenient method that is the same as calling
+     * {@link #setResponse(URL,String,int,String,String,String,List)} with a status
+     * of "200 OK" and no additional headers.
+     *
+     * @param url the URL that will return the given response
+     * @param content the content to return
+     * @param contentType the content type to return
+     * @param charset the name of a supported charset
+     */
+    public void setResponse(final URL url, final String content, final String contentType, final String charset) {
+        final List< ? extends NameValuePair> emptyList = Collections.emptyList();
+        setResponse(url, content, 200, "OK", contentType, charset, emptyList);
     }
 
     /**
@@ -230,6 +250,31 @@ public class MockWebConnection extends WebConnectionImpl {
     }
 
     /**
+     * Sets the response that will be returned when a URL is requested that does
+     * not have a specific content set for it.
+     *
+     * @param content the content to return
+     * @param contentType the content type to return
+     */
+    public void setDefaultResponse(final String content, final String contentType) {
+        final List< ? extends NameValuePair> emptyList = Collections.emptyList();
+        setDefaultResponse(content, 200, "OK", contentType, emptyList);
+    }
+
+    /**
+     * Sets the response that will be returned when a URL is requested that does
+     * not have a specific content set for it.
+     *
+     * @param content the content to return
+     * @param contentType the content type to return
+     * @param charset the name of a supported charset
+     */
+    public void setDefaultResponse(final String content, final String contentType, final String charset) {
+        final List< ? extends NameValuePair> emptyList = Collections.emptyList();
+        setDefaultResponse(content, 200, "OK", contentType, charset, emptyList);
+    }
+
+    /**
      * Sets the response that will be returned when the specified URL is requested.
      * @param content the content to return
      * @param statusCode the status code to return
@@ -248,12 +293,22 @@ public class MockWebConnection extends WebConnectionImpl {
     }
 
     /**
-     * Returns the {@link HttpState}.
-     * @return the state
+     * Sets the response that will be returned when the specified URL is requested.
+     * @param content the content to return
+     * @param statusCode the status code to return
+     * @param statusMessage the status message to return
+     * @param contentType the content type to return
+     * @param charset the name of a supported charset
+     * @param responseHeaders the response headers to return
      */
-    @Override
-    public HttpState getState() {
-        return httpState_;
+    public void setDefaultResponse(final String content, final int statusCode,
+            final String statusMessage, final String contentType, final String charset,
+            final List< ? extends NameValuePair> responseHeaders) {
+
+        final List<NameValuePair> compiledHeaders = new ArrayList<NameValuePair>(responseHeaders);
+        compiledHeaders.add(new NameValuePair("Content-Type", contentType));
+        defaultResponse_ = new WebResponseData(TextUtil.stringToByteArray(content, charset),
+            statusCode, statusMessage, compiledHeaders);
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,19 @@
  */
 package com.gargoylesoftware.htmlunit;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * A simple alert handler that keeps track of alerts in a list.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4391 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  */
-public class CollectingAlertHandler implements AlertHandler {
+public class CollectingAlertHandler implements AlertHandler, Serializable {
+
+    private static final long serialVersionUID = 6617913244195961483L;
 
     private final List<String> collectedAlerts_;
 
@@ -35,7 +38,7 @@ public class CollectingAlertHandler implements AlertHandler {
     }
 
     /**
-     * Create an instance with the specified list.
+     * Creates an instance with the specified list.
      *
      * @param list the list to store alerts in
      */
@@ -45,7 +48,7 @@ public class CollectingAlertHandler implements AlertHandler {
     }
 
     /**
-     * Handle the alert. This implementation will store the message in a list
+     * Handles the alert. This implementation will store the message in a list
      * for retrieval later.
      *
      * @param page the page that triggered the alert

@@ -1,8 +1,8 @@
-8
+10
 
 dir
-3268
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/tests/data
+5285
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.6/src/test/resources/dojo/1.0.2/dojo/tests/data
 https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 
 
@@ -12,7 +12,7 @@ https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 asashour
 
 
-svn:special svn:externals svn:needs-lock
+
 
 
 
@@ -32,11 +32,33 @@ file
 
 
 
-2008-08-19T23:16:20.000000Z
+2009-12-22T19:28:46.000000Z
 4f01cfa98453d3cd9709782563e3f9c8
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+452
 
 geography_hierarchy_small.json
 file
@@ -44,11 +66,33 @@ file
 
 
 
-2008-08-19T23:16:20.000000Z
+2009-12-22T19:28:46.000000Z
 a3bf78734a882f1f8b8ad0b03a178ca8
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+530
 
 countries_withoutid.json
 file
@@ -56,11 +100,33 @@ file
 
 
 
-2008-08-19T23:16:20.000000Z
+2009-12-22T19:28:46.000000Z
 38c7591f7dbcf5359ebdf62ce89d1f74
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+460
 
 countries.json
 file
@@ -68,11 +134,33 @@ file
 
 
 
-2008-08-19T23:16:20.000000Z
+2009-12-22T19:28:46.000000Z
 b2a846ee3708514e41bcb999ac2b68a0
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+483
 
 countries_commentFiltered.json
 file
@@ -80,11 +168,33 @@ file
 
 
 
-2008-08-19T23:16:20.000000Z
+2009-12-22T19:28:46.000000Z
 69cbe216580ccd2c048422ef3f2980b9
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+472
 
 readOnlyItemFileTestTemplates.js
 file
@@ -92,11 +202,33 @@ file
 
 
 
-2008-08-19T23:16:20.000000Z
+2009-12-22T19:28:46.000000Z
 34061552a3c6758072fc71601f0b678f
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+69689
 
 runTests.html
 file
@@ -104,11 +236,33 @@ file
 
 
 
-2008-08-19T23:16:20.000000Z
+2009-12-22T19:28:46.000000Z
 d4a0c2aa98252d0549b5c1ef42e5771e
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+315
 
 data_multitype.json
 file
@@ -116,11 +270,33 @@ file
 
 
 
-2008-08-19T23:16:20.000000Z
+2009-12-22T19:28:46.000000Z
 f13f72d31cbfa5bcef942cd546d9fbc2
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+534
 
 countries_withDates.json
 file
@@ -128,11 +304,33 @@ file
 
 
 
-2008-08-19T23:16:20.000000Z
+2009-12-22T19:28:46.000000Z
 e91debd855b8f59187f73712a91a5afd
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+690
 
 ItemFileWriteStore.js
 file
@@ -140,11 +338,33 @@ file
 
 
 
-2008-08-19T23:16:20.000000Z
+2009-12-22T19:28:46.000000Z
 f89c665c65d6e0e79d627540b6a1fad8
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+33934
 
 geography_hierarchy_large.json
 file
@@ -152,11 +372,33 @@ file
 
 
 
-2008-08-19T23:16:20.000000Z
+2009-12-22T19:28:46.000000Z
 adb317ca793ec3a1b2755543eb8e08b3
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1764
 
 countries_withNull.json
 file
@@ -164,11 +406,33 @@ file
 
 
 
-2008-08-19T23:16:20.000000Z
+2009-12-22T19:28:46.000000Z
 5c8c21c301af136ef84c43aa4cae5ee7
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+466
 
 utils.js
 file
@@ -176,11 +440,33 @@ file
 
 
 
-2008-08-19T23:16:20.000000Z
+2009-12-22T19:28:46.000000Z
 b5b2f24e00d5a4b03551412e35739510
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+11541
 
 countries_idcollision.json
 file
@@ -188,11 +474,33 @@ file
 
 
 
-2008-08-19T23:16:20.000000Z
+2009-12-22T19:28:46.000000Z
 ea65e658e03e23a845ee90e779198364
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+473
 
 countries_withBoolean.json
 file
@@ -200,9 +508,31 @@ file
 
 
 
-2008-08-19T23:16:20.000000Z
+2009-12-22T19:28:46.000000Z
 1bb2f06583507a0e85bde7382e952066
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+645
 

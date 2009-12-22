@@ -4,15 +4,25 @@
     <properties>
         <title>JavaScript Tutorial</title>
         <author email="mbowler@GargoyleSoftware.com">Mike Bowler</author>
-        <revision>$Revision: 2616 $</revision>
+        <revision>$Revision: 4314 $</revision>
     </properties>
 
     <body>
         <section name="Introduction">
             <p>
-                A frequent question we get is "how do I test my JavaScript?".  It
-                really isn't very different from testing the page itself so lets walk
-                through some examples.
+                A frequent question we get is "how do I test my JavaScript?".
+                There is nothing really specific for using JavaScript, it is automatically processed.
+                So, you just need to .getPage(), find the element to click(), and then check the result.
+                Tests for complex JavaScript libraries are included in HtmlUnit test base, you can find it
+                <a href="http://htmlunit.svn.sourceforge.net/viewvc/htmlunit/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/">here</a>
+                which is useful to get an idea.
+            </p>
+            <p>
+                Usually, you should wait() or sleep() a little, as HtmlUnit can finish before the AJAX response is
+                retrieved from the server, please read <a href="http://htmlunit.sourceforge.net/faq.html#AJAXDoesNotWork">this FAQ</a>.
+            </p>
+            <p>
+                Below are some examples:
             </p>
         </section>
 
@@ -28,35 +38,33 @@
     <form action='/foo' name='form1'>
     <table id="table1">
         <script type="text/javascript">
-            for( i=1; i <= 5; i++ ) {
-                document.write("<tr><td>"+i
-                    +"</td><td><input name='textfield"+i
-                    +"' type='text'></td></tr>");
+            for (i = 1; i <= 5; i++) {
+                document.write("<tr><td>" + i
+                    + "</td><td><input name='textfield" + i
+                    + "' type='text'></td></tr>");
             }
         </script>
     </table></form>
-</body></html>
-            ]]></source>
+</body></html>]]></source>
             
             <p>
                 We would likely want to test that the five text fields were created so
                 we could start with this.
             </p>
             <source><![CDATA[
-public void testDocumentWrite() throws Exception {
+@Test
+public void documentWrite() throws Exception {
     final WebClient webClient = new WebClient();
 
-    final HtmlPage page = (HtmlPage)webClient.getPage(
-        new URL( "http://myserver/test.html" ) );
+    final HtmlPage page = webClient.getPage("http://myserver/test.html");
     final HtmlForm form = page.getFormByName("form1");
-    for( int i=1; i<= 5; i++ ) {
-        final String expectedName = "textfield"+i;
+    for (int i = 1; i <= 5; i++) {
+        final String expectedName = "textfield" + i;
         assertEquals(
             "text", 
-            form.getInputByName(expectedName).getTypeAttribute());
+            form.<HtmlInput>getInputByName(expectedName).getTypeAttribute());
     }
-}
-            ]]></source>
+}]]></source>
             <p>
                 We might also want to check off-by-one errors by ensuring that 
                 it didn't create "textfield0" or "textfield6".  Trying to get an 
@@ -64,22 +72,21 @@ public void testDocumentWrite() throws Exception {
                 so we could add this to the end of the previous test.
             </p>
             <source><![CDATA[
-    try {
-        form.getInputByName("textfield0");
-        fail("Expected an ElementNotFoundException");
-    }
-    catch (final ElementNotFoundException e) {
-        // Expected path
-    }
+try {
+    form.getInputByName("textfield0");
+    fail("Expected an ElementNotFoundException");
+}
+catch (final ElementNotFoundException e) {
+    // Expected path
+}
 
-    try {
-        form.getInputByName("textfield6");
-        fail("Expected an ElementNotFoundException");
-    }
-    catch (final ElementNotFoundException e) {
-        // Expected path
-    }
-            ]]></source>
+try {
+    form.getInputByName("textfield6");
+    fail("Expected an ElementNotFoundException");
+}
+catch (final ElementNotFoundException e) {
+    // Expected path
+}]]></source>
         </section>
         
         <section name="Example: Watching for 'alerts'">
@@ -89,8 +96,7 @@ public void testDocumentWrite() throws Exception {
             <source><![CDATA[
 <html><head><title>Alert sample</title></head>
 <body onload='alert("foo");'>
-</body></html>
-            ]]></source>
+</body></html>]]></source>
             <p>
                Alerts are tracked by an AlertHandler which will be called whenever
                the JavaScript alert() function is called.  In the following test, 
@@ -101,20 +107,20 @@ public void testDocumentWrite() throws Exception {
             </p>
 
             <source><![CDATA[
-public void testAlerts() throws Exception {
+@Test
+public void alerts() throws Exception {
     final WebClient webClient = new WebClient();
 
     final List collectedAlerts = new ArrayList();
-    webClient.setAlertHandler( new CollectingAlertHandler(collectedAlerts) );
+    webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
     // Since we aren't actually manipulating the page, we don't assign
     // it to a variable - it's enough to know that it loaded.
-    webClient.getPage( new URL( "http://tciludev01/test.html" ) );
+    webClient.getPage("http://tciludev01/test.html");
 
     final List expectedAlerts = Collections.singletonList("foo");
-    assertEquals( expectedAlerts, collectedAlerts );
-}
-            ]]></source>
+    assertEquals(expectedAlerts, collectedAlerts);
+}]]></source>
         </section>
         
         <section name="Prompts, Confirms and Status line messages">

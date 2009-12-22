@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,27 +14,28 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 
 /**
  * Unit tests for {@link BoxObject}.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4741 $
  * @author Daniel Gredler
  */
-public class BoxObjectTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public class BoxObjectTest extends WebDriverTestCase {
 
     /**
      * Tests box object attributes relating to HTML elements: firstChild, lastChild, previousSibling, etc.
      * @throws Exception if an error occurs
      */
     @Test
+    @Alerts(FF = { "true", "true", "true", "true", "true" }, IE = "exception")
     public void testElementAttributes() throws Exception {
         final String html =
               "<html>\n"
@@ -42,26 +43,25 @@ public class BoxObjectTest extends WebTestCase {
             + "    <span id='foo'>foo</span><div id='d'><span id='a'>a</span><span id='b'>b</span></div><span id='bar'>bar</span>\n"
             + "    <script>\n"
             + "      function test() {\n"
-            + "        var div = document.getElementById('d');\n"
-            + "        var spanFoo = document.getElementById('foo');\n"
-            + "        var spanA = document.getElementById('a');\n"
-            + "        var spanB = document.getElementById('b');\n"
-            + "        var spanBar = document.getElementById('bar');\n"
-            + "\n"
-            + "        var box = document.getBoxObjectFor(div);\n"
-            + "        alert(box.element == div);\n"
-            + "        alert(box.firstChild == spanA);\n"
-            + "        alert(box.lastChild == spanB);\n"
-            + "        alert(box.previousSibling == spanFoo);\n"
-            + "        alert(box.nextSibling == spanBar);\n"
+            + "        try {\n"
+            + "          var div = document.getElementById('d');\n"
+            + "          var spanFoo = document.getElementById('foo');\n"
+            + "          var spanA = document.getElementById('a');\n"
+            + "          var spanB = document.getElementById('b');\n"
+            + "          var spanBar = document.getElementById('bar');\n"
+            + "          var box = document.getBoxObjectFor(div);\n"
+            + "          alert(box.element == div);\n"
+            + "          alert(box.firstChild == spanA);\n"
+            + "          alert(box.lastChild == spanB);\n"
+            + "          alert(box.previousSibling == spanFoo);\n"
+            + "          alert(box.nextSibling == spanBar);\n"
+            + "        } catch (e) {alert('exception')}\n"
             + "      }\n"
             + "    </script>\n"
             + "  </body>\n"
             + "</html>";
-        final String[] expected = {"true", "true", "true", "true", "true"};
-        final List<String> actual = new ArrayList<String>();
-        loadPage(BrowserVersion.FIREFOX_2, html, actual);
-        assertEquals(expected, actual);
+
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -69,6 +69,7 @@ public class BoxObjectTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
+    @Alerts(FF = { "73-123", "73-244", "510-410" }, IE = "exception")
     public void testPositionAndSizeAttributes() throws Exception {
         final String html =
               "<html>\n"
@@ -77,19 +78,19 @@ public class BoxObjectTest extends WebTestCase {
             + "    <div id='d'>daniel</div>\n"
             + "    <script>\n"
             + "      function test() {\n"
-            + "        var div = document.getElementById('d');\n"
-            + "        var box = document.getBoxObjectFor(div);\n"
-            + "        alert(box.x + '-' + box.y);\n"
-            + "        alert(box.screenX + '-' + box.screenY);\n"
-            + "        alert(box.width + '-' + box.height);\n"
+            + "        try {\n"
+            + "          var div = document.getElementById('d');\n"
+            + "          var box = document.getBoxObjectFor(div);\n"
+            + "          alert(box.x + '-' + box.y);\n"
+            + "          alert(box.screenX + '-' + box.screenY);\n"
+            + "          alert(box.width + '-' + box.height);\n"
+            + "        } catch (e) {alert('exception')}\n"
             + "      }\n"
             + "    </script>\n"
             + "  </body>\n"
             + "</html>";
-        final String[] expected = {"73-123", "73-244", "510-410"};
-        final List<String> actual = new ArrayList<String>();
-        loadPage(BrowserVersion.FIREFOX_2, html, actual);
-        assertEquals(expected, actual);
+
+        loadPageWithAlerts2(html);
     }
 
 }

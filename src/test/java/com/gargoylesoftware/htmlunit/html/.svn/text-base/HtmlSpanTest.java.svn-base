@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ public class HtmlSpanTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testSimpleScriptable() throws Exception {
+    public void simpleScriptable() throws Exception {
         final String html = "<html><head>\n"
             + "<script>\n"
             + "  function test() {\n"
@@ -58,10 +58,7 @@ public class HtmlSpanTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testSimpleScriptable_others() throws Exception {
-        if (notYetImplemented()) {
-            return;
-        }
+    public void simpleScriptable_others() throws Exception {
         final String html = "<html><head>\n"
             + "<script>\n"
             + "  function test() {\n"
@@ -83,14 +80,39 @@ public class HtmlSpanTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testEmptyTag() throws Exception {
+    public void emptyTag() throws Exception {
         final String html = "<html><head>\n"
             + "</head><body>\n"
             + "<span id='myId'></span>\n"
             + "</body></html>";
 
         final HtmlPage page = loadPage(html);
-        final HtmlSpan htmlSpan = (HtmlSpan) page.getHtmlElementById("myId");
+        final HtmlSpan htmlSpan = page.getHtmlElementById("myId");
         assertTrue(htmlSpan.asXml().contains("</span>"));
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void asText() throws Exception {
+        final String html = "<html><head></head><body>\n"
+            + "<span id='outside'>"
+            + "<span>\n"
+            + "before\n"
+            + "</span>\n"
+            + "<span>\n"
+            + "inside\n"
+            + "</span>\n"
+            + "<span>\n"
+            + "after\n"
+            + "</span>\n"
+            + "</span>\n"
+            + "</body></html>";
+
+        final HtmlPage page = loadPage(html);
+        final HtmlElement elt = page.getHtmlElementById("outside");
+        assertEquals("before inside after", elt.asText());
+        assertEquals("before inside after", page.asText());
     }
 }

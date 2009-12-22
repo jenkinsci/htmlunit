@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,9 @@ import java.util.List;
 import java.util.ListIterator;
 
 import com.gargoylesoftware.htmlunit.html.FrameWindow;
+import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.javascript.background.JavaScriptJobManager;
+import com.gargoylesoftware.htmlunit.javascript.background.JavaScriptJobManagerImpl;
 
 /**
  * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
@@ -33,19 +36,25 @@ import com.gargoylesoftware.htmlunit.html.FrameWindow;
  * @author Ahmed Ashour
  */
 public abstract class WebWindowImpl implements WebWindow {
+
+    /** Serial version UID. */
+    private static final long serialVersionUID = -8407026088913790772L;
+
     private WebClient webClient_;
     private Page enclosedPage_;
     private Object scriptObject_;
-    private ThreadManager threadManager_ = new ThreadManager(this);
+    private JavaScriptJobManager jobManager_;
     private List<WebWindowImpl> childWindows_ = new ArrayList<WebWindowImpl>();
     private String name_ = "";
+    private History history_ = new History(this);
 
     /**
      * Never call this, used for Serialization.
-     * @deprecated
+     * @deprecated As of 1.12
      */
     @Deprecated
     protected WebWindowImpl() {
+        // Empty.
     }
 
     /**
@@ -56,6 +65,7 @@ public abstract class WebWindowImpl implements WebWindow {
     public WebWindowImpl(final WebClient webClient) {
         WebAssert.notNull("webClient", webClient);
         webClient_ = webClient;
+        jobManager_ = new JavaScriptJobManagerImpl(this);
         performRegistration();
     }
 
@@ -89,6 +99,7 @@ public abstract class WebWindowImpl implements WebWindow {
         }
         destroyChildren();
         enclosedPage_ = page;
+        history_.addPage(page);
         if (isJavaScriptInitializationNeeded()) {
             webClient_.initialize(this);
         }
@@ -118,14 +129,25 @@ public abstract class WebWindowImpl implements WebWindow {
     /**
      * {@inheritDoc}
      */
-    public ThreadManager getThreadManager() {
-        return threadManager_;
+    public JavaScriptJobManager getJobManager() {
+        return jobManager_;
     }
 
     /**
-     * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
+     * <p><span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span></p>
      *
-     * Adds a child to this window, for shutdown purposes.
+     * <p>Sets the JavaScript job manager for this window.</p>
+     *
+     * @param jobManager the JavaScript job manager to use
+     */
+    public void setJobManager(final JavaScriptJobManager jobManager) {
+        jobManager_ = jobManager;
+    }
+
+    /**
+     * <p><span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span></p>
+     *
+     * <p>Adds a child to this window, for shutdown purposes.</p>
      *
      * @param child the child window to associate with this window
      */
@@ -134,9 +156,15 @@ public abstract class WebWindowImpl implements WebWindow {
     }
 
     void destroyChildren() {
-        getThreadManager().interruptAll();
+        getJobManager().removeAllJobs();
         for (final ListIterator<WebWindowImpl> iter = childWindows_.listIterator(); iter.hasNext();) {
-            iter.next().destroyChildren();
+            final WebWindowImpl window = iter.next();
+            final Page page = window.getEnclosedPage();
+            if (page instanceof HtmlPage) {
+                ((HtmlPage) page).cleanUp();
+            }
+            window.destroyChildren();
+            window.getJobManager().shutdown();
             iter.remove();
         }
     }
@@ -154,4 +182,13 @@ public abstract class WebWindowImpl implements WebWindow {
     public void setName(final String name) {
         name_ = name;
     }
+
+    /**
+     * Returns this window's navigation history.
+     * @return this window's navigation history
+     */
+    public History getHistory() {
+        return history_;
+    }
+
 }

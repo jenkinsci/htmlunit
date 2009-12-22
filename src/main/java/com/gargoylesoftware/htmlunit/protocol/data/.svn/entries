@@ -1,18 +1,18 @@
-8
+10
 
 dir
-3268
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/main/java/com/gargoylesoftware/htmlunit/protocol/data
+5285
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.6/src/main/java/com/gargoylesoftware/htmlunit/protocol/data
 https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 
 
 
-2008-06-10T03:08:01.567443Z
-3075
+2009-08-12T06:15:38.504125Z
+4789
 sdanig
 
 
-svn:special svn:externals svn:needs-lock
+
 
 
 
@@ -32,12 +32,33 @@ file
 
 
 
-2008-08-19T23:17:16.000000Z
-45709fc6df7918a74f714212b2c4ff4a
-2008-06-10T03:08:01.567443Z
-3075
-sdanig
+2009-12-22T19:28:52.000000Z
+aaa1b30867bace12d52f3972832c17aa
+2008-12-31T13:57:15.935072Z
+4002
+mguillem
 has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+4965
 
 DataURLConnection.java
 file
@@ -45,12 +66,33 @@ file
 
 
 
-2008-08-19T23:17:16.000000Z
-9aa1c93badcfd07240bbf5e5ead89bf3
-2008-06-10T03:08:01.567443Z
-3075
+2009-12-22T19:28:52.000000Z
+4bef96849e7b896f268f19826d4a0120
+2009-08-12T06:15:38.504125Z
+4789
 sdanig
 has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+2383
 
 Handler.java
 file
@@ -58,12 +100,33 @@ file
 
 
 
-2008-08-19T23:17:16.000000Z
-e503122102b9625adba8ce72608c5872
-2008-05-19T11:21:15.676906Z
-3026
+2009-12-22T19:28:52.000000Z
+0e3060d26359ff8f6dfe5805281d3595
+2008-12-31T13:57:15.935072Z
+4002
 mguillem
 has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1154
 
 package.html
 file
@@ -71,10 +134,31 @@ file
 
 
 
-2008-08-19T23:17:16.000000Z
+2009-12-22T19:28:52.000000Z
 606571b4d9f2386a485cd25dcbee776b
 2008-03-31T12:03:12.331903Z
 2762
 mguillem
 has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+73
 

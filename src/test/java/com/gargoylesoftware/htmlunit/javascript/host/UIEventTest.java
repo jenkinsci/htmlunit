@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 /**
  * Unit tests for {@link UIEvent}.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4002 $
  * @author Daniel Gredler
  */
 public class UIEventTest extends WebTestCase {
@@ -51,8 +51,8 @@ public class UIEventTest extends WebTestCase {
         final String[] expected = {"undefined", "1", "2"};
         final List<String> actual = new ArrayList<String>();
         final HtmlPage page = loadPage(BrowserVersion.FIREFOX_2, html, actual);
-        ((HtmlDivision) page.getHtmlElementById("a")).click();
-        ((HtmlDivision) page.getHtmlElementById("b")).dblClick();
+        page.<HtmlDivision>getHtmlElementById("a").click();
+        page.<HtmlDivision>getHtmlElementById("b").dblClick();
         assertEquals(expected, actual);
     }
 
@@ -72,7 +72,7 @@ public class UIEventTest extends WebTestCase {
         final String[] expected = {"undefined", "[object Window]"};
         final List<String> actual = new ArrayList<String>();
         final HtmlPage page = loadPage(BrowserVersion.FIREFOX_2, html, actual);
-        final HtmlButtonInput button = (HtmlButtonInput) page.getHtmlElementById("b");
+        final HtmlButtonInput button = page.getHtmlElementById("b");
         button.click();
         assertEquals(expected, actual);
     }

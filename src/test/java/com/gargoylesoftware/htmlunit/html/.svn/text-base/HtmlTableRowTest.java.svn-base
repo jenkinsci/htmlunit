@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,17 +17,12 @@ package com.gargoylesoftware.htmlunit.html;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
+import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.junit.Before;
 import org.junit.Test;
-import org.mozilla.javascript.ScriptableObject;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.gargoylesoftware.htmlunit.WebTestCase;
-import com.gargoylesoftware.htmlunit.javascript.host.HTMLElement;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
 
 /**
  * Tests for {@link HtmlTableRow}.
@@ -54,14 +49,13 @@ public class HtmlTableRowTest extends WebTestCase {
     private HtmlTableCell cellClone_;
 
     /**
-     * Performs pre-test initialization.
-     * @throws Exception if an error occurs
+     * Constructor.
+     * @throws Exception if an exception occurs
      */
-    @Before
-    public void setUp() throws Exception {
+    public HtmlTableRowTest() throws Exception {
         page_ = loadPage(htmlContent);
 
-        table_ = (HtmlTable) page_.getHtmlElementById("table");
+        table_ = page_.getHtmlElementById("table");
         tbody_ = (HtmlTableBody) table_.getFirstChild();
         row_ = table_.getRow(0);
         cell_ = row_.getCell(0);
@@ -144,8 +138,8 @@ public class HtmlTableRowTest extends WebTestCase {
      */
     @Test
     public void testCloneAttributesCopiedFromOriginal() {
-        assertEquals("20", cell_.getAttributeValue("width"));
-        assertEquals("20", cellClone_.getAttributeValue("width"));
+        assertEquals("20", cell_.getAttribute("width"));
+        assertEquals("20", cellClone_.getAttribute("width"));
     }
 
     /**
@@ -154,8 +148,8 @@ public class HtmlTableRowTest extends WebTestCase {
      */
     @Test
     public void testCloneAttributeIsIndependentOfOriginal() {
-        cellClone_.setAttributeValue("a", "one");
-        assertFalse("one".equals(cell_.getAttributeValue("a")));
+        cellClone_.setAttribute("a", "one");
+        assertFalse("one".equals(cell_.getAttribute("a")));
     }
 
     /**
@@ -164,8 +158,8 @@ public class HtmlTableRowTest extends WebTestCase {
      */
     @Test
     public void testOriginalAttributeIsIndependentOfClone() {
-        cell_.setAttributeValue("a", "one");
-        assertFalse("one".equals(cellClone_.getAttributeValue("a")));
+        cell_.setAttribute("a", "one");
+        assertFalse("one".equals(cellClone_.getAttribute("a")));
     }
 
     /**
@@ -198,7 +192,7 @@ public class HtmlTableRowTest extends WebTestCase {
         final String cmd = "document.getElementById('cell')";
         final Object object = page_.executeJavaScript(cmd).getJavaScriptResult();
 
-        final HtmlElement cellElement = ((HTMLElement) object).getHtmlElementOrDie();
+        final HtmlElement cellElement = ((HTMLElement) object).getDomNodeOrDie();
         assertSame(cell_, cellElement);
     }
 
@@ -236,7 +230,7 @@ public class HtmlTableRowTest extends WebTestCase {
     public void testCloneScriptCanSetDisabledOnCell() {
         final String cmd = "document.getElementById('cell').disabled='true'";
         page_.executeJavaScript(cmd);
-        assertEquals("disabled", cell_.getAttributeValue("disabled"));
+        assertEquals("disabled", cell_.getAttribute("disabled"));
     }
 
     /**
@@ -246,7 +240,7 @@ public class HtmlTableRowTest extends WebTestCase {
     public void testCloneScriptCanSetAttributeOnCell() {
         final String cmd = "document.getElementById('cell').setAttribute('a','original')";
         page_.executeJavaScript(cmd);
-        assertEquals("original", cell_.getAttributeValue("a"));
+        assertEquals("original", cell_.getAttribute("a"));
     }
 
     // these next few check that scripts manipulate the clone independently
@@ -260,8 +254,8 @@ public class HtmlTableRowTest extends WebTestCase {
         final String cmd = "document.getElementById('cell').setAttribute('a','original')";
         page_.executeJavaScript(cmd);
 
-        assertEquals("original", cell_.getAttributeValue("a"));
-        assertFalse("original".equals(cellClone_.getAttributeValue("a")));
+        assertEquals("original", cell_.getAttribute("a"));
+        assertFalse("original".equals(cellClone_.getAttribute("a")));
     }
 
     /**
@@ -273,8 +267,8 @@ public class HtmlTableRowTest extends WebTestCase {
         final String cmd = "document.getElementById('cell').disabled = 'true'";
         page_.executeJavaScript(cmd);
 
-        assertEquals("disabled", cell_.getAttributeValue("disabled"));
-        assertFalse("disabled".equals(cellClone_.getAttributeValue("disabled")));
+        assertEquals("disabled", cell_.getAttribute("disabled"));
+        assertFalse("disabled".equals(cellClone_.getAttribute("disabled")));
     }
 
     /**
@@ -301,33 +295,9 @@ public class HtmlTableRowTest extends WebTestCase {
         page_.executeJavaScript(cmd);
 
         final HtmlElement input = (HtmlElement) cell_.getFirstChild();
-        assertEquals("Input!", input.getAttributeValue("value"));
+        assertEquals("Input!", input.getAttribute("value"));
 
         final HtmlElement inputClone = (HtmlElement) cellClone_.getFirstChild();
-        assertFalse("Input!".equals(inputClone.getAttributeValue("value")));
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testSimpleScriptable() throws Exception {
-        final String html = "<html><head>\n"
-            + "<script>\n"
-            + "  function test() {\n"
-            + "    alert(document.getElementById('myId'));\n"
-            + "  }\n"
-            + "</script>\n"
-            + "</head><body onload='test()'>\n"
-            + "  <table>\n"
-            + "    <tr id='myId'/>\n"
-            + "  </table>\n"
-            + "</body></html>";
-
-        final String[] expectedAlerts = {"[object HTMLTableRowElement]"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(BrowserVersion.FIREFOX_2, html, collectedAlerts);
-        assertTrue(HtmlTableRow.class.isInstance(page.getHtmlElementById("myId")));
-        assertEquals(expectedAlerts, collectedAlerts);
+        assertFalse("Input!".equals(inputClone.getAttribute("value")));
     }
 }

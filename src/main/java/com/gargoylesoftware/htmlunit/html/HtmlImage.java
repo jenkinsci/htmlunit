@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,11 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import static org.apache.commons.httpclient.HttpStatus.SC_MULTIPLE_CHOICES;
+import static org.apache.commons.httpclient.HttpStatus.SC_OK;
+import static org.apache.commons.httpclient.HttpStatus.SC_USE_PROXY;
+
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Iterator;
@@ -23,16 +28,24 @@ import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 
+import net.sourceforge.htmlunit.corejs.javascript.Function;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebRequestSettings;
 import com.gargoylesoftware.htmlunit.WebResponse;
+import com.gargoylesoftware.htmlunit.javascript.PostponedAction;
+import com.gargoylesoftware.htmlunit.javascript.host.Event;
+import com.gargoylesoftware.htmlunit.javascript.host.Node;
 
 /**
  * Wrapper for the HTML element "img".
  *
- * @version $Revision: 3106 $
+ * @version $Revision: 4713 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -42,14 +55,17 @@ import com.gargoylesoftware.htmlunit.WebResponse;
 public class HtmlImage extends ClickableElement {
 
     private static final long serialVersionUID = -2304247017681577696L;
+    private static final Log LOG = LogFactory.getLog(HtmlImage.class);
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "img";
+
     private int lastClickX_;
     private int lastClickY_;
     private WebResponse imageWebResponse_;
     private ImageReader imageReader_;
     private boolean downloaded_;
+    private boolean onloadInvoked_;
 
     /**
      * Creates a new instance.
@@ -65,6 +81,75 @@ public class HtmlImage extends ClickableElement {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected void onAddedToPage() {
+        doOnLoad();
+        super.onAddedToPage();
+    }
+
+    /**
+     * <p><span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span></p>
+     *
+     * <p>Executes this element's <tt>onload</tt> handler if it has one. This method also downloads the image
+     * if this element has an <tt>onload</tt> handler (prior to invoking said handler), because applications
+     * sometimes use images to send information to the server and use the <tt>onload</tt> handler to get notified
+     * when the information has been received by the server.</p>
+     *
+     * <p>See <a href="http://www.nabble.com/How-should-we-handle-image.onload--tt9850876.html">here</a> and
+     * <a href="http://www.nabble.com/Image-Onload-Support-td18895781.html">here</a> for the discussion which
+     * lead up to this method.</p>
+     *
+     * <p>This method may be called multiple times, but will only attempt to execute the <tt>onload</tt>
+     * handler the first time it is invoked.</p>
+     */
+    public void doOnLoad() {
+        if (!(getPage() instanceof HtmlPage)) {
+            return; // nothing to do if embedded in XML code
+        }
+        else if (onloadInvoked_) {
+            return;
+        }
+        onloadInvoked_ = true;
+        final HtmlPage htmlPage = (HtmlPage) getPage();
+        final Function onload = getEventHandler("onload");
+        if (onload != null) {
+            // An onload handler is defined; we need to download the image and then call the onload
+            // handler.
+            boolean ok;
+            try {
+                downloadImageIfNeeded();
+                final int i = imageWebResponse_.getStatusCode();
+                ok = (i >= SC_OK && i < SC_MULTIPLE_CHOICES) || i == SC_USE_PROXY;
+            }
+            catch (final IOException e) {
+                ok = false;
+            }
+            // If the download was a success, trigger the onload handler.
+            if (ok) {
+                final Event event = new Event(this, Event.TYPE_LOAD);
+                final Node scriptObject = (Node) getScriptObject();
+                final PostponedAction action = new PostponedAction() {
+                    public void execute() throws Exception {
+                        scriptObject.executeEvent(event);
+                    }
+                };
+                final String readyState = htmlPage.getReadyState();
+                if (READY_STATE_LOADING.equals(readyState)) {
+                    htmlPage.addAfterLoadAction(action);
+                }
+                else {
+                    htmlPage.getWebClient().getJavaScriptEngine().addPostponedAction(action);
+                }
+            }
+            else {
+                LOG.debug("Unable to download image for tag " + this + "; not firing onload event.");
+            }
+        }
+    }
+
+    /**
      * Returns the value of the attribute "src". Refer to the
      * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
      * documentation for details on the use of this attribute.
@@ -72,7 +157,7 @@ public class HtmlImage extends ClickableElement {
      * @return the value of the attribute "src" or an empty string if that attribute isn't defined
      */
     public final String getSrcAttribute() {
-        return getAttributeValue("src");
+        return getAttribute("src");
     }
 
     /**
@@ -83,7 +168,7 @@ public class HtmlImage extends ClickableElement {
      * @return the value of the attribute "alt" or an empty string if that attribute isn't defined
      */
     public final String getAltAttribute() {
-        return getAttributeValue("alt");
+        return getAttribute("alt");
     }
 
     /**
@@ -94,7 +179,7 @@ public class HtmlImage extends ClickableElement {
      * @return the value of the attribute "name" or an empty string if that attribute isn't defined
      */
     public final String getNameAttribute() {
-        return getAttributeValue("name");
+        return getAttribute("name");
     }
 
     /**
@@ -105,7 +190,7 @@ public class HtmlImage extends ClickableElement {
      * @return the value of the attribute "longdesc" or an empty string if that attribute isn't defined
      */
     public final String getLongDescAttribute() {
-        return getAttributeValue("longdesc");
+        return getAttribute("longdesc");
     }
 
     /**
@@ -116,7 +201,7 @@ public class HtmlImage extends ClickableElement {
      * @return the value of the attribute "height" or an empty string if that attribute isn't defined
      */
     public final String getHeightAttribute() {
-        return getAttributeValue("height");
+        return getAttribute("height");
     }
 
     /**
@@ -127,7 +212,7 @@ public class HtmlImage extends ClickableElement {
      * @return the value of the attribute "width" or an empty string if that attribute isn't defined
      */
     public final String getWidthAttribute() {
-        return getAttributeValue("width");
+        return getAttribute("width");
     }
 
     /**
@@ -138,7 +223,7 @@ public class HtmlImage extends ClickableElement {
      * @return the value of the attribute "usemap" or an empty string if that attribute isn't defined
      */
     public final String getUseMapAttribute() {
-        return getAttributeValue("usemap");
+        return getAttribute("usemap");
     }
 
     /**
@@ -149,7 +234,7 @@ public class HtmlImage extends ClickableElement {
      * @return the value of the attribute "ismap" or an empty string if that attribute isn't defined
      */
     public final String getIsmapAttribute() {
-        return getAttributeValue("ismap");
+        return getAttribute("ismap");
     }
 
     /**
@@ -160,7 +245,7 @@ public class HtmlImage extends ClickableElement {
      * @return the value of the attribute "align" or an empty string if that attribute isn't defined
      */
     public final String getAlignAttribute() {
-        return getAttributeValue("align");
+        return getAttribute("align");
     }
 
     /**
@@ -171,7 +256,7 @@ public class HtmlImage extends ClickableElement {
      * @return the value of the attribute "border" or an empty string if that attribute isn't defined
      */
     public final String getBorderAttribute() {
-        return getAttributeValue("border");
+        return getAttribute("border");
     }
 
     /**
@@ -182,7 +267,7 @@ public class HtmlImage extends ClickableElement {
      * @return the value of the attribute "hspace" or an empty string if that attribute isn't defined
      */
     public final String getHspaceAttribute() {
-        return getAttributeValue("hspace");
+        return getAttribute("hspace");
     }
 
     /**
@@ -193,7 +278,7 @@ public class HtmlImage extends ClickableElement {
      * @return the value of the attribute "vspace" or an empty string if that attribute isn't defined
      */
     public final String getVspaceAttribute() {
-        return getAttributeValue("vspace");
+        return getAttribute("vspace");
     }
 
     /**
@@ -268,7 +353,10 @@ public class HtmlImage extends ClickableElement {
             final WebClient webclient = page.getWebClient();
 
             final URL url = page.getFullyQualifiedUrl(getSrcAttribute());
-            imageWebResponse_ = webclient.loadWebResponse(new WebRequestSettings(url));
+            final WebRequestSettings request = new WebRequestSettings(url);
+            request.setAdditionalHeader("Referer",
+                page.getWebResponse().getRequestSettings().getUrl().toExternalForm());
+            imageWebResponse_ = webclient.loadWebResponse(request);
             downloaded_ = true;
         }
     }
@@ -312,6 +400,7 @@ public class HtmlImage extends ClickableElement {
      * @exception IOException if an IO error occurs
      */
     @Override
+    @SuppressWarnings("unchecked")
     public Page click() throws IOException {
         return click(0, 0);
     }
@@ -328,7 +417,7 @@ public class HtmlImage extends ClickableElement {
             // remove initial '#'
             final String mapName = getUseMapAttribute().substring(1);
             final HtmlElement doc = ((HtmlPage) getPage()).getDocumentElement();
-            final HtmlMap map = (HtmlMap) doc.getOneHtmlElementByAttribute("map", "name", mapName);
+            final HtmlMap map = doc.getOneHtmlElementByAttribute("map", "name", mapName);
             for (final HtmlElement element : map.getChildElements()) {
                 if (element instanceof HtmlArea) {
                     final HtmlArea area = (HtmlArea) element;
@@ -350,4 +439,13 @@ public class HtmlImage extends ClickableElement {
         return anchor.doClickAction(defaultPage);
     }
 
+    /**
+     * Saves this image as the specified file.
+     * @param file the file to save to
+     * @throws IOException if an IO error occurs
+     */
+    public void saveAs(final File file) throws IOException {
+        final ImageReader reader = getImageReader();
+        ImageIO.write(reader.read(0), reader.getFormatName(), file);
+    }
 }

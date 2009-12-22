@@ -1,8 +1,8 @@
-8
+10
 
 dir
-3268
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/yui/2.3.0/build/tabview
+5285
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.6/src/test/resources/yui/2.3.0/build/tabview
 https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 
 
@@ -12,7 +12,7 @@ https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 sdanig
 
 
-svn:special svn:externals svn:needs-lock
+
 
 
 
@@ -32,11 +32,33 @@ file
 
 
 
-2008-08-19T23:17:00.000000Z
+2009-12-22T19:28:51.000000Z
 10959f4b810b436408d1ab0d2e71d304
 2007-08-15T21:30:20.716980Z
 1741
 sdanig
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+33832
 
 assets
 dir
@@ -47,11 +69,33 @@ file
 
 
 
-2008-08-19T23:17:00.000000Z
+2009-12-22T19:28:51.000000Z
 45c7981d99e30f925f5fe5343927a83a
 2007-08-15T21:30:20.716980Z
 1741
 sdanig
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+33630
 
 README
 file
@@ -59,11 +103,33 @@ file
 
 
 
-2008-08-19T23:17:00.000000Z
+2009-12-22T19:28:51.000000Z
 91e7de1b265934ce509162471e3a5e44
 2007-08-15T21:30:20.716980Z
 1741
 sdanig
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+783
 
 tabview-min.js
 file
@@ -71,9 +137,31 @@ file
 
 
 
-2008-08-19T23:17:00.000000Z
+2009-12-22T19:28:51.000000Z
 bba1f207ec77bd8805e4e795e3a9585e
 2007-08-15T21:30:20.716980Z
 1741
 sdanig
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+11141
 

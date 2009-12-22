@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "input".
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4794 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -54,8 +54,8 @@ public class HtmlSubmitInput extends HtmlInput {
     HtmlSubmitInput(final String namespaceURI, final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
         super(namespaceURI, qualifiedName, page, attributes);
-        if (getPage().getWebClient().getBrowserVersion().isIE() && !isAttributeDefined("value")) {
-            setAttributeValue("value", DEFAULT_VALUE);
+        if (getPage().getWebClient().getBrowserVersion().isIE() && !hasAttribute("value")) {
+            setAttribute("value", DEFAULT_VALUE);
         }
     }
 
@@ -73,6 +73,10 @@ public class HtmlSubmitInput extends HtmlInput {
      */
     @Override
     protected Page doClickAction(final Page defaultPage) throws IOException {
+        final HtmlPage page = (HtmlPage) getPage();
+        if (page != defaultPage) {
+            return defaultPage;
+        }
         final HtmlForm form = getEnclosingForm();
         if (form != null) {
             return form.submit(this);
@@ -92,9 +96,10 @@ public class HtmlSubmitInput extends HtmlInput {
     /**
      * {@inheritDoc} Returns "Submit Query" if <tt>value</tt> attribute is not defined.
      */
+    // we need to preserve this method as it is there since many versions with the above documentation.
     @Override
     public String asText() {
-        String text = super.asText();
+        String text = getValueAttribute();
         if (text == ATTRIBUTE_NOT_DEFINED) {
             text = DEFAULT_VALUE;
         }
@@ -108,7 +113,7 @@ public class HtmlSubmitInput extends HtmlInput {
     protected void printOpeningTagContentAsXml(final PrintWriter printWriter) {
         printWriter.print(getTagName());
 
-        for (final DomAttr attribute : getAttributesCollection()) {
+        for (final DomAttr attribute : getAttributesMap().values()) {
             if (!attribute.getNodeName().equals("value") || !attribute.getValue().equals(DEFAULT_VALUE)) {
                 printWriter.print(" ");
                 final String name = attribute.getNodeName();
@@ -127,7 +132,7 @@ public class HtmlSubmitInput extends HtmlInput {
      */
     @Override
     public NameValuePair[] getSubmitKeyValuePairs() {
-        if (getNameAttribute().length() != 0 && !isAttributeDefined("value")) {
+        if (getNameAttribute().length() != 0 && !hasAttribute("value")) {
             return new NameValuePair[]{new NameValuePair(getNameAttribute(), DEFAULT_VALUE)};
         }
         return super.getSubmitKeyValuePairs();

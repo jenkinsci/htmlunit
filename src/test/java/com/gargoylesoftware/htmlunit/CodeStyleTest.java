@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
  */
 package com.gargoylesoftware.htmlunit;
 
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.BufferedReader;
@@ -25,27 +24,19 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
+import org.apache.commons.logging.Log;
 import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 /**
  * Test of coding style for things that cannot be detected by Checkstyle.
  *
- * @version $Revision: 3161 $
+ * @version $Revision: 4864 $
  * @author Ahmed Ashour
  */
 public class CodeStyleTest {
 
-    private List<String> errors_;
-
-    /**
-     * Before.
-     */
-    @Before
-    public void before() {
-        errors_ = new ArrayList<String>();
-    }
+    private List<String> failures_ = new ArrayList<String>();
 
     /**
      * After.
@@ -53,11 +44,11 @@ public class CodeStyleTest {
     @After
     public void after() {
         final StringBuilder sb = new StringBuilder();
-        for (final String error : errors_) {
-            sb.append("\n" + error);
+        for (final String error : failures_) {
+            sb.append('\n').append(error);
         }
 
-        final int errorsNumber = errors_.size();
+        final int errorsNumber = failures_.size();
         if (errorsNumber == 1) {
             fail("CodeStyle error: " + sb);
         }
@@ -67,7 +58,7 @@ public class CodeStyleTest {
     }
 
     private void addFailure(final String error) {
-        errors_.add(error);
+        failures_.add(error);
     }
 
     /**
@@ -86,21 +77,24 @@ public class CodeStyleTest {
             if (file.isDirectory() && !file.getName().equals(".svn")) {
                 process(file);
             }
-            else {
-                if (file.getName().endsWith(".java")) {
-                    final List<String> lines = getLines(file);
-                    final String relativePath = file.getAbsolutePath().substring(
-                        new File(".").getAbsolutePath().length() - 1);
-                    openingCurlyBracket(lines, relativePath);
-                    year(lines, relativePath);
-                    javaDocFirstLine(lines, relativePath);
-                    methodFirstLine(lines, relativePath);
-                    methodLastLine(lines, relativePath);
-                    svnProperties(file, relativePath);
-                    runWith(lines, relativePath);
-                    twoEmptyLines(lines, relativePath);
-                    vs85aspx(lines, relativePath);
-                }
+            else if (file.getName().endsWith(".java")) {
+                final List<String> lines = getLines(file);
+                final String relativePath = file.getAbsolutePath().substring(
+                                new File(".").getAbsolutePath().length() - 1);
+                openingCurlyBracket(lines, relativePath);
+                year(lines, relativePath);
+                javaDocFirstLine(lines, relativePath);
+                methodFirstLine(lines, relativePath);
+                methodLastLine(lines, relativePath);
+                lineBetweenMethods(lines, relativePath);
+                svnProperties(file, relativePath);
+                runWith(lines, relativePath);
+                twoEmptyLines(lines, relativePath);
+                vs85aspx(lines, relativePath);
+                deprecated(lines, relativePath);
+                staticJSMethod(lines, relativePath);
+                singleAlert(lines, relativePath);
+                staticLoggers(lines, relativePath);
             }
         }
     }
@@ -122,8 +116,10 @@ public class CodeStyleTest {
      * Checks the year in the source.
      */
     private void year(final List<String> lines, final String path) {
-        assertTrue("Incorrect year in " + path, lines.get(1).contains("Copyright (c) 2002-"
-            + Calendar.getInstance().get(Calendar.YEAR)));
+        final int year = Calendar.getInstance().get(Calendar.YEAR);
+        if (lines.size() < 2 || !lines.get(1).contains("Copyright (c) 2002-" + year)) {
+            addFailure("Incorrect year in " + path);
+        }
     }
 
     /**
@@ -179,6 +175,19 @@ public class CodeStyleTest {
     }
 
     /**
+     * Checks that empty line must exist between consecutive methods.
+     */
+    private void lineBetweenMethods(final List<String> lines, final String relativePath) {
+        for (int index = 0; index < lines.size() - 1; index++) {
+            final String line = lines.get(index);
+            final String nextLine = lines.get(index + 1);
+            if (line.equals("    }") && nextLine.length() != 0 && !nextLine.equals("}")) {
+                addFailure("Non-empty line in " + relativePath + ", line: " + (index + 1));
+            }
+        }
+    }
+
+    /**
      * Checks properties svn:eol-style and svn:keywords.
      */
     private void svnProperties(final File file, final String relativePath) throws IOException {
@@ -214,7 +223,7 @@ public class CodeStyleTest {
      * @return the list of lines
      * @throws IOException if an error occurs
      */
-    private static List<String> getLines(final File file) throws IOException {
+    static List<String> getLines(final File file) throws IOException {
         final List<String> rv = new ArrayList<String>();
         final BufferedReader reader = new BufferedReader(new FileReader(file));
         String line;
@@ -231,6 +240,7 @@ public class CodeStyleTest {
     @Test
     public void xmlStyle() throws Exception {
         processXML(new File("."), false);
+        processXML(new File("cruise"), false);
         processXML(new File("src/main/resources"), true);
         processXML(new File("src/assembly"), true);
         processXML(new File("src/changes"), true);
@@ -306,8 +316,9 @@ public class CodeStyleTest {
      */
     private void licenseYear() throws IOException {
         final List<String> lines = getLines(new File("LICENSE.txt"));
-        assertTrue("Incorrect year in LICENSE.txt", lines.get(1).contains("Copyright (c) 2002-"
-                + Calendar.getInstance().get(Calendar.YEAR)));
+        if (!lines.get(1).contains("Copyright (c) 2002-" + Calendar.getInstance().get(Calendar.YEAR))) {
+            addFailure("Incorrect year in LICENSE.txt");
+        }
     }
 
     /**
@@ -316,7 +327,7 @@ public class CodeStyleTest {
     private void versionYear() throws IOException {
         final List<String> lines = getLines(new File("src/main/java/com/gargoylesoftware/htmlunit/Version.java"));
         for (final String line : lines) {
-            if (line.contains("return \"Copyright (C) 2002-" + Calendar.getInstance().get(Calendar.YEAR))) {
+            if (line.contains("return \"Copyright (c) 2002-" + Calendar.getInstance().get(Calendar.YEAR))) {
                 return;
             }
         }
@@ -336,7 +347,7 @@ public class CodeStyleTest {
                 }
                 if (runWith) {
                     if (line.contains("new WebClient(")) {
-                        addFailure("Test " + relativePath
+                        addFailure("Test " + relativePath + " line " + index
                             + " should never directly instantiate WebClient, please use getWebClient() instead.");
                     }
                     if (line.contains("notYetImplemented()")) {
@@ -377,4 +388,89 @@ public class CodeStyleTest {
             }
         }
     }
+
+    /**
+     * Verifies that deprecated tag is followed by "As of " or "since ", and '@Deprecated' annotation follows.
+     */
+    private void deprecated(final List<String> lines, final String relativePath) {
+        int i = 0;
+        for (String line : lines) {
+            line = line.trim().toLowerCase();
+            if (line.startsWith("* @deprecated")) {
+                if (!line.startsWith("* @deprecated as of ") && !line.startsWith("* @deprecated since ")) {
+                    addFailure("@deprecated must be immediately followed by \"As of \" or \"since \" in "
+                        + relativePath + ", line: " + (i + 1));
+                }
+                if (!getAnnotations(lines, i).contains("@Deprecated")) {
+                    addFailure("No \"@Deprecated\" annotation for " + relativePath + ", line: " + (i + 1));
+                }
+            }
+            i++;
+        }
+    }
+
+    /**
+     * Returns all annotation lines that comes after the given 'javadoc' line.
+     * @param lines source code lines
+     * @param index the index to start searching from, must be a 'javadoc' line.
+     */
+    private List<String> getAnnotations(final List<String> lines, int index) {
+        final List<String> annotations = new ArrayList<String>();
+        while (!lines.get(index++).trim().endsWith("*/")) {
+            //empty;
+        }
+        while (lines.get(index).trim().startsWith("@")) {
+            annotations.add(lines.get(index++).trim());
+        }
+        return annotations;
+    }
+
+    /**
+     * Verifies that no static JavaScript method exists.
+     */
+    private void staticJSMethod(final List<String> lines, final String relativePath) {
+        int i = 0;
+        for (final String line : lines) {
+            if (line.contains(" static ")
+                    && (line.contains(" jsxFunction_") || line.contains(" jsxGet_") || line.contains(" jsxSet_"))
+                    && !line.contains(" jsxFunction_write") && !line.contains(" jsxFunction_insertBefore")) {
+                addFailure("Use of static JavaScript function in " + relativePath + ", line: " + (i + 1));
+            }
+            i++;
+        }
+    }
+
+    /**
+     * Single @Alert does not need curly brackets.
+     */
+    private void singleAlert(final List<String> lines, final String relativePath) {
+        int i = 0;
+        for (final String line : lines) {
+            if (line.trim().startsWith("@Alerts") && line.contains("{") && line.contains("}")) {
+                final String alert = line.substring(line.indexOf('{'), line.indexOf('}'));
+                if (!alert.contains(",") && alert.contains("\"")
+                        && alert.indexOf('"', alert.indexOf('"') + 1) != -1) {
+                    addFailure("No need for curly brackets in " + relativePath + ", line: " + (i + 1));
+                }
+            }
+            i++;
+        }
+    }
+
+    /**
+     * Verifies that only static loggers exist.
+     */
+    private void staticLoggers(final List<String> lines, final String relativePath) {
+        int i = 0;
+        final String logClassName = Log.class.getSimpleName();
+        for (String line : lines) {
+            line = line.trim();
+            if (line.contains(" " + logClassName + " ") && !line.contains(" LOG ") && !line.contains(" static ")
+                && !line.startsWith("//") && !line.contains("httpclient.wire")) {
+                addFailure("Non-static logger in " + relativePath + ", line: " + (i + 1));
+            }
+            i++;
+        }
+    }
+
 }

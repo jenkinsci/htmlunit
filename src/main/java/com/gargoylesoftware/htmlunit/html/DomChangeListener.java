@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,16 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import java.io.Serializable;
+
 /**
  * Implementations of this interface receive notifications of changes to the DOM structure.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4786 $
  * @author Ahmed Ashour
  * @see DomChangeEvent
  */
-public interface DomChangeListener {
+public interface DomChangeListener extends Serializable {
 
     /**
      * Notification that a new node was added. Called after the node is added.

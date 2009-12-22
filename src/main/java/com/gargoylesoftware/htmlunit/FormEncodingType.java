@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import org.apache.commons.httpclient.methods.PostMethod;
 /**
  * A collection of constants that represent the various ways a form can be encoded when submitted.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4002 $
  * @author Brad Clarke
  * @author Ahmed Ashour
  */

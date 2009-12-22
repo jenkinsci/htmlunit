@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,6 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
-import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.io.Serializable;
 import java.io.StringWriter;
@@ -24,28 +22,29 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.mozilla.javascript.ScriptableObject;
+import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
+
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 import org.w3c.dom.UserDataHandler;
 
 import com.gargoylesoftware.htmlunit.IncorrectnessListener;
 import com.gargoylesoftware.htmlunit.Page;
+import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.WebAssert;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.html.xpath.XPathUtils;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSStyleDeclaration;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
 
 /**
  * Base class for nodes in the HTML DOM tree. This class is modeled after the
  * W3C DOM specification, but does not implement it.
  *
- * @version $Revision: 3107 $
+ * @version $Revision: 4794 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:gudujarlson@sf.net">Mike J. Bresnahan</a>
  * @author David K. Taylor
@@ -57,8 +56,20 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
  * @author Daniel Gredler
  * @author Ahmed Ashour
  * @author Rodney Gitzel
+ * @author Sudhan Moghe
+ * @author <a href="mailto:tom.anderson@univ.oxon.org">Tom Anderson</a>
  */
 public abstract class DomNode implements Cloneable, Serializable, Node {
+    /** Indicates a block. Will be rendered as line separator (multiple block marks are ignored) */
+    protected static final String AS_TEXT_BLOCK_SEPARATOR = "§bs§";
+    /** Indicates a new line. Will be rendered as line separator. */
+    protected static final String AS_TEXT_NEW_LINE = "§nl§";
+    /** Indicates a non blank that can't be trimmed or reduced. */
+    protected static final String AS_TEXT_BLANK = "§blank§";
+    /** Indicates a tab. */
+    protected static final String AS_TEXT_TAB = "§tab§";
+
+    private static final long serialVersionUID = -2013573303678006763L;
 
     /** A ready state constant for IE (state 1). */
     public static final String READY_STATE_UNINITIALIZED = "uninitialized";
@@ -75,8 +86,11 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
     /** A ready state constant for IE (state 5). */
     public static final String READY_STATE_COMPLETE = "complete";
 
+    /** The name of the "element" property. Used when watching property change events. */
+    public static final String PROPERTY_ELEMENT = "element";
+
     /** The owning page of this node. */
-    private Page page_;
+    private SgmlPage page_;
 
     /** The parent node. */
     private DomNode parent_;
@@ -99,13 +113,10 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
      * This is the JavaScript object corresponding to this DOM node. It may
      * be null if there isn't a corresponding JavaScript object.
      */
-    private transient ScriptableObject scriptObject_;
+    private ScriptableObject scriptObject_;
 
     /** The ready state is is an IE-only value that is available to a large number of elements. */
     private String readyState_;
-
-    /** The name of the "element" property. Used when watching property change events. */
-    public static final String PROPERTY_ELEMENT = "element";
 
     /**
      * The line number in the source page where the DOM node starts.
@@ -128,11 +139,10 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
     private int endColumnNumber_ = -1;
 
     private List<DomChangeListener> domListeners_;
-    private final transient Object domListeners_lock_ = new Object();
+    private final Integer domListeners_lock_ = 0;
 
     /**
      * Never call this, used for Serialization.
-     * @deprecated
      */
     @Deprecated
     protected DomNode() {
@@ -143,7 +153,7 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
      * Creates a new instance.
      * @param page the page which contains this node
      */
-    protected DomNode(final Page page) {
+    protected DomNode(final SgmlPage page) {
         readyState_ = READY_STATE_LOADING;
         page_ = page;
     }
@@ -208,7 +218,7 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
      * Returns the page that contains this node.
      * @return the page that contains this node
      */
-    public Page getPage() {
+    public SgmlPage getPage() {
         return page_;
     }
 
@@ -216,7 +226,7 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
      * {@inheritDoc}
      */
     public Document getOwnerDocument() {
-        return (Document) getPage();
+        return getPage();
     }
 
     /**
@@ -243,16 +253,6 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
     }
 
     /**
-     * Returns this node's last child node, or <tt>null</tt> if this node doesn't have any children.
-     * @return this node's last child node, or <tt>null</tt> if this node doesn't have any children
-     * @deprecated As of 2.0, please use {@link #getLastChild()} instead.
-     */
-    @Deprecated
-    public DomNode getLastDomChild() {
-        return getLastChild();
-    }
-
-    /**
      * {@inheritDoc}
      */
     public DomNode getParentNode() {
@@ -260,26 +260,10 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
     }
 
     /**
-     * Returns this node's parent node, or <tt>null</tt> if this is the root node.
-     * @return this node's parent node, or <tt>null</tt> if this is the root node
-     * @deprecated As of 2.0, please use {@link #getParentNode()} instead.
-     */
-    @Deprecated
-    public DomNode getParentDomNode() {
-        return getParentNode();
-    }
-
-    /**
-     * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
      * Sets the parent node.
      * @param parent the parent node
      */
-    public void setParentNode(final DomNode parent) {
-        // make sure there's no cycle
-        for(DomNode p=parent; p!=null; p=p.getParentNode())
-            if(p==this)
-                throw new AssertionError("Trying to create a cycle");
-
+    protected void setParentNode(final DomNode parent) {
         parent_ = parent;
     }
 
@@ -295,16 +279,6 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
     }
 
     /**
-     * Returns this node's previous sibling, or <tt>null</tt> if this node is its parent's first child.
-     * @return this node's previous sibling, or <tt>null</tt> if this node is its parent's first child
-     * @deprecated As of 2.0, please use {@link #getPreviousSibling()} instead.
-     */
-    @Deprecated
-    public DomNode getPreviousDomSibling() {
-        return getPreviousSibling();
-    }
-
-    /**
      * {@inheritDoc}
      */
     public DomNode getNextSibling() {
@@ -312,30 +286,10 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
     }
 
     /**
-     * Returns this node's next sibling node, or <tt>null</tt> if this node is its parent's last child.
-     * @return this node's next sibling node, or <tt>null</tt> if this node is its parent's last child
-     * @deprecated As of 2.0, please use {@link #getNextSibling()} instead.
-     */
-    @Deprecated
-    public DomNode getNextDomSibling() {
-        return getNextSibling();
-    }
-
-    /**
      * {@inheritDoc}
      */
     public DomNode getFirstChild() {
         return firstChild_;
-    }
-
-    /**
-     * Returns this node's first child node, or <tt>null</tt> if this node does not have any children.
-     * @return this node's first child node, or <tt>null</tt> if this node does not have any children
-     * @deprecated As of 2.0, please use {@link #getFirstChild()} instead.
-     */
-    @Deprecated
-    public DomNode getFirstDomChild() {
-        return getFirstChild();
     }
 
     /**
@@ -414,30 +368,8 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
     /**
      * {@inheritDoc}
      */
-    public NodeList getChildNodes() {
-        return new DomNodeList();
-    }
-
-    private class DomNodeList implements NodeList {
-
-        public int getLength() {
-            int length = 0;
-            for (Node node = firstChild_; node != null; node = node.getNextSibling()) {
-                length++;
-            }
-            return length;
-        }
-
-        public Node item(final int index) {
-            int i = 0;
-            for (Node node = firstChild_; node != null; node = node.getNextSibling()) {
-                if (i == index) {
-                    return node;
-                }
-                i++;
-            }
-            return null;
-        }
+    public DomNodeList<DomNode> getChildNodes() {
+        return new SiblingDomNodeList(firstChild_);
     }
 
     /**
@@ -450,10 +382,37 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
 
     /**
      * {@inheritDoc}
-     * Not yet implemented.
      */
     public void normalize() {
-        throw new UnsupportedOperationException("DomNode.normalize is not yet implemented.");
+        for (DomNode child = getFirstChild(); child != null; child = child.getNextSibling()) {
+            if (child instanceof DomText) {
+                final boolean ie = getPage().getWebClient().getBrowserVersion().isIE();
+                final StringBuilder dataBuilder = new StringBuilder();
+                DomNode toRemove = child;
+                DomText firstText = null;
+                //IE removes all child text nodes, but FF preserves the first
+                while (toRemove instanceof DomText && !(toRemove instanceof DomCDataSection)) {
+                    final DomNode nextChild = toRemove.getNextSibling();
+                    dataBuilder.append(toRemove.getTextContent());
+                    if (ie || firstText != null) {
+                        toRemove.remove();
+                    }
+                    if (firstText == null) {
+                        firstText = (DomText) toRemove;
+                    }
+                    toRemove = nextChild;
+                }
+                if (firstText != null) {
+                    if (ie) {
+                        final DomText newText = new DomText(getPage(), dataBuilder.toString());
+                        insertBefore(newText, toRemove);
+                    }
+                    else {
+                        firstText.setData(dataBuilder.toString());
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -466,16 +425,75 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
 
     /**
      * {@inheritDoc}
-     * Not yet implemented.
      */
     public short compareDocumentPosition(final Node other) {
-        throw new UnsupportedOperationException("DomNode.compareDocumentPosition is not yet implemented.");
+        if (other == this) {
+            return 0; // strange, no constant available?
+        }
+
+        // get ancestors of both
+        final List<Node> myAncestors = getAncestors(true);
+        final List<Node> otherAncestors = ((DomNode) other).getAncestors(true);
+
+        final int max = Math.min(myAncestors.size(), otherAncestors.size());
+
+        int i = 1;
+        while (i < max && myAncestors.get(i) == otherAncestors.get(i)) {
+            i++;
+        }
+
+        if (i != 1 && i == max) {
+            if (myAncestors.size() == max) {
+                return DOCUMENT_POSITION_CONTAINED_BY | DOCUMENT_POSITION_FOLLOWING;
+            }
+            return DOCUMENT_POSITION_CONTAINS | DOCUMENT_POSITION_PRECEDING;
+        }
+
+        if (max == 1) {
+            if (myAncestors.contains(other)) {
+                return DOCUMENT_POSITION_CONTAINS;
+            }
+            if (otherAncestors.contains(this)) {
+                return DOCUMENT_POSITION_CONTAINED_BY | DOCUMENT_POSITION_FOLLOWING;
+            }
+            return DOCUMENT_POSITION_DISCONNECTED | DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC;
+        }
+
+        // neither contains nor contained by
+        final Node myAncestor = myAncestors.get(i);
+        final Node otherAncestor = otherAncestors.get(i);
+        Node node = myAncestor;
+        while (node != otherAncestor && node != null) {
+            node = node.getPreviousSibling();
+        }
+        if (node == null) {
+            return DOCUMENT_POSITION_FOLLOWING;
+        }
+        return DOCUMENT_POSITION_PRECEDING;
+    }
+
+    /**
+     * Gets the ancestors of the node.
+     * @param includeSelf should this node be returned too
+     * @return a list of the ancestors with the root at the first position
+     */
+    protected List<Node> getAncestors(final boolean includeSelf) {
+        final List<Node> list = new ArrayList<Node>();
+        if (includeSelf) {
+            list.add(this);
+        }
+        Node node = getParentNode();
+        while (node != null) {
+            list.add(0, node);
+            node = node.getParentNode();
+        }
+        return list;
     }
 
     /**
      * {@inheritDoc}
      */
-    public String getTextContent() throws DOMException {
+    public String getTextContent() {
         switch (getNodeType()) {
             case ELEMENT_NODE:
             case ATTRIBUTE_NODE:
@@ -505,7 +523,7 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
     /**
      * {@inheritDoc}
      */
-    public void setTextContent(final String textContent) throws DOMException {
+    public void setTextContent(final String textContent) {
         removeAllChildren();
         appendChild(new DomText(getPage(), textContent));
     }
@@ -581,18 +599,6 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
     }
 
     /**
-     * Returns a flag indicating whether or not this node itself results in any space taken up
-     * in browser windows; for instance, "&lt;b&gt;" affects the specified text, but does not
-     * use up any space itself.
-     *
-     * @return a flag indicating whether or not this node itself results in any space taken up
-     *         in browser windows
-     */
-    protected boolean isRenderedVisible() {
-        return false;
-    }
-
-    /**
      * Returns a flag indicating whether or not this node should have any leading and trailing
      * whitespace removed when {@link #asText()} is called. This method should usually return
      * <tt>true</tt>, but must return <tt>false</tt> for such things as text formatting tags.
@@ -601,6 +607,53 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
      *         whitespace removed when {@link #asText()} is called
      */
     protected boolean isTrimmedText() {
+        return true;
+    }
+
+    /**
+     * Returns <tt>true</tt> if this node is displayed and can be visible to the user
+     * (ignoring screen size, scrolling limitations, color, font-size, or overlapping nodes).
+     * @see <a href="http://www.w3.org/TR/CSS2/visufx.html#visibility">CSS2 Visibility</a>
+     * @see <a href="http://www.w3.org/TR/CSS2/visuren.html#propdef-display">CSS2 Display</a>
+     * @see <a href="http://msdn.microsoft.com/en-us/library/ms531180.aspx">MSDN Documentation</a>
+     * @return true if the node is visible to the user
+     */
+    public boolean isDisplayed() {
+        final Page page = getPage();
+        if (page instanceof HtmlPage) {
+            // display: iterate top to bottom, because if a parent is display:none,
+            // there's nothing that a child can do to override it
+            for (final Node node : getAncestors(true)) {
+                final ScriptableObject scriptableObject = ((DomNode) node).getScriptObject();
+                if (scriptableObject instanceof HTMLElement) {
+                    final CSSStyleDeclaration style = ((HTMLElement) scriptableObject).jsxGet_style();
+                    final String display = style.jsxGet_display();
+                    if ("none".equals(display)) {
+                        return false;
+                    }
+                }
+            }
+            // visibility: iterate bottom to top, because children can override
+            // the visibility used by parent nodes
+            final boolean isNotIE = !((HtmlPage) page).getWebClient().getBrowserVersion().isIE();
+            DomNode node = this;
+            do {
+                final ScriptableObject scriptableObject = node.getScriptObject();
+                if (scriptableObject instanceof HTMLElement) {
+                    final CSSStyleDeclaration style = ((HTMLElement) scriptableObject).jsxGet_style();
+                    final String visibility = style.jsxGet_visibility();
+                    if (visibility.length() > 0) {
+                        if (visibility.equals("visible")) {
+                            return true;
+                        }
+                        else if (visibility.equals("hidden") || (isNotIE && visibility.equals("collapse"))) {
+                            return false;
+                        }
+                    }
+                }
+                node = node.getParentNode();
+            } while (node != null);
+        }
         return true;
     }
 
@@ -614,108 +667,17 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
      *         be visible to the user if this page was shown in a web browser
      */
     public String asText() {
-        String text = getChildrenAsText();
-        text = reduceWhitespace(text);
-
-        if (isTrimmedText()) {
-            text = text.trim();
-        }
-        return text;
+        final HtmlSerializer ser = new HtmlSerializer();
+        return ser.asText(this);
     }
 
     /**
-     * Returns a text string that represents all the child elements as they would be visible in a web browser.
-     * @return a text string that represents all the child elements as they would be visible in a web browser
-     * @see #asText()
+     * Indicates if the text representation of this element is made as a block, ie if new lines need
+     * to be inserted before and after it.
+     * @return <code>true</code> if this element represents a block
      */
-    protected final String getChildrenAsText() {
-        final StringBuilder buffer = new StringBuilder();
-        final StringBuilder textBuffer = new StringBuilder();
-
-        boolean previousNodeWasText = false;
-        for (final DomNode node : getChildren()) {
-            if (node instanceof DomText) {
-                textBuffer.append(((DomText) node).getData());
-                previousNodeWasText = true;
-            }
-            else {
-                if (previousNodeWasText) {
-                    // Whitespace between adjacent text nodes should reamin as a single
-                    // space. So, append raw adjacent text and reduce it as a whole.
-                    buffer.append(reduceWhitespace(textBuffer.toString()));
-                    textBuffer.setLength(0);
-                    previousNodeWasText = false;
-                }
-
-                if (node.isRenderedVisible()) {
-                    buffer.append(" ");
-                    buffer.append(node.asText());
-                    buffer.append(" ");
-                }
-                else if (node.getNodeName().equals("p")) {
-                    // this is a bit kludgey, but we can't add the space
-                    //  inside the node's asText(), since it doesn't belong
-                    //  with the contents of the 'p' tag
-                    buffer.append(" ");
-                    buffer.append(node.asText());
-                }
-                else {
-                    buffer.append(node.asText());
-                }
-            }
-        }
-        if (previousNodeWasText) {
-            // we ended with text
-            buffer.append(textBuffer.toString());
-        }
-
-        return buffer.toString();
-    }
-
-    /**
-     * Removes extra whitespace from a string, similar to what a browser does when it displays text.
-     * @param text the text to clean up
-     * @return the clean text
-     */
-    protected static String reduceWhitespace(final String text) {
-        final StringBuilder buffer = new StringBuilder(text.length());
-        boolean whitespace = false;
-        for (final char ch : text.toCharArray()) {
-
-            // Translate non-breaking space to regular space.
-            if (ch == (char) 160) {
-                buffer.append(' ');
-                whitespace = false;
-            }
-            else {
-                if (whitespace) {
-                    if (!Character.isWhitespace(ch)) {
-                        buffer.append(ch);
-                        whitespace = false;
-                    }
-                }
-                else {
-                    if (Character.isWhitespace(ch)) {
-                        whitespace = true;
-                        buffer.append(' ');
-                    }
-                    else {
-                        buffer.append(ch);
-                    }
-                }
-            }
-        }
-        return buffer.toString();
-    }
-
-    /**
-     * Returns the log object for this element.
-     * @return the log object for this element
-     * @deprecated As of 2.0, use local log variables enclosed in a conditional block.
-     */
-    @Deprecated
-    protected final Log getLog() {
-        return LogFactory.getLog(getClass());
+    protected boolean isBlock() {
+        return false;
     }
 
     /**
@@ -806,20 +768,6 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
     }
 
     /**
-     * Makes a clone of this node.
-     *
-     * @param deep if <code>true</code>, the clone will be propagated to the whole subtree
-     * below this one. Otherwise, the new node will not have any children. The page reference
-     * will always be the same as this node's.
-     * @return a new node
-     * @deprecated As of 2.0, please use {@link #cloneNode(boolean)} instead.
-     */
-    @Deprecated
-    public DomNode cloneDomNode(final boolean deep) {
-        return cloneNode(deep);
-    }
-
-    /**
      * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
      *
      * Returns the JavaScript object that corresponds to this node, lazily initializing a new one if necessary.
@@ -859,7 +807,7 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
             basicAppend(domNode);
             if (domNode.getStartLineNumber() == -1) { // dynamically added node, not parsed
                 domNode.onAddedToPage();
-                domNode.onAllChildrenAddedToPage();
+                domNode.onAllChildrenAddedToPage(true);
             }
 
             // trigger events
@@ -869,17 +817,6 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
             fireNodeAdded(this, domNode);
         }
         return domNode;
-    }
-
-    /**
-     * Appends a child node to this node.
-     * @param node the node to append
-     * @return the node added
-     * @deprecated As of 2.0, please use {@link #appendChild(Node)} instead.
-     */
-    @Deprecated
-    public DomNode appendDomChild(final DomNode node) {
-        return appendChild(node);
     }
 
     /**
@@ -953,7 +890,7 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
     /**
      * {@inheritDoc}
      */
-    public Node insertBefore(final Node newChild, final Node refChild) throws DOMException {
+    public Node insertBefore(final Node newChild, final Node refChild) {
         if (refChild == null) {
             appendChild(newChild);
         }
@@ -975,7 +912,7 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
      */
     public void insertBefore(final DomNode newNode) throws IllegalStateException {
         if (previousSibling_ == null) {
-            throw new IllegalStateException();
+            throw new IllegalStateException("Previous sibling for " + this + " is null.");
         }
 
         if (newNode == this) {
@@ -998,6 +935,11 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
         newNode.parent_ = parent_;
         newNode.setPage(page_);
 
+        if (newNode.getStartLineNumber() == -1) { // dynamically added node, not parsed
+            newNode.onAddedToPage();
+            newNode.onAllChildrenAddedToPage(true);
+        }
+
         if (getPage() instanceof HtmlPage) {
             ((HtmlPage) getPage()).notifyNodeAdded(newNode);
         }
@@ -1012,7 +954,7 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
      * Recursively sets the new page on the node and its children
      * @param newPage the new owning page
      */
-    private void setPage(final Page newPage) {
+    private void setPage(final SgmlPage newPage) {
         if (page_ == newPage) {
             return; // nothing to do
         }
@@ -1027,7 +969,7 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
      * {@inheritDoc}
      */
     public NamedNodeMap getAttributes() {
-        return com.gargoylesoftware.htmlunit.javascript.NamedNodeMap.EMPTY_NODE_MAP;
+        return NamedAttrNodeMapImpl.EMPTY_MAP;
     }
 
     /**
@@ -1126,8 +1068,9 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
      * after they and all their child nodes have been processed by the HTML parser. This method is
      * not recursive, and the default implementation is empty, so there is no need to call
      * <tt>super.onAllChildrenAddedToPage()</tt> if you implement this method.
+     * @param postponed whether to use {@link com.gargoylesoftware.htmlunit.javascript.PostponedAction} or no
      */
-    protected void onAllChildrenAddedToPage() {
+    protected void onAllChildrenAddedToPage(final boolean postponed) {
         // Empty by default.
     }
 
@@ -1140,15 +1083,6 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
                 return new ChildIterator();
             }
         };
-    }
-
-    /**
-     * @return an iterator over the children of this node
-     * @deprecated As of 2.0, use {@link #getChildren()}.
-     */
-    @Deprecated
-    public Iterator<DomNode> getChildIterator() {
-        return new ChildIterator();
     }
 
     /**
@@ -1315,7 +1249,7 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
      * @see #getFirstByXPath(String)
      * @see #getCanonicalXPath()
      */
-    public List< ? extends Object> getByXPath(final String xpathExpr) {
+    public List< ? > getByXPath(final String xpathExpr) {
         return XPathUtils.getByXPath(this, xpathExpr);
     }
 
@@ -1324,16 +1258,18 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
      * or <tt>null</tt> if no node matches the specified XPath expression.
      *
      * @param xpathExpr the XPath expression
+     * @param <X> the expression type
      * @return the first element matching the specified XPath expression
      * @see #getByXPath(String)
      * @see #getCanonicalXPath()
      */
-    public Object getFirstByXPath(final String xpathExpr) {
+    @SuppressWarnings("unchecked")
+    public <X> X getFirstByXPath(final String xpathExpr) {
         final List< ? > results = getByXPath(xpathExpr);
         if (results.isEmpty()) {
             return null;
         }
-        return results.get(0);
+        return (X) results.get(0);
     }
 
     /**
@@ -1472,36 +1408,6 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
                 return new ArrayList<DomChangeListener>(domListeners_);
             }
             return null;
-        }
-    }
-
-    /**
-     * Custom serialization logic which ensures that {@link NonSerializable} {@link DomChangeListener}s
-     * are not serialized.
-     * @param stream the stream to write the object to
-     * @throws IOException if an error occurs during writing
-     */
-    private void writeObject(final ObjectOutputStream stream) throws IOException {
-        synchronized (domListeners_lock_) {
-            // Store the original list of listeners in a temporary variable, and then
-            // modify the listener list by removing any NonSerializable listeners.
-            final List<DomChangeListener> temp;
-            if (domListeners_ != null) {
-                temp = new ArrayList<DomChangeListener>(domListeners_);
-                for (final Iterator<DomChangeListener> i = domListeners_.iterator(); i.hasNext();) {
-                    final DomChangeListener listener = i.next();
-                    if (listener instanceof NonSerializable) {
-                        i.remove();
-                    }
-                }
-            }
-            else {
-                temp = null;
-            }
-            // Perform object serialization, now that NonSerializable listeners have been removed.
-            stream.defaultWriteObject();
-            // Restore the old listeners, now that serialization has been performed.
-            domListeners_ = temp;
         }
     }
 

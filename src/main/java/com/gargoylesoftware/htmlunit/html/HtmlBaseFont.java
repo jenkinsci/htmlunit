@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "basefont".
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4002 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
@@ -54,7 +54,7 @@ public class HtmlBaseFont extends HtmlElement {
      * @return the value of the attribute "id" or an empty string if that attribute isn't defined
      */
     public final String getIdAttribute() {
-        return getAttributeValue("id");
+        return getAttribute("id");
     }
 
     /**
@@ -65,7 +65,7 @@ public class HtmlBaseFont extends HtmlElement {
      * @return the value of the attribute "size" or an empty string if that attribute isn't defined
      */
     public final String getSizeAttribute() {
-        return getAttributeValue("size");
+        return getAttribute("size");
     }
 
     /**
@@ -76,7 +76,7 @@ public class HtmlBaseFont extends HtmlElement {
      * @return the value of the attribute "color" or an empty string if that attribute isn't defined
      */
     public final String getColorAttribute() {
-        return getAttributeValue("color");
+        return getAttribute("color");
     }
 
     /**
@@ -87,6 +87,6 @@ public class HtmlBaseFont extends HtmlElement {
      * @return the value of the attribute "face" or an empty string if that attribute isn't defined
      */
     public final String getFaceAttribute() {
-        return getAttributeValue("face");
+        return getAttribute("face");
     }
 }

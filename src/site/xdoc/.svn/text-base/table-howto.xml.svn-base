@@ -24,34 +24,27 @@
             <td>Bicycle</td>
         </tr>
     </table>
-</body></html>
-            ]]></source>
+</body></html>]]></source>
             <p>
             This example shows how to iterate over all the rows and cells
-            <source>
-final HtmlTable table = (HtmlTable)page.getHtmlElementById("table1");
-final List rows = table.getRows();
-for (final Iterator rowIterator = rows.iterator(); rowIterator.hasNext(); ) {
-    final HtmlTableRow row = (HtmlTableRow) rowIterator.next();
+            <source><![CDATA[
+final HtmlTable table = page.getHtmlElementById("table1");
+for (final HtmlTableRow row : table.getRows()) {
     System.out.println("Found row");
-    final List cells = row.getCells();
-    for (final Iterator cellIterator = cells.iterator(); cellIterator.hasNext();) {
-        final HtmlTableCell cell = (HtmlTableCell) cellIterator.next();
+    for (final HtmlTableCell cell : row.getCells()) {
         System.out.println("   Found cell: " + cell.asText());
     }
-}
-            </source>
+}]]></source>
             </p>
 
             <p>
             The following sample shows how to access specific cells by row and column
-            <source>
+            <source><![CDATA[
 final WebClient webClient = new WebClient();
-final HtmlPage page = (HtmlPage)webClient.getPage( new URL("http://foo.com") );
+final HtmlPage page = webClient.getPage("http://foo.com");
 
-final HtmlTable table = (HtmlTable)page.getHtmlElementById("table1");
-System.out.println( "Cell (1,2)="+ table.getCellAt(1,2);
-            </source>
+final HtmlTable table = page.getHtmlElementById("table1");
+System.out.println("Cell (1,2)=" + table.getCellAt(1,2));]]></source>
             </p>
         </section>
 
@@ -97,22 +90,20 @@ System.out.println( "Cell (1,2)="+ table.getCellAt(1,2);
                 contains rows which can be accessed via getRows()
             <source><![CDATA[
 final HtmlTableHeader header = table.getHeader();
-final List headerRows = header.getRows();
+final List<HtmlTableRow> headerRows = header.getRows();
 
 final HtmlTableFooter footer = table.getFooter();
-final List footerRows = footer.getRows();
+final List<HtmlTableRow> footerRows = footer.getRows();
 
-final List bodies = table.getBodies();
-final Iterator iterator = bodies.iterator();
-while( iterator.hasNext() ) {
-    final List rows = ((HtmlTableBody)iterator.next()).getRows();
+for (final HtmlTableBody body : table.getBodies()) {
+    final List rows = body.getRows();
     ...
 }]]></source>
             </p>
 
             <p>
                 Every table may optionally have a caption element which describes it.
-                <source>final String caption = table.getCaptionText()</source>
+                <source><![CDATA[final String caption = table.getCaptionText()]]></source>
             </p>
         </section>
     </body>

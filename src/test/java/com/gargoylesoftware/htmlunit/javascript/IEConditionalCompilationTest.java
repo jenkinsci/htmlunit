@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 /**
  * Test for {@link IEConditionalCompilationScriptPreProcessor}.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4694 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
  */
@@ -50,6 +50,32 @@ public class IEConditionalCompilationTest extends WebTestCase {
         final String script = "var a={b:/*@cc_on!@*/false,c:/*@cc_on!@*/false};\n"
             + "var foo = (1 + 2/*V*/);\n"
             + "alert(foo)";
+        testScript(script);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(IE = "testing @cc_on")
+    public void simple3() throws Exception {
+        final String script = "/*@cc_on @*/\n"
+            + "/*@if (@_win32)\n"
+            + "alert('testing @cc_on');\n"
+            + "/*@end @*/";
+        testScript(script);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(IE = { "1", "testing @cc_on" })
+    public void simple4() throws Exception {
+        final String script = "/*@cc_on alert(1) @*/\n"
+            + "/*@if (@_win32)\n"
+            + "alert('testing @cc_on');\n"
+            + "/*@end @*/";
         testScript(script);
     }
 
@@ -116,11 +142,11 @@ public class IEConditionalCompilationTest extends WebTestCase {
     private void testScript(final String script)
         throws Exception {
         final String html
-            = "<html><head><title>foo</title></head>\n"
+            = "<html><head><title>foo</title>\n"
             + "<script>\n"
             + script
             + "</script>\n"
-            + "<body>\n"
+            + "</head><body>\n"
             + "</body></html>";
 
         loadPageWithAlerts(html);

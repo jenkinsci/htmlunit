@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,42 +14,60 @@
  */
 package com.gargoylesoftware.htmlunit.javascript;
 
-import org.apache.commons.logging.Log;
-import org.mozilla.javascript.Callable;
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.ContextFactory;
-import org.mozilla.javascript.ScriptRuntime;
-import org.mozilla.javascript.Scriptable;
+import java.io.Serializable;
+
+import net.sourceforge.htmlunit.corejs.javascript.Callable;
+import net.sourceforge.htmlunit.corejs.javascript.Context;
+import net.sourceforge.htmlunit.corejs.javascript.ContextFactory;
+import net.sourceforge.htmlunit.corejs.javascript.ErrorReporter;
+import net.sourceforge.htmlunit.corejs.javascript.Evaluator;
+import net.sourceforge.htmlunit.corejs.javascript.Script;
+import net.sourceforge.htmlunit.corejs.javascript.ScriptRuntime;
+import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
+import net.sourceforge.htmlunit.corejs.javascript.WrapFactory;
+import net.sourceforge.htmlunit.corejs.javascript.debug.Debugger;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
+import com.gargoylesoftware.htmlunit.ScriptPreProcessor;
 import com.gargoylesoftware.htmlunit.WebAssert;
+import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.html.HtmlElement;
+import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.javascript.regexp.HtmlUnitRegExpProxy;
 
 /**
  * ContextFactory that supports termination of scripts if they exceed a timeout. Based on example from
  * <a href="http://www.mozilla.org/rhino/apidocs/org/mozilla/javascript/ContextFactory.html">ContextFactory</a>.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4789 $
  * @author Andre Soereng
  * @author Ahmed Ashour
+ * @author Marc Guillemot
  */
-public class HtmlUnitContextFactory extends ContextFactory {
+public class HtmlUnitContextFactory extends ContextFactory implements Serializable {
 
-    private final Log log_;
+    private static final long serialVersionUID = -1282169475857079041L;
+
     private static final int INSTRUCTION_COUNT_THRESHOLD = 10000;
-    private static long Timeout_;
-    private static boolean DebuggerEnabled_;
 
-    private static final ThreadLocal<BrowserVersion> browserVersion_ = new ThreadLocal<BrowserVersion>();
+    private final BrowserVersion browserVersion_;
+    private final WebClient webClient_;
+    private long timeout_;
+    private Debugger debugger_;
+    private final ErrorReporter errorReporter_;
+    private final WrapFactory wrapFactory_ = new HtmlUnitWrapFactory();
 
     /**
      * Creates a new instance of HtmlUnitContextFactory.
      *
-     * @param log the log that the error reporter should use
+     * @param webClient the web client using this factory
      */
-    public HtmlUnitContextFactory(final Log log) {
-        WebAssert.notNull("log", log);
-        log_ = log;
+    public HtmlUnitContextFactory(final WebClient webClient) {
+        WebAssert.notNull("webClient", webClient);
+        webClient_ = webClient;
+        browserVersion_ = webClient.getBrowserVersion();
+        errorReporter_ = new StrictErrorReporter();
     }
 
     /**
@@ -58,8 +76,8 @@ public class HtmlUnitContextFactory extends ContextFactory {
      *
      * @param timeout the timeout value
      */
-    public static void setTimeout(final long timeout) {
-        Timeout_ = timeout;
+    public void setTimeout(final long timeout) {
+        timeout_ = timeout;
     }
 
     /**
@@ -68,52 +86,119 @@ public class HtmlUnitContextFactory extends ContextFactory {
      *
      * @return the timeout value (default value is <tt>0</tt>)
      */
-    public static long getTimeout() {
-        return Timeout_;
+    public long getTimeout() {
+        return timeout_;
     }
 
     /**
-     * Enables or disables the debugger, which logs stack entries and exceptions. Enabling the
-     * debugger may be useful if HtmlUnit is having trouble with JavaScript, especially if you are
-     * using some of the more advanced libraries like Dojo, Prototype or jQuery.
+     * Sets the JavaScript debugger to use to receive JavaScript execution debugging information.
+     * The HtmlUnit default implementation ({@link DebuggerImpl}, {@link DebugFrameImpl}) may be
+     * used, or a custom debugger may be used instead. By default, no debugger is used.
      *
-     * @param enabled whether or not the debugger should be enabled
-     * @see DebuggerImpl
-     * @see DebugFrameImpl
+     * @param debugger the JavaScript debugger to use (may be <tt>null</tt>)
      */
-    public static void setDebuggerEnabled(final boolean enabled) {
-        DebuggerEnabled_ = enabled;
+    public void setDebugger(final Debugger debugger) {
+        debugger_ = debugger;
     }
 
     /**
-     * Returns <tt>true</tt> if the debugger is enabled, <tt>false</tt> otherwise.
+     * Returns the JavaScript debugger to use to receive JavaScript execution debugging information.
+     * By default, no debugger is used, and this method returns <tt>null</tt>.
      *
-     * @return <tt>true</tt> if the debugger is enabled, <tt>false</tt> otherwise
-     * @see DebuggerImpl
-     * @see DebugFrameImpl
+     * @return the JavaScript debugger to use to receive JavaScript execution debugging information
      */
-    public static boolean getDebuggerEnabled() {
-        return DebuggerEnabled_;
+    public Debugger getDebugger() {
+        return debugger_;
     }
 
-    // Custom Context to store execution time.
-    private static class TimeoutContext extends Context {
+    /**
+     * Custom context to store execution time and handle timeouts.
+     */
+    private class TimeoutContext extends Context {
         private long startTime_;
-
+        protected TimeoutContext(final ContextFactory factory) {
+            super(factory);
+        }
         public void startClock() {
             startTime_ = System.currentTimeMillis();
         }
-
         public void terminateScriptIfNecessary() {
-            if (Timeout_ > 0) {
+            if (timeout_ > 0) {
                 final long currentTime = System.currentTimeMillis();
-                if (currentTime - startTime_ > Timeout_) {
+                if (currentTime - startTime_ > timeout_) {
                     // Terminate script by throwing an Error instance to ensure that the
                     // script will never get control back through catch or finally.
-                    throw new TimeoutError(Timeout_, currentTime - startTime_);
+                    throw new TimeoutError(timeout_, currentTime - startTime_);
                 }
             }
         }
+        @Override
+        protected Script compileString(String source, final Evaluator compiler,
+                final ErrorReporter compilationErrorReporter, final String sourceName,
+                final int lineno, final Object securityDomain) {
+
+            // this method gets called by Context.compileString and by ScriptRuntime.evalSpecial
+            // which is used for window.eval. We have to take care in which case we are.
+            final boolean isWindowEval = (compiler != null);
+
+            // Pre process the source code
+            final HtmlPage page = (HtmlPage) Context.getCurrentContext()
+                .getThreadLocal(JavaScriptEngine.KEY_STARTING_PAGE);
+            source = preProcess(page, source, sourceName, null);
+
+            // PreProcess IE Conditional Compilation if needed
+            if (browserVersion_.isIE()) {
+                final ScriptPreProcessor ieCCPreProcessor = new IEConditionalCompilationScriptPreProcessor();
+                source = ieCCPreProcessor.preProcess(page, source, sourceName, null);
+//                sourceCode = IEWeirdSyntaxScriptPreProcessor.getInstance()
+//                    .preProcess(htmlPage, sourceCode, sourceName, null);
+            }
+
+            // Remove HTML comments around the source if needed
+            if (!isWindowEval) {
+                final String sourceCodeTrimmed = source.trim();
+                if (sourceCodeTrimmed.startsWith("<!--")) {
+                    source = source.replaceFirst("<!--", "// <!--");
+                }
+                // IE ignores the last line containing uncommented -->
+                if (browserVersion_.isIE() && sourceCodeTrimmed.endsWith("-->")) {
+                    final int lastDoubleSlash = source.lastIndexOf("//");
+                    final int lastNewLine = Math.max(source.lastIndexOf('\n'), source.lastIndexOf('\r'));
+                    if (lastNewLine > lastDoubleSlash) {
+                        source = source.substring(0, lastNewLine);
+                    }
+                }
+            }
+
+            return super.compileString(source, compiler, compilationErrorReporter,
+                    sourceName, lineno, securityDomain);
+        }
+    }
+
+    /**
+     * Pre process the specified source code in the context of the given page using the processor specified
+     * in the webclient. This method delegates to the pre processor handler specified in the
+     * <code>WebClient</code>. If no pre processor handler is defined, the original source code is returned
+     * unchanged.
+     * @param htmlPage the page
+     * @param sourceCode the code to process
+     * @param sourceName a name for the chunk of code (used in error messages)
+     * @param htmlElement the HTML element that will act as the context
+     * @return the source code after being pre processed
+     * @see com.gargoylesoftware.htmlunit.ScriptPreProcessor
+     */
+    protected String preProcess(
+        final HtmlPage htmlPage, final String sourceCode, final String sourceName, final HtmlElement htmlElement) {
+
+        String newSourceCode = sourceCode;
+        final ScriptPreProcessor preProcessor = webClient_.getScriptPreProcessor();
+        if (preProcessor != null) {
+            newSourceCode = preProcessor.preProcess(htmlPage, sourceCode, sourceName, htmlElement);
+            if (newSourceCode == null) {
+                newSourceCode = "";
+            }
+        }
+        return newSourceCode;
     }
 
     /**
@@ -121,7 +206,7 @@ public class HtmlUnitContextFactory extends ContextFactory {
      */
     @Override
     protected Context makeContext() {
-        final TimeoutContext cx = new TimeoutContext();
+        final TimeoutContext cx = new TimeoutContext(this);
 
         // Use pure interpreter mode to get observeInstructionCount() callbacks.
         cx.setOptimizationLevel(-1);
@@ -129,17 +214,26 @@ public class HtmlUnitContextFactory extends ContextFactory {
         // Set threshold on how often we want to receive the callbacks
         cx.setInstructionObserverThreshold(INSTRUCTION_COUNT_THRESHOLD);
 
-        cx.setErrorReporter(new StrictErrorReporter(log_));
-        cx.setWrapFactory(new HtmlUnitWrapFactory());
+        configureErrorReporter(cx);
+        cx.setWrapFactory(wrapFactory_);
 
-        if (DebuggerEnabled_) {
-            cx.setDebugger(new DebuggerImpl(), null);
+        if (debugger_ != null) {
+            cx.setDebugger(debugger_, null);
         }
 
         // register custom RegExp processing
         ScriptRuntime.setRegExpProxy(cx, new HtmlUnitRegExpProxy(ScriptRuntime.getRegExpProxy(cx)));
 
         return cx;
+    }
+
+    /**
+     * Configures the {@link ErrorReporter} on the context.
+     * @param context the context to configure
+     * @see {@link Context#setErrorReporter(ErrorReporter)}
+     */
+    protected void configureErrorReporter(final Context context) {
+        context.setErrorReporter(errorReporter_);
     }
 
     /**
@@ -174,21 +268,18 @@ public class HtmlUnitContextFactory extends ContextFactory {
      */
     @Override
     protected boolean hasFeature(final Context cx, final int featureIndex) {
-        if (Context.FEATURE_RESERVED_KEYWORD_AS_IDENTIFIER == featureIndex) {
-            return true;
-        }
-        else if (Context.FEATURE_PARENT_PROTO_PROPERTIES == featureIndex) {
-            return !browserVersion_.get().isIE();
-        }
-        else {
-            return super.hasFeature(cx, featureIndex);
+        switch (featureIndex) {
+            case Context.FEATURE_RESERVED_KEYWORD_AS_IDENTIFIER:
+                return true;
+            case Context.FEATURE_PARENT_PROTO_PROPERTIES:
+                return !browserVersion_.isIE();
+            case Context.FEATURE_NON_ECMA_GET_YEAR:
+                return browserVersion_.isIE();
+            case Context.FEATURE_HTMLUNIT_WRITE_READONLY_PROPERTIES:
+                return browserVersion_.hasFeature(BrowserVersionFeatures.SET_READONLY_PROPERTIES);
+            default:
+                return super.hasFeature(cx, featureIndex);
         }
     }
-    /**
-     * Puts the specified {@link BrowserVersion} as a thread local variable.
-     * @param browserVersion the BrowserVersion that is currently used
-     */
-    public static void putThreadLocal(final BrowserVersion browserVersion) {
-        browserVersion_.set(browserVersion);
-    }
+
 }

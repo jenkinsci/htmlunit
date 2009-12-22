@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,20 +23,20 @@ import org.apache.commons.logging.LogFactory;
  * Default implementation of {@link IncorrectnessListener} configured on {@link WebClient}.
  * Logs the notifications at WARN level to the originator's log.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4789 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
 public class IncorrectnessListenerImpl implements IncorrectnessListener, Serializable  {
 
     private static final long serialVersionUID = -9060293156707472175L;
+    private static final Log LOG = LogFactory.getLog(IncorrectnessListenerImpl.class);
 
     /**
      * {@inheritDoc}
      */
     public void notify(final String message, final Object origin) {
-        final Log log = LogFactory.getLog(origin.getClass());
-        log.warn(message);
+        LOG.warn(message);
     }
 
 }

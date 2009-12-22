@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "font".
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4059 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -49,39 +49,6 @@ public class HtmlFont extends StyledElement {
     }
 
     /**
-     * Returns the value of the attribute "lang". Refer to the
-     * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
-     * documentation for details on the use of this attribute.
-     *
-     * @return the value of the attribute "lang" or an empty string if that attribute isn't defined
-     */
-    public final String getLangAttribute() {
-        return getAttributeValue("lang");
-    }
-
-    /**
-     * Returns the value of the attribute "xml:lang". Refer to the
-     * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
-     * documentation for details on the use of this attribute.
-     *
-     * @return the value of the attribute "xml:lang" or an empty string if that attribute isn't defined
-     */
-    public final String getXmlLangAttribute() {
-        return getAttributeValue("xml:lang");
-    }
-
-    /**
-     * Returns the value of the attribute "dir". Refer to the
-     * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
-     * documentation for details on the use of this attribute.
-     *
-     * @return the value of the attribute "dir" or an empty string if that attribute isn't defined
-     */
-    public final String getTextDirectionAttribute() {
-        return getAttributeValue("dir");
-    }
-
-    /**
      * Returns the value of the attribute "size". Refer to the
      * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
      * documentation for details on the use of this attribute.
@@ -89,7 +56,7 @@ public class HtmlFont extends StyledElement {
      * @return the value of the attribute "size" or an empty string if that attribute isn't defined
      */
     public final String getSizeAttribute() {
-        return getAttributeValue("size");
+        return getAttribute("size");
     }
 
     /**
@@ -100,7 +67,7 @@ public class HtmlFont extends StyledElement {
      * @return the value of the attribute "color" or an empty string if that attribute isn't defined
      */
     public final String getColorAttribute() {
-        return getAttributeValue("color");
+        return getAttribute("color");
     }
 
     /**
@@ -111,15 +78,7 @@ public class HtmlFont extends StyledElement {
      * @return the value of the attribute "face" or an empty string if that attribute isn't defined
      */
     public final String getFaceAttribute() {
-        return getAttributeValue("face");
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected boolean isRenderedVisible() {
-        return false;
+        return getAttribute("face");
     }
 
     /**

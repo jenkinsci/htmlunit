@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,9 +65,10 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      * If we were given an invalid <tt>size</tt> attribute, normalize it.
      * Then set a default selected option if none was specified and the size is 1 or less
      * and this isn't a multiple selection input.
+     * @param postponed whether to use {@link com.gargoylesoftware.htmlunit.javascript.PostponedAction} or no
      */
     @Override
-    protected void onAllChildrenAddedToPage() {
+    protected void onAllChildrenAddedToPage(final boolean postponed) {
         // Fix the size if necessary.
         int size;
         try {
@@ -136,10 +137,8 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      * Returns all of the options in this select element.
      * @return all of the options in this select element
      */
-    @SuppressWarnings("unchecked")
     public List<HtmlOption> getOptions() {
-        final List<HtmlOption> elementList = (List<HtmlOption>) getHtmlElementsByTagName("option");
-        return Collections.unmodifiableList(elementList);
+        return Collections.unmodifiableList(this.<HtmlOption>getHtmlElementsByTagName("option"));
     }
 
     /**
@@ -148,10 +147,8 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      * @param index the index
      * @return the option specified by the index
      */
-    @SuppressWarnings("unchecked")
     public HtmlOption getOption(final int index) {
-        final List<HtmlOption> elementList = (List<HtmlOption>) getHtmlElementsByTagName("option");
-        return elementList.get(index);
+        return this.<HtmlOption>getHtmlElementsByTagName("option").get(index);
     }
 
     /**
@@ -159,8 +156,7 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      * @return the number of options
      */
     public int getOptionSize() {
-        final List< ? extends HtmlElement> elementList = getHtmlElementsByTagName("option");
-        return elementList.size();
+        return getHtmlElementsByTagName("option").size();
     }
 
     /**
@@ -169,7 +165,7 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      * @param newLength the new length property value
      */
     public void setOptionSize(final int newLength) {
-        final List< ? extends HtmlElement> elementList = getHtmlElementsByTagName("option");
+        final List<HtmlElement> elementList = getHtmlElementsByTagName("option");
 
         for (int i = elementList.size() - 1; i >= newLength; i--) {
             elementList.get(i).remove();
@@ -182,11 +178,14 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      */
     public void removeOption(final int index) {
         final ChildElementsIterator iterator = new ChildElementsIterator();
-        for (int i = 0; iterator.hasNext(); i++) {
+        for (int i = 0; iterator.hasNext();) {
             final HtmlElement element = iterator.nextElement();
-            if (i == index) {
-                element.remove();
-                return;
+            if (element instanceof HtmlOption) {
+                if (i == index) {
+                    element.remove();
+                    return;
+                }
+                i++;
             }
         }
     }
@@ -198,11 +197,14 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      */
     public void replaceOption(final int index, final HtmlOption newOption) {
         final ChildElementsIterator iterator = new ChildElementsIterator();
-        for (int i = 0; iterator.hasNext(); i++) {
+        for (int i = 0; iterator.hasNext();) {
             final HtmlElement element = iterator.nextElement();
-            if (i == index) {
-                element.replace(newOption);
-                return;
+            if (element instanceof HtmlOption) {
+                if (i == index) {
+                    element.replace(newOption);
+                    return;
+                }
+                i++;
             }
         }
 
@@ -250,7 +252,12 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
             return setSelectedAttribute(getOptionByValue(optionValue), isSelected);
         }
         catch (final ElementNotFoundException e) {
-            throw new IllegalArgumentException("No option found with value: " + optionValue);
+            if (getPage().getWebClient().getBrowserVersion().isIE()) {
+                for (final HtmlOption o : getSelectedOptions()) {
+                    o.setSelected(false);
+                }
+            }
+            return getPage();
         }
     }
 
@@ -266,7 +273,26 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      *         may not be the same as the original page)
      */
     public Page setSelectedAttribute(final HtmlOption selectedOption, final boolean isSelected) {
-        if (isSelected) {
+        return setSelectedAttribute(selectedOption, isSelected, true);
+    }
+
+    /**
+     * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
+     *
+     * Sets the "selected" state of the specified option. If this "select" element
+     * is single-select, then calling this method will deselect all other options.
+     *
+     * Only options that are actually in the document may be selected.
+     *
+     * @param isSelected true if the option is to become selected
+     * @param selectedOption the value of the option that is to change
+     * @param invokeOnFocus whether to set focus or no.
+     * @return the page that occupies this window after this change is made (may or
+     *         may not be the same as the original page)
+     */
+    public Page setSelectedAttribute(final HtmlOption selectedOption, final boolean isSelected,
+        final boolean invokeOnFocus) {
+        if (isSelected && invokeOnFocus) {
             ((HtmlPage) getPage()).setFocusedElement(this);
         }
 
@@ -377,7 +403,7 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      * @return <tt>true</tt> if this select is using "multiple select"
      */
     public boolean isMultipleSelectEnabled() {
-        return getAttributeValue("multiple") != ATTRIBUTE_NOT_DEFINED;
+        return getAttribute("multiple") != ATTRIBUTE_NOT_DEFINED;
     }
 
     /**
@@ -385,13 +411,33 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      *
      * @param value the value to search by
      * @return the {@link HtmlOption} object that corresponds to the specified value
-     * @exception ElementNotFoundException If a particular XML element could not be found in the DOM model
+     * @exception ElementNotFoundException If a particular element could not be found in the DOM model
      */
-    public HtmlOption getOptionByValue(final String value)
-        throws ElementNotFoundException {
+    public HtmlOption getOptionByValue(final String value) throws ElementNotFoundException {
         WebAssert.notNull("value", value);
+        for (final HtmlOption option : getOptions()) {
+            if (option.getValueAttribute().equals(value)) {
+                return option;
+            }
+        }
+        throw new ElementNotFoundException("option", "value", value);
+    }
 
-        return (HtmlOption) getOneHtmlElementByAttribute("option", "value", value);
+    /**
+     * Returns the {@link HtmlOption} object that has the specified text.
+     *
+     * @param text the text to search by
+     * @return the {@link HtmlOption} object that has the specified text
+     * @exception ElementNotFoundException If a particular element could not be found in the DOM model
+     */
+    public HtmlOption getOptionByText(final String text) throws ElementNotFoundException {
+        WebAssert.notNull("text", text);
+        for (final HtmlOption option : getOptions()) {
+            if (option.getText().equals(text)) {
+                return option;
+            }
+        }
+        throw new ElementNotFoundException("option", "text", text);
     }
 
     /**
@@ -402,6 +448,7 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      *
      * @return the element as text
      */
+    // we need to preserve this method as it is there since many versions with the above documentation.
     @Override
     public String asText() {
         final List<HtmlOption> options;
@@ -433,7 +480,7 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      * @return the value of the attribute "name" or an empty string if that attribute isn't defined
      */
     public final String getNameAttribute() {
-        return getAttributeValue("name");
+        return getAttribute("name");
     }
 
     /**
@@ -444,7 +491,7 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      * @return the value of the attribute "size" or an empty string if that attribute isn't defined
      */
     public final String getSizeAttribute() {
-        return getAttributeValue("size");
+        return getAttribute("size");
     }
 
     /**
@@ -454,21 +501,21 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      * @return the value of the attribute "multiple" or an empty string if that attribute isn't defined
      */
     public final String getMultipleAttribute() {
-        return getAttributeValue("multiple");
+        return getAttribute("multiple");
     }
 
     /**
      * {@inheritDoc}
      */
     public final String getDisabledAttribute() {
-        return getAttributeValue("disabled");
+        return getAttribute("disabled");
     }
 
     /**
      * {@inheritDoc}
      */
     public final boolean isDisabled() {
-        return isAttributeDefined("disabled");
+        return hasAttribute("disabled");
     }
 
     /**
@@ -478,7 +525,7 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      * @return the value of the attribute "tabindex" or an empty string if that attribute isn't defined
      */
     public final String getTabIndexAttribute() {
-        return getAttributeValue("tabindex");
+        return getAttribute("tabindex");
     }
 
     /**
@@ -488,7 +535,7 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      * @return the value of the attribute "onfocus" or an empty string if that attribute isn't defined
      */
     public final String getOnFocusAttribute() {
-        return getAttributeValue("onfocus");
+        return getAttribute("onfocus");
     }
 
     /**
@@ -498,7 +545,7 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      * @return the value of the attribute "onblur" or an empty string if that attribute isn't defined
      */
     public final String getOnBlurAttribute() {
-        return getAttributeValue("onblur");
+        return getAttribute("onblur");
     }
 
     /**
@@ -508,6 +555,6 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      * @return the value of the attribute "onchange" or an empty string if that attribute isn't defined
      */
     public final String getOnChangeAttribute() {
-        return getAttributeValue("onchange");
+        return getAttribute("onchange");
     }
 }

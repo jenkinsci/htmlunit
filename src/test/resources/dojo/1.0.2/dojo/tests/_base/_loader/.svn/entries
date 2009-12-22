@@ -1,8 +1,8 @@
-8
+10
 
 dir
-3268
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/dojo/1.0.2/dojo/tests/_base/_loader
+5285
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.6/src/test/resources/dojo/1.0.2/dojo/tests/_base/_loader
 https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 
 
@@ -12,7 +12,7 @@ https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 asashour
 
 
-svn:special svn:externals svn:needs-lock
+
 
 
 
@@ -32,11 +32,33 @@ file
 
 
 
-2008-08-19T23:16:20.000000Z
+2009-12-22T19:28:46.000000Z
 f1b971ed4ae8ef5435f13262d27272ec
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+895
 
 hostenv_rhino.js
 file
@@ -44,11 +66,33 @@ file
 
 
 
-2008-08-19T23:16:20.000000Z
+2009-12-22T19:28:46.000000Z
 8654e525ff4a1b07133d59d87904015d
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+618
 
 loader.js
 file
@@ -56,11 +100,33 @@ file
 
 
 
-2008-08-19T23:16:20.000000Z
+2009-12-22T19:28:46.000000Z
 e168788d1ddbd81095ac241d6d312cac
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+2296
 
 getText.txt
 file
@@ -68,11 +134,33 @@ file
 
 
 
-2008-08-19T23:16:20.000000Z
+2009-12-22T19:28:46.000000Z
 4d1945a719a6b14c869ad4084339e2e7
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+25
 
 hostenv_browser.js
 file
@@ -80,11 +168,33 @@ file
 
 
 
-2008-08-19T23:16:20.000000Z
+2009-12-22T19:28:46.000000Z
 916bb8ca6090d5ec5bacb8daadbd758b
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+525
 
 bootstrap.js
 file
@@ -92,11 +202,33 @@ file
 
 
 
-2008-08-19T23:16:20.000000Z
+2009-12-22T19:28:46.000000Z
 3dd624c4339d5d27a126394768a5dfe6
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+2518
 
 hostenv_spidermonkey.js
 file
@@ -104,11 +236,33 @@ file
 
 
 
-2008-08-19T23:16:20.000000Z
+2009-12-22T19:28:46.000000Z
 9a46a4e99681880ab48b8241cfa861b8
 2008-01-03T08:45:38.145177Z
 2138
 asashour
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+540
 
 744
 dir

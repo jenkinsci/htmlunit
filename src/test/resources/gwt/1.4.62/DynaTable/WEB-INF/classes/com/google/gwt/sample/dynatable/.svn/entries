@@ -1,34 +1,0 @@
-8
-
-dir
-3268
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/gwt/1.4.62/DynaTable/WEB-INF/classes/com/google/gwt/sample/dynatable
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
-
-
-
-2008-04-02T21:49:17.649053Z
-2798
-asashour
-
-
-svn:special svn:externals svn:needs-lock
-
-
-
-
-
-
-
-
-
-
-
-797ba2fd-6919-0410-a55a-8c1f0daf9432
-
-server
-dir
-
-client
-dir
-

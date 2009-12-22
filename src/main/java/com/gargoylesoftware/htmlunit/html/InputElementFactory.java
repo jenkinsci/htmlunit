@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,19 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.xml.sax.Attributes;
 
 import com.gargoylesoftware.htmlunit.SgmlPage;
 
-import java.util.Map;
-import java.util.HashMap;
-
 /**
  * A specialized creator that knows how to create input objects.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4789 $
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Marc Guillemot
  * @author Ahmed Ashour
@@ -35,13 +35,15 @@ import java.util.HashMap;
  */
 public final class InputElementFactory implements IElementFactory {
 
+    /** Logging support. */
+    private static final Log LOG = LogFactory.getLog(InputElementFactory.class);
+
     /** The singleton instance. */
     public static final InputElementFactory instance = new InputElementFactory();
 
-    private final transient Log mainLog_ = LogFactory.getLog(getClass());
-
     /** Private singleton constructor. */
     private InputElementFactory() {
+        // Empty.
     }
 
     /**
@@ -121,22 +123,11 @@ public final class InputElementFactory implements IElementFactory {
             result = new HtmlFileInput(namespaceURI, qualifiedName, page, attributeMap);
         }
         else {
-            if (mainLog_.isInfoEnabled()) {
-                mainLog_.info("Bad input type: \"" + type + "\", creating a text input");
+            if (LOG.isInfoEnabled()) {
+                LOG.info("Bad input type: \"" + type + "\", creating a text input");
             }
             result = new HtmlTextInput(namespaceURI, qualifiedName, page, attributeMap);
         }
         return result;
     }
-
-    /**
-     * Returns the log that is being used for all scripting objects.
-     * @return the log
-     * @deprecated As of 2.0, use local log variable enclosed in a conditional block.
-     */
-    @Deprecated
-    protected Log getLog() {
-        return mainLog_;
-    }
-
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,10 +26,12 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.w3c.dom.Document;
+import org.w3c.dom.DocumentType;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.Attributes;
+import org.xml.sax.EntityResolver;
 import org.xml.sax.ErrorHandler;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
@@ -39,12 +41,13 @@ import org.xml.sax.helpers.AttributesImpl;
 import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.html.DomAttr;
-import com.gargoylesoftware.htmlunit.html.DomCData;
+import com.gargoylesoftware.htmlunit.html.DomCDataSection;
 import com.gargoylesoftware.htmlunit.html.DomComment;
+import com.gargoylesoftware.htmlunit.html.DomDocumentType;
+import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.html.DomText;
 import com.gargoylesoftware.htmlunit.html.HTMLParser;
-import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.html.IElementFactory;
 
@@ -53,51 +56,45 @@ import com.gargoylesoftware.htmlunit.html.IElementFactory;
  *
  * Provides facility method to work with XML responses.
  *
- * @version $Revision: 3173 $
+ * @version $Revision: 4806 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  * @author Sudhan Moghe
  */
 public final class XmlUtil {
+
+    private static final Log LOG = LogFactory.getLog(XmlUtil.class);
+
     private static final ErrorHandler DISCARD_MESSAGES_HANDLER = new ErrorHandler() {
         /**
-         * Does nothing as we're not interested in.
-         * @see org.xml.sax.ErrorHandler#error(org.xml.sax.SAXParseException)
+         * Does nothing as we're not interested in this.
          */
-        public void error(final SAXParseException exception) throws SAXException {
-            // Does nothing as we're not interested in.
+        public void error(final SAXParseException exception) {
+            // Does nothing as we're not interested in this.
         }
-
         /**
-         * Does nothing as we're not interested in.
-         * @see org.xml.sax.ErrorHandler#fatalError(org.xml.sax.SAXParseException)
+         * Does nothing as we're not interested in this.
          */
-        public void fatalError(final SAXParseException exception)
-            throws SAXException {
-
-            // Does nothing as we're not interested in.
+        public void fatalError(final SAXParseException exception) {
+            // Does nothing as we're not interested in this.
         }
-
         /**
-         * Does nothing as we're not interested in.
-         * @see org.xml.sax.ErrorHandler#warning(org.xml.sax.SAXParseException)
+         * Does nothing as we're not interested in this.
          */
-        public void warning(final SAXParseException exception)
-            throws SAXException {
-
-            // Does nothing as we're not interested in.
+        public void warning(final SAXParseException exception) {
+            // Does nothing as we're not interested in this.
         }
     };
 
     /**
-     * Utility class, hide constructor
+     * Utility class, hide constructor.
      */
     private XmlUtil() {
-        // nothing
+        // Empty.
     }
 
     /**
-     * Builds a document from the content of the webresponse.
+     * Builds a document from the content of the web response.
      * A warning is logged if an exception is thrown while parsing the XML content
      * (for instance when the content is not a valid XML and can't be parsed).
      *
@@ -115,25 +112,29 @@ public final class XmlUtil {
         final InputSource source = new InputSource(new StringReader(webResponse.getContentAsString()));
         final DocumentBuilder builder = factory.newDocumentBuilder();
         builder.setErrorHandler(DISCARD_MESSAGES_HANDLER);
+        builder.setEntityResolver(new EntityResolver() {
+            public InputSource resolveEntity(final String publicId, final String systemId)
+                throws SAXException, IOException {
+                return new InputSource(new StringReader(""));
+            }
+        });
         return builder.parse(source);
-    }
-
-    /**
-     * Returns the log object for this utility class.
-     * @return the log object for this utility class
-     */
-    protected static Log getLog() {
-        return LogFactory.getLog(XmlUtil.class);
     }
 
     /**
      * Recursively appends a {@link Node} child to {@link DomNode} parent.
      *
-     * @param page the owner page of {@link XmlElement}s to be created
+     * @param page the owner page of {@link DomElement}s to be created
      * @param parent the parent DomNode
      * @param child the child Node
      */
     public static void appendChild(final SgmlPage page, final DomNode parent, final Node child) {
+        final DocumentType documentType = child.getOwnerDocument().getDoctype();
+        if (documentType != null && page instanceof XmlPage) {
+            final DomDocumentType domDoctype = new DomDocumentType(
+                    page, documentType.getName(), documentType.getPublicId(), documentType.getSystemId());
+            ((XmlPage) page).setDocumentType(domDoctype);
+        }
         final DomNode childXml = createFrom(page, child);
         parent.appendChild(childXml);
         copy(page, child, childXml);
@@ -145,8 +146,8 @@ public final class XmlUtil {
         }
         final String ns = source.getNamespaceURI();
         String localName = source.getLocalName();
-        if (!page.getWebClient().getBrowserVersion().isIE() && "http://www.w3.org/1999/xhtml".equals(ns)) {
-            final IElementFactory factory = HTMLParser.getFactory(localName.toLowerCase());
+        if (HTMLParser.XHTML_NAMESPACE.equals(ns)) {
+            final IElementFactory factory = HTMLParser.getFactory(localName);
             return factory.createElementNS(page, ns, localName, namedNodeMapToSaxAttributes(source.getAttributes()));
         }
         final Map<String, DomAttr> attributes = new HashMap<String, DomAttr>();
@@ -174,7 +175,7 @@ public final class XmlUtil {
         else {
             qualifiedName = source.getPrefix() + ':' + localName;
         }
-        return new XmlElement(source.getNamespaceURI(), qualifiedName, page, attributes);
+        return new DomElement(source.getNamespaceURI(), qualifiedName, page, attributes);
     }
 
     private static Attributes namedNodeMapToSaxAttributes(final NamedNodeMap attributesMap) {
@@ -190,9 +191,10 @@ public final class XmlUtil {
     }
 
     /**
-     * Copy all children from 'source' to 'dest'
-     * @param source the Node to copy from
-     * @param dest the DomNode to copy to
+     * Copy all children from 'source' to 'dest', within the context of the specified page.
+     * @param page the page which the nodes belong to
+     * @param source the node to copy from
+     * @param dest the node to copy to
      */
     private static void copy(final SgmlPage page, final Node source, final DomNode dest) {
         final NodeList nodeChildren = source.getChildNodes();
@@ -211,7 +213,7 @@ public final class XmlUtil {
                     break;
 
                 case Node.CDATA_SECTION_NODE:
-                    final DomCData cdata = new DomCData(page, child.getNodeValue());
+                    final DomCDataSection cdata = new DomCDataSection(page, child.getNodeValue());
                     dest.appendChild(cdata);
                     break;
 
@@ -221,7 +223,7 @@ public final class XmlUtil {
                     break;
 
                 default:
-                    getLog().warn("NodeType " + child.getNodeType()
+                    LOG.warn("NodeType " + child.getNodeType()
                             + " (" + child.getNodeName() + ") is not yet supported.");
             }
         }
@@ -232,32 +234,13 @@ public final class XmlUtil {
      * @param element the element to start searching from
      * @param prefix the namespace prefix
      * @return the namespace URI bound to the prefix; or null if there is no such namespace
-     * @see #lookupNamespaceURI(HtmlElement, String)
      */
-    public static String lookupNamespaceURI(final XmlElement element, final String prefix) {
-        String uri = element.getAttributeValue("xmlns:" + prefix);
-        if (uri == XmlElement.ATTRIBUTE_NOT_DEFINED) {
+    public static String lookupNamespaceURI(final DomElement element, final String prefix) {
+        String uri = element.getAttribute("xmlns:" + prefix);
+        if (uri == DomElement.ATTRIBUTE_NOT_DEFINED) {
             final DomNode parentNode = element.getParentNode();
-            if (parentNode instanceof XmlElement) {
-                uri = lookupNamespaceURI((XmlElement) parentNode, prefix);
-            }
-        }
-        return uri;
-    }
-
-    /**
-     * Search for the namespace URI of the given prefix, starting from the specified element.
-     * @param element the element to start searching from
-     * @param prefix the namespace prefix
-     * @return the namespace URI bound to the prefix; or null if there is no such namespace
-     * @see #lookupNamespaceURI(XmlElement, String)
-     */
-    public static String lookupNamespaceURI(final HtmlElement element, final String prefix) {
-        String uri = element.getAttributeValue("xmlns:" + prefix);
-        if (uri == HtmlElement.ATTRIBUTE_NOT_DEFINED) {
-            final DomNode parentNode = element.getParentNode();
-            if (parentNode instanceof HtmlElement) {
-                uri = lookupNamespaceURI((HtmlElement) parentNode, prefix);
+            if (parentNode instanceof DomElement) {
+                uri = lookupNamespaceURI((DomElement) parentNode, prefix);
             }
         }
         return uri;
@@ -269,7 +252,7 @@ public final class XmlUtil {
      * @param namespace the namespace prefix
      * @return the prefix bound to the namespace URI; or null if there is no such namespace
      */
-    public static String lookupPrefix(final XmlElement element, final String namespace) {
+    public static String lookupPrefix(final DomElement element, final String namespace) {
         final Map<String, DomAttr> attributes = element.getAttributesMap();
         for (final String name : attributes.keySet()) {
             if (name.startsWith("xmlns:") && attributes.get(name).getValue().equals(namespace)) {
@@ -277,8 +260,8 @@ public final class XmlUtil {
             }
         }
         for (final DomNode child : element.getChildren()) {
-            if (child instanceof XmlElement) {
-                final String prefix = lookupPrefix((XmlElement) child, namespace);
+            if (child instanceof DomElement) {
+                final String prefix = lookupPrefix((DomElement) child, namespace);
                 if (prefix != null) {
                     return prefix;
                 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
 import java.util.zip.GZIPInputStream;
+import java.util.zip.InflaterInputStream;
 
 import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.io.IOUtils;
@@ -29,7 +30,7 @@ import org.apache.commons.lang.StringUtils;
 /**
  * Simple data object to simplify WebResponse creation.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4676 $
  * @author Brad Clarke
  * @author Daniel Gredler
  * @author Ahmed Ashour
@@ -57,11 +58,13 @@ public class WebResponseData implements Serializable {
         statusMessage_ = statusMessage;
         responseHeaders_ = Collections.unmodifiableList(responseHeaders);
 
-        try {
-            body_ = getBody(new ByteArrayInputStream(body), responseHeaders);
-        }
-        catch (final IOException e) {
-            body_ = body;
+        if (body != null) {
+            try {
+                body_ = getBody(new ByteArrayInputStream(body), responseHeaders);
+            }
+            catch (final IOException e) {
+                body_ = body;
+            }
         }
     }
 
@@ -123,6 +126,9 @@ public class WebResponseData implements Serializable {
         }
         if (encoding != null && StringUtils.contains(encoding, "gzip")) {
             stream = new GZIPInputStream(stream);
+        }
+        else if (encoding != null && StringUtils.contains(encoding, "deflate")) {
+            stream = new InflaterInputStream(stream);
         }
         return IOUtils.toByteArray(stream);
     }

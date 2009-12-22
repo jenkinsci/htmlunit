@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@
  */
 package com.gargoylesoftware.htmlunit.protocol.data;
 
+import static com.gargoylesoftware.htmlunit.protocol.data.DataUrlDecoder.decodeDataURL;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -23,12 +25,10 @@ import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
 
-import static com.gargoylesoftware.htmlunit.protocol.data.DataUrlDecoder.decodeDataURL;
-
 /**
  * Tests for {@link DataUrlDecoder}.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4002 $
  * @author Marc Guillemot
  */
 @RunWith(BrowserRunner.class)

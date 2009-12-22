@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,11 +15,12 @@
 package com.gargoylesoftware.htmlunit.javascript.host;
 
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLDocument;
 
 /**
  * A JavaScript object for DOMParser.
  *
- * @version $Revision: 3079 $
+ * @version $Revision: 4505 $
  * @author Ahmed Ashour
  *
  * @see <a href="http://www.xulplanet.com/references/objref/DOMParser.html">XUL Planet</a>

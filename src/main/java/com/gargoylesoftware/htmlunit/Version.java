@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,15 +18,17 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 
 /**
  * Class to display version information about HtmlUnit. This is the class
- * that will be executed if the jar file is run.
+ * that will be executed if the JAR file is run.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4002 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Ahmed Ashour
  */
 public final class Version {
 
+    /** Prevent instantiation. */
     private Version() {
+        // Empty.
     }
 
     /**
@@ -34,23 +36,25 @@ public final class Version {
      * @param args the arguments passed on the command line
      * @throws Exception if an error occurs
      */
-    public static void main(final String args[]) throws Exception {
+    public static void main(final String[] args) throws Exception {
         if (args.length == 1 && args[0].equals("-SanityCheck")) {
-            new Version().runSanityCheck();
+            runSanityCheck();
             return;
         }
-
         System.out.println(getProductName());
         System.out.println(getCopyright());
-
         System.out.println("Version: " + getProductVersion());
     }
 
-    private void runSanityCheck() throws Exception {
+    /**
+     * Runs the sanity check.
+     * @throws Exception if anything goes wrong
+     */
+    private static void runSanityCheck() throws Exception {
         final WebClient webClient = new WebClient();
-        final HtmlPage page = (HtmlPage) webClient.getPage("http://htmlunit.sourceforge.net/index.html");
+        final HtmlPage page = webClient.getPage("http://htmlunit.sourceforge.net/index.html");
         page.executeJavaScript("document.location");
-        System.out.println("SanityCheck complete.");
+        System.out.println("Sanity check complete.");
     }
 
     /**
@@ -74,6 +78,6 @@ public final class Version {
      * @return the copyright notice
      */
     public static String getCopyright() {
-        return "Copyright (C) 2002-2008 Gargoyle Software Inc. All rights reserved.";
+        return "Copyright (c) 2002-2009 Gargoyle Software Inc. All rights reserved.";
     }
 }

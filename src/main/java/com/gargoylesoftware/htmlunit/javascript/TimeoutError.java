@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ package com.gargoylesoftware.htmlunit.javascript;
 /**
  * An error that is thrown when a script has been running too long.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4002 $
  * @author Andre Soereng
  */
 public class TimeoutError extends Error {

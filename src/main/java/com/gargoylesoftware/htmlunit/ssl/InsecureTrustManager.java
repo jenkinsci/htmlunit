@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import javax.net.ssl.X509TrustManager;
  * A completely insecure (yet very easy to use) x509 trust manager. This manager trusts all servers
  * and all clients, regardless of credentials or lack thereof.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4002 $
  * @author Daniel Gredler
  * @created Nov 12, 2004
  */

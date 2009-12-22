@@ -1,8 +1,8 @@
-8
+10
 
 dir
-3268
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/yui/2.3.0/build/menu
+5285
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.6/src/test/resources/yui/2.3.0/build/menu
 https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 
 
@@ -12,7 +12,7 @@ https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 sdanig
 
 
-svn:special svn:externals svn:needs-lock
+
 
 
 
@@ -32,11 +32,33 @@ file
 
 
 
-2008-08-19T23:16:54.000000Z
+2009-12-22T19:28:51.000000Z
 ed45d35044e4601db17a38f9991fa5ac
 2007-08-15T21:30:20.716980Z
 1741
 sdanig
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+218218
 
 menu-min.js
 file
@@ -44,11 +66,33 @@ file
 
 
 
-2008-08-19T23:16:54.000000Z
+2009-12-22T19:28:51.000000Z
 85261211d0be0aa14a9e1162269e4819
 2007-08-15T21:30:20.716980Z
 1741
 sdanig
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+73631
 
 assets
 dir
@@ -59,11 +103,33 @@ file
 
 
 
-2008-08-19T23:16:54.000000Z
+2009-12-22T19:28:51.000000Z
 65687359afc7faa46f794d23b7ed105d
 2007-08-15T21:30:20.716980Z
 1741
 sdanig
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+221288
 
 README
 file
@@ -71,9 +137,31 @@ file
 
 
 
-2008-08-19T23:16:54.000000Z
+2009-12-22T19:28:51.000000Z
 a54c809c1807ecd5c22dd7859554b24d
 2007-08-15T21:30:20.716980Z
 1741
 sdanig
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+28001
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,9 +28,10 @@ import java.util.HashMap;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -45,7 +46,7 @@ import org.xml.sax.helpers.XMLReaderFactory;
 import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.javascript.StrictErrorHandler;
-import com.gargoylesoftware.htmlunit.javascript.host.HTMLDocument;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLDocument;
 
 /**
  * Tests for {@link JavaScriptConfiguration}.
@@ -56,12 +57,12 @@ import com.gargoylesoftware.htmlunit.javascript.host.HTMLDocument;
  */
 public class JavaScriptConfigurationTest extends WebTestCase {
 
+    private static final Log LOG = LogFactory.getLog(JavaScriptConfigurationTest.class);
+
     /**
-     * Resets the JavaScriptConfiguration file for each test to it's initial clean state.
-     * @throws Exception if the test fails
+     * Constructor.
      */
-    @Before
-    public void setUp() throws Exception {
+    public JavaScriptConfigurationTest() {
         JavaScriptConfiguration.resetClassForTesting();
     }
 
@@ -78,7 +79,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
      * Tests loading a configuration from the supplied stream.
      */
     @Test
-    public void testLoadLocalConfiguration() {
+    public void loadLocalConfiguration() {
         final String configurationString
             = "<?xml version=\"1.0\"?>\n"
             + "<configuration\n"
@@ -100,7 +101,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
      * Tests loading a configuration from the supplied stream.
      */
     @Test
-    public void testLoadSystemConfigurationFile() {
+    public void loadSystemConfigurationFile() {
         Assert.assertFalse("Document should not be loaded", JavaScriptConfiguration.isDocumentLoaded());
         JavaScriptConfiguration.loadConfiguration();
         assertTrue("Documnet should now be loaded", JavaScriptConfiguration.isDocumentLoaded());
@@ -111,16 +112,16 @@ public class JavaScriptConfigurationTest extends WebTestCase {
      * @throws Exception - Exception on error
      */
     @Test
-    public void testGetInstance() throws Exception {
+    public void getInstance() throws Exception {
         final String configurationString
             = "<?xml version='1.0'?>\n"
             + "<configuration\n"
             + "    xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'\n"
             + "    xsi:noNamespaceSchemaLocation='JavaScriptConfiguration.xsd'>\n"
             + "    <class name='HTMLDocument' extends='Node' "
-            + "classname='com.gargoylesoftware.htmlunit.javascript.host.HTMLDocument'>\n"
+            + "classname='com.gargoylesoftware.htmlunit.javascript.host.html.HTMLDocument'>\n"
             + "        <property name='readyState' readable='true' writable='false'>\n"
-            + "            <browser name='Microsoft Internet Explorer' min-version='4'/>\n"
+            + "            <browser name='Internet Explorer' min-version='4'/>\n"
             + "        </property>\n"
             + "    </class>\n"
             + "    <class name='Node' "
@@ -131,7 +132,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
             + "</configuration>\n";
         final Reader reader = new StringReader(configurationString);
         JavaScriptConfiguration.loadConfiguration(reader);
-        final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6_0;
+        final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6;
         final JavaScriptConfiguration configuration = JavaScriptConfiguration.getInstance(browser);
         final ClassConfiguration expectedConfig = new ClassConfiguration("HTMLDocument",
             HTMLDocument.class.getName(), null, null, null, true);
@@ -145,7 +146,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    public void testGetConditionalPropertyBrowser() throws Exception {
+    public void getConditionalPropertyBrowser() throws Exception {
         final String configurationString
             = "<?xml version=\"1.0\"?>\n"
             + "<configuration\n"
@@ -154,7 +155,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
             + "    <class name=\"Document\" extends=\"Node\" "
             + "classname=\"com.gargoylesoftware.htmlunit.javascript.host.Document\">\n"
             + "        <property name=\"readyState\" readable=\"true\" writable=\"false\">\n"
-            + "            <browser name=\"Microsoft Internet Explorer\" min-version=\"4\"/>\n"
+            + "            <browser name=\"Internet Explorer\" min-version=\"4\"/>\n"
             + "        </property>\n"
             + "    </class>\n"
             + "    <class name=\"Node\" "
@@ -177,7 +178,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
      * @throws Exception on error
      */
     @Test
-    public void testForSettingJSObject() throws Exception {
+    public void forSettingJSObject() throws Exception {
         final String configurationString
             = "<?xml version=\"1.0\"?>\n"
             + "<configuration\n"
@@ -189,7 +190,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
             + "</configuration>\n";
         final Reader reader = new StringReader(configurationString);
         JavaScriptConfiguration.loadConfiguration(reader);
-        final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6_0;
+        final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6;
         final JavaScriptConfiguration configuration = JavaScriptConfiguration.getInstance(browser);
         final ClassConfiguration config = configuration.getClassConfiguration("Document");
         assertTrue("JSObject is not set", config.isJsObject());
@@ -201,16 +202,16 @@ public class JavaScriptConfigurationTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    public void testInstanceForTestVersion() throws Exception {
+    public void instanceForTestVersion() throws Exception {
         final String configurationString
             = "<?xml version='1.0'?>\n"
             + "<configuration\n"
             + "    xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'\n"
             + "    xsi:noNamespaceSchemaLocation='JavaScriptConfiguration.xsd'>\n"
             + "    <class name='HTMLDocument' extends='Node' "
-            + "classname='com.gargoylesoftware.htmlunit.javascript.host.HTMLDocument'>\n"
+            + "classname='com.gargoylesoftware.htmlunit.javascript.host.html.HTMLDocument'>\n"
             + "        <property name='readyState' readable='true' writable='false'>\n"
-            + "            <browser name='Microsoft Internet Explorer' min-version='4'/>\n"
+            + "            <browser name='Internet Explorer' min-version='4'/>\n"
             + "        </property>\n"
             + "    </class>\n"
             + "    <class name='Node' "
@@ -234,7 +235,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    public void testPropertyForNullBrowser() throws Exception {
+    public void propertyForNullBrowser() throws Exception {
         final String configurationString
             = "<?xml version=\"1.0\"?>\n"
             + "<configuration\n"
@@ -243,7 +244,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
             + "    <class name=\"Document\" extends=\"Node\" "
             + "classname=\"com.gargoylesoftware.htmlunit.javascript.host.Document\">\n"
             + "        <property name=\"readyState\" readable=\"true\" writable=\"false\">\n"
-            + "            <browser name=\"Microsoft Internet Explorer\" min-version=\"4\"/>\n"
+            + "            <browser name=\"Internet Explorer\" min-version=\"4\"/>\n"
             + "        </property>\n"
             + "    </class>\n"
             + "    <class name=\"Node\" "
@@ -270,7 +271,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
      * @throws Exception - Exception on error
      */
     @Test
-    public void testGetConditionalPropertyMinBrowserVersion() throws Exception {
+    public void getConditionalPropertyMinBrowserVersion() throws Exception {
         final String configurationString
             = "<?xml version=\"1.0\"?>\n"
             + "<configuration\n"
@@ -279,7 +280,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
             + "    <class name=\"Document\" extends=\"Node\" "
             + "classname=\"com.gargoylesoftware.htmlunit.javascript.host.Document\">\n"
             + "        <property name=\"readyState\" readable=\"true\" writable=\"false\">\n"
-            + "            <browser name=\"Microsoft Internet Explorer\" min-version=\"8\"/>\n"
+            + "            <browser name=\"Internet Explorer\" min-version=\"8\"/>\n"
             + "        </property>\n"
             + "    </class>\n"
             + "    <class name=\"Node\" "
@@ -290,7 +291,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
             + "</configuration>\n";
         final Reader reader = new StringReader(configurationString);
         JavaScriptConfiguration.loadConfiguration(reader);
-        final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6_0;
+        final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6;
         final JavaScriptConfiguration configuration = JavaScriptConfiguration.getInstance(browser);
         final ClassConfiguration expectedConfig = new ClassConfiguration("Document",
             HTMLDocument.class.getName(), null, null, null, true);
@@ -305,7 +306,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
      * @throws Exception - Exception on error
      */
     @Test
-    public void testGetConditionalPropertyMaxBrowserVersion() throws Exception {
+    public void getConditionalPropertyMaxBrowserVersion() throws Exception {
         final String configurationString
             = "<?xml version=\"1.0\"?>\n"
             + "<configuration\n"
@@ -314,7 +315,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
             + "    <class name=\"Document\" extends=\"Node\" "
             + "classname=\"com.gargoylesoftware.htmlunit.javascript.host.Document\">\n"
             + "        <property name=\"readyState\" readable=\"true\" writable=\"false\">\n"
-            + "            <browser name=\"Microsoft Internet Explorer\" max-version=\"3\"/>\n"
+            + "            <browser name=\"Internet Explorer\" max-version=\"3\"/>\n"
             + "        </property>\n"
             + "    </class>\n"
             + "    <class name=\"Node\" "
@@ -325,42 +326,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
             + "</configuration>\n";
         final Reader reader = new StringReader(configurationString);
         JavaScriptConfiguration.loadConfiguration(reader);
-        final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6_0;
-        final JavaScriptConfiguration configuration = JavaScriptConfiguration.getInstance(browser);
-        final ClassConfiguration expectedConfig = new ClassConfiguration("Document",
-            HTMLDocument.class.getName(), null, null, null, true);
-        assertTrue("Document should not property did not match",
-            configuration.classConfigEquals("Document", expectedConfig));
-    }
-
-    /**
-     * Test getting the configuration for the JavaScript max version. The readyState property should not be
-     * available in this case.
-     *
-     * @throws Exception - Exception on error
-     */
-    @Test
-    public void testGetConditionalPropertyMaxJSVersion() throws Exception {
-        final String configurationString
-            = "<?xml version=\"1.0\"?>\n"
-            + "<configuration\n"
-            + "    xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n"
-            + "    xsi:noNamespaceSchemaLocation=\"JavaScriptConfiguration.xsd\">\n"
-            + "    <class name=\"Document\" extends=\"Node\" "
-            + "classname=\"com.gargoylesoftware.htmlunit.javascript.host.Document\">\n"
-            + "        <property name=\"readyState\" readable=\"true\" writable=\"false\">\n"
-            + "            <javascript max-version=\"1\"/>\n"
-            + "        </property>\n"
-            + "    </class>\n"
-            + "    <class name=\"Node\" "
-            + "classname=\"com.gargoylesoftware.htmlunit.javascript.host.Node\">\n"
-            + "        <property name=\"firstChild\" readable=\"true\" writable=\"false\">\n"
-            + "        </property>\n"
-            + "    </class>\n"
-            + "</configuration>\n";
-        final Reader reader = new StringReader(configurationString);
-        JavaScriptConfiguration.loadConfiguration(reader);
-        final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6_0;
+        final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6;
         final JavaScriptConfiguration configuration = JavaScriptConfiguration.getInstance(browser);
         final ClassConfiguration expectedConfig = new ClassConfiguration("Document",
             HTMLDocument.class.getName(), null, null, null, true);
@@ -374,7 +340,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
      * @throws Exception - Exception on error
      */
     @Test
-    public void testParseFunction() throws Exception {
+    public void parseFunction() throws Exception {
         final String configurationString
             = "<?xml version=\"1.0\"?>\n"
             + "<configuration\n"
@@ -387,7 +353,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
             + "</configuration>\n";
         final Reader reader = new StringReader(configurationString);
         JavaScriptConfiguration.loadConfiguration(reader);
-        final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6_0;
+        final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6;
         final JavaScriptConfiguration configuration = JavaScriptConfiguration.getInstance(browser);
         final ClassConfiguration expectedConfig = new ClassConfiguration("Document",
             HTMLDocument.class.getName(), null, null, null, true);
@@ -401,7 +367,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
      * @throws Exception - Exception on error
      */
     @Test
-    public void testParseFunctionForLimitedBrowser() throws Exception {
+    public void parseFunctionForLimitedBrowser() throws Exception {
         final String configurationString
             = "<?xml version=\"1.0\"?>\n"
             + "<configuration\n"
@@ -416,7 +382,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
             + "</configuration>\n";
         final Reader reader = new StringReader(configurationString);
         JavaScriptConfiguration.loadConfiguration(reader);
-        final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6_0;
+        final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6;
         final JavaScriptConfiguration configuration = JavaScriptConfiguration.getInstance(browser);
         final ClassConfiguration expectedConfig = new ClassConfiguration("Document",
             HTMLDocument.class.getName(), null, null, null, true);
@@ -428,7 +394,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testConfigurationFileAgainstSchema() throws Exception {
+    public void configurationFileAgainstSchema() throws Exception {
         final XMLReader parser = XMLReaderFactory.createXMLReader("org.apache.xerces.parsers.SAXParser");
         final String directory = "src/main/resources/com/gargoylesoftware/htmlunit/javascript/configuration/";
         parser.setFeature("http://xml.org/sax/features/validation", true);
@@ -439,15 +405,12 @@ public class JavaScriptConfigurationTest extends WebTestCase {
             }
         });
         parser.setErrorHandler(new ErrorHandler() {
-            @Test
             public void warning(final SAXParseException exception) throws SAXException {
                 throw exception;
             }
-            @Test
             public void error(final SAXParseException exception) throws SAXException {
                 throw exception;
             }
-            @Test
             public void fatalError(final SAXParseException exception) throws SAXException {
                 throw exception;
             }
@@ -472,11 +435,11 @@ public class JavaScriptConfigurationTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    public void testConfigurationFile() throws Exception {
+    public void configurationFile() throws Exception {
         final JavaScriptConfiguration configuration = JavaScriptConfiguration.getAllEntries();
 
         for (final String classname : configuration.keySet()) {
-            getLog().debug("Now testing for class " + classname);
+            LOG.debug("Now testing for class " + classname);
             final Class< ? > clazz = configuration.getClassObject(classname);
             final Method[] methods = clazz.getMethods();
             String elementName;
@@ -523,6 +486,10 @@ public class JavaScriptConfigurationTest extends WebTestCase {
             "Textarea|jsxGet_form",
             "Input|jsxGet_form",
             "Password|jsxGet_form",
+            "HTMLSpanElement|jsxGet_cite",
+            "HTMLSpanElement|jsxSet_cite",
+            "HTMLSpanElement|jsxGet_dateTime",
+            "HTMLSpanElement|jsxSet_dateTime",
             "CharacterDataImpl|jsxGet_tabindex"};
         final String key = classname + "|" + methodName;
         for (final String value : ignoreList) {
@@ -538,16 +505,16 @@ public class JavaScriptConfigurationTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    public void testForPropertyExist() throws Exception {
+    public void forPropertyExist() throws Exception {
         final String configurationString
             = "<?xml version='1.0'?>\n"
             + "<configuration\n"
             + "    xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'\n"
             + "    xsi:noNamespaceSchemaLocation='JavaScriptConfiguration.xsd'>\n"
             + "    <class name='HTMLDocument' extends='Node' "
-            + "classname='com.gargoylesoftware.htmlunit.javascript.host.HTMLDocument'>\n"
+            + "classname='com.gargoylesoftware.htmlunit.javascript.host.html.HTMLDocument'>\n"
             + "        <property name='readyState' readable='true' writable='false'>\n"
-            + "            <browser name='Microsoft Internet Explorer' min-version='4'/>\n"
+            + "            <browser name='Internet Explorer' min-version='4'/>\n"
             + "        </property>\n"
             + "    </class>\n"
             + "    <class name='Node' "
@@ -558,7 +525,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
             + "</configuration>\n";
         final Reader reader = new StringReader(configurationString);
         JavaScriptConfiguration.loadConfiguration(reader);
-        final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6_0;
+        final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6;
         final JavaScriptConfiguration configuration = JavaScriptConfiguration.getInstance(browser);
         assertTrue("Requested property should have existed",
             configuration.propertyExists(HTMLDocument.class, "readyState"));
@@ -569,16 +536,16 @@ public class JavaScriptConfigurationTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    public void testForPropertyNotExist() throws Exception {
+    public void forPropertyNotExist() throws Exception {
         final String configurationString
             = "<?xml version='1.0'?>\n"
             + "<configuration\n"
             + "    xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'\n"
             + "    xsi:noNamespaceSchemaLocation='JavaScriptConfiguration.xsd'>\n"
             + "    <class name='HTMLDocument' extends='Node' "
-            + "classname='com.gargoylesoftware.htmlunit.javascript.host.HTMLDocument'>\n"
+            + "classname='com.gargoylesoftware.htmlunit.javascript.host.html.HTMLDocument'>\n"
             + "        <property name='readyState' readable='true' writable='false'>\n"
-            + "            <browser name='Microsoft Internet Explorer' min-version='4'/>\n"
+            + "            <browser name='Internet Explorer' min-version='4'/>\n"
             + "        </property>\n"
             + "    </class>\n"
             + "    <class name='Node' "
@@ -589,7 +556,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
             + "</configuration>\n";
         final Reader reader = new StringReader(configurationString);
         JavaScriptConfiguration.loadConfiguration(reader);
-        final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6_0;
+        final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6;
         final JavaScriptConfiguration configuration = JavaScriptConfiguration.getInstance(browser);
         Assert.assertFalse("Requested property should not exist",
             configuration.propertyExists(HTMLDocument.class, "noreadyState"));
@@ -601,14 +568,13 @@ public class JavaScriptConfigurationTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testConfigurationMapExpands() throws Exception {
+    public void configurationMapExpands() throws Exception {
         // get a reference to the leaky map
         final Field field = JavaScriptConfiguration.class.getDeclaredField("ConfigurationMap_");
         field.setAccessible(true);
         final HashMap< ? , ? > leakyMap = (HashMap< ? , ? >) field.get(null);
-
         for (int i = 0; i < 3; i++) {
-            final BrowserVersion browserVersion = new BrowserVersion("App", "Version", "User agent", "1.2", 1);
+            final BrowserVersion browserVersion = new BrowserVersion("App", "Version", "User agent", 1);
             JavaScriptConfiguration.getInstance(browserVersion);
         }
         assertEquals(1, leakyMap.size());
@@ -620,7 +586,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testLexicographicOrder() throws Exception {
+    public void lexicographicOrder() throws Exception {
         final String directory = "src/main/resources/com/gargoylesoftware/htmlunit/javascript/configuration/";
 
         final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -645,9 +611,48 @@ public class JavaScriptConfigurationTest extends WebTestCase {
                                 + className + "\" should be before \"" + lastClassName + '"');
                     }
                     lastClassName = className;
+
+                    String lastChildName = null;
+                    int lastChildType = 0;
+                    Node child = element.getFirstChild();
+                    while (child != null) {
+                        if (child instanceof Element) {
+                            final Element childE = (Element) child;
+                            final String name = childE.getAttribute("name");
+                            final String tagName = childE.getTagName();
+                            final int childType = getType(tagName);
+                            if (childType != -1 && childType != lastChildType) {
+                                lastChildType = childType;
+                                lastChildName = name;
+                            }
+                            else {
+                                if (childType > 0) {
+                                    if (lastChildName != null && name.compareToIgnoreCase(lastChildName) < 1) {
+                                        fail("JavaScriptConfiguration.xml: \""
+                                                + name + "\" should be before \"" + lastChildName + '"');
+                                    }
+                                    lastChildName = name;
+                                }
+                            }
+                        }
+                        child = child.getNextSibling();
+                    }
                 }
             }
             node = node.getNextSibling();
         }
+    }
+
+    private static int getType(final String tagName) {
+        if (tagName.equals("constant")) {
+            return 0;
+        }
+        if (tagName.equals("property")) {
+            return 1;
+        }
+        if (tagName.equals("function")) {
+            return 2;
+        }
+        return -1;
     }
 }

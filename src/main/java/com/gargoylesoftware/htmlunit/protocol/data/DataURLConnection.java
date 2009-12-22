@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,18 +27,19 @@ import org.apache.commons.logging.LogFactory;
 /**
  * A URLConnection for supporting data URLs.
  * @see <a href="http://www.ietf.org/rfc/rfc2397.txt">RFC2397</a>
- * @version $Revision: 3075 $
+ * @version $Revision: 4789 $
  * @author Marc Guillemot
  */
 public class DataURLConnection extends URLConnection {
+
+    /** Logging support. */
+    private static final Log LOG = LogFactory.getLog(DataURLConnection.class);
 
     /** The JavaScript "URL" prefix. */
     public static final String DATA_PREFIX = "data:";
 
     /** The JavaScript code. */
     private final byte[] content_;
-
-    private transient Log log_ = LogFactory.getLog(DataURLConnection.class);
 
     /**
      * Creates an instance.
@@ -52,10 +53,10 @@ public class DataURLConnection extends URLConnection {
             data = DataUrlDecoder.decode(url).getBytes();
         }
         catch (final UnsupportedEncodingException e) {
-            log_.error("Exception decoding " + url, e);
+            LOG.error("Exception decoding " + url, e);
         }
         catch (final DecoderException e) {
-            log_.error("Exception decoding " + url, e);
+            LOG.error("Exception decoding " + url, e);
         }
         content_ = data;
     }

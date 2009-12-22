@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,12 +18,12 @@ import java.io.PrintWriter;
 
 import org.w3c.dom.Comment;
 
-import com.gargoylesoftware.htmlunit.Page;
+import com.gargoylesoftware.htmlunit.SgmlPage;
 
 /**
  * Wrapper for the DOM node Comment.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4794 $
  * @author Karel Kolman
  * @author Ahmed Ashour
  */
@@ -40,7 +40,7 @@ public class DomComment extends DomCharacterData implements Comment {
      * @param page the Page that contains this element
      * @param data the string data held by this node
      */
-    public DomComment(final Page page, final String data) {
+    public DomComment(final SgmlPage page, final String data) {
         super(page, data);
     }
 
@@ -59,14 +59,6 @@ public class DomComment extends DomCharacterData implements Comment {
     @Override
     public String getNodeName() {
         return NODE_NAME;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String asText() {
-        return "";
     }
 
     /**

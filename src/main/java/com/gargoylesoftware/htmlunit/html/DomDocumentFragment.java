@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,14 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
-import com.gargoylesoftware.htmlunit.Page;
 import org.w3c.dom.DocumentFragment;
 
+import com.gargoylesoftware.htmlunit.SgmlPage;
+
 /**
- * A JavaScript object for DocumentFragment.
+ * A DOM object for DocumentFragment.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4753 $
  * @author Ahmed Ashour
  */
 public class DomDocumentFragment extends DomNode implements DocumentFragment {
@@ -34,7 +35,7 @@ public class DomDocumentFragment extends DomNode implements DocumentFragment {
      * Creates a new instance.
      * @param page the page which contains this node
      */
-    public DomDocumentFragment(final Page page) {
+    public DomDocumentFragment(final SgmlPage page) {
         super(page);
     }
 
@@ -54,5 +55,13 @@ public class DomDocumentFragment extends DomNode implements DocumentFragment {
     @Override
     public short getNodeType() {
         return org.w3c.dom.Node.DOCUMENT_FRAGMENT_NODE;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String asXml() {
+        return getFirstChild().asXml();
     }
 }

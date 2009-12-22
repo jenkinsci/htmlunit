@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,18 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Map;
 
 import org.apache.commons.httpclient.NameValuePair;
+import org.w3c.dom.ranges.Range;
 
-import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.SgmlPage;
 
 /**
  * Wrapper for the HTML element "textarea".
  *
- * @version $Revision: 3175 $
+ * @version $Revision: 4895 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:BarnabyCourt@users.sourceforge.net">Barnaby Court</a>
  * @author David K. Taylor
@@ -35,8 +34,9 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
  * @author Marc Guillemot
  * @author Daniel Gredler
  * @author Ahmed Ashour
+ * @author Sudhan Moghe
  */
-public class HtmlTextArea extends ClickableElement implements DisabledElement, SubmittableElement {
+public class HtmlTextArea extends ClickableElement implements DisabledElement, SubmittableElement, SelectableTextInput {
 
     private static final long serialVersionUID = 4572856255042499634L;
 
@@ -44,12 +44,23 @@ public class HtmlTextArea extends ClickableElement implements DisabledElement, S
     public static final String TAG_NAME = "textarea";
 
     private String defaultValue_;
+    private String valueAtFocus_;
 
-    private int selectionStart_;
+    private final SelectionDelegate selectionDelegate_ = new SelectionDelegate(this);
 
-    private int selectionEnd_;
-
-    private boolean preventDefault_;
+    private final DoTypeProcessor doTypeProcessor_ = new DoTypeProcessor() {
+        private static final long serialVersionUID = 2906652041039202266L;
+        @Override
+        void typeDone(final String newValue, final int newCursorPosition) {
+            setTextInternal(newValue);
+            setSelectionStart(newCursorPosition);
+            setSelectionEnd(newCursorPosition);
+        }
+        @Override
+        protected boolean acceptChar(final char c) {
+            return super.acceptChar(c) || c == '\n' || c == '\r';
+        }
+    };
 
     /**
      * Creates an instance.
@@ -71,16 +82,7 @@ public class HtmlTextArea extends ClickableElement implements DisabledElement, S
      */
     private void initDefaultValue() {
         if (defaultValue_ == null) {
-            final DomText child = (DomText) getFirstChild();
-            if (child != null) {
-                defaultValue_ = child.getData();
-                if (defaultValue_ == null) {
-                    defaultValue_ = "";
-                }
-            }
-            else {
-                defaultValue_ = "";
-            }
+            defaultValue_ = readValue();
         }
     }
 
@@ -90,15 +92,39 @@ public class HtmlTextArea extends ClickableElement implements DisabledElement, S
      * @return the text
      */
     public final String getText() {
-        return getChildrenAsText();
+        return readValue();
+    }
+
+    private String readValue() {
+        final StringBuilder buffer = new StringBuilder();
+        for (final DomNode node : getChildren()) {
+            if (node instanceof DomText) {
+                buffer.append(((DomText) node).getData());
+            }
+        }
+        // if content starts with new line, it is ignored (=> for the parser?)
+        if (buffer.length() > 0 && buffer.charAt(0) == '\n') {
+            buffer.deleteCharAt(0);
+        }
+        return buffer.toString();
     }
 
     /**
      * Sets the new value of this text area.
      *
+     * Note that this acts like 'pasting' the text, but to simulate characters entry
+     * you should use {@link #type(String)}.
+     *
      * @param newValue the new value
      */
     public final void setText(final String newValue) {
+        initDefaultValue();
+        setTextInternal(newValue);
+
+        HtmlInput.executeOnChangeHandlerIfAppropriate(this);
+    }
+
+    private void setTextInternal(final String newValue) {
         initDefaultValue();
         final DomText child = (DomText) getFirstChild();
         if (child == null) {
@@ -109,8 +135,6 @@ public class HtmlTextArea extends ClickableElement implements DisabledElement, S
             child.setData(newValue);
         }
 
-        HtmlInput.executeOnChangeHandlerIfAppropriate(this);
-
         setSelectionStart(newValue.length());
         setSelectionEnd(newValue.length());
     }
@@ -119,7 +143,10 @@ public class HtmlTextArea extends ClickableElement implements DisabledElement, S
      * {@inheritDoc}
      */
     public NameValuePair[] getSubmitKeyValuePairs() {
-        return new NameValuePair[]{new NameValuePair(getNameAttribute(), getText())};
+        String text = getText();
+        text = text.replace("\r\n", "\n").replace("\n", "\r\n");
+
+        return new NameValuePair[]{new NameValuePair(getNameAttribute(), text)};
     }
 
     /**
@@ -135,14 +162,17 @@ public class HtmlTextArea extends ClickableElement implements DisabledElement, S
      * {@inheritDoc}
      * @see SubmittableElement#setDefaultValue(String)
      */
-    public void setDefaultValue(final String defaultValue) {
+    public void setDefaultValue(String defaultValue) {
         initDefaultValue();
         if (defaultValue == null) {
-            defaultValue_ = "";
+            defaultValue = "";
         }
-        else {
-            defaultValue_ = defaultValue;
+
+        // for FF, if value is still default value, change value too
+        if (getPage().getWebClient().getBrowserVersion().isFirefox() && getText().equals(getDefaultValue())) {
+            setTextInternal(defaultValue);
         }
+        defaultValue_ = defaultValue;
     }
 
     /**
@@ -184,7 +214,7 @@ public class HtmlTextArea extends ClickableElement implements DisabledElement, S
      * @return the value of the attribute "name" or an empty string if that attribute isn't defined
      */
     public final String getNameAttribute() {
-        return getAttributeValue("name");
+        return getAttribute("name");
     }
 
     /**
@@ -195,7 +225,7 @@ public class HtmlTextArea extends ClickableElement implements DisabledElement, S
      * @return the value of the attribute "rows" or an empty string if that attribute isn't defined
      */
     public final String getRowsAttribute() {
-        return getAttributeValue("rows");
+        return getAttribute("rows");
     }
 
     /**
@@ -206,21 +236,21 @@ public class HtmlTextArea extends ClickableElement implements DisabledElement, S
      * @return the value of the attribute "cols" or an empty string if that attribute isn't defined
      */
     public final String getColumnsAttribute() {
-        return getAttributeValue("cols");
+        return getAttribute("cols");
     }
 
     /**
      * {@inheritDoc}
      */
     public final boolean isDisabled() {
-        return isAttributeDefined("disabled");
+        return hasAttribute("disabled");
     }
 
     /**
      * {@inheritDoc}
      */
     public final String getDisabledAttribute() {
-        return getAttributeValue("disabled");
+        return getAttribute("disabled");
     }
 
     /**
@@ -231,7 +261,7 @@ public class HtmlTextArea extends ClickableElement implements DisabledElement, S
      * @return the value of the attribute "readonly" or an empty string if that attribute isn't defined
      */
     public final String getReadOnlyAttribute() {
-        return getAttributeValue("readonly");
+        return getAttribute("readonly");
     }
 
     /**
@@ -242,7 +272,7 @@ public class HtmlTextArea extends ClickableElement implements DisabledElement, S
      * @return the value of the attribute "tabindex" or an empty string if that attribute isn't defined
      */
     public final String getTabIndexAttribute() {
-        return getAttributeValue("tabindex");
+        return getAttribute("tabindex");
     }
 
     /**
@@ -253,7 +283,7 @@ public class HtmlTextArea extends ClickableElement implements DisabledElement, S
      * @return the value of the attribute "accesskey" or an empty string if that attribute isn't defined
      */
     public final String getAccessKeyAttribute() {
-        return getAttributeValue("accesskey");
+        return getAttribute("accesskey");
     }
 
     /**
@@ -264,7 +294,7 @@ public class HtmlTextArea extends ClickableElement implements DisabledElement, S
      * @return the value of the attribute "onfocus" or an empty string if that attribute isn't defined
      */
     public final String getOnFocusAttribute() {
-        return getAttributeValue("onfocus");
+        return getAttribute("onfocus");
     }
 
     /**
@@ -275,7 +305,7 @@ public class HtmlTextArea extends ClickableElement implements DisabledElement, S
      * @return the value of the attribute "onblur" or an empty string if that attribute isn't defined
      */
     public final String getOnBlurAttribute() {
-        return getAttributeValue("onblur");
+        return getAttribute("onblur");
     }
 
     /**
@@ -286,7 +316,7 @@ public class HtmlTextArea extends ClickableElement implements DisabledElement, S
      * @return the value of the attribute "onselect" or an empty string if that attribute isn't defined
      */
     public final String getOnSelectAttribute() {
-        return getAttributeValue("onselect");
+        return getAttribute("onselect");
     }
 
     /**
@@ -297,72 +327,49 @@ public class HtmlTextArea extends ClickableElement implements DisabledElement, S
      * @return the value of the attribute "onchange" or an empty string if that attribute isn't defined
      */
     public final String getOnChangeAttribute() {
-        return getAttributeValue("onchange");
+        return getAttribute("onchange");
     }
 
     /**
-     * Returns the selected text contained in this text area, or <tt>null</tt> if no selection (Firefox only).
-     * @return the selected text contained in this text area
+     * {@inheritDoc}
+     */
+    public void select() {
+        selectionDelegate_.select();
+    }
+
+    /**
+     * {@inheritDoc}
      */
     public String getSelectedText() {
-        String text = null;
-        if (selectionStart_ != selectionEnd_) {
-            text = getText().substring(selectionStart_, selectionEnd_);
-        }
-        return text;
+        return selectionDelegate_.getSelectedText();
     }
 
     /**
-     * Returns the selected text's start position (Firefox only).
-     * @return the start position >= 0
+     * {@inheritDoc}
      */
     public int getSelectionStart() {
-        return selectionStart_;
+        return selectionDelegate_.getSelectionStart();
     }
 
     /**
-     * Sets the selection start to the specified position (Firefox only).
-     * @param selectionStart the start position of the text >= 0
+     * {@inheritDoc}
      */
-    public void setSelectionStart(int selectionStart) {
-        if (selectionStart < 0) {
-            selectionStart = 0;
-        }
-        final int length = getText().length();
-        if (selectionStart > length) {
-            selectionStart = length;
-        }
-        if (selectionEnd_ < selectionStart) {
-            selectionEnd_ = selectionStart;
-        }
-        this.selectionStart_ = selectionStart;
+    public void setSelectionStart(final int selectionStart) {
+        selectionDelegate_.setSelectionStart(selectionStart);
     }
 
     /**
-     * Returns the selected text's end position (Firefox only).
-     * @return the end position >= 0
+     * {@inheritDoc}
      */
     public int getSelectionEnd() {
-        return selectionEnd_;
+        return selectionDelegate_.getSelectionEnd();
     }
 
     /**
-     * Sets the selection end to the specified position (Firefox only).
-     * @param selectionEnd the end position of the text >= 0
-
+     * {@inheritDoc}
      */
-    public void setSelectionEnd(int selectionEnd) {
-        if (selectionEnd < 0) {
-            selectionEnd = 0;
-        }
-        final int length = getText().length();
-        if (selectionEnd > length) {
-            selectionEnd = length;
-        }
-        if (selectionEnd < selectionStart_) {
-            selectionStart_ = selectionEnd;
-        }
-        this.selectionEnd_ = selectionEnd;
+    public void setSelectionEnd(final int selectionEnd) {
+        selectionDelegate_.setSelectionEnd(selectionEnd);
     }
 
     /**
@@ -385,48 +392,55 @@ public class HtmlTextArea extends ClickableElement implements DisabledElement, S
      * {@inheritDoc}
      */
     @Override
-    public Page type(final char c, final boolean shiftKey, final boolean ctrlKey, final boolean altKey)
-        throws IOException {
-        if (isDisabled()) {
-            return getPage();
-        }
-        preventDefault_ = false;
-        return super.type(c, shiftKey, ctrlKey, altKey);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     protected void doType(final char c, final boolean shiftKey, final boolean ctrlKey, final boolean altKey) {
-        if (preventDefault_) {
-            return;
-        }
-        final String text = getText();
-        if (c == '\b') {
-            if (text.length() > 0) {
-                setText(text.substring(0, text.length() - 1));
-            }
-        }
-        else if ((c == ' ' || c == '\n' || c == '\r' || !Character.isWhitespace(c))) {
-            setText(text + c);
-        }
+        doTypeProcessor_.doType(getText(), getSelectionStart(), getSelectionEnd(),
+            c, shiftKey, ctrlKey, altKey);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    protected void preventDefault() {
-        preventDefault_ = true;
+    public void focus() {
+        super.focus();
+        valueAtFocus_ = getText();
+        if (getPage() instanceof HtmlPage) {
+            final Range selection = ((HtmlPage) getPage()).getSelection();
+            selection.setStart(this, 0);
+            selection.setEnd(this, getText().length());
+        }
+    }
+
+    @Override
+    void removeFocus() {
+        super.removeFocus();
+
+        if (!valueAtFocus_.equals(getText())) {
+            HtmlInput.executeOnChangeHandlerIfAppropriate(this);
+        }
+        valueAtFocus_ = null;
     }
 
     /**
-     * Select all the text in this input.
+     * Sets the "readOnly" attribute.
+     *
+     * @param isReadOnly <tt>true</tt> if this element is read only
      */
-    public void select() {
-        focus();
-        setSelectionStart(0);
-        setSelectionEnd(getText().length());
+    public void setReadOnly(final boolean isReadOnly) {
+        if (isReadOnly) {
+            setAttribute("readOnly", "readOnly");
+        }
+        else {
+            removeAttribute("readOnly");
+        }
     }
+
+    /**
+     * Returns <tt>true</tt> if this element is read only.
+     * @return <tt>true</tt> if this element is read only
+     */
+    public boolean isReadOnly() {
+        return hasAttribute("readOnly");
+    }
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,17 +22,20 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
+import net.sourceforge.htmlunit.corejs.javascript.ContextFactory;
+import net.sourceforge.htmlunit.corejs.javascript.Script;
+
 import org.apache.commons.httpclient.NameValuePair;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.junit.Assert;
 import org.junit.Test;
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.ContextFactory;
-import org.mozilla.javascript.Script;
-import org.mozilla.javascript.Scriptable;
+import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
 import com.gargoylesoftware.htmlunit.HttpMethod;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
@@ -40,10 +43,14 @@ import com.gargoylesoftware.htmlunit.ScriptException;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebRequestSettings;
 import com.gargoylesoftware.htmlunit.WebTestCase;
-import com.gargoylesoftware.htmlunit.html.ClickableElement;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
 import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.html.HtmlAnchor;
 import com.gargoylesoftware.htmlunit.html.HtmlButtonInput;
+import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlForm;
 import com.gargoylesoftware.htmlunit.html.HtmlFrame;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
@@ -54,7 +61,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlTextInput;
 /**
  * Tests for the {@link JavaScriptEngine}.
  *
- * @version $Revision: 3117 $
+ * @version $Revision: 4900 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Noboru Sinohara
  * @author Darrell DeBoer
@@ -64,16 +71,19 @@ import com.gargoylesoftware.htmlunit.html.HtmlTextInput;
  * @author David K. Taylor
  * @author Ahmed Ashour
  */
+@RunWith(BrowserRunner.class)
 public class JavaScriptEngineTest extends WebTestCase {
+
+    private static final Log LOG = LogFactory.getLog(JavaScriptEngineTest.class);
 
     /**
      * @throws Exception if the test fails
      */
     @Test
     public void setJavascriptEnabled_false() throws Exception {
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
         client.setJavaScriptEnabled(false);
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final String content
             = "<html><head><title>foo</title><script>\n"
@@ -89,9 +99,9 @@ public class JavaScriptEngineTest extends WebTestCase {
         webConnection.setDefaultResponse(content);
         client.setWebConnection(webConnection);
 
-        final HtmlPage page = (HtmlPage) client.getPage(URL_GARGOYLE);
+        final HtmlPage page = client.getPage(URL_GARGOYLE);
 
-        final HtmlTextInput textInput = (HtmlTextInput) page.getHtmlElementById("textfield1");
+        final HtmlTextInput textInput = page.getHtmlElementById("textfield1");
         assertEquals("foo", textInput.getValueAttribute());
     }
 
@@ -100,20 +110,15 @@ public class JavaScriptEngineTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts("foo")
     public void onloadJavascriptFunction() throws Exception {
-        final String content
+        final String html
             = "<html><head><title>foo</title><script>\n"
             + "function onload() {alert('foo');}"
             + "</script></head><body>\n"
             + "</body></html>";
 
-        final String[] expectedAlerts = {"foo"};
-        createTestPageForRealBrowserIfNeeded(content, expectedAlerts);
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(BrowserVersion.FIREFOX_2, content, collectedAlerts);
-
-        assertEquals(expectedAlerts, collectedAlerts);
+        loadPageWithAlerts(html);
     }
 
     /**
@@ -135,9 +140,9 @@ public class JavaScriptEngineTest extends WebTestCase {
             + "</form>\n"
             + "</body></html>";
         final List<String> collectedAlerts = null;
-        final HtmlPage page = loadPage(content, collectedAlerts);
+        final HtmlPage page = loadPage(getBrowserVersion(), content, collectedAlerts);
 
-        final HtmlTextInput textInput = (HtmlTextInput) page.getHtmlElementById("textfield1");
+        final HtmlTextInput textInput = page.getHtmlElementById("textfield1");
         assertEquals("blue", textInput.getValueAttribute());
     }
 
@@ -145,8 +150,9 @@ public class JavaScriptEngineTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts("foo")
     public void alert() throws Exception {
-        final String content
+        final String html
             = "<html><head><title>foo</title><script>\n"
             + "alert('foo')\n"
             + "</script></head><body>\n"
@@ -156,12 +162,7 @@ public class JavaScriptEngineTest extends WebTestCase {
             + "    <input type='text' name='textfield2' id='textfield2'/>\n"
             + "</form>\n"
             + "</body></html>";
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(content, collectedAlerts);
-        assertEquals("foo", page.getTitleText());
-
-        final String[] expectedAlerts = {"foo"};
-        assertEquals(expectedAlerts, collectedAlerts);
+        loadPageWithAlerts(html);
     }
 
     /**
@@ -169,30 +170,24 @@ public class JavaScriptEngineTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts("foo")
     public void scopeOfNewFunction() throws Exception {
-        final String content
+        final String html
             = "<html><head><script>\n"
             + "var f = new Function('alert(\"foo\")');\n"
             + "f();\n"
             + "</script></head><body>\n"
             + "</body></html>";
-        final String[] expectedAlerts = {"foo"};
-        createTestPageForRealBrowserIfNeeded(content, expectedAlerts);
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(content, collectedAlerts);
-
-        assertEquals(expectedAlerts, collectedAlerts);
+        loadPageWithAlerts(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts("foo")
     public void scopeOfNestedNewFunction() throws Exception {
-        final String[] expectedAlerts = {"foo"};
-        final String content
-            = "<html><head>\n"
+        final String html = "<html><head>\n"
             + "<script>\n"
             + "var foo = 'foo';\n"
             + "var f1 = new Function('f = new Function(\"alert(foo)\"); f()');\n"
@@ -201,11 +196,7 @@ public class JavaScriptEngineTest extends WebTestCase {
             + "</head>\n"
             + "<body>\n"
             + "</body></html>";
-        createTestPageForRealBrowserIfNeeded(content, expectedAlerts);
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(content, collectedAlerts);
-
-        assertEquals(expectedAlerts, collectedAlerts);
+        loadPageWithAlerts(html);
     }
 
     /**
@@ -233,8 +224,8 @@ public class JavaScriptEngineTest extends WebTestCase {
             + "f();\n"
             + "</script></head></html>";
 
-        final WebClient client = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final WebClient client = getWebClient();
+        final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setDefaultResponse(secondContent);
         webConnection.setResponse(URL_FIRST, firstContent);
         client.setWebConnection(webConnection);
@@ -268,8 +259,8 @@ public class JavaScriptEngineTest extends WebTestCase {
             + "</body>\n"
             + "</html>";
 
-        final WebClient client = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final WebClient client = getWebClient();
+        final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setDefaultResponse("<html></html>");
         webConnection.setResponse(URL_FIRST, firstContent);
         client.setWebConnection(webConnection);
@@ -278,8 +269,8 @@ public class JavaScriptEngineTest extends WebTestCase {
 
         final List<String> collectedAlerts = new ArrayList<String>();
         client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final HtmlPage page = (HtmlPage) client.getPage(URL_FIRST);
-        final ClickableElement div = ((ClickableElement) page.getHtmlElementById("testdiv"));
+        final HtmlPage page = client.getPage(URL_FIRST);
+        final HtmlElement div = page.getHtmlElementById("testdiv");
 
         page.getAnchors().get(0).click();
         // ignore response, and click in the page again
@@ -293,8 +284,8 @@ public class JavaScriptEngineTest extends WebTestCase {
      */
     @Test
     public void externalScript() throws Exception {
-        final WebClient client = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final WebClient client = getWebClient();
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final String htmlContent
             = "<html><head><title>foo</title><script src='/foo.js' id='script1'/>\n"
@@ -309,7 +300,7 @@ public class JavaScriptEngineTest extends WebTestCase {
         final String jsContent = "alert('got here');\n";
 
         webConnection.setResponse(URL_GARGOYLE, htmlContent);
-        webConnection.setResponse(new URL("http://www.gargoylesoftware.com/foo.js"), jsContent,
+        webConnection.setResponse(new URL(URL_GARGOYLE, "foo.js"), jsContent,
                 "text/javascript");
         client.setWebConnection(webConnection);
 
@@ -317,8 +308,8 @@ public class JavaScriptEngineTest extends WebTestCase {
         final List<String> collectedAlerts = new ArrayList<String>();
         client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
-        final HtmlPage page = (HtmlPage) client.getPage(URL_GARGOYLE);
-        final HtmlScript htmlScript = (HtmlScript) page.getHtmlElementById("script1");
+        final HtmlPage page = client.getPage(URL_GARGOYLE);
+        final HtmlScript htmlScript = page.getHtmlElementById("script1");
         assertNotNull(htmlScript);
         assertEquals(expectedAlerts, collectedAlerts);
     }
@@ -333,8 +324,8 @@ public class JavaScriptEngineTest extends WebTestCase {
      */
     @Test
     public void externalScriptWithApostrophesInComment() throws Exception {
-        final WebClient client = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final WebClient client = getWebClient();
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final String htmlContent
             = "<html><head><title>foo</title>\n"
@@ -353,8 +344,8 @@ public class JavaScriptEngineTest extends WebTestCase {
         final List<String> collectedAlerts = new ArrayList<String>();
         client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
-        final HtmlPage page = (HtmlPage) client.getPage(URL_FIRST);
-        getLog().debug(page.asXml());
+        final HtmlPage page = client.getPage(URL_FIRST);
+        LOG.debug(page.asXml());
         assertEquals(expectedAlerts, collectedAlerts);
 
         assertNotNull(page.getHtmlElementById("script1"));
@@ -374,15 +365,15 @@ public class JavaScriptEngineTest extends WebTestCase {
             + "</body></html>";
 
         try {
-            loadPage(content1);
+            loadPageWithAlerts(content1);
         }
         catch (final Exception e) {
             assertTrue(e.getMessage().indexOf(URL_GARGOYLE.toString()) > -1);
         }
 
         // external script
-        final WebClient client = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final WebClient client = getWebClient();
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final String content2
             = "<html><head><title>foo</title><script src='/foo.js'/>\n"
@@ -392,7 +383,7 @@ public class JavaScriptEngineTest extends WebTestCase {
         final String jsContent = "a.foo = 213;\n";
 
         webConnection.setResponse(URL_GARGOYLE, content2);
-        final URL urlScript = new URL("http://www.gargoylesoftware.com/foo.js");
+        final URL urlScript = new URL(URL_GARGOYLE, "foo.js");
         webConnection.setResponse(urlScript, jsContent, "text/javascript");
         client.setWebConnection(webConnection);
 
@@ -409,8 +400,8 @@ public class JavaScriptEngineTest extends WebTestCase {
      */
     @Test
     public void externalScriptEncoding() throws Exception {
-        final WebClient client = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final WebClient client = getWebClient();
+        final MockWebConnection webConnection = new MockWebConnection();
         /*
          * this page has meta element , and script tag has no charset attribute
          */
@@ -452,11 +443,11 @@ public class JavaScriptEngineTest extends WebTestCase {
         webConnection.setResponse(URL_GARGOYLE, htmlContent);
 
         webConnection.setResponse(
-            new URL("http://www.gargoylesoftware.com/hidden"),
+            new URL(URL_GARGOYLE, "hidden"),
             htmlContent2);
 
         webConnection.setResponse(
-            new URL("http://www.gargoylesoftware.com/foo.js"),
+            new URL(URL_GARGOYLE, "foo.js"),
         // make SJIS bytes as responsebody
             new String(jsContent.getBytes("SJIS"), "8859_1"), "text/javascript");
 
@@ -464,7 +455,7 @@ public class JavaScriptEngineTest extends WebTestCase {
          * foo2.js is same with foo.js
          */
         webConnection.setResponse(
-            new URL("http://www.gargoylesoftware.com/foo2.js"),
+            new URL(URL_GARGOYLE, "foo2.js"),
             // make SJIS bytes as responsebody
             new String(jsContent.getBytes("SJIS"), "8859_1"),
             "text/javascript");
@@ -478,8 +469,8 @@ public class JavaScriptEngineTest extends WebTestCase {
         /*
          * detect encoding from meta tag
          */
-        final HtmlPage page = (HtmlPage) client.getPage(URL_GARGOYLE);
-        final HtmlScript htmlScript = (HtmlScript) page.getHtmlElementById("script1");
+        final HtmlPage page = client.getPage(URL_GARGOYLE);
+        final HtmlScript htmlScript = page.getHtmlElementById("script1");
 
         assertNotNull(htmlScript);
         assertEquals(expectedAlerts, collectedAlerts);
@@ -488,8 +479,8 @@ public class JavaScriptEngineTest extends WebTestCase {
          * detect encoding from charset attribute of script tag
          */
         collectedAlerts.clear();
-        final HtmlPage page2 = (HtmlPage) client.getPage("http://www.gargoylesoftware.com/hidden");
-        final HtmlScript htmlScript2 = (HtmlScript) page2.getHtmlElementById("script2");
+        final HtmlPage page2 = client.getPage(new URL(URL_GARGOYLE, "hidden"));
+        final HtmlScript htmlScript2 = page2.getHtmlElementById("script2");
 
         assertNotNull(htmlScript2);
         assertEquals(expectedAlerts, collectedAlerts);
@@ -501,11 +492,12 @@ public class JavaScriptEngineTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts("1")
     public void setValuesThatAreNotStrings() throws Exception {
-        final String content
+        final String html
             = "<html><head><title>foo</title><script>\n"
             + "function doTest() {\n"
-            + "    document.form1.textfield1.value=1;\n"
+            + "    document.form1.textfield1.value = 1;\n"
             + "    alert(document.form1.textfield1.value)\n"
             + "}\n"
             + "</script></head><body onload='doTest()'>\n"
@@ -515,12 +507,8 @@ public class JavaScriptEngineTest extends WebTestCase {
             + "    <input type='text' name='textfield2' id='textfield2'/>\n"
             + "</form>\n"
             + "</body></html>";
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(content, collectedAlerts);
-        assertEquals("foo", page.getTitleText());
 
-        final String[] expectedAlerts = {"1"};
-        assertEquals(expectedAlerts, collectedAlerts);
+        loadPageWithAlerts(html);
     }
 
     /**
@@ -528,8 +516,8 @@ public class JavaScriptEngineTest extends WebTestCase {
      */
     @Test
     public void referencingVariablesFromOneScriptToAnother_Regression() throws Exception {
-        final WebClient client = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final WebClient client = getWebClient();
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final String htmlContent
             = "<html><head><title>foo</title><script src='./test.js'></script>\n"
@@ -546,10 +534,10 @@ public class JavaScriptEngineTest extends WebTestCase {
             + "} ";
 
         webConnection.setResponse(URL_FIRST, htmlContent);
-        webConnection.setResponse(new URL("http://first/test.js"), jsContent, "text/javascript");
+        webConnection.setResponse(new URL(URL_FIRST, "test.js"), jsContent, "text/javascript");
         client.setWebConnection(webConnection);
 
-        final HtmlPage page = (HtmlPage) client.getPage(URL_FIRST);
+        final HtmlPage page = client.getPage(URL_FIRST);
         assertEquals("foo", page.getTitleText());
     }
 
@@ -570,7 +558,7 @@ public class JavaScriptEngineTest extends WebTestCase {
 
         final List<String> emptyList = Collections.emptyList();
         createTestPageForRealBrowserIfNeeded(htmlContent, emptyList);
-        final HtmlPage page = loadPage(htmlContent);
+        final HtmlPage page = loadPage(getBrowserVersion(), htmlContent, null);
 
         final HtmlPage page1 = (HtmlPage) ((HtmlFrame) page.getHtmlElementById("frame1")).getEnclosedPage();
         final HtmlPage page2 = (HtmlPage) ((HtmlFrame) page.getHtmlElementById("frame2")).getEnclosedPage();
@@ -586,23 +574,26 @@ public class JavaScriptEngineTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts("foo")
     public void javaScriptWrappedInHtmlComments() throws Exception {
-        final String htmlContent
+        final String html
             = "<html><head><title>foo</title><script language='javascript'><!--\n"
             + "function doTest() {\n"
+            + "  alert('foo');\n"
             + "}\n"
             + "-->\n</script></head>\n"
             + "<body onload='doTest()'></body></html>";
-        final HtmlPage page = loadPage(htmlContent);
-        assertEquals("foo", page.getTitleText());
+
+        loadPageWithAlerts(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts("1")
     public void javaScriptWrappedInHtmlComments2() throws Exception {
-        final String content =
+        final String html =
             "<html><head>\n"
             + "<script><!-- \n"
             + " alert('1')\n"
@@ -611,26 +602,24 @@ public class JavaScriptEngineTest extends WebTestCase {
             + "<body>\n"
             + "</body></html>";
 
-        final String[] expectedAlerts = {"1"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(content, collectedAlerts);
-        assertEquals(expectedAlerts, collectedAlerts);
+        loadPageWithAlerts(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts("1")
     public void javaScriptWrappedInHtmlComments_commentOnOpeningLine() throws Exception {
-        final String htmlContent
+        final String html
             = "<html><head><title>foo</title><script language='javascript'><!-- Some comment here\n"
             + "function doTest() {\n"
+            + " alert('1')\n"
             + "}\n"
             + "-->\n</script></head>\n"
             + "<body onload='doTest()'></body></html>";
 
-        final HtmlPage page = loadPage(htmlContent);
-        assertEquals("foo", page.getTitleText());
+        loadPageWithAlerts(html);
     }
 
     /**
@@ -646,21 +635,16 @@ public class JavaScriptEngineTest extends WebTestCase {
             + "</head>\n"
             + "<body></body></html>";
 
-        final String[] expectedAlerts = {};
-        createTestPageForRealBrowserIfNeeded(html, expectedAlerts);
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(html, collectedAlerts);
-
-        assertEquals(expectedAlerts, collectedAlerts);
+        loadPageWithAlerts(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts("undefined")
     public void javaScriptWrappedInHtmlComments_allOnOneLine() throws Exception {
-        final String content
+        final String html
             = "<html>\n"
             + "  <head>\n"
             + "    <title>test</title>\n"
@@ -672,22 +656,18 @@ public class JavaScriptEngineTest extends WebTestCase {
             + "  <body onload='alert(test)'>\n"
             + "  </body>\n"
             + "</html>";
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(content, collectedAlerts);
-        final String[] expectedAlerts = {"undefined"};
-        assertEquals(expectedAlerts, collectedAlerts);
+
+        loadPageWithAlerts(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts("test")
     public void eventHandlerWithComment() throws Exception {
-        final String content = "<html><body onLoad='alert(\"test\"); // xxx'></body></html>";
-        final String[] expectedAlerts = {"test"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(content, collectedAlerts);
-        assertEquals(expectedAlerts, collectedAlerts);
+        final String html = "<html><body onLoad='alert(\"test\"); // xxx'></body></html>";
+        loadPageWithAlerts(html);
     }
 
     /**
@@ -703,7 +683,7 @@ public class JavaScriptEngineTest extends WebTestCase {
              + "</body></html>";
 
         final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(htmlContent, collectedAlerts);
+        final HtmlPage page = loadPage(getBrowserVersion(), htmlContent, collectedAlerts);
         assertEquals("First", page.getTitleText());
 
         ((HtmlSubmitInput) page.getFormByName("form1").getInputByName("button1")).click();
@@ -717,8 +697,8 @@ public class JavaScriptEngineTest extends WebTestCase {
      */
     @Test
     public void functionDefinedInExternalFile_CalledFromInlineScript() throws Exception {
-        final WebClient client = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final WebClient client = getWebClient();
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final String htmlContent
             = "<html><head><title>foo</title><script src='./test.js'></script>\n"
@@ -742,7 +722,7 @@ public class JavaScriptEngineTest extends WebTestCase {
         final List<String> collectedAlerts = new ArrayList<String>();
         client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
-        final HtmlPage page = (HtmlPage) client.getPage("http://first/index.html");
+        final HtmlPage page = client.getPage("http://first/index.html");
         assertEquals("foo", page.getTitleText());
         assertEquals(new String[] {"Got to external method"}, collectedAlerts);
     }
@@ -753,8 +733,8 @@ public class JavaScriptEngineTest extends WebTestCase {
      */
     @Test
     public void externalScriptWithNewLineBeforeClosingScriptTag() throws Exception {
-        final WebClient client = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final WebClient client = getWebClient();
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final String htmlContent
             = "<html><head><title>foo</title>\n"
@@ -783,15 +763,13 @@ public class JavaScriptEngineTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
+    @NotYetImplemented
+    @Alerts({ "true", "false", "false", "true" })
     public void functionCaller() throws Exception {
-        if (notYetImplemented()) {
-            return;
-        }
-
-        final String content = "<html><head><script>\n"
+        final String html = "<html><head><script>\n"
             + "function myFunc() {\n"
-            + "  alert(myFunc.caller == null)\n"
-            + " alert(myFunc.caller == foo)\n"
+            + "  alert(myFunc.caller == null);\n"
+            + "  alert(myFunc.caller == foo);\n"
             + "}\n"
             + "myFunc()\n"
             + "function foo() { myFunc() }\n"
@@ -799,12 +777,7 @@ public class JavaScriptEngineTest extends WebTestCase {
             + "</script>\n"
             + "</head><body></body></html>";
 
-        final String[] expectedAlerts = {"true", "false", "false", "true"};
-        createTestPageForRealBrowserIfNeeded(content, expectedAlerts);
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(content, collectedAlerts);
-        assertEquals(expectedAlerts, collectedAlerts);
+        loadPageWithAlerts(html);
     }
 
     /**
@@ -826,14 +799,14 @@ public class JavaScriptEngineTest extends WebTestCase {
 
         final List<String> collectedAlerts = new ArrayList<String>();
 
-        final HtmlPage page = loadPage(htmlContent, collectedAlerts);
+        final HtmlPage page = loadPage(getBrowserVersion(), htmlContent, collectedAlerts);
         assertEquals("First", page.getTitleText());
 
         final HtmlForm form = page.getFormByName("form1");
-        final HtmlTextInput textInput = (HtmlTextInput) form.getInputByName("text1");
+        final HtmlTextInput textInput = form.getInputByName("text1");
         textInput.setValueAttribute("flintstone");
 
-        final HtmlButtonInput button = (HtmlButtonInput) form.getInputByName("button1");
+        final HtmlButtonInput button = form.getInputByName("button1");
         assertEquals(Collections.EMPTY_LIST, collectedAlerts);
 
         button.click();
@@ -847,8 +820,8 @@ public class JavaScriptEngineTest extends WebTestCase {
      */
     @Test
     public void javaScriptEngineCallsForVariableAccess() throws Exception {
-        final WebClient client = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final WebClient client = getWebClient();
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final List<String> collectedAlerts = new ArrayList<String>();
         client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
@@ -873,7 +846,7 @@ public class JavaScriptEngineTest extends WebTestCase {
         final CountingJavaScriptEngine countingJavaScriptEngine = new CountingJavaScriptEngine(client);
         client.setJavaScriptEngine(countingJavaScriptEngine);
 
-        final HtmlPage page = (HtmlPage) client.getPage(URL_GARGOYLE);
+        final HtmlPage page = client.getPage(URL_GARGOYLE);
 
         assertEquals(1, countingJavaScriptEngine.getExecutionCount());
         assertEquals(0, countingJavaScriptEngine.getCallCount());
@@ -897,7 +870,7 @@ public class JavaScriptEngineTest extends WebTestCase {
     @Test
     public void activeXObjectNoMap() throws Exception {
         try {
-            loadPage(getJavaScriptContent("new ActiveXObject()"));
+            loadPage(getBrowserVersion(), getJavaScriptContent("new ActiveXObject()"), null);
             fail("An exception should be thrown for zero argument constructor.");
         }
         catch (final ScriptException e) {
@@ -905,7 +878,7 @@ public class JavaScriptEngineTest extends WebTestCase {
         }
 
         try {
-            loadPage(getJavaScriptContent("new ActiveXObject(1, '2', '3')"));
+            loadPage(getBrowserVersion(), getJavaScriptContent("new ActiveXObject(1, '2', '3')"), null);
             fail("An exception should be thrown for a three argument constructor.");
         }
         catch (final ScriptException e) {
@@ -913,7 +886,7 @@ public class JavaScriptEngineTest extends WebTestCase {
         }
 
         try {
-            loadPage(getJavaScriptContent("new ActiveXObject(a)"));
+            loadPage(getBrowserVersion(), getJavaScriptContent("new ActiveXObject(a)"), null);
             fail("An exception should be thrown for an undefined parameter in the constructor.");
         }
         catch (final ScriptException e) {
@@ -921,7 +894,7 @@ public class JavaScriptEngineTest extends WebTestCase {
         }
 
         try {
-            loadPage(getJavaScriptContent("new ActiveXObject(10)"));
+            loadPage(getBrowserVersion(), getJavaScriptContent("new ActiveXObject(10)"), null);
             fail("An exception should be thrown for an integer parameter in the constructor.");
         }
         catch (final ScriptException e) {
@@ -929,7 +902,7 @@ public class JavaScriptEngineTest extends WebTestCase {
         }
 
         try {
-            loadPage(getJavaScriptContent("new ActiveXObject('UnknownObject')"));
+            loadPage(getBrowserVersion(), getJavaScriptContent("new ActiveXObject('UnknownObject')"), null);
             fail("An exception should be thrown for a null map.");
         }
         catch (final ScriptException e) {
@@ -943,6 +916,7 @@ public class JavaScriptEngineTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
+    @Browsers(Browser.IE)
     public void activeXObjectWithMap() throws Exception {
         final Map<String, String> activexToJavaMapping = new HashMap<String, String>();
         activexToJavaMapping.put(
@@ -953,8 +927,8 @@ public class JavaScriptEngineTest extends WebTestCase {
                 "com.gargoylesoftware.htmlunit.javascript.NoSuchObject");
         activexToJavaMapping.put("BadObject", null);
 
-        final WebClient client = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final WebClient client = getWebClient();
+        final MockWebConnection webConnection = new MockWebConnection();
         client.setWebConnection(webConnection);
         client.setActiveXObjectMap(activexToJavaMapping);
         final List<String> collectedAlerts = new ArrayList<String>();
@@ -1037,10 +1011,9 @@ public class JavaScriptEngineTest extends WebTestCase {
             + "</html>";
 
         final String[] expectedAlerts = {"1", "3", "4"};
-        createTestPageForRealBrowserIfNeeded(content, expectedAlerts);
 
-        final WebClient client = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final WebClient client = getWebClient();
+        final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setDefaultResponse(content);
         client.setWebConnection(webConnection);
         final List<String> collectedAlerts = new ArrayList<String>();
@@ -1092,8 +1065,7 @@ public class JavaScriptEngineTest extends WebTestCase {
             = "<html><head>\n"
             + "<script>\n"
             + "alert('in page 2');\n"
-            + name + ".prototype.foo = function()\n"
-            + "{\n"
+            + name + ".prototype.foo = function() {\n"
             + "   alert('in foo');\n"
             + "};\n"
             + "var x = " + value + ";\n"
@@ -1103,8 +1075,8 @@ public class JavaScriptEngineTest extends WebTestCase {
 
         final String[] expectedAlerts = {"in page 2", "in foo"};
 
-        final WebClient client = new WebClient();
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final WebClient client = getWebClient();
+        final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setDefaultResponse(content2);
         webConnection.setResponse(URL_FIRST, content1);
         client.setWebConnection(webConnection);
@@ -1121,16 +1093,16 @@ public class JavaScriptEngineTest extends WebTestCase {
      */
     @Test
     public void timeout() throws Exception {
+        final WebClient client = getWebClient();
         final long timeout = 2000;
-        final long oldTimeout = JavaScriptEngine.getTimeout();
-        JavaScriptEngine.setTimeout(timeout);
+        final long oldTimeout = client.getJavaScriptTimeout();
+        client.setJavaScriptTimeout(timeout);
 
         try {
-            final WebClient client = new WebClient();
             client.setThrowExceptionOnScriptError(false);
 
             final String content = "<html><body><script>while(1) {}</script></body></html>";
-            final MockWebConnection webConnection = new MockWebConnection(client);
+            final MockWebConnection webConnection = new MockWebConnection();
             webConnection.setDefaultResponse(content);
             client.setWebConnection(webConnection);
 
@@ -1157,7 +1129,7 @@ public class JavaScriptEngineTest extends WebTestCase {
             assertNull(exceptions[0]);
         }
         finally {
-            JavaScriptEngine.setTimeout(oldTimeout);
+            client.setJavaScriptTimeout(oldTimeout);
         }
     }
 
@@ -1233,8 +1205,9 @@ public class JavaScriptEngineTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void commentNoDoubleSlashIE() throws Exception {
-        final String content =
+    @Alerts(IE = "2")
+    public void commentNoDoubleSlash() throws Exception {
+        final String html =
             "<html><head>\n"
             + "<script><!-- alert(1);\n"
             + " alert(2);\n"
@@ -1243,50 +1216,25 @@ public class JavaScriptEngineTest extends WebTestCase {
             + "<body>\n"
             + "</body></html>";
 
-        final String[] expectedAlert = {"2"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(content, collectedAlerts);
-        assertEquals(expectedAlert, collectedAlerts);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void commentNoDoubleSlashFF() throws Exception {
-        final String content =
-            "<html><head>\n"
-            + "<script><!-- alert(1);\n"
-            + " alert(2);\n"
-            + "alert(3) -->\n</script>\n"
-            + "</head>\n"
-            + "<body>\n"
-            + "</body></html>";
-
-        final List<String> collectedAlerts = new ArrayList<String>();
+        boolean exceptionThrown = false;
         try {
-            loadPage(BrowserVersion.FIREFOX_2, content, collectedAlerts);
-            fail();
+            loadPageWithAlerts(html);
         }
         catch (final ScriptException e) {
+            exceptionThrown = true;
             assertEquals(4, e.getFailingLineNumber());
         }
+
+        assertEquals(getBrowserVersion().isFirefox(), exceptionThrown);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts({ "2", "3" })
     public void comment() throws Exception {
-        comment(BrowserVersion.INTERNET_EXPLORER_6_0);
-        comment(BrowserVersion.FIREFOX_2);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    private void comment(final BrowserVersion browserVersion) throws Exception {
-        final String content =
+        final String html =
             "<html><head>\n"
             + "<script><!-- alert(1);\n"
             + " alert(2);\n"
@@ -1295,16 +1243,16 @@ public class JavaScriptEngineTest extends WebTestCase {
             + "<body>\n"
             + "</body></html>";
 
-        final String[] expectedAlert = {"2", "3"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(content, collectedAlerts);
-        assertEquals(expectedAlert, collectedAlerts);
+        loadPageWithAlerts(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts({ "rstlne-rstlne-rstlne", "rstlno-rstlne-rstlne",
+            "rstlna-rstlne-rstlne", "rstlne-rstlne-rstlne",
+            "rstlni-rstlni-rstlni", "rstlna-rstlna-rstlna" })
     public void regExpSupport() throws Exception {
         final String html = "<html>\n"
             + "  <head>\n"
@@ -1327,49 +1275,7 @@ public class JavaScriptEngineTest extends WebTestCase {
             + "  <body>abc</body>\n"
             + "</html>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(html, collectedAlerts);
-
-        final String[] expectedAlerts = {
-            "rstlne-rstlne-rstlne",
-            "rstlno-rstlne-rstlne",
-            "rstlna-rstlne-rstlne",
-            "rstlne-rstlne-rstlne",
-            "rstlni-rstlni-rstlni",
-            "rstlna-rstlna-rstlna" };
-
-        assertEquals(expectedAlerts, collectedAlerts);
-    }
-
-    /**
-     * Test for Rhino bug https://bugzilla.mozilla.org/show_bug.cgi?id=374918
-     * Once this bug is fixed, {@link PrimitivePrototypeBugFixer} can be completely removed
-     * as well as this unit test.
-     * Correct string primitive prototype resolution within HtmlUnit is tested
-     * by {@link #prototypeScope()}
-     */
-    @Test
-    public void stringPrimitivePrototypeScopeRhino() {
-        if (notYetImplemented()) {
-            return;
-        }
-        final Context cx = ContextFactory.getGlobal().enterContext();
-        final Scriptable scope1 = cx.initStandardObjects();
-        final Scriptable scope2 = cx.initStandardObjects();
-        final String str2 = "function f() { String.prototype.foo = 'from 2'; \n"
-            + "var s1 = new String('s1');\n"
-            + "if (s1.foo != 'from 2') throw 's1 got: ' + s1.foo;\n" // works
-            + "var s2 = 's2';\n"
-            + "if (s2.foo != 'from 2') throw 's2 got: ' + s2.foo;\n" // fails
-            + "}";
-        cx.evaluateString(scope2, str2, "source2", 1, null);
-
-        scope1.put("scope2", scope1, scope2);
-
-        final String str1 = "String.prototype.foo = 'from 1'; scope2.f()";
-        cx.evaluateString(scope1, str1, "source1", 1, null);
-
-        Context.exit();
+        loadPageWithAlerts(html);
     }
 
     /**
@@ -1377,20 +1283,16 @@ public class JavaScriptEngineTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts("123")
     public void ecmaReservedKeywords() throws Exception {
-        final String content
+        final String html
             = "<html><head><title>foo</title><script>\n"
             + "var o = {float: 123};"
             + "alert(o.float);"
             + "</script></head><body>\n"
             + "</body></html>";
 
-        final String[] expectedAlerts = {"123"};
-        createTestPageForRealBrowserIfNeeded(content, expectedAlerts);
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(content, collectedAlerts);
-
-        assertEquals(expectedAlerts, collectedAlerts);
+        loadPageWithAlerts(html);
     }
 
     /**
@@ -1412,8 +1314,8 @@ public class JavaScriptEngineTest extends WebTestCase {
             + "</body></html>";
         final String script = "alert(document.title)";
 
-        final WebClient client = new WebClient();
-        final MockWebConnection connection = new MockWebConnection(client);
+        final WebClient client = getWebClient();
+        final MockWebConnection connection = new MockWebConnection();
         client.setWebConnection(connection);
         connection.setResponse(URL_FIRST, content1);
         connection.setResponse(new URL(URL_FIRST, "page2.html"), content2);
@@ -1428,7 +1330,7 @@ public class JavaScriptEngineTest extends WebTestCase {
 
         final List<String> collectedAlerts = new ArrayList<String>();
         client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final HtmlPage page1 = (HtmlPage) client.getPage(URL_FIRST);
+        final HtmlPage page1 = client.getPage(URL_FIRST);
         assertEquals(new String[] {"foo"}, collectedAlerts);
         assertEquals(1, countingJavaScriptEngine.getExecuteScriptCount());
         assertEquals(1, countingJavaScriptEngine.getCompileCount());
@@ -1471,7 +1373,7 @@ public class JavaScriptEngineTest extends WebTestCase {
     private HtmlPage loadPageAndCollectScripts(final String html, final List<String> collectedScripts)
         throws Exception {
 
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
         client.setJavaScriptEngine(new JavaScriptEngine(client) {
             private static final long serialVersionUID = -3069321085262318962L;
             @Override
@@ -1493,12 +1395,179 @@ public class JavaScriptEngineTest extends WebTestCase {
             }
         });
 
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final MockWebConnection webConnection = new MockWebConnection();
 
         webConnection.setDefaultResponse(html);
         client.setWebConnection(webConnection);
 
-        final HtmlPage page = (HtmlPage) client.getPage(new WebRequestSettings(URL_GARGOYLE, HttpMethod.POST));
+        final HtmlPage page = client.getPage(new WebRequestSettings(URL_GARGOYLE, HttpMethod.POST));
         return page;
+    }
+
+    /**
+     * Verifies that we're not using a global context factory, so that we can cleanly run multiple
+     * WebClient instances concurrently within a single JVM. See bug 2089599.
+     */
+    @Test
+    public void noGlobalContextFactoryUsed() {
+        final WebClient client1 = getWebClient();
+        final WebClient client2 = createNewWebClient();
+
+        final ContextFactory cf1 = client1.getJavaScriptEngine().getContextFactory();
+        final ContextFactory cf2 = client2.getJavaScriptEngine().getContextFactory();
+
+        assertFalse(cf1 == cf2);
+        assertFalse(cf1 == ContextFactory.getGlobal());
+        assertFalse(cf2 == ContextFactory.getGlobal());
+    }
+
+    /**
+     * Configure subclass of {@link JavaScriptEngine} that collects background JS expressions.
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void catchBackgroundJSErrors() throws Exception {
+        Locale.setDefault(Locale.US); // Rhino has localized error message... for instance for French
+        final WebClient webClient = getWebClient();
+        final List<ScriptException> jsExceptions = new ArrayList<ScriptException>();
+        final JavaScriptEngine myEngine = new JavaScriptEngine(webClient) {
+            private static final long serialVersionUID = 3410982366939766502L;
+            @Override
+            protected void handleJavaScriptException(final ScriptException scriptException) {
+                jsExceptions.add(scriptException);
+                super.handleJavaScriptException(scriptException);
+            }
+        };
+        webClient.setJavaScriptEngine(myEngine);
+
+        final String html = "<html>\n"
+            + "<head><title>Test page</title><\n"
+            + "<script>\n"
+            + "function myFunction() {\n"
+            + "  document.title = 'New title';\n"
+            + "  notExisting(); // will throw\n"
+            + "}\n"
+            + "window.setTimeout(myFunction, 5)\n"
+            + "</script>\n"
+            + "</head>\n"
+            + "<body>\n"
+            + "</body></html>";
+
+        final MockWebConnection webConnection = new MockWebConnection();
+        webConnection.setDefaultResponse(html);
+        webClient.setWebConnection(webConnection);
+
+        final HtmlPage page = webClient.getPage(URL_FIRST);
+        webClient.waitForBackgroundJavaScript(10000);
+        assertEquals("New title", page.getTitleText());
+
+        assertEquals(1, jsExceptions.size());
+        final ScriptException exception = jsExceptions.get(0);
+        assertTrue("Message: " + exception.getMessage(),
+            exception.getMessage().contains("\"notExisting\" is not defined"));
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(FF = "found")
+    public void enumerateMethods() throws Exception {
+        final String html = "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            + "    for (var x in document) {\n"
+            + "      if (x == 'getElementById')\n"
+            + "        alert('found');"
+            + "    }\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts(html);
+    }
+
+    /**
+     * Unit tests for bug 2531218 reported by Rhino as
+     * <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=477604">Bug 477604 -
+     * Array.concat causes ArrayIndexOutOfBoundException with non dense array</a>.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("3")
+    public void array_concat() throws Exception {
+        final String html = "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            + "    var a = [1, 2, 3];\n"
+            + "    for (var i=10; i<20; ++i)\n"
+            + "      a[i] = 't' + i;\n"
+            + "    var b = [1, 2, 3];\n"
+            + "    b.concat(a);\n"
+            + "    alert(b.length);\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts(html);
+    }
+
+    /**
+     * String value of native functions starts with \n on IE.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @NotYetImplemented(Browser.IE)
+    @Alerts(FF = { "0", "false", "0" },
+            IE = { "1", "true", "1" })
+    public void nativeFunction_toStringValue() throws Exception {
+        final String html = "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            + "    alert(String(window.alert).indexOf('function'));\n"
+            + "    alert(String(window.alert).charAt(0) == '\\n');\n"
+            + "    alert(String(document.getElementById).indexOf('function'));\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @NotYetImplemented
+    @Alerts("0")
+    public void function_toStringValue() throws Exception {
+        final String html = "<html><head><title>foo</title><script>\n"
+            + "  function f() {}\n"
+            + "  function test() {\n"
+            + "    alert(String(f).indexOf('function'));\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @NotYetImplemented
+    @Alerts(IE = { "1", "2" }, FF = { })
+    public void function_object_method() throws Exception {
+        final String html = "<html><head><title>foo</title><script>\n"
+            + "  try {\n"
+            + "    alert('1');\n"
+            + "    function document.onclick() {\n"
+            + "      alert('hi');\n"
+            + "    }\n"
+            + "    alert('2');\n"
+            + "  } catch(e) {alert(e)}\n"
+            + "</script></head><body>\n"
+            + "  <div id='myDiv'>Hello there</div>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts(html);
     }
 }

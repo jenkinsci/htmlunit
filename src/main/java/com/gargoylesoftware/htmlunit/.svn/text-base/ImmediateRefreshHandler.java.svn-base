@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,8 +49,8 @@ public class ImmediateRefreshHandler implements RefreshHandler, Serializable  {
             return;
         }
         final WebClient client = window.getWebClient();
-        if (page.getWebResponse().getUrl().toExternalForm().equals(url.toExternalForm())
-                && HttpMethod.GET == page.getWebResponse().getRequestMethod()) {
+        if (page.getWebResponse().getRequestSettings().getUrl().toExternalForm().equals(url.toExternalForm())
+                && HttpMethod.GET == page.getWebResponse().getRequestSettings().getHttpMethod()) {
             final String msg = "Refresh Aborted by HtmlUnit: "
                 + "Attempted to refresh a page using an ImmediateRefreshHandler "
                 + "which could have caused an OutOfMemoryError "

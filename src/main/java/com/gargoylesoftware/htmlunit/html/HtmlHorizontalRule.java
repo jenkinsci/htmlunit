@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "hr".
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4002 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -55,7 +55,7 @@ public class HtmlHorizontalRule extends ClickableElement {
      * @return the value of the attribute "align" or an empty string if that attribute isn't defined
      */
     public final String getAlignAttribute() {
-        return getAttributeValue("align");
+        return getAttribute("align");
     }
 
     /**
@@ -66,7 +66,7 @@ public class HtmlHorizontalRule extends ClickableElement {
      * @return the value of the attribute "noshade" or an empty string if that attribute isn't defined
      */
     public final String getNoShadeAttribute() {
-        return getAttributeValue("noshade");
+        return getAttribute("noshade");
     }
 
     /**
@@ -77,7 +77,7 @@ public class HtmlHorizontalRule extends ClickableElement {
      * @return the value of the attribute "size" or an empty string if that attribute isn't defined
      */
     public final String getSizeAttribute() {
-        return getAttributeValue("size");
+        return getAttribute("size");
     }
 
     /**
@@ -88,6 +88,6 @@ public class HtmlHorizontalRule extends ClickableElement {
      * @return the value of the attribute "width" or an empty string if that attribute isn't defined
      */
     public final String getWidthAttribute() {
-        return getAttributeValue("width");
+        return getAttribute("width");
     }
 }

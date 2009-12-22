@@ -1,8 +1,8 @@
-8
+10
 
 dir
-3268
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/site/resources/css
+5285
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.6/src/site/resources/css
 https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 
 
@@ -12,7 +12,7 @@ https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 asashour
 
 
-svn:special svn:externals svn:needs-lock
+
 
 
 
@@ -32,12 +32,33 @@ file
 
 
 
-2008-08-19T23:17:34.000000Z
+2009-12-22T19:28:54.000000Z
 90dba2f36020f5be215ee72926eae285
 2007-11-16T20:25:01.061740Z
 2050
 asashour
 has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+215
 
 maven-base.css
 file
@@ -45,10 +66,31 @@ file
 
 
 
-2008-08-19T23:17:34.000000Z
+2009-12-22T19:28:54.000000Z
 158368a69e626625726587e98f3aba0d
 2007-11-17T17:52:19.724073Z
 2052
 asashour
 has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+2397
 

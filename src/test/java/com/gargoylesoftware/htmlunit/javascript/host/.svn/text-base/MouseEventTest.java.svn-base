@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import org.junit.Test;
 import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebTestCase;
-import com.gargoylesoftware.htmlunit.html.ClickableElement;
+import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.html.HtmlTextArea;
 
@@ -43,7 +43,7 @@ public class MouseEventTest extends WebTestCase {
     @Test
     public void testEventCoordinates() throws Exception {
         testEventCoordinates(BrowserVersion.FIREFOX_2);
-        testEventCoordinates(BrowserVersion.INTERNET_EXPLORER_6_0);
+        testEventCoordinates(BrowserVersion.INTERNET_EXPLORER_6);
     }
 
     private void testEventCoordinates(final BrowserVersion browser) throws Exception {
@@ -51,26 +51,26 @@ public class MouseEventTest extends WebTestCase {
         assertNotNull(url);
 
         final WebClient client = new WebClient(browser);
-        final HtmlPage page = (HtmlPage) client.getPage(url);
+        final HtmlPage page = client.getPage(url);
         assertEquals("Mouse Event coordinates", page.getTitleText());
 
-        final HtmlTextArea textarea = (HtmlTextArea) page.getHtmlElementById("myTextarea");
+        final HtmlTextArea textarea = page.getHtmlElementById("myTextarea");
         assertEquals("", textarea.asText());
 
-        ((ClickableElement) page.getHtmlElementById("div1")).click();
-        assertEquals("Click on DIV(id=div1): true, true, false, false", textarea.asText());
+        page.<HtmlElement>getHtmlElementById("div1").click();
+        assertEquals("Click on DIV(id=div1): true, true, false, false" + LINE_SEPARATOR, textarea.asText());
         textarea.reset();
 
-        ((ClickableElement) page.getHtmlElementById("span1")).click();
-        assertEquals("Click on SPAN(id=span1): true, true, true, false", textarea.asText());
+        page.<HtmlElement>getHtmlElementById("span1").click();
+        assertEquals("Click on SPAN(id=span1): true, true, true, false" + LINE_SEPARATOR, textarea.asText());
         textarea.reset();
 
-        ((ClickableElement) page.getHtmlElementById("span2")).click();
-        assertEquals("Click on SPAN(id=span2): true, false, false, true", textarea.asText());
+        page.<HtmlElement>getHtmlElementById("span2").click();
+        assertEquals("Click on SPAN(id=span2): true, false, false, true" + LINE_SEPARATOR, textarea.asText());
         textarea.reset();
 
         textarea.click();
-        assertEquals("Click on TEXTAREA(id=myTextarea): true, false, false, false", textarea.asText());
+        assertEquals("Click on TEXTAREA(id=myTextarea): true, false, false, false" + LINE_SEPARATOR, textarea.asText());
     }
 
     /**

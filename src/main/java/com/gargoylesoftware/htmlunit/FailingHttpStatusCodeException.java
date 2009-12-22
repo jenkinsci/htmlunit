@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,10 +14,12 @@
  */
 package com.gargoylesoftware.htmlunit;
 
+import java.net.URL;
+
 /**
  * An exception that is thrown when the server returns a failing status code.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4463 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Marc Guillemot
  */
@@ -58,7 +60,7 @@ public class FailingHttpStatusCodeException extends RuntimeException {
     public String getMessage() {
         final int code = getStatusCode();
         final String msg = getStatusMessage();
-        final String url = getResponse().getUrl().toExternalForm();
+        final URL url = getResponse().getRequestSettings().getUrl();
         return code + " " + msg + " for " + url;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import java.io.UnsupportedEncodingException;
 /**
  * Utility methods relating to text.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4676 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Brad Clarke
  * @author Ahmed Ashour
@@ -115,7 +115,7 @@ public final class TextUtil {
      * @return the String as a byte[]; if the default encoding is not supported an empty byte[] will be returned
      */
     public static byte[] stringToByteArray(final String content) {
-        return stringToByteArray(content, DEFAULT_CHARSET);
+        return content != null ? stringToByteArray(content, DEFAULT_CHARSET) : null;
     }
 
     /**

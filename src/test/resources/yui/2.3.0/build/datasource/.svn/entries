@@ -1,8 +1,8 @@
-8
+10
 
 dir
-3268
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/resources/yui/2.3.0/build/datasource
+5285
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.6/src/test/resources/yui/2.3.0/build/datasource
 https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 
 
@@ -12,7 +12,7 @@ https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 sdanig
 
 
-svn:special svn:externals svn:needs-lock
+
 
 
 
@@ -32,11 +32,33 @@ file
 
 
 
-2008-08-19T23:16:52.000000Z
+2009-12-22T19:28:51.000000Z
 4921bf9593ccfd56e02c12e3b7bf7d16
 2007-08-15T21:30:20.716980Z
 1741
 sdanig
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+15751
 
 datasource-beta-debug.js
 file
@@ -44,11 +66,33 @@ file
 
 
 
-2008-08-19T23:16:52.000000Z
+2009-12-22T19:28:51.000000Z
 20feb032a4b9dc665318648b8b49a89b
 2007-08-15T21:30:20.716980Z
 1741
 sdanig
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+51052
 
 README
 file
@@ -56,11 +100,33 @@ file
 
 
 
-2008-08-19T23:16:52.000000Z
+2009-12-22T19:28:51.000000Z
 e4d490b788b35dd6eb8857fbaddd7458
 2007-08-15T21:30:20.716980Z
 1741
 sdanig
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1421
 
 datasource-beta.js
 file
@@ -68,9 +134,31 @@ file
 
 
 
-2008-08-19T23:16:52.000000Z
+2009-12-22T19:28:51.000000Z
 8cb369f6b840efd55bda6f4d35010a30
 2007-08-15T21:30:20.716980Z
 1741
 sdanig
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+46126
 

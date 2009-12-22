@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
  * <p>With the new custom DOM, this test has somewhat lost its significance.
  * We simply set and get the attributes and compare the results.</p>
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4060 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Christian Sell
  * @author Marc Guillemot
@@ -51,6 +51,7 @@ public class AttributesTest extends TestCase {
         EXCLUDED_METHODS.add("getHtmlElementsByAttribute");
         EXCLUDED_METHODS.add("getOneHtmlElementByAttribute");
         EXCLUDED_METHODS.add("getAttribute");
+        EXCLUDED_METHODS.add("getElementsByAttribute");
     }
 
     /**
@@ -70,7 +71,7 @@ public class AttributesTest extends TestCase {
             "HtmlButtonInput", "HtmlCaption", "HtmlCenter",
             "HtmlCheckBoxInput", "HtmlDefinitionDescription",
             "HtmlDefinitionList", "HtmlDefinitionTerm",
-            "HtmlDeletedText", "HtmlDivision", "HtmlElement",
+            "HtmlDeletedText", "HtmlDivision", /*"HtmlElement", */
             "HtmlFieldSet", "HtmlFileInput", "HtmlFont", "HtmlForm",
             "HtmlFrame", "HtmlFrameSet", "HtmlHead", "HtmlHeading1",
             "HtmlHeading2", "HtmlHeading3", "HtmlHeading4", "HtmlHeading5",
@@ -190,7 +191,7 @@ public class AttributesTest extends TestCase {
         final String value = new String("value");
 
         final HtmlElement objectToTest = getNewInstanceForClassUnderTest();
-        objectToTest.setAttributeValue(attributeName_, value);
+        objectToTest.setAttribute(attributeName_, value);
 
         final Object noObjects[] = new Object[0];
         final Object result = method_.invoke(objectToTest, noObjects);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,11 +43,10 @@ import com.gargoylesoftware.htmlunit.WebWindow;
 public class HtmlAnchor extends ClickableElement {
 
     private static final long serialVersionUID = 7968778206454737178L;
+    private static final Log LOG = LogFactory.getLog(HtmlAnchor.class);
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "a";
-
-    private final transient Log mainLog_ = LogFactory.getLog(getClass());
 
     /**
      * Creates a new instance.
@@ -73,44 +72,38 @@ public class HtmlAnchor extends ClickableElement {
      */
     protected Page doClickAction(final Page defaultPage, final String hrefSuffix) throws IOException {
         final String href = getHrefAttribute() + hrefSuffix;
-
-        if (mainLog_.isDebugEnabled()) {
-            mainLog_.debug(
-                "do click action in window '"
-                        + defaultPage.getEnclosingWindow().getName()
-                        + "', using href '" + href + "'");
+        if (LOG.isDebugEnabled()) {
+            final String w = defaultPage.getEnclosingWindow().getName();
+            LOG.debug("do click action in window '" + w + "', using href '" + href + "'");
         }
-
-        if (href.length() > 0 && !href.startsWith("#")) {
-            final HtmlPage page = (HtmlPage) getPage();
-            if (TextUtil.startsWithIgnoreCase(href, JAVASCRIPT_PREFIX)) {
-                return page.executeJavaScriptIfPossible(
-                    href, "javascript url", getStartLineNumber()).getNewPage();
-            }
-            final URL url = page.getFullyQualifiedUrl(href);
-            final WebRequestSettings settings = new WebRequestSettings(url);
-            settings.addAdditionalHeader("Referer", page.getWebResponse().getUrl().toExternalForm());
-            if (mainLog_.isDebugEnabled()) {
-                mainLog_.debug(
-                        "Getting page for " + url.toExternalForm()
-                        + ", derived from href '" + href
-                        + "', using the originating URL "
-                        + page.getWebResponse().getUrl());
-            }
-            return page.getWebClient().getPage(
-                    page.getEnclosingWindow(),
-                    page.getResolvedTarget(getTargetAttribute()),
-                    settings);
+        if (href.length() == 0) {
+            return defaultPage;
         }
-        return defaultPage;
+        final HtmlPage page = (HtmlPage) getPage();
+        if (TextUtil.startsWithIgnoreCase(href, JAVASCRIPT_PREFIX)) {
+            return page.executeJavaScriptIfPossible(href, "javascript url", getStartLineNumber()).getNewPage();
+        }
+        final URL url = page.getFullyQualifiedUrl(href);
+        final WebRequestSettings wrs = new WebRequestSettings(url);
+        wrs.setAdditionalHeader("Referer", page.getWebResponse().getRequestSettings().getUrl().toExternalForm());
+        if (LOG.isDebugEnabled()) {
+            LOG.debug(
+                    "Getting page for " + url.toExternalForm()
+                    + ", derived from href '" + href
+                    + "', using the originating URL "
+                    + page.getWebResponse().getRequestSettings().getUrl());
+        }
+        return page.getWebClient().getPage(
+                page.getEnclosingWindow(),
+                page.getResolvedTarget(getTargetAttribute()),
+                wrs);
     }
 
     /**
-     * This method will be called if there either wasn't an onclick handler or
-     * there was but the result of that handler was true. This is the default
-     * behavior of clicking the element. For this anchor element, the default
-     * behavior is to open the HREF page, or execute the HREF if it is a
-     * javascript: URL.
+     * This method will be called if there either wasn't an <tt>onclick</tt> handler, or
+     * there was but the result of that handler was <tt>true</tt>. This is the default
+     * behavior of clicking the element. For this anchor element, the default behavior is
+     * to open the HREF page, or execute the HREF if it is a <tt>javascript:</tt> URL.
      *
      * @param defaultPage the default page to return if the action does not load a new page
      * @return the page that is currently loaded after execution of this method
@@ -118,6 +111,13 @@ public class HtmlAnchor extends ClickableElement {
      */
     @Override
     protected Page doClickAction(final Page defaultPage) throws IOException {
+        final SgmlPage page = getPage();
+        final boolean onClickLoadedNewPageInCurrentWindow =
+            defaultPage != page
+            && defaultPage.getEnclosingWindow() == page.getEnclosingWindow();
+        if (onClickLoadedNewPageInCurrentWindow) {
+            return defaultPage;
+        }
         return doClickAction(defaultPage, "");
     }
 
@@ -129,7 +129,7 @@ public class HtmlAnchor extends ClickableElement {
      * @return the value of the attribute "charset" or an empty string if that attribute isn't defined
      */
     public final String getCharsetAttribute() {
-        return getAttributeValue("charset");
+        return getAttribute("charset");
     }
 
     /**
@@ -140,7 +140,7 @@ public class HtmlAnchor extends ClickableElement {
      * @return the value of the attribute "type" or an empty string if that attribute isn't defined
      */
     public final String getTypeAttribute() {
-        return getAttributeValue("type");
+        return getAttribute("type");
     }
 
     /**
@@ -151,7 +151,7 @@ public class HtmlAnchor extends ClickableElement {
      * @return the value of the attribute "name" or an empty string if that attribute isn't defined
      */
     public final String getNameAttribute() {
-        return getAttributeValue("name");
+        return getAttribute("name");
     }
 
     /**
@@ -162,7 +162,7 @@ public class HtmlAnchor extends ClickableElement {
      * @return the value of the attribute "href" or an empty string if that attribute isn't defined
      */
     public final String getHrefAttribute() {
-        return getAttributeValue("href").trim();
+        return getAttribute("href").trim();
     }
 
     /**
@@ -173,7 +173,7 @@ public class HtmlAnchor extends ClickableElement {
      * @return the value of the attribute "hreflang" or an empty string if that attribute isn't defined
      */
     public final String getHrefLangAttribute() {
-        return getAttributeValue("hreflang");
+        return getAttribute("hreflang");
     }
 
     /**
@@ -184,7 +184,7 @@ public class HtmlAnchor extends ClickableElement {
      * @return the value of the attribute "rel" or an empty string if that attribute isn't defined
      */
     public final String getRelAttribute() {
-        return getAttributeValue("rel");
+        return getAttribute("rel");
     }
 
     /**
@@ -195,7 +195,7 @@ public class HtmlAnchor extends ClickableElement {
      * @return the value of the attribute "rev" or an empty string if that attribute isn't defined
      */
     public final String getRevAttribute() {
-        return getAttributeValue("rev");
+        return getAttribute("rev");
     }
 
     /**
@@ -206,7 +206,7 @@ public class HtmlAnchor extends ClickableElement {
      * @return the value of the attribute "accesskey" or an empty string if that attribute isn't defined
      */
     public final String getAccessKeyAttribute() {
-        return getAttributeValue("accesskey");
+        return getAttribute("accesskey");
     }
 
     /**
@@ -217,7 +217,7 @@ public class HtmlAnchor extends ClickableElement {
      * @return the value of the attribute "shape" or an empty string if that attribute isn't defined
      */
     public final String getShapeAttribute() {
-        return getAttributeValue("shape");
+        return getAttribute("shape");
     }
 
     /**
@@ -228,7 +228,7 @@ public class HtmlAnchor extends ClickableElement {
      * @return the value of the attribute "coords" or an empty string if that attribute isn't defined
      */
     public final String getCoordsAttribute() {
-        return getAttributeValue("coords");
+        return getAttribute("coords");
     }
 
     /**
@@ -239,7 +239,7 @@ public class HtmlAnchor extends ClickableElement {
      * @return the value of the attribute "tabindex" or an empty string if that attribute isn't defined
      */
     public final String getTabIndexAttribute() {
-        return getAttributeValue("tabindex");
+        return getAttribute("tabindex");
     }
 
     /**
@@ -250,7 +250,7 @@ public class HtmlAnchor extends ClickableElement {
      * @return the value of the attribute "onfocus" or an empty string if that attribute isn't defined
      */
     public final String getOnFocusAttribute() {
-        return getAttributeValue("onfocus");
+        return getAttribute("onfocus");
     }
 
     /**
@@ -261,7 +261,7 @@ public class HtmlAnchor extends ClickableElement {
      * @return the value of the attribute "onblur" or an empty string if that attribute isn't defined
      */
     public final String getOnBlurAttribute() {
-        return getAttributeValue("onblur");
+        return getAttribute("onblur");
     }
 
     /**
@@ -272,7 +272,7 @@ public class HtmlAnchor extends ClickableElement {
      * @return the value of the attribute "target" or an empty string if that attribute isn't defined
      */
     public final String getTargetAttribute() {
-        return getAttributeValue("target");
+        return getAttribute("target");
     }
 
     /**

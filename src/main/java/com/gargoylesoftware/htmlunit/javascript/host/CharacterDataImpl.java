@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import com.gargoylesoftware.htmlunit.html.DomCharacterData;
 /**
  * A JavaScript object for CharacterData.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4752 $
  * @author David K. Taylor
  * @author Chris Erskine
  */
@@ -28,7 +28,7 @@ public class CharacterDataImpl extends Node {
     private static final long serialVersionUID = 5413850371617638797L;
 
     /**
-     * Create an instance. JavaScript objects must have a default constructor.
+     * Creates an instance. JavaScript objects must have a default constructor.
      */
     public CharacterDataImpl() {
     }
@@ -38,8 +38,7 @@ public class CharacterDataImpl extends Node {
      * @return the String of data
      */
     public Object jsxGet_data() {
-        final DomCharacterData domCharacterData =
-            (DomCharacterData) getDomNodeOrDie();
+        final DomCharacterData domCharacterData = (DomCharacterData) getDomNodeOrDie();
         return domCharacterData.getData();
     }
 
@@ -48,8 +47,7 @@ public class CharacterDataImpl extends Node {
      * @param newValue the new String of data
      */
     public void jsxSet_data(final String newValue) {
-        final DomCharacterData domCharacterData =
-            (DomCharacterData) getDomNodeOrDie();
+        final DomCharacterData domCharacterData = (DomCharacterData) getDomNodeOrDie();
         domCharacterData.setData(newValue);
     }
 
@@ -58,8 +56,7 @@ public class CharacterDataImpl extends Node {
      * @return the number of characters
      */
     public int jsxGet_length() {
-        final DomCharacterData domCharacterData =
-            (DomCharacterData) getDomNodeOrDie();
+        final DomCharacterData domCharacterData = (DomCharacterData) getDomNodeOrDie();
         return domCharacterData.getLength();
     }
 
@@ -68,8 +65,7 @@ public class CharacterDataImpl extends Node {
      * @param arg the string to be appended to the character data
      */
     public void jsxFunction_appendData(final String arg) {
-        final DomCharacterData domCharacterData =
-            (DomCharacterData) getDomNodeOrDie();
+        final DomCharacterData domCharacterData = (DomCharacterData) getDomNodeOrDie();
         domCharacterData.appendData(arg);
     }
 
@@ -79,8 +75,7 @@ public class CharacterDataImpl extends Node {
      * @param count the number of characters to be deleted
      */
     public void jsxFunction_deleteData(final int offset, final int count) {
-        final DomCharacterData domCharacterData =
-            (DomCharacterData) getDomNodeOrDie();
+        final DomCharacterData domCharacterData = (DomCharacterData) getDomNodeOrDie();
         domCharacterData.deleteData(offset, count);
     }
 
@@ -91,8 +86,7 @@ public class CharacterDataImpl extends Node {
      * @param arg the string to insert
      */
     public void jsxFunction_insertData(final int offset, final String arg) {
-        final DomCharacterData domCharacterData =
-            (DomCharacterData) getDomNodeOrDie();
+        final DomCharacterData domCharacterData = (DomCharacterData) getDomNodeOrDie();
         domCharacterData.insertData(offset, arg);
     }
 
@@ -104,10 +98,8 @@ public class CharacterDataImpl extends Node {
      * @param arg the string that replaces the count characters beginning at
      * the character at offset.
      */
-    public void jsxFunction_replaceData(final int offset, final int count,
-        final String arg) {
-        final DomCharacterData domCharacterData =
-            (DomCharacterData) getDomNodeOrDie();
+    public void jsxFunction_replaceData(final int offset, final int count, final String arg) {
+        final DomCharacterData domCharacterData = (DomCharacterData) getDomNodeOrDie();
         domCharacterData.replaceData(offset, count, arg);
     }
 
@@ -118,10 +110,8 @@ public class CharacterDataImpl extends Node {
      * @return a string that consists of the count characters of the character
      *         data starting from the character at position offset
      */
-    public String jsxFunction_substringData(final int offset,
-        final int count) {
-        final DomCharacterData domCharacterData =
-            (DomCharacterData) getDomNodeOrDie();
+    public String jsxFunction_substringData(final int offset, final int count) {
+        final DomCharacterData domCharacterData = (DomCharacterData) getDomNodeOrDie();
         return domCharacterData.substringData(offset, count);
     }
 }

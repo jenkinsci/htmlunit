@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,10 @@ package com.gargoylesoftware.htmlunit.util;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.commons.httpclient.NameValuePair;
 
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebConnection;
@@ -25,10 +29,10 @@ import com.gargoylesoftware.htmlunit.WebResponseData;
 import com.gargoylesoftware.htmlunit.WebResponseImpl;
 
 /**
- * Extension of {@link WebConnectionWrapper} providing facility methods to deliver something else than
+ * Extension of {@link WebConnectionWrapper} providing facility methods to deliver something other than
  * what the wrapped connection would deliver.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4463 $
  * @author Marc Guillemot
  */
 public abstract class FalsifyingWebConnection extends WebConnectionWrapper {
@@ -63,26 +67,55 @@ public abstract class FalsifyingWebConnection extends WebConnectionWrapper {
         final URL originalUrl = webRequestSettings.getUrl();
         webRequestSettings.setUrl(url);
         final WebResponse resp = super.getResponse(webRequestSettings);
-        return new WebResponseWrapper(resp) {
-            @Override
-            public URL getUrl() {
-                return originalUrl;
-            }
-        };
+        resp.getRequestSettings().setUrl(originalUrl);
+        return resp;
     }
 
     /**
      * Builds a WebResponse with new content, preserving all other information.
-     * @param webResponse the web response to adapt
+     * @param wr the web response to adapt
      * @param newContent the new content to place in the response
      * @return a web response with the new content
      * @throws IOException if an encoding problem occurred
      */
-    protected WebResponse replaceContent(final WebResponse webResponse, final String newContent) throws IOException {
-        final byte[] body = newContent.getBytes(webResponse.getContentCharSet());
-        final WebResponseData wrd = new WebResponseData(body, webResponse.getStatusCode(),
-                webResponse.getStatusMessage(), webResponse.getResponseHeaders());
-        return new WebResponseImpl(wrd, webResponse.getUrl(), webResponse.getRequestMethod(),
-                webResponse.getLoadTimeInMilliSeconds());
+    protected WebResponse replaceContent(final WebResponse wr, final String newContent) throws IOException {
+        final byte[] body = newContent.getBytes(wr.getContentCharset());
+        final WebResponseData wrd = new WebResponseData(body, wr.getStatusCode(), wr.getStatusMessage(),
+            wr.getResponseHeaders());
+        return new WebResponseImpl(wrd, wr.getRequestSettings().getUrl(), wr.getRequestSettings().getHttpMethod(),
+                wr.getLoadTime());
+    }
+
+    /**
+     * Creates a faked WebResponse for the request with the provided content.
+     * @param wr the web request for which a response should be created
+     * @param content the content to place in the response
+     * @param contentType the content type of the response
+     * @return a web response with the provided content
+     * @throws IOException if an encoding problem occurred
+     */
+    protected WebResponse createWebResponse(final WebRequestSettings wr, final String content,
+            final String contentType) throws IOException {
+        return createWebResponse(wr, content, contentType, 200, "OK");
+    }
+
+    /**
+     * Creates a faked WebResponse for the request with the provided content.
+     * @param wr the web request for which a response should be created
+     * @param content the content to place in the response
+     * @param contentType the content type of the response
+     * @param responseCode the HTTP code for the response
+     * @param responseMessage the HTTP message for the response
+     * @return a web response with the provided content
+     * @throws IOException if an encoding problem occurred
+     */
+    protected WebResponse createWebResponse(final WebRequestSettings wr, final String content,
+            final String contentType, final int responseCode, final String responseMessage) throws IOException {
+        final List<NameValuePair> headers = new ArrayList<NameValuePair>();
+        final String encoding = "UTF-8";
+        headers.add(new NameValuePair("content-type", contentType + "; charset=" + encoding));
+        final byte[] body = content.getBytes(encoding);
+        final WebResponseData wrd = new WebResponseData(body, responseCode, responseMessage, headers);
+        return new WebResponseImpl(wrd, wr.getUrl(), wr.getHttpMethod(), 0);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,38 +30,34 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.httpclient.HttpStatus;
 import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.lang.ArrayUtils;
-import org.junit.After;
 import org.junit.Test;
-import org.mortbay.jetty.Server;
 
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 
 /**
  * Tests for {@link WebResponseImpl}.
  *
- * @version $Revision: 3078 $
+ * @version $Revision: 4574 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
-public class WebResponseImplTest extends WebTestCase {
-
-    private Server server_;
+public class WebResponseImplTest extends WebServerTestCase {
 
     /**
      * Verifies that when no encoding header is provided, encoding may be recognized with its Byte Order Mark.
      * @throws Exception if the test fails
      */
     @Test
-    public void testRecognizeBOM() throws Exception {
-        testRecognizeBOM("UTF-8",    new byte[] {(byte) 0xef, (byte) 0xbb, (byte) 0xbf});
-        testRecognizeBOM("UTF-16BE", new byte[] {(byte) 0xfe, (byte) 0xff});
-        testRecognizeBOM("UTF-16LE", new byte[] {(byte) 0xff, (byte) 0xfe});
+    public void recognizeBOM() throws Exception {
+        recognizeBOM("UTF-8",    new byte[] {(byte) 0xef, (byte) 0xbb, (byte) 0xbf});
+        recognizeBOM("UTF-16BE", new byte[] {(byte) 0xfe, (byte) 0xff});
+        recognizeBOM("UTF-16LE", new byte[] {(byte) 0xff, (byte) 0xfe});
     }
 
-    private void testRecognizeBOM(final String encoding, final byte[] markerBytes) throws Exception {
+    private void recognizeBOM(final String encoding, final byte[] markerBytes) throws Exception {
         final WebClient webClient = new WebClient();
 
-        final MockWebConnection webConnection = new MockWebConnection(webClient);
+        final MockWebConnection webConnection = new MockWebConnection();
 
         final String html = "<html><head><script src='foo.js'></script></head><body></body></html>";
 
@@ -86,7 +82,7 @@ public class WebResponseImplTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testEncoding() throws Exception {
+    public void encoding() throws Exception {
         final String title = "\u6211\u662F\u6211\u7684FOCUS";
         final String content =
             "<html><head>\n"
@@ -97,13 +93,13 @@ public class WebResponseImplTest extends WebTestCase {
 
         final WebClient client = new WebClient();
 
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final MockWebConnection webConnection = new MockWebConnection();
         final List< ? extends NameValuePair> emptyList = Collections.emptyList();
         webConnection.setResponse(URL_FIRST, content.getBytes("UTF-8"), 200, "OK", "text/html", emptyList);
         client.setWebConnection(webConnection);
         final WebRequestSettings settings = new WebRequestSettings(URL_FIRST);
         settings.setCharset("UTF-8");
-        final HtmlPage page = (HtmlPage) client.getPage(settings);
+        final HtmlPage page = client.getPage(settings);
         assertEquals(title, page.getTitleText());
     }
 
@@ -111,7 +107,7 @@ public class WebResponseImplTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testQuotedCharset() throws Exception {
+    public void quotedCharset() throws Exception {
         final String xml
             = "<books id='myId'>\n"
             + "  <book>\n"
@@ -123,11 +119,29 @@ public class WebResponseImplTest extends WebTestCase {
         final List<String> collectedAlerts = new ArrayList<String>();
         final WebClient client = new WebClient();
         client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection(client);
+        final MockWebConnection conn = new MockWebConnection();
         final List< ? extends NameValuePair> emptyList = Collections.emptyList();
         conn.setResponse(URL_FIRST, xml, HttpStatus.SC_OK, "OK", "text/xml; charset=\"ISO-8859-1\"", emptyList);
         client.setWebConnection(conn);
         client.getPage(URL_FIRST);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void charsetInMetaTag() throws Exception {
+        final String html
+            = "<html>\n"
+            + "<head><meta content='text/html; charset=utf-8' http-equiv='Content-Type'/></head>\n"
+            + "<body>foo</body>\n"
+            + "</html>";
+        final WebClient client = new WebClient();
+        final MockWebConnection conn = new MockWebConnection();
+        conn.setResponse(URL_FIRST, html);
+        client.setWebConnection(conn);
+        final HtmlPage page = client.getPage(URL_FIRST);
+        assertEquals("utf-8", page.getWebResponse().getContentCharsetOrNull());
     }
 
     /**
@@ -136,15 +150,14 @@ public class WebResponseImplTest extends WebTestCase {
      */
     @Test
     public void illegalCharset() throws Exception {
-        testIllegalCharset("text/html; text/html; charset=ISO-8859-1;", "ISO-8859-1");
-        testIllegalCharset("text/html; charset=UTF-8; charset=UTF-8", "UTF-8");
-        testIllegalCharset("text/html; charset=#sda+s", TextUtil.DEFAULT_CHARSET);
-        testIllegalCharset("text/html; charset=UnknownCharset", TextUtil.DEFAULT_CHARSET);
+        illegalCharset("text/html; text/html; charset=ISO-8859-1;", "ISO-8859-1");
+        illegalCharset("text/html; charset=UTF-8; charset=UTF-8", "UTF-8");
+        illegalCharset("text/html; charset=#sda+s", TextUtil.DEFAULT_CHARSET);
+        illegalCharset("text/html; charset=UnknownCharset", TextUtil.DEFAULT_CHARSET);
     }
 
-    private void testIllegalCharset(final String cntTypeHeader, final String expectedCharset) throws Exception {
-        final WebClient client = new WebClient();
-        final MockWebConnection conn = new MockWebConnection(client);
+    private void illegalCharset(final String cntTypeHeader, final String expectedCharset) throws Exception {
+        final MockWebConnection conn = new MockWebConnection();
         final List<NameValuePair> headers = new ArrayList<NameValuePair>();
         headers.add(new NameValuePair("Content-Type", cntTypeHeader));
         conn.setDefaultResponse("<html/>", 200, "OK", "text/html", headers);
@@ -152,18 +165,8 @@ public class WebResponseImplTest extends WebTestCase {
         webClient.setWebConnection(conn);
 
         final Page page = webClient.getPage(URL_FIRST);
-        assertEquals(expectedCharset, page.getWebResponse().getContentCharSet());
+        assertEquals(expectedCharset, page.getWebResponse().getContentCharset());
         assertEquals(cntTypeHeader, page.getWebResponse().getResponseHeaderValue("Content-Type"));
-    }
-
-    /**
-     * Performs post-test deconstruction.
-     * @throws Exception if an error occurs
-     */
-    @After
-    public void tearDown() throws Exception {
-        HttpWebConnectionTest.stopWebServer(server_);
-        server_ = null;
     }
 
     /**
@@ -173,9 +176,9 @@ public class WebResponseImplTest extends WebTestCase {
     public void responseHeaders() throws Exception {
         final Map<String, Class< ? extends Servlet>> servlets = new HashMap<String, Class< ? extends Servlet>>();
         servlets.put("/test", ResponseHeadersServlet.class);
-        server_ = HttpWebConnectionTest.startWebServer("./", null, servlets);
+        startWebServer("./", null, servlets);
         final WebClient client = new WebClient();
-        final HtmlPage page = (HtmlPage) client.getPage("http://localhost:" + HttpWebConnectionTest.PORT + "/test");
+        final HtmlPage page = client.getPage("http://localhost:" + PORT + "/test");
         assertEquals("some_value", page.getWebResponse().getResponseHeaderValue("some_header"));
     }
 

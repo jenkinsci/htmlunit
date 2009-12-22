@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,17 +15,17 @@
 package com.gargoylesoftware.htmlunit.html;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Map;
 
-import org.w3c.dom.Node;
-
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.SgmlPage;
 
 /**
  * Wrapper for the HTML element "option".
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4854 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -43,6 +43,8 @@ public class HtmlOption extends ClickableElement implements DisabledElement {
 
     private final boolean initialSelectedState_;
 
+    private boolean selected_;
+
     /**
      * Creates an instance.
      *
@@ -54,7 +56,7 @@ public class HtmlOption extends ClickableElement implements DisabledElement {
     HtmlOption(final String namespaceURI, final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
         super(namespaceURI, qualifiedName, page, attributes);
-        initialSelectedState_ = isAttributeDefined("selected");
+        initialSelectedState_ = hasAttribute("selected");
     }
 
     /**
@@ -62,7 +64,7 @@ public class HtmlOption extends ClickableElement implements DisabledElement {
      * @return <tt>true</tt> if this option is currently selected
      */
     public boolean isSelected() {
-        return isAttributeDefined("selected");
+        return hasAttribute("selected") || selected_;
     }
 
     /**
@@ -92,7 +94,6 @@ public class HtmlOption extends ClickableElement implements DisabledElement {
 
     /**
      * {@inheritDoc}
-     * @see DomNode#insertBefore(DomNode)
      */
     @Override
     public void insertBefore(final DomNode newNode) throws IllegalStateException {
@@ -129,7 +130,7 @@ public class HtmlOption extends ClickableElement implements DisabledElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getSelectedAttribute() {
-        return getAttributeValue("selected");
+        return getAttribute("selected");
     }
 
     /**
@@ -152,19 +153,18 @@ public class HtmlOption extends ClickableElement implements DisabledElement {
      *         when emulating IE)
      */
     public final boolean isDisabled() {
-        if (getPage().getWebClient().getBrowserVersion().isIE()) {
+        if (getPage().getWebClient().getBrowserVersion().hasFeature(
+                BrowserVersionFeatures.HTMLOPTION_PREVENT_DISABLED)) {
             return false;
         }
-        else {
-            return isAttributeDefined("disabled");
-        }
+        return hasAttribute("disabled");
     }
 
     /**
      * {@inheritDoc}
      */
     public final String getDisabledAttribute() {
-        return getAttributeValue("disabled");
+        return getAttribute("disabled");
     }
 
     /**
@@ -175,7 +175,7 @@ public class HtmlOption extends ClickableElement implements DisabledElement {
      * @return the value of the attribute "label" or an empty string if that attribute isn't defined
      */
     public final String getLabelAttribute() {
-        return getAttributeValue("label");
+        return getAttribute("label");
     }
 
     /**
@@ -186,7 +186,7 @@ public class HtmlOption extends ClickableElement implements DisabledElement {
      * @param newLabel the value of the attribute "label"
      */
     public final void setLabelAttribute(final String newLabel) {
-        setAttributeValue("label", newLabel);
+        setAttribute("label", newLabel);
     }
 
     /**
@@ -198,7 +198,11 @@ public class HtmlOption extends ClickableElement implements DisabledElement {
      * @return the value of the attribute "value"
      */
     public final String getValueAttribute() {
-        return getAttributeValue("value");
+        String value = getAttribute("value");
+        if (value == ATTRIBUTE_NOT_DEFINED) {
+            value = getText();
+        }
+        return value;
     }
 
     /**
@@ -209,7 +213,7 @@ public class HtmlOption extends ClickableElement implements DisabledElement {
      * @param newValue the value of the attribute "value"
      */
     public final void setValueAttribute(final String newValue) {
-        setAttributeValue("value", newValue);
+        setAttribute("value", newValue);
     }
 
     /**
@@ -228,16 +232,11 @@ public class HtmlOption extends ClickableElement implements DisabledElement {
      * {@inheritDoc}
      */
     @Override
-    public DomNode appendChild(final Node node) {
-        final DomNode addedNode = super.appendChild(node);
-
-        // default value is the text of the option
-        // see http://www.w3.org/TR/1999/REC-html401-19991224/interact/forms.html#adef-value-OPTION
-        if (getAttributeValue("value") == ATTRIBUTE_NOT_DEFINED) {
-            setAttributeValue("value", asText());
+    protected void printOpeningTagContentAsXml(final PrintWriter printWriter) {
+        super.printOpeningTagContentAsXml(printWriter);
+        if (selected_ && getAttribute("selected") == ATTRIBUTE_NOT_DEFINED) {
+            printWriter.print(" selected=\"selected\"");
         }
-
-        return addedNode;
     }
 
     /**
@@ -246,10 +245,8 @@ public class HtmlOption extends ClickableElement implements DisabledElement {
      * @param selected the selected status
      */
     void setSelectedInternal(final boolean selected) {
-        if (selected) {
-            setAttributeValue("selected", "selected");
-        }
-        else {
+        selected_ = selected;
+        if (!selected) {
             removeAttribute("selected");
         }
     }
@@ -259,11 +256,38 @@ public class HtmlOption extends ClickableElement implements DisabledElement {
      * This implementation will show the label attribute before the
      * content of the tag if the attribute exists.
      */
+    // we need to preserve this method as it is there since many versions with the above documentation.
     @Override
     public String asText() {
-        if (getLabelAttribute() != ATTRIBUTE_NOT_DEFINED) {
-            return getLabelAttribute();
-        }
         return super.asText();
+    }
+
+    /**
+     * Sets the text for this HtmlOption.
+     * @param text the text
+     */
+    public void setText(final String text) {
+        if (getPage().getWebClient().getBrowserVersion().isIE() && (text == null || text.length() == 0)) {
+            removeAllChildren();
+        }
+        else {
+            final DomNode child = getFirstChild();
+            if (child == null) {
+                appendChild(new DomText(getPage(), text));
+            }
+            else {
+                child.setNodeValue(text);
+            }
+        }
+    }
+
+    /**
+     * Gets the text.
+     * @return the text of this option.
+     */
+    public String getText() {
+        final HtmlSerializer ser = new HtmlSerializer();
+        ser.setIgnoreMaskedElements(false);
+        return ser.asText(this);
     }
 }

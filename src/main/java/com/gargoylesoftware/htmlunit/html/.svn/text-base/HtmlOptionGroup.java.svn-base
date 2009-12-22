@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ public class HtmlOptionGroup extends ClickableElement implements DisabledElement
     public static final String TAG_NAME = "optgroup";
 
     /**
-     * Create an instance of HtmlOptionGroup
+     * Creates an instance of HtmlOptionGroup
      *
      * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
@@ -61,16 +61,14 @@ public class HtmlOptionGroup extends ClickableElement implements DisabledElement
         if (getPage().getWebClient().getBrowserVersion().isIE()) {
             return false;
         }
-        else {
-            return isAttributeDefined("disabled");
-        }
+        return hasAttribute("disabled");
     }
 
     /**
      * {@inheritDoc}
      */
     public final String getDisabledAttribute() {
-        return getAttributeValue("disabled");
+        return getAttribute("disabled");
     }
 
     /**
@@ -81,6 +79,6 @@ public class HtmlOptionGroup extends ClickableElement implements DisabledElement
      * @return the value of the attribute "label" or an empty string if that attribute isn't defined
      */
     public final String getLabelAttribute() {
-        return getAttributeValue("label");
+        return getAttribute("label");
     }
 }

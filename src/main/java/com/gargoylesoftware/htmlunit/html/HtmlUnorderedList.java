@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "ul".
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4794 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -56,7 +56,7 @@ public class HtmlUnorderedList extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getTypeAttribute() {
-        return getAttributeValue("type");
+        return getAttribute("type");
     }
 
     /**
@@ -68,6 +68,22 @@ public class HtmlUnorderedList extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getCompactAttribute() {
-        return getAttributeValue("compact");
+        return getAttribute("compact");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected boolean isBlock() {
+        return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected boolean isEmptyXmlTagExpanded() {
+        return true;
     }
 }

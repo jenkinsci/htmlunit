@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
 /**
  * Tests for {@link HtmlButton}.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4002 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author Brad Clarke
@@ -56,7 +56,7 @@ public class HtmlButtonTest extends WebTestCase {
 
         final List<String> collectedAlerts = new ArrayList<String>();
         final HtmlPage page = loadPage(htmlContent, collectedAlerts);
-        final HtmlButton button = (HtmlButton) page.getHtmlElementById("button");
+        final HtmlButton button = page.getHtmlElementById("button");
 
         final HtmlPage secondPage = (HtmlPage) button.click();
 
@@ -79,9 +79,9 @@ public class HtmlButtonTest extends WebTestCase {
             + "</form></body></html>";
         final List<String> collectedAlerts = new ArrayList<String>();
         final HtmlPage page = loadPage(htmlContent, collectedAlerts);
-        final HtmlButton button = (HtmlButton) page.getHtmlElementById("button");
+        final HtmlButton button = page.getHtmlElementById("button");
 
-        final HtmlPage secondPage = (HtmlPage) button.click();
+        final HtmlPage secondPage = button.click();
 
         final String[] expectedAlerts = {"foo", "bar"};
         assertEquals(expectedAlerts, collectedAlerts);
@@ -102,9 +102,9 @@ public class HtmlButtonTest extends WebTestCase {
             + "</form></body></html>";
         final List<String> collectedAlerts = new ArrayList<String>();
         final HtmlPage page = loadPage(htmlContent, collectedAlerts);
-        final HtmlButton button = (HtmlButton) page.getHtmlElementById("button");
+        final HtmlButton button = page.getHtmlElementById("button");
 
-        final HtmlPage secondPage = (HtmlPage) button.click();
+        final HtmlPage secondPage = button.click();
 
         final String[] expectedAlerts = {"foo", "reset"};
         assertEquals(expectedAlerts, collectedAlerts);
@@ -135,44 +135,44 @@ public class HtmlButtonTest extends WebTestCase {
             + "<button type='reset' id='resetButton' value='pushme'/>\n"
             + "</form></body></html>";
         final HtmlPage page = loadPage(htmlContent);
-        final HtmlForm form = (HtmlForm) page.getHtmlElementById("form1");
-        final HtmlButton resetInput = (HtmlButton) page.getHtmlElementById("resetButton");
+        final HtmlForm form = page.getHtmlElementById("form1");
+        final HtmlButton resetInput = page.getHtmlElementById("resetButton");
 
         // change all the values to something else
-        ((HtmlRadioButtonInput) form.getFirstByXPath(
-                "//input[@type='radio' and @name='radioButton' and @value='bar']")).setChecked(true);
+        form.<HtmlRadioButtonInput>getFirstByXPath(
+            "//input[@type='radio' and @name='radioButton' and @value='bar']").setChecked(true);
         ((HtmlCheckBoxInput) form.getInputByName("checkBox")).setChecked(true);
-        ((HtmlOption) page.getHtmlElementById("option1")).setSelected(false);
-        ((HtmlOption) page.getHtmlElementById("option2")).setSelected(true);
-        ((HtmlTextArea) page.getHtmlElementById("textarea1")).setText("Flintstone");
-        ((HtmlTextInput) page.getHtmlElementById("textfield1")).setValueAttribute("Flintstone");
-        ((HtmlHiddenInput) page.getHtmlElementById("hidden1")).setValueAttribute("Flintstone");
-        ((HtmlPasswordInput) page.getHtmlElementById("password1")).setValueAttribute("Flintstone");
-        ((HtmlIsIndex) page.getHtmlElementById("isindex1")).setValue("Flintstone");
+        page.<HtmlOption>getHtmlElementById("option1").setSelected(false);
+        page.<HtmlOption>getHtmlElementById("option2").setSelected(true);
+        page.<HtmlTextArea>getHtmlElementById("textarea1").setText("Flintstone");
+        page.<HtmlTextInput>getHtmlElementById("textfield1").setValueAttribute("Flintstone");
+        page.<HtmlHiddenInput>getHtmlElementById("hidden1").setValueAttribute("Flintstone");
+        page.<HtmlPasswordInput>getHtmlElementById("password1").setValueAttribute("Flintstone");
+        page.<HtmlIsIndex>getHtmlElementById("isindex1").setValue("Flintstone");
 
         // Check to make sure they did get changed
         assertEquals("bar", form.getCheckedRadioButton("radioButton").getValueAttribute());
-        assertTrue(((HtmlCheckBoxInput) form.getInputByName("checkBox")).isChecked());
-        assertFalse(((HtmlOption) page.getHtmlElementById("option1")).isSelected());
-        assertTrue(((HtmlOption) page.getHtmlElementById("option2")).isSelected());
-        assertEquals("Flintstone", ((HtmlTextArea) page.getHtmlElementById("textarea1")).getText());
-        assertEquals("Flintstone", ((HtmlTextInput) page.getHtmlElementById("textfield1")).getValueAttribute());
-        assertEquals("Flintstone", ((HtmlHiddenInput) page.getHtmlElementById("hidden1")).getValueAttribute());
-        assertEquals("Flintstone", ((HtmlIsIndex) page.getHtmlElementById("isindex1")).getValue());
+        assertTrue(form.<HtmlCheckBoxInput>getInputByName("checkBox").isChecked());
+        assertFalse(page.<HtmlOption>getHtmlElementById("option1").isSelected());
+        assertTrue(page.<HtmlOption>getHtmlElementById("option2").isSelected());
+        assertEquals("Flintstone", page.<HtmlTextArea>getHtmlElementById("textarea1").getText());
+        assertEquals("Flintstone", page.<HtmlTextInput>getHtmlElementById("textfield1").getValueAttribute());
+        assertEquals("Flintstone", page.<HtmlHiddenInput>getHtmlElementById("hidden1").getValueAttribute());
+        assertEquals("Flintstone", page.<HtmlIsIndex>getHtmlElementById("isindex1").getValue());
 
         final HtmlPage secondPage = (HtmlPage) resetInput.click();
         assertSame(page, secondPage);
 
         // Check to make sure all the values have been set back to their original values.
         assertEquals("foo", form.getCheckedRadioButton("radioButton").getValueAttribute());
-        assertFalse(((HtmlCheckBoxInput) form.getInputByName("checkBox")).isChecked());
-        assertTrue(((HtmlOption) page.getHtmlElementById("option1")).isSelected());
-        assertFalse(((HtmlOption) page.getHtmlElementById("option2")).isSelected());
-        assertEquals("Foobar", ((HtmlTextArea) page.getHtmlElementById("textarea1")).getText());
-        assertEquals("foo", ((HtmlTextInput) page.getHtmlElementById("textfield1")).getValueAttribute());
-        assertEquals("foo", ((HtmlHiddenInput) page.getHtmlElementById("hidden1")).getValueAttribute());
-        assertEquals("foo", ((HtmlPasswordInput) page.getHtmlElementById("password1")).getValueAttribute());
-        assertEquals("", ((HtmlIsIndex) page.getHtmlElementById("isindex1")).getValue());
+        assertFalse(form.<HtmlCheckBoxInput>getInputByName("checkBox").isChecked());
+        assertTrue(page.<HtmlOption>getHtmlElementById("option1").isSelected());
+        assertFalse(page.<HtmlOption>getHtmlElementById("option2").isSelected());
+        assertEquals("Foobar", page.<HtmlTextArea>getHtmlElementById("textarea1").getText());
+        assertEquals("foo", page.<HtmlTextInput>getHtmlElementById("textfield1").getValueAttribute());
+        assertEquals("foo", page.<HtmlHiddenInput>getHtmlElementById("hidden1").getValueAttribute());
+        assertEquals("foo", page.<HtmlPasswordInput>getHtmlElementById("password1").getValueAttribute());
+        assertEquals("", page.<HtmlIsIndex>getHtmlElementById("isindex1").getValue());
     }
 
     /**
@@ -188,9 +188,9 @@ public class HtmlButtonTest extends WebTestCase {
             + "</form></body></html>";
         final List<String> collectedAlerts = new ArrayList<String>();
         final HtmlPage page = loadPage(htmlContent, collectedAlerts);
-        final HtmlButton button = (HtmlButton) page.getHtmlElementById("button");
+        final HtmlButton button = page.getHtmlElementById("button");
 
-        final HtmlPage secondPage = (HtmlPage) button.click();
+        final HtmlPage secondPage = button.click();
 
         final String[] expectedAlerts = {"bar"};
         assertEquals(expectedAlerts, collectedAlerts);
@@ -219,7 +219,7 @@ public class HtmlButtonTest extends WebTestCase {
      */
     @Test
     public void testDefaultButtonType_InternetExplorer() throws Exception {
-        doTestDefaultButtonType(BrowserVersion.INTERNET_EXPLORER_6_0, "button");
+        doTestDefaultButtonType(BrowserVersion.INTERNET_EXPLORER_6, "button");
     }
 
     private void doTestDefaultButtonType(final BrowserVersion browserVersion,
@@ -233,16 +233,16 @@ public class HtmlButtonTest extends WebTestCase {
             = "<html><head><title>Second</title></head><body'></body></html>";
         final WebClient client = new WebClient(browserVersion);
 
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
         webConnection.setResponse(URL_SECOND, secondContent);
         client.setWebConnection(webConnection);
 
-        final HtmlPage page = (HtmlPage) client.getPage(URL_FIRST);
-        final HtmlButton button = (HtmlButton) page.getHtmlElementById("button");
+        final HtmlPage page = client.getPage(URL_FIRST);
+        final HtmlButton button = page.getHtmlElementById("button");
         assertEquals(expectedType, button.getTypeAttribute());
 
-        final HtmlPage page2 = (HtmlPage) button.click();
+        final HtmlPage page2 = button.click();
         final List<NameValuePair> expectedParameters;
         final String expectedSecondPageTitle;
         if (expectedType.equals("submit")) {
@@ -261,7 +261,7 @@ public class HtmlButtonTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testSimpleScriptable() throws Exception {
+    public void simpleScriptable() throws Exception {
         final String html = "<html><head>\n"
             + "<script>\n"
             + "  function test() {\n"

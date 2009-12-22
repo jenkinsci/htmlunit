@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import java.util.Map;
  *
  * <p>Based on <a href="http://blogs.ilog.com/jviews/2008/05/05/unit-testing-memory-leaks/">this</a>.</p>
  *
- * @version $Revision: 3183 $
+ * @version $Revision: 4002 $
  * @author Daniel Gredler
  */
 public class MemoryLeakDetector {

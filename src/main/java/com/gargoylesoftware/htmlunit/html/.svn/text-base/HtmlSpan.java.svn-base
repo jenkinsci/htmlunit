@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ public class HtmlSpan extends ClickableElement {
     public static final String TAG_NAME = "span";
 
     /**
-     * Create an instance of HtmlSpan
+     * Creates an instance of HtmlSpan
      *
      * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
@@ -47,14 +47,6 @@ public class HtmlSpan extends ClickableElement {
     HtmlSpan(final String namespaceURI, final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
         super(namespaceURI, qualifiedName, page, attributes);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected boolean isRenderedVisible() {
-        return false;
     }
 
     /**

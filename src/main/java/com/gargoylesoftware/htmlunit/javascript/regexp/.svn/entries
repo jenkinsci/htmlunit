@@ -1,18 +1,18 @@
-8
+10
 
 dir
-3268
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/main/java/com/gargoylesoftware/htmlunit/javascript/regexp
+5285
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.6/src/main/java/com/gargoylesoftware/htmlunit/javascript/regexp
 https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 
 
 
-2008-06-10T03:08:01.567443Z
-3075
+2009-08-18T17:56:02.553281Z
+4843
 sdanig
 
 
-svn:special svn:externals svn:needs-lock
+
 
 
 
@@ -32,12 +32,33 @@ file
 
 
 
-2008-08-19T23:17:26.000000Z
-e3defcac744e921ffda3bd10dfbdaad6
-2008-06-10T03:08:01.567443Z
-3075
+2009-12-22T19:28:53.000000Z
+06035f10af41cd9fdc5b77d149d85039
+2009-08-18T17:56:02.553281Z
+4843
 sdanig
 has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+12036
 
 package.html
 file
@@ -45,9 +66,31 @@ file
 
 
 
-2008-08-19T23:17:26.000000Z
+2009-12-22T19:28:53.000000Z
 318b8c85d79eea01966fb6631386d9ea
 2007-07-06T14:33:33.590911Z
 1548
 mguillem
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+351
 

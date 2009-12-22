@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
 /**
  * Tests for {@link HtmlOption}.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4380 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Marc Guillemot
  * @author Ahmed Ashour
@@ -49,9 +49,9 @@ public class HtmlOptionTest extends WebTestCase {
             + "</form></body></html>";
         final HtmlPage page = loadPage(htmlContent);
 
-        final HtmlOption option1 = (HtmlOption) page.getHtmlElementById("option1");
-        final HtmlOption option2 = (HtmlOption) page.getHtmlElementById("option2");
-        final HtmlOption option3 = (HtmlOption) page.getHtmlElementById("option3");
+        final HtmlOption option1 = page.getHtmlElementById("option1");
+        final HtmlOption option2 = page.getHtmlElementById("option2");
+        final HtmlOption option3 = page.getHtmlElementById("option3");
 
         assertFalse(option1.isSelected());
         assertTrue(option2.isSelected());
@@ -86,8 +86,8 @@ public class HtmlOptionTest extends WebTestCase {
 
         final HtmlPage page = loadPage(htmlContent);
 
-        final HtmlOption option1 = (HtmlOption) page.getHtmlElementById("option1");
-        final HtmlOption option2 = (HtmlOption) page.getHtmlElementById("option2");
+        final HtmlOption option1 = page.getHtmlElementById("option1");
+        final HtmlOption option2 = page.getHtmlElementById("option2");
 
         assertEquals("option1", option1.getValueAttribute());
         assertEquals("Number Two", option2.getValueAttribute());
@@ -111,13 +111,13 @@ public class HtmlOptionTest extends WebTestCase {
 
         final HtmlPage page = loadPage(htmlContent);
 
-        final HtmlOption option1 = (HtmlOption) page.getHtmlElementById("option1");
+        final HtmlOption option1 = page.getHtmlElementById("option1");
         assertEquals("Option1", option1.getValueAttribute());
 
-        final HtmlOption option2 = (HtmlOption) page.getHtmlElementById("option2");
+        final HtmlOption option2 = page.getHtmlElementById("option2");
         assertEquals("Number Two", option2.getValueAttribute());
 
-        final HtmlOption option3 = (HtmlOption) page.getHtmlElementById("option3");
+        final HtmlOption option3 = page.getHtmlElementById("option3");
         assertEquals("Number 3 with blanks", option3.getValueAttribute());
     }
 
@@ -137,7 +137,7 @@ public class HtmlOptionTest extends WebTestCase {
             + "</form></body></html>";
         final HtmlPage page = loadPage(htmlContent);
 
-        final HtmlOption option1 = (HtmlOption) page.getHtmlElementById("option1");
+        final HtmlOption option1 = page.getHtmlElementById("option1");
         assertFalse(option1.isSelected());
         option1.click();
         assertTrue(option1.isSelected());
@@ -161,14 +161,14 @@ public class HtmlOptionTest extends WebTestCase {
 
         final HtmlPage page = loadPage(htmlContent);
 
-        final HtmlOption option1 = (HtmlOption) page.getHtmlElementById("option1");
-        final HtmlOption option2 = (HtmlOption) page.getHtmlElementById("option2");
-        final HtmlOption option3 = (HtmlOption) page.getHtmlElementById("option3");
-        final HtmlOption option4 = (HtmlOption) page.getHtmlElementById("option4");
+        final HtmlOption option1 = page.getHtmlElementById("option1");
+        final HtmlOption option2 = page.getHtmlElementById("option2");
+        final HtmlOption option3 = page.getHtmlElementById("option3");
+        final HtmlOption option4 = page.getHtmlElementById("option4");
 
         assertEquals("option1", option1.asText());
-        assertEquals("Number Two", option2.asText());
-        assertEquals("overridden", option3.asText());
+        assertEquals("", option2.asText());
+        assertEquals("Number Three", option3.asText());
         assertEquals("Number 4", option4.asText());
     }
 
@@ -203,8 +203,8 @@ public class HtmlOptionTest extends WebTestCase {
     @Test
     public void testDisabled() throws Exception {
         testDisabled(BrowserVersion.FIREFOX_2, true, false);
-        testDisabled(BrowserVersion.INTERNET_EXPLORER_6_0, false, false);
-        testDisabled(BrowserVersion.INTERNET_EXPLORER_7_0, false, false);
+        testDisabled(BrowserVersion.INTERNET_EXPLORER_6, false, false);
+        testDisabled(BrowserVersion.INTERNET_EXPLORER_7, false, false);
     }
 
     private void testDisabled(final BrowserVersion version, final boolean d1, final boolean d2) throws Exception {

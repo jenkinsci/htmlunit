@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "button".
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4789 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -40,11 +40,10 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 public class HtmlButton extends ClickableElement implements DisabledElement, SubmittableElement {
 
     private static final long serialVersionUID = 4828725767615187345L;
+    private static final Log LOG = LogFactory.getLog(HtmlButton.class);
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "button";
-
-    private final transient Log mainLog_ = LogFactory.getLog(getClass());
 
     /**
      * Creates a new instance.
@@ -65,7 +64,7 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
      * @param newValue the new content
      */
     public void setValueAttribute(final String newValue) {
-        setAttributeValue("value", newValue);
+        setAttribute("value", newValue);
     }
 
     /**
@@ -92,7 +91,7 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
      * {@inheritDoc}
      */
     public final boolean isDisabled() {
-        return isAttributeDefined("disabled");
+        return hasAttribute("disabled");
     }
 
     /**
@@ -108,8 +107,8 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
      * @see SubmittableElement#reset()
      */
     public void reset() {
-        if (mainLog_.isDebugEnabled()) {
-            mainLog_.debug("reset() not implemented for this element");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("reset() not implemented for this element");
         }
     }
 
@@ -119,8 +118,8 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
      * @see SubmittableElement#setDefaultValue(String)
      */
     public void setDefaultValue(final String defaultValue) {
-        if (mainLog_.isDebugEnabled()) {
-            mainLog_.debug("setDefaultValue() not implemented for this element");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("setDefaultValue() not implemented for this element");
         }
     }
 
@@ -130,8 +129,8 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
      * @see SubmittableElement#getDefaultValue()
      */
     public String getDefaultValue() {
-        if (mainLog_.isDebugEnabled()) {
-            mainLog_.debug("getDefaultValue() not implemented for this element");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("getDefaultValue() not implemented for this element");
         }
         return "";
     }
@@ -172,7 +171,7 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
      * @return the value of the attribute "name" or an empty string if that attribute isn't defined
      */
     public final String getNameAttribute() {
-        return getAttributeValue("name");
+        return getAttribute("name");
     }
 
     /**
@@ -183,7 +182,7 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
      * @return the value of the attribute "value" or an empty string if that attribute isn't defined
      */
     public final String getValueAttribute() {
-        return getAttributeValue("value");
+        return getAttribute("value");
     }
 
     /**
@@ -196,7 +195,7 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
      * @return the value of the attribute "type" or the default value if that attribute isn't defined
      */
     public final String getTypeAttribute() {
-        String type = getAttributeValue("type");
+        String type = getAttribute("type");
         if (type == HtmlElement.ATTRIBUTE_NOT_DEFINED) {
             final BrowserVersion browser = getPage().getWebClient().getBrowserVersion();
             if (browser.isIE()) {
@@ -217,7 +216,7 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
      * @return the value of the attribute "disabled" or an empty string if that attribute isn't defined
      */
     public final String getDisabledAttribute() {
-        return getAttributeValue("disabled");
+        return getAttribute("disabled");
     }
 
     /**
@@ -228,7 +227,7 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
      * @return the value of the attribute "tabindex" or an empty string if that attribute isn't defined
      */
     public final String getTabIndexAttribute() {
-        return getAttributeValue("tabindex");
+        return getAttribute("tabindex");
     }
 
     /**
@@ -239,7 +238,7 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
      * @return the value of the attribute "accesskey" or an empty string if that attribute isn't defined
      */
     public final String getAccessKeyAttribute() {
-        return getAttributeValue("accesskey");
+        return getAttribute("accesskey");
     }
 
     /**
@@ -250,7 +249,7 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
      * @return the value of the attribute "onfocus" or an empty string if that attribute isn't defined
      */
     public final String getOnFocusAttribute() {
-        return getAttributeValue("onfocus");
+        return getAttribute("onfocus");
     }
 
     /**
@@ -261,6 +260,6 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
      * @return the value of the attribute "onblur" or an empty string if that attribute isn't defined
      */
     public final String getOnBlurAttribute() {
-        return getAttributeValue("onblur");
+        return getAttribute("onblur");
     }
 }

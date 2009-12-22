@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,12 +15,13 @@
 package com.gargoylesoftware.htmlunit.javascript.host;
 
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLDocument;
 import com.gargoylesoftware.htmlunit.xml.XmlPage;
 
 /**
  * A JavaScript object for DOMImplementation.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4589 $
  * @author Ahmed Ashour
  *
  * @see <a href="http://www.w3.org/TR/2000/WD-DOM-Level-1-20000929/level-one-core.html#ID-102161490">
@@ -29,13 +30,6 @@ import com.gargoylesoftware.htmlunit.xml.XmlPage;
 public class DOMImplementation extends SimpleScriptable {
 
     private static final long serialVersionUID = -6824157544527299635L;
-
-    /**
-     * JavaScript constructor.
-     */
-    public void jsConstructor() {
-        // Empty.
-    }
 
     /**
      * Test if the DOM implementation implements a specific feature.

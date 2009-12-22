@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "input".
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4854 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:chen_jun@users.sourceforge.net">Jun Chen</a>
@@ -55,11 +55,11 @@ public class HtmlCheckBoxInput extends HtmlInput {
         super(namespaceURI, qualifiedName, page, attributes);
 
         //From the checkbox creator
-        defaultCheckedState_ = isAttributeDefined("checked");
+        defaultCheckedState_ = hasAttribute("checked");
 
         // default value for both IE6 and Mozilla 1.7 even if spec says it is unspecified
-        if (getAttributeValue("value") == ATTRIBUTE_NOT_DEFINED) {
-            setAttributeValue("value", "on");
+        if (getAttribute("value") == ATTRIBUTE_NOT_DEFINED) {
+            setAttribute("value", "on");
         }
     }
 
@@ -79,7 +79,7 @@ public class HtmlCheckBoxInput extends HtmlInput {
     @Override
     public Page setChecked(final boolean isChecked) {
         if (isChecked) {
-            setAttributeValue("checked", "checked");
+            setAttribute("checked", "checked");
         }
         else {
             removeAttribute("checked");
@@ -92,6 +92,7 @@ public class HtmlCheckBoxInput extends HtmlInput {
      * but we invent one for it because it is useful for testing.
      * @return "checked" or "unchecked" according to the radio state
      */
+    // we need to preserve this method as it is there since many versions with the above documentation.
     @Override
     public String asText() {
         if (isChecked()) {
@@ -147,7 +148,7 @@ public class HtmlCheckBoxInput extends HtmlInput {
     @Override
     public void setDefaultChecked(final boolean defaultChecked) {
         defaultCheckedState_ = defaultChecked;
-        if (getPage().getWebClient().getBrowserVersion().isNetscape()) {
+        if (getPage().getWebClient().getBrowserVersion().isFirefox()) {
             setChecked(defaultChecked);
         }
     }

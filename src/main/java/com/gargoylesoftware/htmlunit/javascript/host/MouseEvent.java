@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,12 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
-import org.mozilla.javascript.Context;
+import java.util.LinkedList;
+
+import net.sourceforge.htmlunit.corejs.javascript.Context;
 
 import com.gargoylesoftware.htmlunit.html.DomNode;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
 
 /**
  * JavaScript object representing a Mouse Event.
@@ -24,7 +27,7 @@ import com.gargoylesoftware.htmlunit.html.DomNode;
  * should be supported, see
  * <a href="http://www.w3.org/TR/DOM-Level-2-Events/events.html#Events-MouseEvent">DOM Level 2 Events</a>.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4503 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
@@ -111,21 +114,6 @@ public class MouseEvent extends UIEvent {
         }
         else {
             setDetail(1);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void copyPropertiesFrom(final Event event) {
-        super.copyPropertiesFrom(event);
-        if (event instanceof MouseEvent) {
-            final MouseEvent mouseEvent = (MouseEvent) event;
-            screenX_ = mouseEvent.screenX_;
-            screenY_ = mouseEvent.screenY_;
-            button_ = mouseEvent.button_;
-            metaKey_ = mouseEvent.metaKey_;
         }
     }
 
@@ -277,10 +265,12 @@ public class MouseEvent extends UIEvent {
      * Returns the mouse event currently firing, or <tt>null</tt> if no mouse event is being processed.
      * @return the mouse event currently firing
      */
-    static MouseEvent getCurrentMouseEvent() {
-        final Event event = (Event) Context.getCurrentContext().getThreadLocal(KEY_CURRENT_EVENT);
-        if (event instanceof MouseEvent) {
-            return (MouseEvent) event;
+    @SuppressWarnings("unchecked")
+    public static MouseEvent getCurrentMouseEvent() {
+        final LinkedList<Event> events = (LinkedList<Event>) Context.getCurrentContext()
+            .getThreadLocal(KEY_CURRENT_EVENT);
+        if (events != null && !events.isEmpty() && events.getLast() instanceof MouseEvent) {
+            return (MouseEvent) events.getLast();
         }
         return null;
     }

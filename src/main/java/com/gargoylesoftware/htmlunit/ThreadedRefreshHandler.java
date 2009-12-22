@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,9 @@ package com.gargoylesoftware.htmlunit;
 import java.io.IOException;
 import java.net.URL;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 /**
  * This refresh handler spawns a new thread that waits the specified
  * number of seconds before refreshing the specified page, using the
@@ -25,11 +28,14 @@ import java.net.URL;
  * If you want a refresh handler that ignores the wait time, see
  * {@link ImmediateRefreshHandler}.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4789 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Daniel Gredler
  */
 public class ThreadedRefreshHandler implements RefreshHandler {
+
+    /** Logging support. */
+    private static final Log LOG = LogFactory.getLog(ThreadedRefreshHandler.class);
 
     /**
      * Refreshes the specified page using the specified URL after the specified number
@@ -46,11 +52,12 @@ public class ThreadedRefreshHandler implements RefreshHandler {
                     new WaitingRefreshHandler().handleRefresh(page, url, seconds);
                 }
                 catch (final IOException e) {
-                    page.getEnclosingWindow().getWebClient().getLog().error("Unable to refresh page!", e);
+                    LOG.error("Unable to refresh page!", e);
                     throw new RuntimeException("Unable to refresh page!", e);
                 }
             }
         };
+        thread.setDaemon(true);
         thread.start();
     }
 

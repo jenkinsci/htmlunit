@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,44 +16,22 @@ package com.gargoylesoftware.htmlunit;
 
 import java.io.IOException;
 
-import org.apache.commons.httpclient.HttpState;
-
 /**
- * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
+ * An object which handles the actual communication portion of page retrieval/submission.
  *
- * An object that handles the actual communication portion of page
- * retrieval/submission.
- *
- * @version $Revision: 3026 $
+ * @version $Revision: 4002 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Daniel Gredler
  * @author Marc Guillemot
  */
 public interface WebConnection {
+
     /**
-     * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
-     *
      * Submits a request and retrieves a response.
-     * @param webRequestSettings Settings to make the request with
+     * @param settings Settings to make the request with
      * @return the response to the request defined by the specified request settings
-     * @exception IOException If an IO error occurs.
+     * @exception IOException if an IO error occurs
      */
-    WebResponse getResponse(final WebRequestSettings webRequestSettings) throws IOException;
-
-    /**
-     * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
-     *
-     * Return the web client.
-     * @return the web client
-     */
-    WebClient getWebClient();
-
-    /**
-     * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
-     *
-     * Return the {@link HttpState} that is being used.
-     * @return the state
-     */
-    HttpState getState();
+    WebResponse getResponse(final WebRequestSettings settings) throws IOException;
 
 }

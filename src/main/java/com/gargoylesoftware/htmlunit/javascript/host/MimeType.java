@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 /**
  * A JavaScript object for a document.navigator.mimeTypes elements.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4097 $
  * @author Marc Guillemot
  *
  * @see <a href="http://www.xulplanet.com/references/objref/MimeType.html">XUL Planet</a>
@@ -32,7 +32,7 @@ public final class MimeType extends SimpleScriptable {
     private Plugin enabledPlugin_;
 
     /**
-     * Create an instance. JavaScript objects must have a default constructor.
+     * Creates an instance. JavaScript objects must have a default constructor.
      */
     public MimeType() {
         // nothing

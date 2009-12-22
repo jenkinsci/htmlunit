@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,15 @@
  */
 package com.gargoylesoftware.htmlunit.util;
 
+import java.util.List;
+
 /**
  * String utilities class for utility functions not covered by third party libraries.
  *
  * @version $Revision$
  * @author Daniel Gredler
  * @author Ahmed Ashour
+ * @author Martin Tamme
  */
 public final class StringUtils {
 
@@ -58,4 +61,67 @@ public final class StringUtils {
         }
         return false;
     }
+
+    /**
+     * Returns the index within a given string of the first occurrence of
+     * the specified search character.
+     *
+     * @param s          a string.
+     * @param searchChar a search character.
+     * @param beginIndex the index to start the search from.
+     * @param endIndex   the index to stop the search.
+     * @return the index of the first occurrence of the character in the string or <tt>-1</tt>.
+     */
+    public static int indexOf(
+            final String s,
+            final char searchChar,
+            final int beginIndex,
+            final int endIndex) {
+        for (int i = beginIndex; i < endIndex; i++) {
+            if (s.charAt(i) == searchChar) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Returns <tt>true</tt> if the specified string is a valid float, possibly triming the string before checking.
+     * @param s the string to check
+     * @param trim whether or not to trim the string before checking
+     * @return <tt>true</tt> if the specified string is a valid float, <tt>false</tt> otherwise
+     */
+    public static boolean isFloat(String s, final boolean trim) {
+        if (trim) {
+            s = s.trim();
+        }
+
+        boolean ok;
+        try {
+            Float.parseFloat(s);
+            ok = true;
+        }
+        catch (final NumberFormatException e) {
+            ok = false;
+        }
+
+        return ok;
+    }
+
+    /**
+     * Returns <tt>true</tt> if the specified list of strings contains the specified string, ignoring case.
+     * @param strings the strings to search
+     * @param string the string to search for
+     * @return <tt>true</tt> if the specified list of strings contains the specified string, ignoring case
+     */
+    public static boolean containsCaseInsensitive(final List<String> strings, String string) {
+        string = string.toLowerCase();
+        for (String s : strings) {
+            if (s.toLowerCase().equals(string)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 }

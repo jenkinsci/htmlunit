@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ import com.gargoylesoftware.htmlunit.javascript.host.Event;
 /**
  * Wrapper for the HTML element "input".
  *
- * @version $Revision: 3106 $
+ * @version $Revision: 4794 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -40,6 +40,8 @@ import com.gargoylesoftware.htmlunit.javascript.host.Event;
  * @author Ahmed Ashour
  */
 public abstract class HtmlInput extends ClickableElement implements DisabledElement, SubmittableElement {
+
+    private static final long serialVersionUID = 3602129443357463947L;
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "input";
@@ -72,14 +74,14 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
 
     /**
      * Sets the content of the "value" attribute, executing onchange handlers if appropriate.
-     * This method returns the page conained by this element's window after the value is set,
+     * This method returns the page contained by this element's window after the value is set,
      * which may or may not be the same as the original page.
      * @param newValue the new content
-     * @return the page conained by this element's window after the value is set
+     * @return the page contained by this element's window after the value is set
      */
     public Page setValueAttribute(final String newValue) {
         WebAssert.notNull("newValue", newValue);
-        setAttributeValue("value", newValue);
+        setAttribute("value", newValue);
 
         return executeOnChangeHandlerIfAppropriate(this);
     }
@@ -92,14 +94,6 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
     }
 
     /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String asText() {
-        return getValueAttribute();
-    }
-
-    /**
      * Returns the value of the attribute "type". Refer to the
      * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
      * documentation for details on the use of this attribute.
@@ -107,7 +101,7 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
      * @return the value of the attribute "type" or an empty string if that attribute isn't defined
      */
     public final String getTypeAttribute() {
-        return getAttributeValue("type");
+        return getAttribute("type");
     }
 
     /**
@@ -118,7 +112,7 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
      * @return the value of the attribute "name" or an empty string if that attribute isn't defined
      */
     public final String getNameAttribute() {
-        return getAttributeValue("name");
+        return getAttribute("name");
     }
 
     /**
@@ -129,7 +123,7 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
      * @return the value of the attribute "value" or an empty string if that attribute isn't defined
      */
     public final String getValueAttribute() {
-        return getAttributeValue("value");
+        return getAttribute("value");
     }
 
     /**
@@ -140,21 +134,21 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
      * @return the value of the attribute "checked" or an empty string if that attribute isn't defined
      */
     public final String getCheckedAttribute() {
-        return getAttributeValue("checked");
+        return getAttribute("checked");
     }
 
     /**
      * {@inheritDoc}
      */
     public final String getDisabledAttribute() {
-        return getAttributeValue("disabled");
+        return getAttribute("disabled");
     }
 
     /**
      * {@inheritDoc}
      */
     public final boolean isDisabled() {
-        return isAttributeDefined("disabled");
+        return hasAttribute("disabled");
     }
 
     /**
@@ -166,7 +160,7 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
      * or an empty string if that attribute isn't defined.
      */
     public final String getReadOnlyAttribute() {
-        return getAttributeValue("readonly");
+        return getAttribute("readonly");
     }
 
     /**
@@ -178,7 +172,7 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
      * or an empty string if that attribute isn't defined.
      */
     public final String getSizeAttribute() {
-        return getAttributeValue("size");
+        return getAttribute("size");
     }
 
     /**
@@ -190,7 +184,7 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
      * or an empty string if that attribute isn't defined.
      */
     public final String getMaxLengthAttribute() {
-        return getAttributeValue("maxlength");
+        return getAttribute("maxlength");
     }
 
     /**
@@ -202,7 +196,7 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
      * or an empty string if that attribute isn't defined.
      */
     public final String getSrcAttribute() {
-        return getAttributeValue("src");
+        return getAttribute("src");
     }
 
     /**
@@ -214,7 +208,7 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
      * or an empty string if that attribute isn't defined.
      */
     public final String getAltAttribute() {
-        return getAttributeValue("alt");
+        return getAttribute("alt");
     }
 
     /**
@@ -226,7 +220,7 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
      * or an empty string if that attribute isn't defined.
      */
     public final String getUseMapAttribute() {
-        return getAttributeValue("usemap");
+        return getAttribute("usemap");
     }
 
     /**
@@ -238,7 +232,7 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
      * or an empty string if that attribute isn't defined.
      */
     public final String getTabIndexAttribute() {
-        return getAttributeValue("tabindex");
+        return getAttribute("tabindex");
     }
 
     /**
@@ -250,7 +244,7 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
      * or an empty string if that attribute isn't defined.
      */
     public final String getAccessKeyAttribute() {
-        return getAttributeValue("accesskey");
+        return getAttribute("accesskey");
     }
 
     /**
@@ -262,7 +256,7 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
      * or an empty string if that attribute isn't defined.
      */
     public final String getOnFocusAttribute() {
-        return getAttributeValue("onfocus");
+        return getAttribute("onfocus");
     }
 
     /**
@@ -274,7 +268,7 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
      * or an empty string if that attribute isn't defined.
      */
     public final String getOnBlurAttribute() {
-        return getAttributeValue("onblur");
+        return getAttribute("onblur");
     }
 
     /**
@@ -286,7 +280,7 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
      * or an empty string if that attribute isn't defined.
      */
     public final String getOnSelectAttribute() {
-        return getAttributeValue("onselect");
+        return getAttribute("onselect");
     }
 
     /**
@@ -298,7 +292,7 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
      * or an empty string if that attribute isn't defined.
      */
     public final String getOnChangeAttribute() {
-        return getAttributeValue("onchange");
+        return getAttribute("onchange");
     }
 
     /**
@@ -310,7 +304,7 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
      * or an empty string if that attribute isn't defined.
      */
     public final String getAcceptAttribute() {
-        return getAttributeValue("accept");
+        return getAttribute("accept");
     }
 
     /**
@@ -322,7 +316,7 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
      * or an empty string if that attribute isn't defined.
      */
     public final String getAlignAttribute() {
-        return getAttributeValue("align");
+        return getAttribute("align");
     }
 
     /**
@@ -339,7 +333,7 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
      * @see HtmlFileInput#setDefaultValue(String)
      */
     public void setDefaultValue(final String defaultValue) {
-        final boolean modifyValue = getPage().getWebClient().getBrowserVersion().isNetscape();
+        final boolean modifyValue = getPage().getWebClient().getBrowserVersion().isFirefox();
         setDefaultValue(defaultValue, modifyValue);
     }
 
@@ -399,30 +393,54 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
     }
 
     /**
+     * Sets the "readOnly" attribute.
+     *
+     * @param isReadOnly <tt>true</tt> if this element is read only
+     */
+    public void setReadOnly(final boolean isReadOnly) {
+        if (isReadOnly) {
+            setAttribute("readOnly", "readOnly");
+        }
+        else {
+            removeAttribute("readOnly");
+        }
+    }
+
+    /**
      * Returns <tt>true</tt> if this element is currently selected.
      * @return <tt>true</tt> if this element is currently selected
      */
     public boolean isChecked() {
-        return isAttributeDefined("checked");
+        return hasAttribute("checked");
+    }
+
+    /**
+     * Returns <tt>true</tt> if this element is read only.
+     * @return <tt>true</tt> if this element is read only
+     */
+    public boolean isReadOnly() {
+        return hasAttribute("readOnly");
     }
 
     /**
      * Simulate clicking this input with a pointing device. The x and y coordinates
      * of the pointing device will be sent to the server.
      *
+     * @param <P> the page type
      * @param x the x coordinate of the pointing device at the time of clicking
      * @param y the y coordinate of the pointing device at the time of clicking
      * @return the page that is loaded after the click has taken place
      * @exception IOException If an io error occurs
      * @exception ElementNotFoundException If a particular XML element could not be found in the DOM model
      */
-    public Page click(final int x, final int y)
+    @SuppressWarnings("unchecked")
+    public <P extends Page> P click(final int x, final int y)
         throws
             IOException,
             ElementNotFoundException {
 
         // By default this is no different than a click without coordinates.
-        return click();
+        return (P) click();
     }
 
     /**

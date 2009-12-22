@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 /**
  * Multi-threaded JavaScript engine test.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4002 $
  * @author David D. Kilzer
  * @author Ahmed Ashour
  */

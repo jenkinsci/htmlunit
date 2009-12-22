@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "label".
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4598 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -39,7 +39,7 @@ public class HtmlLabel extends ClickableElement {
     public static final String TAG_NAME = "label";
 
     /**
-     * Create an instance of HtmlLabel
+     * Creates an instance of HtmlLabel
      *
      * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
@@ -60,7 +60,7 @@ public class HtmlLabel extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getForAttribute() {
-        return getAttributeValue("for");
+        return getAttribute("for");
     }
 
     /**
@@ -72,7 +72,7 @@ public class HtmlLabel extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getAccessKeyAttribute() {
-        return getAttributeValue("accesskey");
+        return getAttribute("accesskey");
     }
 
     /**
@@ -84,7 +84,7 @@ public class HtmlLabel extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getOnFocusAttribute() {
-        return getAttributeValue("onfocus");
+        return getAttribute("onfocus");
     }
 
     /**
@@ -96,7 +96,7 @@ public class HtmlLabel extends ClickableElement {
      * or an empty string if that attribute isn't defined.
      */
     public final String getOnBlurAttribute() {
-        return getAttributeValue("onblur");
+        return getAttribute("onblur");
     }
 
     /**
@@ -126,24 +126,19 @@ public class HtmlLabel extends ClickableElement {
      * equal to the value of the for attribute of this label.
      * @return the element, <code>null</code> if not found
      */
-    public ClickableElement getReferencedElement() {
+    public HtmlElement getReferencedElement() {
         final String elementId = getForAttribute();
         if (!ATTRIBUTE_NOT_DEFINED.equals(elementId)) {
             try {
-                final HtmlElement element = getHtmlElementById(elementId);
-                if (element instanceof ClickableElement) {
-                    return (ClickableElement) element;
-                }
+                return getElementById(elementId);
             }
             catch (final ElementNotFoundException e) {
                 return null;
             }
         }
-        else {
-            for (final DomNode element : getChildren()) {
-                if (element instanceof HtmlInput) {
-                    return (HtmlInput) element;
-                }
+        for (final DomNode element : getChildren()) {
+            if (element instanceof HtmlInput) {
+                return (HtmlInput) element;
             }
         }
         return null;
@@ -154,6 +149,7 @@ public class HtmlLabel extends ClickableElement {
      * {@inheritDoc}
      */
     @Override
+    @SuppressWarnings("unchecked")
     public Page click() throws IOException {
         // first the click on the label
         final Page page = super.click();
@@ -162,7 +158,7 @@ public class HtmlLabel extends ClickableElement {
         final Page response;
 
         // then the click on the referenced element
-        final ClickableElement element = getReferencedElement();
+        final HtmlElement element = getReferencedElement();
         if (element != null) {
             response = element.click();
         }

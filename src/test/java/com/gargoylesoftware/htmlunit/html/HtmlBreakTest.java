@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
 /**
  * Tests for {@link HtmlBreak}.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4002 $
  * @author Ahmed Ashour
  */
 public class HtmlBreakTest extends WebTestCase {
@@ -34,7 +34,7 @@ public class HtmlBreakTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testSimpleScriptable() throws Exception {
+    public void simpleScriptable() throws Exception {
         final String html = "<html><head>\n"
             + "<script>\n"
             + "  function test() {\n"
@@ -50,5 +50,19 @@ public class HtmlBreakTest extends WebTestCase {
         final HtmlPage page = loadPage(BrowserVersion.FIREFOX_2, html, collectedAlerts);
         assertTrue(HtmlBreak.class.isInstance(page.getHtmlElementById("myId")));
         assertEquals(expectedAlerts, collectedAlerts);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void asText() throws Exception {
+        final String html = "<html><head>\n"
+            + "</head><body>"
+            + "Hello<br/>world\n"
+            + "</body></html>";
+
+        final HtmlPage page = loadPage(html);
+        assertEquals("Hello" + LINE_SEPARATOR + "world", page.getBody().asText());
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,20 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.Function;
-import org.mozilla.javascript.Scriptable;
+import net.sourceforge.htmlunit.corejs.javascript.Context;
+import net.sourceforge.htmlunit.corejs.javascript.Undefined;
 
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLCollection;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
 
 /**
  * Superclass for all row-containing JavaScript host classes, including tables,
  * table headers, table bodies and table footers.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4590 $
  * @author Daniel Gredler
  * @author Chris Erskine
  * @author Marc Guillemot
@@ -38,16 +39,10 @@ public class RowContainer extends HTMLElement {
     private HTMLCollection rows_; // has to be a member to have equality (==) working
 
     /**
-     * Create an instance.
+     * Creates an instance.
      */
     public RowContainer() {
-    }
-
-    /**
-     * JavaScript constructor. This must be declared in every JavaScript file because
-     * the Rhino engine won't walk up the hierarchy looking for constructors.
-     */
-    public void jsConstructor() {
+        // Empty.
     }
 
     /**
@@ -72,8 +67,7 @@ public class RowContainer extends HTMLElement {
 
     /**
      * Deletes the row at the specified index.
-     * @see <a href="http://msdn.microsoft.com/workshop/author/dhtml/reference/methods/deleterow.asp">
-     * MSDN Documentation</a>
+     * @see <a href="http://msdn.microsoft.com/en-us/library/ms536408.aspx">MSDN Documentation</a>
      * @param rowIndex the zero-based index of the row to delete
      */
     public void jsxFunction_deleteRow(int rowIndex) {
@@ -93,27 +87,17 @@ public class RowContainer extends HTMLElement {
      * Inserts a new row at the specified index in the element's row collection. If the index
      * is -1 or there is no index specified, then the row is appended at the end of the
      * element's row collection.
-     * @see <a href="http://msdn.microsoft.com/workshop/author/dhtml/reference/methods/insertrow.asp">
-     * MSDN Documentation</a>
-     * @param cx the current JavaScript context
-     * @param s this scriptable object
-     * @param args the arguments for the function call
-     * @param f the function object that invoked this function
+     * @see <a href="http://msdn.microsoft.com/en-us/library/ms536457.aspx">MSDN Documentation</a>
+     * @param index specifies where to insert the row in the rows collection.
+     *        The default value is -1, which appends the new row to the end of the rows collection
      * @return the newly-created row
      */
-    public static Object jsxFunction_insertRow(
-            final Context cx, final Scriptable s, final Object[] args,
-            final Function f) {
-        final RowContainer rowContainer = (RowContainer) s;
-        final int rowIndex;
-        if (args.length > 0) {
-            rowIndex = ((Number) args[0]).intValue();
+    public Object jsxFunction_insertRow(final Object index) {
+        int rowIndex = -1;
+        if (index != Undefined.instance) {
+            rowIndex = (int) Context.toNumber(index);
         }
-        else {
-            rowIndex = -1;
-        }
-
-        final HTMLCollection rows = (HTMLCollection) rowContainer.jsxGet_rows();
+        final HTMLCollection rows = (HTMLCollection) jsxGet_rows();
         final int rowCount = rows.jsxGet_length();
         final int r;
         if (rowIndex == -1 || rowIndex == rowCount) {
@@ -128,7 +112,7 @@ public class RowContainer extends HTMLElement {
                     + "(index: " + rowIndex + ", " + rowCount + " rows)");
         }
 
-        return rowContainer.insertRow(r);
+        return insertRow(r);
     }
 
     /**
@@ -136,10 +120,10 @@ public class RowContainer extends HTMLElement {
      * @param index the index where the row should be inserted (0 <= index < nbRows)
      * @return the inserted row
      */
-    protected Object insertRow(final int index) {
+    public Object insertRow(final int index) {
         final HTMLCollection rows = (HTMLCollection) jsxGet_rows();
         final int rowCount = rows.jsxGet_length();
-        final HtmlElement newRow = ((HtmlPage) getDomNodeOrDie().getPage()).createHtmlElement("tr");
+        final HtmlElement newRow = ((HtmlPage) getDomNodeOrDie().getPage()).createElement("tr");
         if (rowCount == 0) {
             getDomNodeOrDie().appendChild(newRow);
         }
@@ -176,4 +160,21 @@ public class RowContainer extends HTMLElement {
         }
         return null;
     }
+
+    /**
+     * Returns the value of the "align" property.
+     * @return the value of the "align" property
+     */
+    public String jsxGet_align() {
+        return getAlign(true);
+    }
+
+    /**
+     * Sets the value of the "align" property.
+     * @param align the value of the "align" property
+     */
+    public void jsxSet_align(final String align) {
+        setAlign(align, false);
+    }
+
 }

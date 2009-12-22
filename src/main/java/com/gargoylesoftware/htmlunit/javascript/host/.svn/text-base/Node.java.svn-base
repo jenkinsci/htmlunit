@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,18 +17,23 @@ package com.gargoylesoftware.htmlunit.javascript.host;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.sourceforge.htmlunit.corejs.javascript.Context;
+import net.sourceforge.htmlunit.corejs.javascript.Function;
+import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
+import net.sourceforge.htmlunit.corejs.javascript.Undefined;
+
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.Function;
 
 import com.gargoylesoftware.htmlunit.ScriptResult;
 import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.html.DomDocumentFragment;
 import com.gargoylesoftware.htmlunit.html.DomNode;
-import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLCollection;
+import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLSerializer;
+import com.gargoylesoftware.htmlunit.xml.XmlPage;
 
 /**
  * The JavaScript object "Node" which is the base class for all DOM
@@ -46,8 +51,11 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
  */
 public class Node extends SimpleScriptable {
 
-    private HTMLCollection childNodes_; //has to be a member to have equality (==) working
     private static final long serialVersionUID = -5695262053081637445L;
+
+    /** "Live" child nodes collection; has to be a member to have equality (==) working. */
+    private HTMLCollection childNodes_;
+
     private EventListenersContainer eventListenersContainer_;
 
     /** @see org.w3c.dom.Node#ELEMENT_NODE */
@@ -86,6 +94,25 @@ public class Node extends SimpleScriptable {
     /** @see org.w3c.dom.Node#NOTATION_NODE */
     public static final short NOTATION_NODE = org.w3c.dom.Node.NOTATION_NODE;
 
+    /** @see org.w3c.dom.Node#DOCUMENT_POSITION_DISCONNECTED */
+    public static final short DOCUMENT_POSITION_DISCONNECTED = org.w3c.dom.Node.DOCUMENT_POSITION_DISCONNECTED;
+
+    /** @see org.w3c.dom.Node#DOCUMENT_POSITION_PRECEDING */
+    public static final short DOCUMENT_POSITION_PRECEDING = org.w3c.dom.Node.DOCUMENT_POSITION_PRECEDING;
+
+    /** @see org.w3c.dom.Node#DOCUMENT_POSITION_FOLLOWING */
+    public static final short DOCUMENT_POSITION_FOLLOWING = org.w3c.dom.Node.DOCUMENT_POSITION_FOLLOWING;
+
+    /** @see org.w3c.dom.Node#DOCUMENT_POSITION_CONTAINS */
+    public static final short DOCUMENT_POSITION_CONTAINS = org.w3c.dom.Node.DOCUMENT_POSITION_CONTAINS;
+
+    /** @see org.w3c.dom.Node#DOCUMENT_POSITION_CONTAINED_BY */
+    public static final short DOCUMENT_POSITION_CONTAINED_BY = org.w3c.dom.Node.DOCUMENT_POSITION_CONTAINED_BY;
+
+    /** @see org.w3c.dom.Node#DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC */
+    public static final short DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC
+        = org.w3c.dom.Node.DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC;
+
     /**
      * Creates an instance.
      */
@@ -106,20 +133,7 @@ public class Node extends SimpleScriptable {
      * @return the node name
      */
     public String jsxGet_nodeName() {
-        final DomNode domNode = getDomNodeOrDie();
-        String nodeName = domNode.getNodeName();
-
-        // If this is an HtmlElement then flip the result to uppercase. This should really be
-        // changed in HtmlElement itself but that would break backwards compatibility fairly
-        // significantly as that one is documented as always returning a lowercase value.
-        // Update: not sure how accurate the previous comment is. It seems that uppercase only
-        // applies within an Html document and not for HtmlElement within an xml document
-        if (domNode instanceof HtmlElement
-            && ((HtmlElement) domNode).getNamespaceURI() == null
-            && (domNode.getOwnerDocument() instanceof HtmlPage)) {
-            nodeName = nodeName.toUpperCase();
-        }
-        return nodeName;
+        return getDomNodeOrDie().getNodeName();
     }
 
     /**
@@ -161,8 +175,7 @@ public class Node extends SimpleScriptable {
             if (!(parentNode instanceof SgmlPage)
                     && !(this instanceof DocumentFragment) && parentNode.getParentNode() == null
                     && getBrowserVersion().isIE()) {
-                final DomDocumentFragment fragment =
-                    ((SgmlPage) parentNode.getPage()).createDomDocumentFragment();
+                final DomDocumentFragment fragment = parentNode.getPage().createDomDocumentFragment();
                 fragment.appendChild(parentNode);
             }
         }
@@ -177,18 +190,60 @@ public class Node extends SimpleScriptable {
     public Object jsxFunction_cloneNode(final boolean deep) {
         final DomNode domNode = getDomNodeOrDie();
         final DomNode clonedNode = domNode.cloneNode(deep);
-        return getJavaScriptNode(clonedNode);
+
+        final Node jsClonedNode = getJavaScriptNode(clonedNode);
+        if (getBrowserVersion().isIE()) { // need to copy the event listener when they exist
+            copyEventListenersWhenNeeded(domNode, clonedNode);
+        }
+        return jsClonedNode;
+    }
+
+    private void copyEventListenersWhenNeeded(final DomNode domNode, final DomNode clonedNode) {
+        final Node jsNode = (Node) domNode.getScriptObject();
+        if (jsNode != null) {
+            final Node jsClonedNode = getJavaScriptNode(clonedNode);
+            jsClonedNode.getEventListenersContainer().copyFrom(jsNode.getEventListenersContainer());
+        }
+
+        // look through the children
+        DomNode child =  domNode.getFirstChild();
+        DomNode clonedChild =  clonedNode.getFirstChild();
+        while (child != null && clonedChild != null) {
+            copyEventListenersWhenNeeded(child, clonedChild);
+            child = child.getNextSibling();
+            clonedChild = clonedChild.getNextSibling();
+        }
     }
 
     /**
-     * Add a DOM node as a child to this node before the referenced
-     * node. If the referenced node is null, append to the end.
-     * @param newChildObject the node to add to this node
-     * @param refChildObject the node before which to add the new child
+     * Add a DOM node as a child to this node before the referenced node.
+     * If the referenced node is null, append to the end.
+     * @param context the JavaScript context
+     * @param thisObj the scriptable
+     * @param args the arguments passed into the method
+     * @param function the function
      * @return the newly added child node
      */
-    public Object jsxFunction_insertBefore(
-            final Object newChildObject, final Object refChildObject) {
+    public static Object jsxFunction_insertBefore(
+            final Context context, final Scriptable thisObj, final Object[] args, final Function function) {
+        return ((Node) thisObj).jsxFunction_insertBefore(args);
+    }
+
+    /**
+     * Add a DOM node as a child to this node before the referenced node.
+     * If the referenced node is null, append to the end.
+     * @param args the arguments
+     * @return the newly added child node
+     */
+    protected Object jsxFunction_insertBefore(final Object[] args) {
+        final Object newChildObject = args[0];
+        final Object refChildObject;
+        if (args.length > 1) {
+            refChildObject = args[1];
+        }
+        else {
+            refChildObject = Undefined.instance;
+        }
         Object appendedChild = null;
 
         if (newChildObject instanceof Node) {
@@ -197,18 +252,26 @@ public class Node extends SimpleScriptable {
             if (newChildNode instanceof DomDocumentFragment) {
                 final DomDocumentFragment fragment = (DomDocumentFragment) newChildNode;
                 for (final DomNode child : fragment.getChildren()) {
-                    jsxFunction_insertBefore(child.getScriptObject(), refChildObject);
+                    jsxFunction_insertBefore(new Object[] {child.getScriptObject(), refChildObject});
                 }
                 return newChildObject;
             }
             final DomNode refChildNode;
             // IE accepts non standard calls with only one arg
-            if (Context.getUndefinedValue().equals(refChildObject)) {
+            if (refChildObject == Undefined.instance) {
                 if (getBrowserVersion().isIE()) {
+                    if (args.length > 1) {
+                        throw Context.reportRuntimeError("Invalid argument.");
+                    }
                     refChildNode = null;
                 }
                 else {
-                    throw Context.reportRuntimeError("insertBefore: not enough arguments");
+                    if (args.length == 2) {
+                        refChildNode = null;
+                    }
+                    else {
+                        throw Context.reportRuntimeError("insertBefore: not enough arguments");
+                    }
                 }
             }
             else if (refChildObject != null) {
@@ -218,21 +281,22 @@ public class Node extends SimpleScriptable {
                 refChildNode = null;
             }
 
+            final DomNode domNode = getDomNodeOrDie();
             // Append the child to the parent node
             if (refChildNode != null) {
                 refChildNode.insertBefore(newChildNode);
                 appendedChild = newChildObject;
             }
             else {
-                getDomNodeOrDie().appendChild(newChildNode);
+                domNode.appendChild(newChildNode);
+                appendedChild = newChildObject;
             }
 
             //if parentNode is null in IE, create a DocumentFragment to be the parentNode
-            if (getDomNodeOrDie().getParentNode() == null
+            if (domNode.getParentNode() == null
                     && getWindow().getWebWindow().getWebClient().getBrowserVersion().isIE()) {
-                final DomDocumentFragment fragment =
-                    ((HtmlPage) getDomNodeOrDie().getPage()).createDomDocumentFragment();
-                fragment.appendChild(getDomNodeOrDie());
+                final DomDocumentFragment fragment = domNode.getPage().createDomDocumentFragment();
+                fragment.appendChild(domNode);
             }
         }
         return appendedChild;
@@ -284,7 +348,7 @@ public class Node extends SimpleScriptable {
      * Returns the child nodes of the current element.
      * @return the child nodes of the current element
      */
-    public Object jsxGet_childNodes() {
+    public HTMLCollection jsxGet_childNodes() {
         if (childNodes_ == null) {
             childNodes_ = new HTMLCollection(this);
             childNodes_.initFromChildren(getDomNodeOrDie());
@@ -304,14 +368,14 @@ public class Node extends SimpleScriptable {
         if (newChildObject instanceof DocumentFragment) {
             final DocumentFragment fragment = (DocumentFragment) newChildObject;
             Node firstNode = null;
-            final Node refChildObject = (Node) ((Node) oldChildObject).jsxGet_nextSibling();
+            final Node refChildObject = ((Node) oldChildObject).jsxGet_nextSibling();
             for (final DomNode node : fragment.getDomNodeOrDie().getChildren()) {
                 if (firstNode == null) {
                     jsxFunction_replaceChild(node.getScriptObject(), oldChildObject);
                     firstNode = (Node) node.getScriptObject();
                 }
                 else {
-                    jsxFunction_insertBefore(node.getScriptObject(), refChildObject);
+                    jsxFunction_insertBefore(new Object[] {node.getScriptObject(), refChildObject});
                 }
             }
             if (firstNode == null) {
@@ -323,12 +387,10 @@ public class Node extends SimpleScriptable {
             // Get XML nodes for the DOM nodes passed in
             final DomNode newChildNode = ((Node) newChildObject).getDomNodeOrDie();
             final DomNode oldChildNode;
-            if (oldChildObject != null) {
-                // Replace the old child with the new child.
-                oldChildNode = ((Node) oldChildObject).getDomNodeOrDie();
-                oldChildNode.replace(newChildNode);
-                removedChild = oldChildObject;
-            }
+            // Replace the old child with the new child.
+            oldChildNode = ((Node) oldChildObject).getDomNodeOrDie();
+            oldChildNode.replace(newChildNode);
+            removedChild = oldChildObject;
         }
 
         return removedChild;
@@ -339,7 +401,7 @@ public class Node extends SimpleScriptable {
      * contains the current node.
      * @return the parent node
      */
-    public Object jsxGet_parentNode() {
+    public Node jsxGet_parentNode() {
         return getJavaScriptNode(getDomNodeOrDie().getParentNode());
     }
 
@@ -349,7 +411,7 @@ public class Node extends SimpleScriptable {
      * @return the next sibling node or null if the current node has
      * no next sibling.
      */
-    public Object jsxGet_nextSibling() {
+    public Node jsxGet_nextSibling() {
         return getJavaScriptNode(getDomNodeOrDie().getNextSibling());
     }
 
@@ -359,7 +421,7 @@ public class Node extends SimpleScriptable {
      * @return the previous sibling node or null if the current node has
      * no previous sibling.
      */
-    public Object jsxGet_previousSibling() {
+    public Node jsxGet_previousSibling() {
         return getJavaScriptNode(getDomNodeOrDie().getPreviousSibling());
     }
 
@@ -369,7 +431,7 @@ public class Node extends SimpleScriptable {
      * @return the first child node or null if the current node has
      * no children.
      */
-    public Object jsxGet_firstChild() {
+    public Node jsxGet_firstChild() {
         return getJavaScriptNode(getDomNodeOrDie().getFirstChild());
     }
 
@@ -379,7 +441,7 @@ public class Node extends SimpleScriptable {
      * @return the last child node or null if the current node has
      * no children.
      */
-    public Object jsxGet_lastChild() {
+    public Node jsxGet_lastChild() {
         return getJavaScriptNode(getDomNodeOrDie().getLastChild());
     }
 
@@ -388,19 +450,18 @@ public class Node extends SimpleScriptable {
      * @param domNode the DomNode
      * @return the JavaScript node or null if the DomNode was null
      */
-    protected Object getJavaScriptNode(final DomNode domNode) {
+    protected Node getJavaScriptNode(final DomNode domNode) {
         if (domNode == null) {
             return null;
         }
-        return getScriptableFor(domNode);
+        return (Node) getScriptableFor(domNode);
     }
 
     /**
      * Allows the registration of event listeners on the event target.
      * @param type the event type to listen for (like "onclick")
      * @param listener the event listener
-     * @see <a href="http://msdn.microsoft.com/workshop/author/dhtml/reference/methods/attachevent.asp">
-     * MSDN documentation</a>
+     * @see <a href="http://msdn.microsoft.com/en-us/library/ms536343.aspx">MSDN documentation</a>
      * @return <code>true</code> if the listener has been added
      */
     public boolean jsxFunction_attachEvent(final String type, final Function listener) {
@@ -433,8 +494,7 @@ public class Node extends SimpleScriptable {
      * Allows the removal of event listeners on the event target.
      * @param type the event type to listen for (like "onclick")
      * @param listener the event listener
-     * @see <a href="http://msdn.microsoft.com/workshop/author/dhtml/reference/methods/detachevent.asp">
-     * MSDN documentation</a>
+     * @see <a href="http://msdn.microsoft.com/en-us/library/ms536411.aspx">MSDN documentation</a>
      */
     public void jsxFunction_detachEvent(final String type, final Function listener) {
         jsxFunction_removeEventListener(StringUtils.substring(type, 2), listener, false);
@@ -458,13 +518,11 @@ public class Node extends SimpleScriptable {
      */
     public ScriptResult executeEvent(final Event event) {
         if (eventListenersContainer_ != null) {
+
             final HtmlPage page = (HtmlPage) getDomNodeOrDie().getPage();
             final boolean isIE = getBrowserVersion().isIE();
             final Window window = (Window) page.getEnclosingWindow().getScriptObject();
             final Object[] args = new Object[] {event};
-            if (isIE) {
-                window.setEvent(event);
-            }
 
             // handlers declared as property on a node don't receive the event as argument for IE
             final Object[] propHandlerArgs;
@@ -475,11 +533,12 @@ public class Node extends SimpleScriptable {
                 propHandlerArgs = args;
             }
 
+            window.setCurrentEvent(event);
             try {
                 return eventListenersContainer_.executeListeners(event, args, propHandlerArgs);
             }
             finally {
-                window.setEvent(null); // reset event
+                window.setCurrentEvent(null); // reset event
             }
         }
 
@@ -499,9 +558,8 @@ public class Node extends SimpleScriptable {
 
         event.startFire();
         ScriptResult result = null;
-        if (ie) {
-            window.setEvent(event);
-        }
+        final Event previousEvent = window.getCurrentEvent();
+        window.setCurrentEvent(event);
 
         try {
             // window's listeners
@@ -563,7 +621,7 @@ public class Node extends SimpleScriptable {
         }
         finally {
             event.endFire();
-            window.setEvent(null); // reset event
+            window.setCurrentEvent(previousEvent); // reset event
         }
 
         return result;
@@ -608,9 +666,7 @@ public class Node extends SimpleScriptable {
         if (eventListenersContainer_ == null) {
             return null;
         }
-        else {
-            return eventListenersContainer_.getEventHandlerProp(StringUtils.substring(eventName.toLowerCase(), 2));
-        }
+        return eventListenersContainer_.getEventHandlerProp(StringUtils.substring(eventName.toLowerCase(), 2));
     }
 
     /**
@@ -624,4 +680,87 @@ public class Node extends SimpleScriptable {
         }
         return ((SgmlPage) document).getScriptObject();
     }
+
+    /**
+     * Returns The Namespace prefix.
+     * @return the Namespace prefix
+     */
+    public String jsxGet_prefix() {
+        final String prefix = getDomNodeOrDie().getPrefix();
+        if (getBrowserVersion().isIE() && (prefix == null || getDomNodeOrDie().getPage() instanceof HtmlPage)) {
+            return "";
+        }
+        return prefix;
+    }
+
+    /**
+     * Returns the local name of this element.
+     * @return the local name of this element
+     */
+    public String jsxGet_localName() {
+        return getDomNodeOrDie().getLocalName();
+    }
+
+    /**
+     * Returns The URI that identifies an XML namespace.
+     * @return the URI that identifies an XML namespace
+     */
+    public String jsxGet_namespaceURI() {
+        if (getBrowserVersion().isIE()) {
+            return "";
+        }
+        return getDomNodeOrDie().getNamespaceURI();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setDomNode(final DomNode domNode) {
+        super.setDomNode(domNode);
+        if (getBrowserVersion().isIE() && !(getDomNodeOrDie().getPage() instanceof HtmlPage)) {
+            ActiveXObject.addProperty(this, "namespaceURI", true, false);
+            ActiveXObject.addProperty(this, "prefix", true, false);
+        }
+    }
+
+    /**
+     * Compares the positions of this node and the provided node within the document.
+     * @param node node object that specifies the node to check
+     * @return how the node is positioned relatively to the reference node.
+     * @see <a href="http://www.w3.org/TR/DOM-Level-3-Core/core.html#Node3-compareDocumentPosition">DOM level 3</a>
+     * @see org.w3c.dom.Node#compareDocumentPosition(org.w3c.dom.Node)
+     */
+    public short jsxFunction_compareDocumentPosition(final Node node) {
+        return getDomNodeOrDie().compareDocumentPosition(node.getDomNodeOrDie());
+    }
+
+    /**
+     * Merges adjacent TextNode objects to produce a normalized document object model.
+     */
+    public void jsxFunction_normalize() {
+        getDomNodeOrDie().normalize();
+    }
+
+    /**
+     * Represents the xml content of the node and its descendants.
+     * @return the xml content of the node and its descendants
+     */
+    public Object jsxGet_xml() {
+        final DomNode node = getDomNodeOrDie();
+        if (node.getPage() instanceof XmlPage) {
+            if (this instanceof Element) {
+                final XMLSerializer serializer = new XMLSerializer();
+                serializer.setParentScope(getParentScope());
+                String xml = serializer.jsxFunction_serializeToString(this);
+                if (getBrowserVersion().isIE() && xml.endsWith("\r\n")) {
+                    xml = xml.substring(0, xml.length() - 2);
+                }
+                return xml;
+            }
+            return node.asXml();
+        }
+        return Undefined.instance;
+    }
+
 }

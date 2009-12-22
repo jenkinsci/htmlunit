@@ -1,18 +1,18 @@
-8
+10
 
 dir
-3268
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.2/src/test/java/com/gargoylesoftware
+5285
+https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.6/src/test/java/com/gargoylesoftware
 https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
 
 
 
-2008-07-22T13:36:26.426125Z
-3191
-sudhan_moghe
+2009-09-02T13:03:48.965618Z
+4900
+asashour
 
 
-svn:special svn:externals svn:needs-lock
+
 
 
 

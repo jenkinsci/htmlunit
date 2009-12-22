@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,10 +22,10 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.StringTokenizer;
 
-import org.mozilla.javascript.EcmaError;
-import org.mozilla.javascript.JavaScriptException;
-import org.mozilla.javascript.RhinoException;
-import org.mozilla.javascript.WrappedException;
+import net.sourceforge.htmlunit.corejs.javascript.EcmaError;
+import net.sourceforge.htmlunit.corejs.javascript.JavaScriptException;
+import net.sourceforge.htmlunit.corejs.javascript.RhinoException;
+import net.sourceforge.htmlunit.corejs.javascript.WrappedException;
 
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 
@@ -33,7 +33,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
  * An exception that will be thrown if an error occurs during the processing of
  * a script.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4402 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Marc Guillemot
  */

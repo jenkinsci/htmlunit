@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
 /**
  * Tests for {@link HtmlIsIndex}.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4463 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Marc Guillemot
  * @author Ahmed Ashour
@@ -52,9 +52,9 @@ public class HtmlIsIndexTest extends WebTestCase {
         final HtmlPage page = loadPage(html);
         final MockWebConnection webConnection = getMockConnection(page);
 
-        final HtmlForm form = (HtmlForm) page.getHtmlElementById("form1");
+        final HtmlForm form = page.getHtmlElementById("form1");
 
-        final HtmlIsIndex isInput = (HtmlIsIndex) form.getHtmlElementsByAttribute(
+        final HtmlIsIndex isInput = form.<HtmlIsIndex>getElementsByAttribute(
                 "isindex", "prompt", "enterSomeText").get(0);
         isInput.setValue("Flintstone");
         final Page secondPage = form.submit((SubmittableElement) null);
@@ -62,7 +62,7 @@ public class HtmlIsIndexTest extends WebTestCase {
         final List<NameValuePair> expectedParameters = new ArrayList<NameValuePair>();
         expectedParameters.add(new NameValuePair("enterSomeText", "Flintstone"));
 
-        assertEquals("url", URL_GARGOYLE, secondPage.getWebResponse().getUrl());
+        assertEquals("url", URL_GARGOYLE, secondPage.getWebResponse().getRequestSettings().getUrl());
         assertSame("method", HttpMethod.POST, webConnection.getLastMethod());
         Assert.assertEquals("parameters", expectedParameters, webConnection.getLastParameters());
     }

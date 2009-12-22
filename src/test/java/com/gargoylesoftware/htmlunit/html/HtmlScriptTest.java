@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@ package com.gargoylesoftware.htmlunit.html;
 
 import static org.junit.Assert.fail;
 
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,7 +31,7 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
 /**
  * Tests for {@link HtmlScript}.
  *
- * @version $Revision: 3057 $
+ * @version $Revision: 4550 $
  * @author Marc Guillemot
  * @author Daniel Gredler
  * @author Ahmed Ashour
@@ -55,7 +54,7 @@ public class HtmlScriptTest extends WebTestCase {
 
         final WebClient client = new WebClient();
 
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setDefaultResponse("inexistent", 404, "Not Found", "text/html");
         webConnection.setResponse(URL_FIRST, html);
         client.setWebConnection(webConnection);
@@ -94,7 +93,7 @@ public class HtmlScriptTest extends WebTestCase {
 
         final HtmlPage page = loadPage(htmlContent);
 
-        final HtmlScript script = (HtmlScript) page.getHtmlElementById("script1");
+        final HtmlScript script = page.getHtmlElementById("script1");
         assertEquals("", script.asText());
     }
 
@@ -130,7 +129,7 @@ public class HtmlScriptTest extends WebTestCase {
 
         final WebClient client = new WebClient();
 
-        final MockWebConnection webConnection = new MockWebConnection(client);
+        final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstPage);
         webConnection.setResponse(URL_SECOND, secondPage);
         client.setWebConnection(webConnection);
@@ -177,162 +176,9 @@ public class HtmlScriptTest extends WebTestCase {
         assertEquals(expectedFF, actualFF);
 
         final List<String> actualIE = new ArrayList<String>();
-        loadPage(BrowserVersion.INTERNET_EXPLORER_7_0, html, actualIE);
+        loadPage(BrowserVersion.INTERNET_EXPLORER_7, html, actualIE);
         final String[] expectedIE = new String[] {"normal", "deferred", "onload"};
         assertEquals(expectedIE, actualIE);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testSimpleScriptable() throws Exception {
-        final String html = "<html><head>\n"
-            + "<script>\n"
-            + "  function test() {\n"
-            + "    alert(document.getElementById('myId'));\n"
-            + "  }\n"
-            + "</script>\n"
-            + "</head><body onload='test()'>\n"
-            + "  <script id='myId'></script>\n"
-            + "</body></html>";
-
-        final String[] expectedAlerts = {"[object HTMLScriptElement]"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(BrowserVersion.FIREFOX_2, html, collectedAlerts);
-        assertTrue(HtmlScript.class.isInstance(page.getHtmlElementById("myId")));
-        assertEquals(expectedAlerts, collectedAlerts);
-    }
-
-    /**
-     * Verifies that setting a script's <tt>src</tt> attribute behaves correctly.
-     * @throws Exception if an error occurs
-     */
-    @Test
-    public void testSettingSrcAttribute() throws Exception {
-        testSettingSrcAttribute(BrowserVersion.FIREFOX_2, new String[] {"1", "2", "3"});
-        testSettingSrcAttribute(BrowserVersion.INTERNET_EXPLORER_6_0, new String[] {"1", "2", "3", "4", "5"});
-        testSettingSrcAttribute(BrowserVersion.INTERNET_EXPLORER_7_0, new String[] {"1", "2", "3", "4", "5"});
-    }
-
-    /**
-     * Verifies that setting a script's <tt>src</tt> attribute behaves correctly.
-     * @param version the browser version being tested
-     * @param expected the expected alerts
-     * @throws Exception if an error occurs
-     */
-    private void testSettingSrcAttribute(final BrowserVersion version, final String[] expected) throws Exception {
-        final String html =
-            "<html>\n"
-            + "  <head>\n"
-            + "    <title>Test</title>\n"
-            + "    <script id='a'></script>\n"
-            + "    <script id='b'>alert('1');</script>\n"
-            + "    <script id='c' src='script2.js'></script>\n"
-            + "    <script>\n"
-            + "      function test() {\n"
-            + "        document.getElementById('a').src = 'script3.js';\n"
-            + "        document.getElementById('b').src = 'script4.js';\n"
-            + "        document.getElementById('c').src = 'script5.js';\n"
-            + "      }\n"
-            + "    </script>\n"
-            + "  </head>\n"
-            + "  <body onload='test()'>\n"
-            + "      test\n"
-            + "  </body>\n"
-            + "</html>";
-
-        final List<String> actual = new ArrayList<String>();
-
-        final WebClient client = new WebClient(version);
-        client.setAlertHandler(new CollectingAlertHandler(actual));
-
-        final MockWebConnection webConnection = new MockWebConnection(client);
-        webConnection.setDefaultResponse(html);
-        webConnection.setResponse(new URL("http://abc/script2.js"), "alert(2);");
-        webConnection.setResponse(new URL("http://abc/script3.js"), "alert(3);");
-        webConnection.setResponse(new URL("http://abc/script4.js"), "alert(4);");
-        webConnection.setResponse(new URL("http://abc/script5.js"), "alert(5);");
-        client.setWebConnection(webConnection);
-
-        client.getPage("http://abc/");
-        assertEquals(expected, actual);
-    }
-
-    /**
-     * @throws Exception if an error occurs
-     */
-    @Test
-    public void testAsXml() throws Exception {
-        final String html
-            = "<html><head><title>foo</title></head><body>\n"
-            + "<script id='script1'>\n"
-            + "    alert('hello');\n"
-            + "</script></body></html>";
-
-        final String[] expectedAlerts = {"hello"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(html, collectedAlerts);
-        assertEquals(expectedAlerts, collectedAlerts);
-
-        // asXml() should be reusable
-        final String xml = page.asXml();
-        collectedAlerts.clear();
-        loadPage(xml, collectedAlerts);
-        assertEquals(expectedAlerts, collectedAlerts);
-    }
-
-    /**
-     * Verifies that we're lenient about whitespace before and after URLs in the "src" attribute.
-     * @throws Exception if an error occurs
-     */
-    @Test
-    public void testWhitespaceInSrc() throws Exception {
-        final String html = "<html><head><script src=' " + URL_SECOND + " '></script></head><body>abc</body></html>";
-        final String js = "alert('ok')";
-
-        final WebClient client = new WebClient();
-
-        final MockWebConnection webConnection = new MockWebConnection(client);
-        webConnection.setResponse(URL_FIRST, html);
-        webConnection.setResponse(URL_SECOND, js);
-        client.setWebConnection(webConnection);
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-
-        client.getPage(URL_FIRST);
-        final String[] expectedAlerts = {"ok"};
-        assertEquals(expectedAlerts, collectedAlerts);
-    }
-
-    /**
-     * Verifies that cloned script nodes do not reload or re-execute their content (bug 1954869).
-     * @throws Exception if an error occurs
-     */
-    @Test
-    public void testScriptCloneDoesNotReloadScript() throws Exception {
-        final String html = "<html><body><script src='" + URL_SECOND + "'></script></body></html>";
-        final String js = "alert('loaded')";
-
-        final WebClient client = new WebClient();
-
-        final MockWebConnection conn = new MockWebConnection(client);
-        conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, js, "text/javascript");
-        client.setWebConnection(conn);
-
-        final List<String> actual = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(actual));
-
-        final HtmlPage page = (HtmlPage) client.getPage(URL_FIRST);
-        assertEquals(2, conn.getRequestCount());
-
-        page.cloneNode(true);
-        assertEquals(2, conn.getRequestCount());
-
-        final String[] expected = {"loaded"};
-        assertEquals(expected, actual);
     }
 
 }

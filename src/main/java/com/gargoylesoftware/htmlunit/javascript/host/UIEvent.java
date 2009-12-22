@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import com.gargoylesoftware.htmlunit.html.DomNode;
  * JavaScript object representing a UI event. For general information on which properties and functions should be
  * supported, see <a href="http://www.w3.org/TR/DOM-Level-3-Events/events.html#Events-UIEvent">DOM Level 3 Events</a>.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4002 $
  * @author Daniel Gredler
  */
 public class UIEvent extends Event {
@@ -52,15 +52,17 @@ public class UIEvent extends Event {
     }
 
     /**
-     * {@inheritDoc}
+     * Creates a new event instance for a keypress event.
+     * @param domNode the DOM node that triggered the event
+     * @param type the event type
+     * @param keyCode the key code associated with the event
+     * @param shiftKey true if SHIFT is pressed
+     * @param ctrlKey true if CTRL is pressed
+     * @param altKey true if ALT is pressed
      */
-    @Override
-    public void copyPropertiesFrom(final Event event) {
-        super.copyPropertiesFrom(event);
-        if (event instanceof UIEvent) {
-            final UIEvent uiEvent = (UIEvent) event;
-            detail_ = uiEvent.detail_;
-        }
+    public UIEvent(final DomNode domNode, final String type, final int keyCode,
+            final boolean shiftKey, final boolean ctrlKey, final boolean altKey) {
+        super(domNode, type, keyCode, shiftKey, ctrlKey, altKey);
     }
 
     /**

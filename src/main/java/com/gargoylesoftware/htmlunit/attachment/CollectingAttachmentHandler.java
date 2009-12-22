@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import com.gargoylesoftware.htmlunit.WebAssert;
  * An {@link AttachmentHandler} implementation which creates an {@link Attachment} for
  * each attached page, collecting all created attachments into a list.
  *
- * @version $Revision: 3132 $
+ * @version $Revision: 4002 $
  * @author Bruce Chapman
  * @author Sudhan Moghe
  * @author Daniel Gredler

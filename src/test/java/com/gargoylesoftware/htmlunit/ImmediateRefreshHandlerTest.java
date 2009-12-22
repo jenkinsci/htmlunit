@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import org.junit.runner.RunWith;
 /**
  * Tests for {@link ImmediateRefreshHandler}.
  *
- * @version $Revision: 3075 $
+ * @version $Revision: 4731 $
  * @author Marc Guillemot
  */
 @RunWith(BrowserRunner.class)
@@ -39,31 +39,26 @@ public final class ImmediateRefreshHandlerTest extends WebTestCase {
 
         // connection will return a page with <meta ... refresh> for the first call
         // and the same page without it for the other calls
-        final MockWebConnection webConnection = new MockWebConnection(client) {
+        final MockWebConnection webConnection = new MockWebConnection() {
             private int nbCalls_ = 0;
             @Override
             public WebResponse getResponse(final WebRequestSettings settings) throws IOException {
                 String content = "<html><head>\n";
                 if (nbCalls_ == 0) {
                     content += "<meta http-equiv='refresh' content='0;url="
-                        + URL_GARGOYLE.toExternalForm()
+                        + getDefaultUrl().toExternalForm()
                         + "'>\n";
                 }
                 content += "</head><body></body></html>";
                 nbCalls_++;
-                return new StringWebResponse(content, settings.getUrl()) {
-                    private static final long serialVersionUID = -4739710581533574855L;
-
-                    @Override
-                    public HttpMethod getRequestMethod() {
-                        return settings.getHttpMethod();
-                    }
-                };
+                final StringWebResponse response = new StringWebResponse(content, settings.getUrl());
+                response.getRequestSettings().setHttpMethod(settings.getHttpMethod());
+                return response;
             }
         };
         client.setWebConnection(webConnection);
 
-        final WebRequestSettings settings = new WebRequestSettings(URL_GARGOYLE);
+        final WebRequestSettings settings = new WebRequestSettings(getDefaultUrl());
         settings.setHttpMethod(HttpMethod.POST);
         client.getPage(settings);
     }

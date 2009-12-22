@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,11 +31,14 @@ import com.gargoylesoftware.htmlunit.WebResponse;
  * This class implements the Wrapper or Decorator pattern. Methods default to calling through to the wrapped
  * web connection object.
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4872 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
 public class WebResponseWrapper implements WebResponse {
+
+    private static final long serialVersionUID = -5167730179562144482L;
+
     private final WebResponse wrappedWebResponse_;
 
     /**
@@ -68,10 +71,44 @@ public class WebResponseWrapper implements WebResponse {
 
     /**
      * {@inheritDoc}
-     * The default behavior of this method is to return getContentCharSet() on the wrapped connection object.
+     * The default behavior of this method is to return getContentAsString(String) on the wrapped connection object.
      */
+    public String getContentAsString(final String encoding) {
+        return wrappedWebResponse_.getContentAsString(encoding);
+    }
+
+    /**
+     * {@inheritDoc}
+     * The default behavior of this method is to return getContentAsBytes() on the wrapped connection object.
+     */
+    public byte[] getContentAsBytes() {
+        return wrappedWebResponse_.getContentAsBytes();
+    }
+
+    /**
+     * {@inheritDoc}
+     * The default behavior of this method is to return getContentCharSet() on the wrapped connection object.
+     * @deprecated As of 2.6, please use @link {@link #getContentCharset()}
+     */
+    @Deprecated
     public String getContentCharSet() {
         return wrappedWebResponse_.getContentCharSet();
+    }
+
+    /**
+     * {@inheritDoc}
+     * The default behavior of this method is to return getContentCharsetOrNull() on the wrapped connection object.
+     */
+    public String getContentCharsetOrNull() {
+        return wrappedWebResponse_.getContentCharsetOrNull();
+    }
+
+    /**
+     * {@inheritDoc}
+     * The default behavior of this method is to return getContentCharset() on the wrapped connection object.
+     */
+    public String getContentCharset() {
+        return wrappedWebResponse_.getContentCharset();
     }
 
     /**
@@ -84,26 +121,20 @@ public class WebResponseWrapper implements WebResponse {
 
     /**
      * {@inheritDoc}
-     * The default behavior of this method is to return getLoadTimeInMilliSeconds() on the wrapped connection object.
+     * The default behavior of this method is to return getLoadTime() on the wrapped connection object.
      */
-    public long getLoadTimeInMilliSeconds() {
-        return wrappedWebResponse_.getLoadTimeInMilliSeconds();
+    public long getLoadTime() {
+        return wrappedWebResponse_.getLoadTime();
     }
 
     /**
      * {@inheritDoc}
      * The default behavior of this method is to return getRequestMethod() on the wrapped connection object.
+     * @deprecated As of 2.6, please use {@link #getRequestSettings()}.getHttpMethod()
      */
+    @Deprecated
     public HttpMethod getRequestMethod() {
         return wrappedWebResponse_.getRequestMethod();
-    }
-
-    /**
-     * {@inheritDoc}
-     * The default behavior of this method is to return getResponseBody() on the wrapped connection object.
-     */
-    public byte[] getResponseBody() {
-        return wrappedWebResponse_.getResponseBody();
     }
 
     /**
@@ -140,10 +171,12 @@ public class WebResponseWrapper implements WebResponse {
 
     /**
      * {@inheritDoc}
-     * The default behavior of this method is to return getUrl() on the wrapped connection object.
+     * The default behavior of this method is to return getRequestUrl() on the wrapped connection object.
+     * @deprecated As of 2.6, please use {@link #getRequestSettings()}.getUrl()
      */
-    public URL getUrl() {
-        return wrappedWebResponse_.getUrl();
+    @Deprecated
+    public URL getRequestUrl() {
+        return wrappedWebResponse_.getRequestUrl();
     }
 
     /**

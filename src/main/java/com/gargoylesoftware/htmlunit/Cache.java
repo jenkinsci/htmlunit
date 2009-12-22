@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@ import org.apache.commons.httpclient.util.DateParseException;
 import org.apache.commons.httpclient.util.DateUtil;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateUtils;
-import org.mozilla.javascript.Script;
 import org.w3c.dom.css.CSSStyleSheet;
 
 /**
@@ -32,7 +31,7 @@ import org.w3c.dom.css.CSSStyleSheet;
  * compiled JavaScript files avoids unnecessary web requests and additional compilation overhead, while
  * caching parsed CSS snippets avoids very expensive CSS parsing.</p>
  *
- * @version $Revision: 3108 $
+ * @version $Revision: 4883 $
  * @author Marc Guillemot
  * @author Daniel Gredler
  */
@@ -41,7 +40,7 @@ public class Cache implements Serializable {
     private static final long serialVersionUID = -3864114727885057419L;
 
     /** The maximum size of the cache. */
-    private int maxSize_ = 25;
+    private int maxSize_ = 40;
 
     /**
      * The map which holds the cached responses. Note that when keying on URLs, we key on the string version
@@ -68,6 +67,9 @@ public class Cache implements Serializable {
             lastAccess_ = System.currentTimeMillis();
         }
 
+        /**
+         * {@inheritDoc}
+         */
         public int compareTo(final Entry other) {
             return NumberUtils.compare(lastAccess_, other.lastAccess_);
         }
@@ -81,17 +83,18 @@ public class Cache implements Serializable {
     }
 
     /**
-     * Caches the specified compiled script, if the corresponding request and response objects indicate
+     * Caches the specified object, if the corresponding request and response objects indicate
      * that it is cacheable.
      *
      * @param request the request corresponding to the specified compiled script
      * @param response the response corresponding to the specified compiled script
-     * @param script the compiled script that is to be cached, if possible
+     * @param toCache the object that is to be cached, if possible (may be for instance a compiled script or
+     * simply a WebResponse)
      */
-    public void cacheIfPossible(final WebRequestSettings request, final WebResponse response, final Script script) {
+    public void cacheIfPossible(final WebRequestSettings request, final WebResponse response, final Object toCache) {
         if (isCacheable(request, response)) {
-            final String url = response.getUrl().toString();
-            final Entry entry = new Entry(url, script);
+            final String url = response.getRequestSettings().getUrl().toString();
+            final Entry entry = new Entry(url, toCache);
             entries_.put(entry.key_, entry);
             deleteOverflow();
         }
@@ -134,7 +137,8 @@ public class Cache implements Serializable {
      * @return <code>true</code> if the response can be cached
      */
     protected boolean isCacheable(final WebRequestSettings request, final  WebResponse response) {
-        return HttpMethod.GET == response.getRequestMethod() && isJavaScript(response) && !isDynamicContent(response);
+        return HttpMethod.GET == response.getRequestSettings().getHttpMethod()
+            && !isDynamicContent(response);
     }
 
     /**
@@ -200,17 +204,17 @@ public class Cache implements Serializable {
         final String contentType = webResponse.getContentType().toLowerCase();
         return "text/javascript".equals(contentType)
                 || "application/x-javascript".equals(contentType)
-                || webResponse.getUrl().getPath().endsWith(".js");
+                || webResponse.getRequestSettings().getUrl().getPath().endsWith(".js");
     }
 
     /**
-     * Returns the cached compiled script corresponding to the specified request. If there is
-     * no corresponding cached compiled script, this method returns <tt>null</tt>.
+     * Returns the cached object corresponding to the specified request. If there is
+     * no corresponding cached object, this method returns <tt>null</tt>.
      *
      * @param request the request whose corresponding cached compiled script is sought
-     * @return the cached compiled script corresponding to the specified request
+     * @return the cached object corresponding to the specified request if any
      */
-    public Script getCachedScript(final WebRequestSettings request) {
+    public Object getCachedObject(final WebRequestSettings request) {
         if (HttpMethod.GET != request.getHttpMethod()) {
             return null;
         }
@@ -221,7 +225,7 @@ public class Cache implements Serializable {
         synchronized (entries_) {
             cachedEntry.touch();
         }
-        return (Script) cachedEntry.value_;
+        return cachedEntry.value_;
     }
 
     /**

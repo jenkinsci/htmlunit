@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * A representation of an HTML element "html".
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4059 $
  * @author David K. Taylor
  * @author Ahmed Ashour
  */
@@ -43,38 +43,5 @@ public final class HtmlHtml extends HtmlElement {
     HtmlHtml(final String namespaceURI, final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
         super(namespaceURI, qualifiedName, page, attributes);
-    }
-
-    /**
-     * Returns the value of the attribute "lang". Refer to the <a
-     * href='http://www.w3.org/TR/html401/'>HTML 4.01</a> documentation for
-     * details on the use of this attribute.
-     *
-     * @return the value of the attribute "lang" or an empty string if that attribute isn't defined
-     */
-    public String getLangAttribute() {
-        return getAttributeValue("lang");
-    }
-
-    /**
-     * Returns the value of the attribute "xml:lang". Refer to the <a
-     * href='http://www.w3.org/TR/html401/'>HTML 4.01</a> documentation for
-     * details on the use of this attribute.
-     *
-     * @return the value of the attribute "xml:lang" or an empty string if that attribute isn't defined
-     */
-    public String getXmlLangAttribute() {
-        return getAttributeValue("xml:lang");
-    }
-
-    /**
-     * Returns the value of the attribute "dir". Refer to the <a
-     * href='http://www.w3.org/TR/html401/'>HTML 4.01</a> documentation for
-     * details on the use of this attribute.
-     *
-     * @return the value of the attribute "dir" or an empty string if that attribute isn't defined
-     */
-    public String getTextDirectionAttribute() {
-        return getAttributeValue("dir");
     }
 }

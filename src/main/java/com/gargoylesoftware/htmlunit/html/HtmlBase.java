@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "base".
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4002 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
@@ -54,7 +54,7 @@ public class HtmlBase extends HtmlElement {
      * @return the value of the attribute "href" or an empty string if that attribute isn't defined
      */
     public final String getHrefAttribute() {
-        return getAttributeValue("href");
+        return getAttribute("href");
     }
 
     /**
@@ -65,6 +65,6 @@ public class HtmlBase extends HtmlElement {
      * @return the value of the attribute "target" or an empty string if that attribute isn't defined
      */
     public final String getTargetAttribute() {
-        return getAttributeValue("target");
+        return getAttribute("target");
     }
 }

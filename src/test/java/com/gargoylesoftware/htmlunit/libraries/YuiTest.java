@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Gargoyle Software Inc.
+ * Copyright (c) 2002-2009 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
+import org.junit.After;
 import org.junit.Test;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
@@ -38,7 +39,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlSpan;
  *
  * TODO: add tests for IE6 and IE7
  *
- * @version $Revision: 3026 $
+ * @version $Revision: 4343 $
  * @author Rob Di Marco
  * @author Daniel Gredler
  */
@@ -47,6 +48,7 @@ public class YuiTest extends WebTestCase {
     private static final long DEFAULT_TIME_TO_WAIT = 3 * 60 * 1000L;
     private static final String BASE_FILE_PATH = "yui/2.3.0/tests/";
     private final List<String> emptyList_ = Collections.emptyList();
+    private WebClient client_;
 
     /**
      * @throws Exception if an error occurs
@@ -202,7 +204,7 @@ public class YuiTest extends WebTestCase {
      */
     @Test
     public void imageLoader() throws Exception {
-        doTest(BrowserVersion.FIREFOX_2, "imageloader.html", emptyList_);
+        doTest(BrowserVersion.FIREFOX_2, "imageloader.html", Collections.singletonList("testFoldCheck"));
     }
 
     /**
@@ -238,16 +240,16 @@ public class YuiTest extends WebTestCase {
         final URL url = getClass().getClassLoader().getResource(BASE_FILE_PATH + fileName);
         assertNotNull(url);
 
-        final WebClient client = new WebClient(version);
-        final HtmlPage page = (HtmlPage) client.getPage(url);
+        client_ = new WebClient(version);
+        final HtmlPage page = (HtmlPage) client_.getPage(url);
         final HtmlElement doc = page.getDocumentElement();
 
         if (buttonToPush != null) {
-            final HtmlButtonInput button = ((HtmlButtonInput) page.getHtmlElementById(buttonToPush));
+            final HtmlButtonInput button = page.getHtmlElementById(buttonToPush);
             button.click();
         }
 
-        page.getEnclosingWindow().getThreadManager().joinAll(timeToWait);
+        client_.waitForBackgroundJavaScript(timeToWait);
 
         final List< ? > tests = doc.getByXPath("//span[@class='pass' or @class='fail']");
         if (tests.size() == 0) {
@@ -272,4 +274,14 @@ public class YuiTest extends WebTestCase {
         }
     }
 
+    /**
+     * Performs post-test deconstruction.
+     * @throws Exception if an error occurs
+     */
+    @After
+    public void tearDown() throws Exception {
+        if (client_ != null) {
+            client_.closeAllWindows();
+        }
+    }
 }
