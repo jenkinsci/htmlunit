@@ -1908,11 +1908,9 @@ public class HtmlPage extends SgmlPage {
     @SuppressWarnings("unchecked")
     void setCheckedRadioButton(final HtmlRadioButtonInput radioButtonInput) {
         // May be done in single XPath search?
-        final List<HtmlRadioButtonInput> pageInputs =
-            (List<HtmlRadioButtonInput>) getByXPath("//input[lower-case(@type)='radio' "
+        final List<HtmlRadioButtonInput> pageInputs = getByXPath("//input[lower-case(@type)='radio' "
                 + "and @name='" + radioButtonInput.getNameAttribute() + "']");
-        final List<HtmlRadioButtonInput> formInputs =
-            (List<HtmlRadioButtonInput>) getByXPath("//form//input[lower-case(@type)='radio' "
+        final List<HtmlRadioButtonInput> formInputs = getByXPath("//form//input[lower-case(@type)='radio' "
                 + "and @name='" + radioButtonInput.getNameAttribute() + "']");
 
         pageInputs.removeAll(formInputs);

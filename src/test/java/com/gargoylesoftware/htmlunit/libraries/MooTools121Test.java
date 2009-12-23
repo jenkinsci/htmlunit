@@ -64,7 +64,7 @@ public class MooTools121Test extends WebTestCase {
 
         FileUtils.writeStringToFile(new File("/tmp/mootols.html"), page.asXml());
         final String xpath = "//ul[@class='specs']/li[@class!='success']";
-        final List<HtmlElement> failures = (List<HtmlElement>) page.getByXPath(xpath);
+        final List<HtmlElement> failures = page.getByXPath(xpath);
         if (!failures.isEmpty()) {
             final StringBuilder sb = new StringBuilder();
             for (HtmlElement failure : failures) {

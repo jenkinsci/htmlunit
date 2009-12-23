@@ -59,8 +59,8 @@ public class ExtJS22Test extends WebTestCase {
     @SuppressWarnings("unchecked")
     public void core_templates() throws Exception {
         final HtmlPage page = getPage("core", "templates");
-        final List<HtmlButton> buttons = (List<HtmlButton>) page.getByXPath("//button");
-        final List<HtmlDivision> divs = (List<HtmlDivision>) page.getByXPath("//div[@class='x-panel-body']");
+        final List<HtmlButton> buttons = page.getByXPath("//button");
+        final List<HtmlDivision> divs = page.getByXPath("//div[@class='x-panel-body']");
         assertEquals(2, buttons.size());
         assertEquals(2, divs.size());
         assertEquals("Apply the template to see results here", divs.get(0).asText());
@@ -85,7 +85,7 @@ public class ExtJS22Test extends WebTestCase {
     @SuppressWarnings("unchecked")
     public void core_spotlight() throws Exception {
         final HtmlPage page = getPage("core", "spotlight");
-        final List<HtmlButton> buttons = (List<HtmlButton>) page.getByXPath("//button");
+        final List<HtmlButton> buttons = page.getByXPath("//button");
         assertEquals(4, buttons.size());
         assertEquals("Start", buttons.get(0).asText());
         assertEquals("Next Panel", buttons.get(1).asText());
