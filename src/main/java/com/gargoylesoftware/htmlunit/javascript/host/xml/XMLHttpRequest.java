@@ -21,6 +21,7 @@ import java.net.URL;
 import java.util.Collections;
 import java.util.List;
 
+import com.gargoylesoftware.htmlunit.javascript.PostponedAction;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.ContextAction;
 import net.sourceforge.htmlunit.corejs.javascript.ContextFactory;
@@ -382,27 +383,19 @@ public class XMLHttpRequest extends SimpleScriptable {
             doSend(Context.getCurrentContext());
         }
         else {
-            // Create and start a thread in which to execute the request.
+            // run this as a post-action
             final Object startingScope = getWindow();
-            final ContextFactory cf = client.getJavaScriptEngine().getContextFactory();
-            final ContextAction action = new ContextAction() {
-                public Object run(final Context cx) {
-                    cx.putThreadLocal(JavaScriptEngine.KEY_STARTING_SCOPE, startingScope);
-                    doSend(cx);
-                    return null;
+            client.getJavaScriptEngine().addPostponedAction(new PostponedAction() {
+                public void execute() throws Exception {
+                    client.getJavaScriptEngine().getContextFactory().call(new ContextAction() {
+                        public Object run(final Context cx) {
+                            cx.putThreadLocal(JavaScriptEngine.KEY_STARTING_SCOPE, startingScope);
+                            doSend(cx);
+                            return null;
+                        }
+                    });
                 }
-            };
-            final JavaScriptJob job = new JavaScriptJob() {
-                public void run() {
-                    cf.call(action);
-                }
-                @Override
-                public String toString() {
-                    return "XMLHttpRequest Job " + getId();
-                }
-            };
-            LOG.debug("Starting XMLHttpRequest thread for asynchronous request");
-            threadID_ = getWindow().getWebWindow().getJobManager().addJob(job, page);
+            });
         }
     }
 
