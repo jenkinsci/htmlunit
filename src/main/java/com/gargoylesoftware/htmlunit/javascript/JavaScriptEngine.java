@@ -727,7 +727,9 @@ public class JavaScriptEngine {
             }
         };
 
-        return getContextFactory().call(action);
+        Object r = getContextFactory().call(action);
+        processPostponedActions();
+        return r;
     }
 
     /**
@@ -881,8 +883,10 @@ public class JavaScriptEngine {
             throw new RuntimeException(e);
         }
 
-        final List<PostponedAction> actions = postponedActions_.get();
-        if (actions != null) {
+        while (true) {// postponed action can result in more postponed actions
+            final List<PostponedAction> actions = postponedActions_.get();
+            if (actions == null)    return;
+
             postponedActions_.set(null);
             try {
                 for (final PostponedAction action : actions) {
@@ -895,8 +899,7 @@ public class JavaScriptEngine {
                         action.execute();
                     }
                 }
-            }
-            catch (final Exception e) {
+            } catch (final Exception e) {
                 Context.throwAsScriptRuntimeEx(e);
             }
         }

@@ -45,6 +45,7 @@ import java.util.Locale;
 import java.util.Map.Entry;
 import java.util.Stack;
 
+import com.gargoylesoftware.htmlunit.javascript.PostponedAction;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.ContextAction;
 import net.sourceforge.htmlunit.corejs.javascript.ContextFactory;
@@ -606,34 +607,31 @@ public class XMLHttpRequest extends EventTarget {
 
             // Create and start a thread in which to execute the request.
             final Scriptable startingScope = getWindow();
-            final ContextFactory cf = client.getJavaScriptEngine().getContextFactory();
-            final ContextAction action = new ContextAction() {
-                public Object run(final Context cx) {
-                    // KEY_STARTING_SCOPE maintains a stack of scopes
-                    @SuppressWarnings("unchecked")
-                    Stack<Scriptable> stack =
-                            (Stack<Scriptable>) cx.getThreadLocal(JavaScriptEngine.KEY_STARTING_SCOPE);
-                    if (null == stack) {
-                        stack = new Stack<Scriptable>();
-                        cx.putThreadLocal(JavaScriptEngine.KEY_STARTING_SCOPE, stack);
-                    }
-                    stack.push(startingScope);
+            client.getJavaScriptEngine().addPostponedAction(new PostponedAction(page) {
+                public void execute() throws Exception {
+                    client.getJavaScriptEngine().getContextFactory().call(new ContextAction() {
+                        public Object run(final Context cx) {
+                            // KEY_STARTING_SCOPE maintains a stack of scopes
+                            @SuppressWarnings("unchecked")
+                            Stack<Scriptable> stack =
+                                    (Stack<Scriptable>) cx.getThreadLocal(JavaScriptEngine.KEY_STARTING_SCOPE);
+                            if (null == stack) {
+                                stack = new Stack<Scriptable>();
+                                cx.putThreadLocal(JavaScriptEngine.KEY_STARTING_SCOPE, stack);
+                            }
+                            stack.push(startingScope);
 
-                    try {
-                        doSend(cx);
-                    }
-                    finally {
-                        stack.pop();
-                    }
-                    return null;
+                            try {
+                                doSend(cx);
+                            }
+                            finally {
+                                stack.pop();
+                            }
+                            return null;
+                        }
+                    });
                 }
-            };
-            final JavaScriptJob job = BackgroundJavaScriptFactory.theFactory().
-                    createJavascriptXMLHttpRequestJob(cf, action);
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Starting XMLHttpRequest thread for asynchronous request");
-            }
-            jobID_ = getWindow().getWebWindow().getJobManager().addJob(job, page);
+            });
         }
     }
 
