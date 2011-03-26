@@ -66,7 +66,6 @@ public abstract class WebWindowImpl implements WebWindow {
         WebAssert.notNull("webClient", webClient);
         webClient_ = webClient;
         jobManager_ = new JavaScriptJobManagerImpl(this);
-        performRegistration();
     }
 
     /**

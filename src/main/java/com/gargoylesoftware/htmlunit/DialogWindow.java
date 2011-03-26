@@ -37,6 +37,7 @@ public class DialogWindow extends WebWindowImpl {
     public DialogWindow(final WebClient webClient, final Object arguments) {
         super(webClient);
         arguments_ = arguments;
+        performRegistration();
     }
 
     /**
