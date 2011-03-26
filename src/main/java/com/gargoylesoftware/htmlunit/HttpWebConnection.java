@@ -122,6 +122,8 @@ public class HttpWebConnection implements WebConnection {
                 return getResponse(newRequest);
             }
             throw new RuntimeException("HTTP Error: " + e.getMessage(), e);
+        } catch (IOException e) {
+            throw (IOException)new IOException(httpMethod.getName()+' '+url.toExternalForm()+" failed").initCause(e);
         }
         finally {
             onResponseGenerated(httpMethod);
