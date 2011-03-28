@@ -270,7 +270,10 @@ public abstract class BaseFrame extends StyledElement {
      * @return the currently loaded page in the enclosed window, or <tt>null</tt> if no page has been loaded
      */
     public Page getEnclosedPage() {
-        return getEnclosedWindow().getEnclosedPage();
+        WebWindow ew = getEnclosedWindow();
+        // because of the construction order, 'this' reference leaks out before an object is fully constructed.
+        // and so the above method can return null.
+        return ew!=null ? ew.getEnclosedPage() : null;
     }
 
     /**
