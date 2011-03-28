@@ -1783,8 +1783,13 @@ public class HtmlPage extends SgmlPage {
             // test if the frame should really be loaded:
             // if a script has already changed its content, it should be skipped
             // use == and not equals(...) to identify initial content (versus URL set to "about:blank")
-            if (frame.getEnclosedPage().getWebResponse().getRequestSettings().getUrl() == WebClient.URL_ABOUT_BLANK) {
-                frame.loadInnerPage();
+            Page ep = frame.getEnclosedPage();
+            if (ep!=null) {
+                WebResponse wr = ep.getWebResponse();
+                WebRequestSettings rs = wr.getRequestSettings();
+                if (rs.getUrl() == WebClient.URL_ABOUT_BLANK) {
+                    frame.loadInnerPage();
+                }
             }
         }
     }
