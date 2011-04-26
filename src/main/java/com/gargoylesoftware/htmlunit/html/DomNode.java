@@ -1281,7 +1281,7 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
         return (X) results.get(0);
     }
 
-    public Object selectSingleNode(final String xpathExpr) {
+    public <X> X selectSingleNode(final String xpathExpr) {
         return getFirstByXPath(xpathExpr);
     }
     
