@@ -1590,6 +1590,10 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
         return (X) results.get(0);
     }
 
+    public <X> X selectSingleNode(final String xpathExpr) {
+        return getFirstByXPath(xpathExpr);
+    }
+    
     /**
      * <p>Returns the canonical XPath expression which identifies this node, for instance
      * <tt>"/html/body/table[3]/tbody/tr[5]/td[2]/span/a[3]"</tt>.</p>
