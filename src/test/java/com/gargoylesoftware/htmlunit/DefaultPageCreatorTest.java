@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ import com.gargoylesoftware.htmlunit.xml.XmlPage;
 /**
  * Tests for {@link DefaultPageCreator}.
  *
- * @version $Revision: 4580 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
@@ -115,7 +115,6 @@ public class DefaultPageCreatorTest extends WebServerTestCase {
      * Servlet for {@link #contentTypes()}.
      */
     public static class ContentTypeServlet extends HttpServlet {
-        private static final long serialVersionUID = -7902362480804725117L;
         private static final String XHTML_DOCTYPE =
               "<!DOCTYPE html PUBLIC\n"
             + "\"-//W3C//DTD XHTML 1.0 Transitional//EN\"\n"
@@ -157,7 +156,6 @@ public class DefaultPageCreatorTest extends WebServerTestCase {
      * Servlet for {@link #noContentType()}.
      */
     public static class NoContentTypeServlet extends HttpServlet {
-        private static final long serialVersionUID = 249364661058883744L;
         /** {@inheritDoc} */
         @Override
         protected void doGet(final HttpServletRequest request, final HttpServletResponse response) throws IOException {

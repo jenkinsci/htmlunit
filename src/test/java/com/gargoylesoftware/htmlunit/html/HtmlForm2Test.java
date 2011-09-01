@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,20 +26,55 @@ import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
 import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
 
 /**
  * Tests for {@link HtmlForm}, with BrowserRunner.
  *
- * @version $Revision: 4736 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  */
 @RunWith(BrowserRunner.class)
 public class HtmlForm2Test extends WebTestCase {
 
     /**
-     * @exception Exception If the test fails
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void linkUrlEncoding() throws Exception {
+        final String html = "<html>\n"
+            + "<head><title>foo</title>\n"
+            + "  <meta http-equiv='Content-Type' content='text/html; charset=ISO-8859-1'>\n"
+            + "</head>\n"
+            + "<body>\n"
+            + "   <a href='bug.html?k\u00F6nig' id='myLink'>Click me</a>\n"
+            + "</body></html>";
+
+        final WebClient client = getWebClientWithMockWebConnection();
+        final List<String> collectedAlerts = new ArrayList<String>();
+        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
+
+        final URL url = getDefaultUrl();
+        final MockWebConnection webConnection = getMockWebConnection();
+        webConnection.setDefaultResponse(html, "text/html", "ISO-8859-1");
+
+        final HtmlPage page = client.getPage(url);
+        assertEquals(url.toExternalForm(), page.getWebResponse().getWebRequest().getUrl());
+        final HtmlPage linkPage = page.<HtmlElement>getHtmlElementById("myLink").click();
+        final String linkSuffix;
+        if (getBrowserVersion().isIE()) {
+            linkSuffix = "bug.html?k\u00F6nig";
+        }
+        else {
+            linkSuffix = "bug.html?k%F6nig";
+        }
+        assertEquals(url.toExternalForm() + linkSuffix, linkPage.getWebResponse().getWebRequest().getUrl());
+    }
+
+    /**
+     * @throws Exception if the test fails
      */
     @Test
     @NotYetImplemented(Browser.FF)
@@ -65,7 +100,7 @@ public class HtmlForm2Test extends WebTestCase {
         webConnection.setDefaultResponse(html, "text/html", "UTF-8");
 
         final HtmlPage page = client.getPage(url);
-        assertEquals(url.toExternalForm(), page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(url.toExternalForm(), page.getWebResponse().getWebRequest().getUrl());
         final HtmlPage submitPage = page.<HtmlElement>getHtmlElementById("mySubmit").click();
         final HtmlPage linkPage = page.<HtmlElement>getHtmlElementById("myLink").click();
         final String submitSuffix;
@@ -74,15 +109,41 @@ public class HtmlForm2Test extends WebTestCase {
             submitSuffix = "?par%C3%B6m=Hello+G%C3%BCnter";
             linkSuffix = "bug.html?h\u00F6=G\u00FCnter";
         }
-        else if (getBrowserVersion().getBrowserVersionNumeric() == 2) {
-            submitSuffix = "?par%C3%B6m=Hello+G%C3%BCnter";
-            linkSuffix = "bug.html?h%C3%B6=G%C3%BCnter";
-        }
         else {
             submitSuffix = "?par\u00F6m=Hello+G\u00FCnter";
             linkSuffix = "bug.html?h\u00F6=G\u00FCnter";
         }
-        assertEquals(url.toExternalForm() + submitSuffix, submitPage.getWebResponse().getRequestSettings().getUrl());
-        assertEquals(url.toExternalForm() + linkSuffix, linkPage.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(url.toExternalForm() + submitSuffix, submitPage.getWebResponse().getWebRequest().getUrl());
+        assertEquals(url.toExternalForm() + linkSuffix, linkPage.getWebResponse().getWebRequest().getUrl());
     }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(IE = { "textfieldid", "textfieldname", "textfieldid", "textfieldid", "textfieldname", "textfieldid" },
+            FF = { "error", "error", "error", "error", "error", "error" })
+    public void asFunction() throws Exception {
+        final String html
+            = "<html><head><title>foo</title><script>\n"
+            + "function test(){\n"
+            + "  var f1 = document.forms[0];\n"
+            + "  var f2 = document.forms(0);\n"
+            + "  try { alert(f1('textfieldid').id) } catch (e) { alert('error') }\n"
+            + "  try { alert(f1('textfieldname').name) } catch (e) { alert('error') }\n"
+            + "  try { alert(f1(0).id) } catch (e) { alert('error') }\n"
+            + "  try { alert(f2('textfieldid').id) } catch (e) { alert('error') }\n"
+            + "  try { alert(f2('textfieldname').name) } catch (e) { alert('error') }\n"
+            + "  try { alert(f2(0).id) } catch (e) { alert('error') }\n"
+            + "}\n"
+            + "</script></head><body onload='test()'>\n"
+            + "<p>hello world</p>\n"
+            + "<form id='firstid' name='firstname'>\n"
+            + "  <input type='text' id='textfieldid' value='foo' />\n"
+            + "  <input type='text' name='textfieldname' value='foo' />\n"
+            + "</form>\n"
+            + "</body></html>";
+        loadPageWithAlerts(html);
+    }
+
 }

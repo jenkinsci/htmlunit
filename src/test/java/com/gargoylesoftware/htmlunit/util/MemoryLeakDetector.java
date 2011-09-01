@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,13 +23,13 @@ import java.util.Map;
  *
  * <p>Based on <a href="http://blogs.ilog.com/jviews/2008/05/05/unit-testing-memory-leaks/">this</a>.</p>
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
  */
 public class MemoryLeakDetector {
 
     /** Weak references to the objects being tracked by the detector. */
-    private Map< String , WeakReference< Object > > map_ = new HashMap< String , WeakReference< Object > >();
+    private Map<String , WeakReference<Object>> map_ = new HashMap<String , WeakReference<Object>>();
 
     /**
      * Registers the specified object with the memory leak detector. Once an object has been registered
@@ -43,7 +43,7 @@ public class MemoryLeakDetector {
         if (map_.containsKey(id)) {
             throw new IllegalArgumentException("There is already an object registered with ID '" + id + "': " + o);
         }
-        map_.put(id, new WeakReference< Object >(o));
+        map_.put(id, new WeakReference<Object>(o));
     }
 
     /**
@@ -53,7 +53,7 @@ public class MemoryLeakDetector {
      * @return <tt>true</tt> if the object registered with the specified ID can be garbage collected
      */
     public boolean canBeGCed(final String id) {
-        final WeakReference< Object > ref = map_.get(id);
+        final WeakReference<Object> ref = map_.get(id);
         if (ref == null) {
             throw new IllegalArgumentException("No object registered with ID '" + id + "'.");
         }

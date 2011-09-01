@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
 /**
  * Tests for {@link TextRange}.
  *
- * @version $Revision: 4800 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
@@ -221,6 +221,50 @@ public class TextRangeTest extends WebTestCase {
             + "  var selectionRange = document.selection.createRange();\n"
             + "  alert(range.inRange(selectionRange));\n"
             + "</script>"
+            + "</body></html>";
+        loadPageWithAlerts(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Browsers(Browser.IE)
+    @Alerts("s3 foo <SPAN id=s3>foo</SPAN>")
+    public void moveToElementText() throws Exception {
+        final String html = "<html><body onload='test()'>\n"
+            + "<span id='s1'>abc</span><span id='s2'>xyz</span><span id='s3'>foo</span>\n"
+            + "<script>\n"
+            + "  function test() {\n"
+            + "    var r = document.selection.createRange();\n"
+            + "    r.moveToElementText(document.getElementById('s3'));\n"
+            + "    alert(r.parentElement().id + ' ' + r.text + ' ' + r.htmlText);\n"
+            + "  }\n"
+            + "</script>\n"
+            + "</body></html>";
+        loadPageWithAlerts(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Browsers(Browser.IE)
+    @Alerts({ "hello", "world", "hello world" })
+    public void setEndRange() throws Exception {
+        final String html = "<html><body>\n"
+            + "<form name='f'><input name='q' value='hello world'></form>\n"
+            + "<script>\n"
+            + "var range1 = document.f.q.createTextRange();\n"
+            + "var range2 = range1.duplicate();\n"
+            + "range1.moveEnd('character', -6);\n"
+            + "alert(range1.text);\n"
+            + "range2.moveStart('character', 6);\n"
+            + "alert(range2.text);\n"
+            + "var r3 = range1.duplicate();\n"
+            + "r3.setEndPoint('EndToEnd',  range2)\n"
+            + "alert(r3.text)\n"
+            + "</script>\n"
             + "</body></html>";
         loadPageWithAlerts(html);
     }

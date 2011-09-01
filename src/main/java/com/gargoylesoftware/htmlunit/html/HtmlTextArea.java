@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,17 +15,23 @@
 package com.gargoylesoftware.htmlunit.html;
 
 import java.io.PrintWriter;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
 
-import org.apache.commons.httpclient.NameValuePair;
-import org.w3c.dom.ranges.Range;
+import org.apache.commons.lang.StringEscapeUtils;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.SgmlPage;
+import com.gargoylesoftware.htmlunit.html.impl.SelectableTextInput;
+import com.gargoylesoftware.htmlunit.html.impl.SelectionDelegate;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Wrapper for the HTML element "textarea".
  *
- * @version $Revision: 4895 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:BarnabyCourt@users.sourceforge.net">Barnaby Court</a>
  * @author David K. Taylor
@@ -35,21 +41,21 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
  * @author Daniel Gredler
  * @author Ahmed Ashour
  * @author Sudhan Moghe
+ * @author Amit Khanna
  */
-public class HtmlTextArea extends ClickableElement implements DisabledElement, SubmittableElement, SelectableTextInput {
-
-    private static final long serialVersionUID = 4572856255042499634L;
-
+public class HtmlTextArea extends HtmlElement implements DisabledElement, SubmittableElement, SelectableTextInput,
+    FormFieldWithNameHistory {
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "textarea";
 
     private String defaultValue_;
     private String valueAtFocus_;
+    private String originalName_;
+    private Collection<String> previousNames_ = Collections.emptySet();
 
     private final SelectionDelegate selectionDelegate_ = new SelectionDelegate(this);
 
     private final DoTypeProcessor doTypeProcessor_ = new DoTypeProcessor() {
-        private static final long serialVersionUID = 2906652041039202266L;
         @Override
         void typeDone(final String newValue, final int newCursorPosition) {
             setTextInternal(newValue);
@@ -73,6 +79,7 @@ public class HtmlTextArea extends ClickableElement implements DisabledElement, S
     HtmlTextArea(final String namespaceURI, final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
         super(namespaceURI, qualifiedName, page, attributes);
+        originalName_ = getNameAttribute();
     }
 
     /**
@@ -169,7 +176,9 @@ public class HtmlTextArea extends ClickableElement implements DisabledElement, S
         }
 
         // for FF, if value is still default value, change value too
-        if (getPage().getWebClient().getBrowserVersion().isFirefox() && getText().equals(getDefaultValue())) {
+        if (getPage().getWebClient().getBrowserVersion()
+                .hasFeature(BrowserVersionFeatures.HTMLINPUT_DEFAULT_IS_CHECKED)
+                && getText().equals(getDefaultValue())) {
             setTextInternal(defaultValue);
         }
         defaultValue_ = defaultValue;
@@ -384,8 +393,8 @@ public class HtmlTextArea extends ClickableElement implements DisabledElement, S
         printOpeningTagContentAsXml(printWriter);
 
         printWriter.print(">");
-        printWriter.print(getText());
-        printWriter.print(indent + "</textarea>");
+        printWriter.print(StringEscapeUtils.escapeXml(getText()));
+        printWriter.print("</textarea>");
     }
 
     /**
@@ -404,17 +413,14 @@ public class HtmlTextArea extends ClickableElement implements DisabledElement, S
     public void focus() {
         super.focus();
         valueAtFocus_ = getText();
-        if (getPage() instanceof HtmlPage) {
-            final Range selection = ((HtmlPage) getPage()).getSelection();
-            selection.setStart(this, 0);
-            selection.setEnd(this, getText().length());
-        }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     void removeFocus() {
         super.removeFocus();
-
         if (!valueAtFocus_.equals(getText())) {
             HtmlInput.executeOnChangeHandlerIfAppropriate(this);
         }
@@ -441,6 +447,51 @@ public class HtmlTextArea extends ClickableElement implements DisabledElement, S
      */
     public boolean isReadOnly() {
         return hasAttribute("readOnly");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected Object clone() throws CloneNotSupportedException {
+        return new HtmlTextArea(getNamespaceURI(), getQualifiedName(), getPage(), getAttributesMap());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setAttributeNS(final String namespaceURI, final String qualifiedName, final String attributeValue) {
+        if ("name".equals(qualifiedName)) {
+            if (previousNames_.isEmpty()) {
+                previousNames_ = new HashSet<String>();
+            }
+            previousNames_.add(attributeValue);
+        }
+        super.setAttributeNS(namespaceURI, qualifiedName, attributeValue);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public String getOriginalName() {
+        return originalName_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public Collection<String> getPreviousNames() {
+        return previousNames_;
+    }
+
+    /**
+     * {@inheritDoc}
+     * @return <code>true</code> to make generated XML readable as HTML
+     */
+    @Override
+    protected boolean isEmptyXmlTagExpanded() {
+        return true;
     }
 
 }

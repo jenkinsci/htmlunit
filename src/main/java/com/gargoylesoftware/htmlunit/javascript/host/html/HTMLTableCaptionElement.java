@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,15 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
+
 /**
  * The JavaScript object "HTMLTableCaptionElement".
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  */
 public class HTMLTableCaptionElement extends HTMLElement {
-
-    private static final long serialVersionUID = 5646224918517395242L;
 
     /** The valid <tt>vAlign</tt> values for this element, when emulating IE. */
     private static final String[] VALIGN_VALID_VALUES_IE = {"top", "bottom"};
@@ -42,8 +42,8 @@ public class HTMLTableCaptionElement extends HTMLElement {
      * @return the value of the "align" property
      */
     public String jsxGet_align() {
-        final boolean returnInvalidValues = getBrowserVersion().isFirefox();
-        return getAlign(returnInvalidValues);
+        final boolean invalidValues = getBrowserVersion().hasFeature(BrowserVersionFeatures.HTMLELEMENT_ALIGN_INVALID);
+        return getAlign(invalidValues);
     }
 
     /**
@@ -76,7 +76,7 @@ public class HTMLTableCaptionElement extends HTMLElement {
      */
     private String[] getValidVAlignValues() {
         String[] valid;
-        if (getBrowserVersion().isIE()) {
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_91)) {
             valid = VALIGN_VALID_VALUES_IE;
         }
         else {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,10 +14,6 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
-import static org.apache.commons.httpclient.HttpStatus.SC_MULTIPLE_CHOICES;
-import static org.apache.commons.httpclient.HttpStatus.SC_OK;
-import static org.apache.commons.httpclient.HttpStatus.SC_USE_PROXY;
-
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
@@ -28,15 +24,14 @@ import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 
-import net.sourceforge.htmlunit.corejs.javascript.Function;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.http.HttpStatus;
 
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebRequestSettings;
+import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.javascript.PostponedAction;
 import com.gargoylesoftware.htmlunit.javascript.host.Event;
@@ -45,16 +40,15 @@ import com.gargoylesoftware.htmlunit.javascript.host.Node;
 /**
  * Wrapper for the HTML element "img".
  *
- * @version $Revision: 4713 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
  * @author <a href="mailto:knut.johannes.dahle@gmail.com">Knut Johannes Dahle</a>
  */
-public class HtmlImage extends ClickableElement {
+public class HtmlImage extends HtmlElement {
 
-    private static final long serialVersionUID = -2304247017681577696L;
     private static final Log LOG = LogFactory.getLog(HtmlImage.class);
 
     /** The HTML tag represented by this element. */
@@ -90,6 +84,22 @@ public class HtmlImage extends ClickableElement {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setAttributeNS(final String namespaceURI, final String qualifiedName, final String value) {
+        if ("src".equals(qualifiedName) && value != ATTRIBUTE_NOT_DEFINED && getPage() instanceof HtmlPage) {
+            final String oldValue = getAttributeNS(namespaceURI, qualifiedName);
+            if (!oldValue.equals(value)) {
+                // onload handlers may need to be invoked again, and a new image may need to be downloaded
+                onloadInvoked_ = false;
+                downloaded_ = false;
+            }
+        }
+        super.setAttributeNS(namespaceURI, qualifiedName, value);
+    }
+
+    /**
      * <p><span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span></p>
      *
      * <p>Executes this element's <tt>onload</tt> handler if it has one. This method also downloads the image
@@ -113,15 +123,13 @@ public class HtmlImage extends ClickableElement {
         }
         onloadInvoked_ = true;
         final HtmlPage htmlPage = (HtmlPage) getPage();
-        final Function onload = getEventHandler("onload");
-        if (onload != null) {
-            // An onload handler is defined; we need to download the image and then call the onload
-            // handler.
+        if (hasEventHandlers("onload")) {
+            // An onload handler is defined; we need to download the image and then call the onload handler.
             boolean ok;
             try {
                 downloadImageIfNeeded();
                 final int i = imageWebResponse_.getStatusCode();
-                ok = (i >= SC_OK && i < SC_MULTIPLE_CHOICES) || i == SC_USE_PROXY;
+                ok = (i >= HttpStatus.SC_OK && i < HttpStatus.SC_MULTIPLE_CHOICES) || i == HttpStatus.SC_USE_PROXY;
             }
             catch (final IOException e) {
                 ok = false;
@@ -130,7 +138,8 @@ public class HtmlImage extends ClickableElement {
             if (ok) {
                 final Event event = new Event(this, Event.TYPE_LOAD);
                 final Node scriptObject = (Node) getScriptObject();
-                final PostponedAction action = new PostponedAction() {
+                final PostponedAction action = new PostponedAction(getPage()) {
+                    @Override
                     public void execute() throws Exception {
                         scriptObject.executeEvent(event);
                     }
@@ -144,7 +153,9 @@ public class HtmlImage extends ClickableElement {
                 }
             }
             else {
-                LOG.debug("Unable to download image for tag " + this + "; not firing onload event.");
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Unable to download image for tag " + this + "; not firing onload event.");
+                }
             }
         }
     }
@@ -282,12 +293,12 @@ public class HtmlImage extends ClickableElement {
     }
 
     /**
-     * <span style="color:red">POTENIAL PERFORMANCE KILLER - DOWNLOADS THE IMAGE - USE AT YOUR OWN RISK.</span><br/>
-     * If the image is not already downloaded it triggers a download. Then it stores the image in the HtmlImage
-     * object for later use.<br/>
+     * <p>Returns the image's actual height (<b>not</b> the image's {@link #getHeightAttribute() height attribute}).</p>
+     * <p><span style="color:red">POTENTIAL PERFORMANCE KILLER - DOWNLOADS THE IMAGE - USE AT YOUR OWN RISK</span></p>
+     * <p>If the image has not already been downloaded, this method triggers a download and caches the image.</p>
      *
-     * @return returns the real height of the image
-     * @throws IOException if an error occurs while downloading the image or reading it
+     * @return the image's actual height
+     * @throws IOException if an error occurs while downloading or reading the image
      */
     public int getHeight() throws IOException {
         readImageIfNeeded();
@@ -295,12 +306,12 @@ public class HtmlImage extends ClickableElement {
     }
 
     /**
-     * <span style="color:red">POTENIAL PERFORMANCE KILLER - DOWNLOADS THE IMAGE - USE AT YOUR OWN RISK.</span><br/>
-     * If the image is not already downloaded it triggers a download. Then it stores the image in the HtmlImage
-     * object for later use.<br/>
+     * <p>Returns the image's actual width (<b>not</b> the image's {@link #getWidthAttribute() width attribute}).</p>
+     * <p><span style="color:red">POTENTIAL PERFORMANCE KILLER - DOWNLOADS THE IMAGE - USE AT YOUR OWN RISK</span></p>
+     * <p>If the image has not already been downloaded, this method triggers a download and caches the image.</p>
      *
-     * @return returns the real width of the image
-     * @throws IOException if an error occurs while downloading the image or reading it
+     * @return the image's actual width
+     * @throws IOException if an error occurs while downloading or reading the image
      */
     public int getWidth() throws IOException {
         readImageIfNeeded();
@@ -308,12 +319,12 @@ public class HtmlImage extends ClickableElement {
     }
 
     /**
-     * <span style="color:red">POTENIAL PERFORMANCE KILLER - DOWNLOADS THE IMAGE - USE AT YOUR OWN RISK.</span><br/>
-     * If the image is not already downloaded it triggers a download. Then it stores the image in the HtmlImage
-     * object for later use.<br/>
+     * <p>Returns the <tt>ImageReader</tt> which can be used to read the image contained by this image element.</p>
+     * <p><span style="color:red">POTENTIAL PERFORMANCE KILLER - DOWNLOADS THE IMAGE - USE AT YOUR OWN RISK</span></p>
+     * <p>If the image has not already been downloaded, this method triggers a download and caches the image.</p>
      *
-     * @return the ImageReader representing the image from the download stream
-     * @throws IOException if an error occurs while downloading the image and if its of an unsupported content-type
+     * @return the <tt>ImageReader</tt> which can be used to read the image contained by this image element
+     * @throws IOException if an error occurs while downloading or reading the image
      */
     public ImageReader getImageReader() throws IOException {
         readImageIfNeeded();
@@ -321,13 +332,14 @@ public class HtmlImage extends ClickableElement {
     }
 
     /**
-     * <span style="color:red">POTENIAL PERFORMANCE KILLER - DOWNLOADS THE IMAGE - USE AT YOUR OWN RISK.</span><br/>
-     * If the image is not already downloaded it triggers a download. Then it stores the image in the HtmlImage
-     * object for later use.<br/>
+     * <p>Returns the <tt>WebResponse</tt> for the image contained by this image element.</p>
+     * <p><span style="color:red">POTENTIAL PERFORMANCE KILLER - DOWNLOADS THE IMAGE - USE AT YOUR OWN RISK</span></p>
+     * <p>If the image has not already been downloaded and <tt>downloadIfNeeded</tt> is <tt>true</tt>, this method
+     * triggers a download and caches the image.</p>
      *
-     * @param downloadIfNeeded indicates if a request should be performed this hasn't been done previously
-     * @return <code>null</code> if no download should be performed and when this wasn't already done; the response
-     * received when performing a request for the image referenced by this tag otherwise
+     * @param downloadIfNeeded whether or not the image should be downloaded (if it hasn't already been downloaded)
+     * @return <tt>null</tt> if no download should be performed and one hasn't already been triggered; otherwise,
+     *         the response received when performing a request for the image referenced by this element
      * @throws IOException if an error occurs while downloading the image
      */
     public WebResponse getWebResponse(final boolean downloadIfNeeded) throws IOException {
@@ -338,14 +350,11 @@ public class HtmlImage extends ClickableElement {
     }
 
     /**
-     * <span style="color:red">POTENIAL PERFORMANCE KILLER - DOWNLOADS THE IMAGE - USE AT YOUR OWN RISK.</span><br/>
-     * If the image is not already downloaded it triggers a download. Then it stores the image in the HtmlImage
-     * object for later use.<br/>
+     * <p>Downloads the image contained by this image element.</p>
+     * <p><span style="color:red">POTENTIAL PERFORMANCE KILLER - DOWNLOADS THE IMAGE - USE AT YOUR OWN RISK</span></p>
+     * <p>If the image has not already been downloaded, this method triggers a download and caches the image.</p>
      *
-     * Downloads the image specified in the src attribute.
-     *
-     * @throws IOException if an error occurs while downloading the image or if the stream is of an
-     * unsupported content-type
+     * @throws IOException if an error occurs while downloading the image
      */
     private void downloadImageIfNeeded() throws IOException {
         if (!downloaded_) {
@@ -353,10 +362,10 @@ public class HtmlImage extends ClickableElement {
             final WebClient webclient = page.getWebClient();
 
             final URL url = page.getFullyQualifiedUrl(getSrcAttribute());
-            final WebRequestSettings request = new WebRequestSettings(url);
-            request.setAdditionalHeader("Referer",
-                page.getWebResponse().getRequestSettings().getUrl().toExternalForm());
+            final WebRequest request = new WebRequest(url);
+            request.setAdditionalHeader("Referer", page.getWebResponse().getWebRequest().getUrl().toExternalForm());
             imageWebResponse_ = webclient.loadWebResponse(request);
+            imageReader_ = null;
             downloaded_ = true;
         }
     }
@@ -407,12 +416,10 @@ public class HtmlImage extends ClickableElement {
 
     /**
      * Performs the click action on the enclosing A tag (if any).
-     * @param defaultPage the default page to return if the action does not load a new page
-     * @return the page that is currently loaded after execution of this method
      * @throws IOException if an IO error occurred
      */
     @Override
-    protected Page doClickAction(final Page defaultPage) throws IOException {
+    protected void doClickAction() throws IOException {
         if (getUseMapAttribute() != ATTRIBUTE_NOT_DEFINED) {
             // remove initial '#'
             final String mapName = getUseMapAttribute().substring(1);
@@ -422,21 +429,22 @@ public class HtmlImage extends ClickableElement {
                 if (element instanceof HtmlArea) {
                     final HtmlArea area = (HtmlArea) element;
                     if (area.containsPoint(lastClickX_, lastClickY_)) {
-                        return area.doClickAction(defaultPage);
+                        area.doClickAction();
+                        return;
                     }
                 }
             }
-            return super.doClickAction(defaultPage);
         }
         final HtmlAnchor anchor = (HtmlAnchor) getEnclosingElement("a");
         if (anchor == null) {
-            return super.doClickAction(defaultPage);
+            return;
         }
         if (getIsmapAttribute() != ATTRIBUTE_NOT_DEFINED) {
             final String suffix = "?" + lastClickX_ + "," + lastClickY_;
-            return anchor.doClickAction(defaultPage, suffix);
+            anchor.doClickAction(suffix);
+            return;
         }
-        return anchor.doClickAction(defaultPage);
+        anchor.doClickAction();
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,12 +20,15 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Tries;
 
 /**
  * Tests for compatibility with local loading of
  * version 1.2.6 of the <a href="http://jquery.com/">jQuery JavaScript library</a>.
  *
- * @version $Revision: 4476 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
  * @author Ahmed Ashour
  * @see JQuery126Test
@@ -38,7 +41,8 @@ public class JQuery126LocalTest extends JQueryTestBase {
      */
     @Override
     protected String getExpectedPath() throws Exception {
-        final String resource = "jquery/" + getVersion() + "/local." + getBrowserVersion().getNickname() + ".txt";
+        final String v = getVersion();
+        final String resource = "libraries/jquery/" + v + "/local." + getBrowserVersion().getNickname() + ".txt";
         final URL url = getClass().getClassLoader().getResource(resource);
         return url.toURI().getPath();
     }
@@ -48,13 +52,16 @@ public class JQuery126LocalTest extends JQueryTestBase {
      */
     @Override
     protected String getUrl() {
-        return getClass().getClassLoader().getResource("jquery/" + getVersion() + "/test/index.html").toExternalForm();
+        final String v = getVersion();
+        return getClass().getClassLoader().getResource("libraries/jquery/" + v + "/test/index.html").toExternalForm();
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
+    @NotYetImplemented({ Browser.IE8 }) // IE8 needs the expectation file
+    @Tries(3)
     public void test() throws Exception {
         runTest();
     }

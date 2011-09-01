@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,21 +16,17 @@ package com.gargoylesoftware.htmlunit;
 
 import java.io.Serializable;
 
-import org.apache.commons.httpclient.methods.PostMethod;
-
 /**
  * A collection of constants that represent the various ways a form can be encoded when submitted.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author Brad Clarke
  * @author Ahmed Ashour
  */
 public final class FormEncodingType implements Serializable {
 
-    private static final long serialVersionUID = -7341913381207910442L;
-
     /** URL-encoded form encoding. */
-    public static final FormEncodingType URL_ENCODED = new FormEncodingType(PostMethod.FORM_URL_ENCODED_CONTENT_TYPE);
+    public static final FormEncodingType URL_ENCODED = new FormEncodingType("application/x-www-form-urlencoded");
 
     /** Multipart form encoding (used to be a constant in HttpClient but it was deprecated with no alternative). */
     public static final FormEncodingType MULTIPART = new FormEncodingType("multipart/form-data");
@@ -54,23 +50,16 @@ public final class FormEncodingType implements Serializable {
      * Returns the constant that matches the specified name.
      *
      * @param name the name to search by
-     * @return the constant that matches the specified name
+     * @return the constant corresponding to the specified name, {@link #URL_ENCODED} if none match.
      */
     public static FormEncodingType getInstance(final String name) {
         final String lowerCaseName = name.toLowerCase();
 
-        for (final FormEncodingType type : new FormEncodingType[] {URL_ENCODED, MULTIPART}) {
-            if (type.getName().equals(lowerCaseName)) {
-                return type;
-            }
+        if (MULTIPART.getName().equals(lowerCaseName)) {
+            return MULTIPART;
         }
 
-        // Special case: empty string defaults to URL encoded
-        if (name.equals("")) {
-            return URL_ENCODED;
-        }
-
-        throw new IllegalArgumentException("No encoding type found for [" + name + "]");
+        return URL_ENCODED;
     }
 
     /**

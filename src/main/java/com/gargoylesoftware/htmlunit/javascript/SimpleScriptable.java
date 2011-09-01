@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,27 +16,28 @@ package com.gargoylesoftware.htmlunit.javascript;
 
 import java.lang.reflect.Method;
 
-import org.apache.commons.collections.Transformer;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.FunctionObject;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
 
+import org.apache.commons.collections.Transformer;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.WebAssert;
 import com.gargoylesoftware.htmlunit.WebWindow;
 import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
-import com.gargoylesoftware.htmlunit.javascript.configuration.JavaScriptConfiguration;
 import com.gargoylesoftware.htmlunit.javascript.host.Window;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
 
 /**
- * A JavaScript object for a Location.
+ * Base class for Rhino host objects in HtmlUnit.
  *
- * @version $Revision: 4789 $
+ * @version $Revision: 6352 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author Marc Guillemot
@@ -46,7 +47,6 @@ import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
  */
 public class SimpleScriptable extends ScriptableObject implements Cloneable {
 
-    private static final long serialVersionUID = 3120000176890886780L;
     private static final Log LOG = LogFactory.getLog(SimpleScriptable.class);
 
     private DomNode domNode_;
@@ -62,6 +62,7 @@ public class SimpleScriptable extends ScriptableObject implements Cloneable {
      */
     @Override
     public Object get(String name, final Scriptable start) {
+        // If this object is not case-sensitive about property names, transform the property name accordingly.
         if (!caseSensitive_) {
             for (final Object o : getAllIds()) {
                 if (name.equalsIgnoreCase(Context.toString(o))) {
@@ -70,12 +71,11 @@ public class SimpleScriptable extends ScriptableObject implements Cloneable {
                 }
             }
         }
-        // try to get property configured on object itself
+        // Try to get property configured on object itself.
         final Object response = super.get(name, start);
         if (response != NOT_FOUND) {
             return response;
         }
-
         if (this == start) {
             return getWithPreemption(name);
         }
@@ -114,24 +114,28 @@ public class SimpleScriptable extends ScriptableObject implements Cloneable {
     /**
      * Returns the DOM node that corresponds to this JavaScript object or throw
      * an exception if one cannot be found.
+     * @param <N> the node type
      * @return the DOM node
      * @exception IllegalStateException If the DOM node could not be found.
      */
-    public DomNode getDomNodeOrDie() throws IllegalStateException {
+    @SuppressWarnings("unchecked")
+    public <N extends DomNode> N getDomNodeOrDie() throws IllegalStateException {
         if (domNode_ == null) {
             final String clazz = getClass().getName();
             throw new IllegalStateException("DomNode has not been set for this SimpleScriptable: " + clazz);
         }
-        return domNode_;
+        return (N) domNode_;
     }
 
     /**
      * Returns the DOM node that corresponds to this JavaScript object
      * or null if a node hasn't been set.
+     * @param <N> the node type
      * @return the DOM node or null
      */
-    public DomNode getDomNodeOrNull() {
-        return domNode_;
+    @SuppressWarnings("unchecked")
+    public <N extends DomNode> N getDomNodeOrNull() {
+        return (N) domNode_;
     }
 
     /**
@@ -195,14 +199,16 @@ public class SimpleScriptable extends ScriptableObject implements Cloneable {
         // Walk up the inheritance chain if necessary.
         Class< ? extends SimpleScriptable> javaScriptClass = null;
         for (Class< ? > c = domNode.getClass(); javaScriptClass == null && c != null; c = c.getSuperclass()) {
-            javaScriptClass = JavaScriptConfiguration.getHtmlJavaScriptMapping().get(c);
+            javaScriptClass = getWindow().getWebWindow().getWebClient().getJavaScriptEngine().getJavaScriptClass(c);
         }
 
         final SimpleScriptable scriptable;
         if (javaScriptClass == null) {
             // We don't have a specific subclass for this element so create something generic.
             scriptable = new HTMLElement();
-            LOG.debug("No JavaScript class found for element <" + domNode.getNodeName() + ">. Using HTMLElement");
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("No JavaScript class found for element <" + domNode.getNodeName() + ">. Using HTMLElement");
+            }
         }
         else {
             try {
@@ -270,21 +276,10 @@ public class SimpleScriptable extends ScriptableObject implements Cloneable {
     @Override
     public Object getDefaultValue(final Class< ? > hint) {
         if (String.class.equals(hint) || hint == null) {
-            // TODO: shouldn't we handle this with BrowserVersion.hasFeature?
-            if (getBrowserVersion().isIE()) {
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.JS_OBJECT_ONLY)) {
                 return "[object]"; // the super helpful IE solution
             }
-            else if (getBrowserVersion().getBrowserVersionNumeric() >= 3) { // Firefox 3
-                return "[object " + getClassName() + "]";
-            }
-            else {
-                // Firefox2 is not fully coherent here (see WindowTest#windowProperties)
-                final Window window = (Window) getTopLevelScope(this);
-                if (ScriptableObject.getProperty(window, getClassName()) == this) {
-                    return "[" + getClassName() + "]";
-                }
-                return "[object " + getClassName() + "]";
-            }
+            return "[object " + getClassName() + "]";
         }
         return super.getDefaultValue(hint);
     }
@@ -411,8 +406,8 @@ public class SimpleScriptable extends ScriptableObject implements Cloneable {
      */
     @Override
     protected Object equivalentValues(Object value) {
-        if (value instanceof SimpleScriptableProxy) {
-            value = ((SimpleScriptableProxy) value).getWrappedScriptable();
+        if (value instanceof SimpleScriptableProxy<?>) {
+            value = ((SimpleScriptableProxy<?>) value).getDelegee();
         }
         return super.equivalentValues(value);
     }
@@ -426,7 +421,7 @@ public class SimpleScriptable extends ScriptableObject implements Cloneable {
             return (SimpleScriptable) super.clone();
         }
         catch (final Exception e) {
-            return null;
+            throw new IllegalStateException("Clone not supported");
         }
     }
 

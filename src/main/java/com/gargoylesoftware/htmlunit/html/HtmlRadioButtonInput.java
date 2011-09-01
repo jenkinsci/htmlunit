@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.gargoylesoftware.htmlunit.html;
 import java.io.IOException;
 import java.util.Map;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.ScriptResult;
 import com.gargoylesoftware.htmlunit.SgmlPage;
@@ -25,7 +26,7 @@ import com.gargoylesoftware.htmlunit.javascript.host.Event;
 /**
  * Wrapper for the HTML element "input".
  *
- * @version $Revision: 4854 $
+ * @version $Revision: 6359 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -34,12 +35,13 @@ import com.gargoylesoftware.htmlunit.javascript.host.Event;
  * @author Daniel Gredler
  * @author Bruce Faulkner
  * @author Ahmed Ashour
+ * @author Benoit Heinrich
+ * @author Ronald Brill
  */
 public class HtmlRadioButtonInput extends HtmlInput {
 
-    private static final long serialVersionUID = 425993174633373218L;
-
     private boolean defaultCheckedState_;
+    private boolean valueAtFocus_;
 
     /**
      * Creates an instance.
@@ -89,21 +91,21 @@ public class HtmlRadioButtonInput extends HtmlInput {
         final HtmlForm form = getEnclosingForm();
         final boolean changed = isChecked() != isChecked;
 
+        Page page = getPage();
         if (isChecked) {
             if (form != null) {
                 form.setCheckedRadioButton(this);
             }
-            else {
-                ((HtmlPage) getPage()).setCheckedRadioButton(this);
+            else if (page instanceof HtmlPage) {
+                ((HtmlPage) page).setCheckedRadioButton(this);
             }
         }
         else {
             removeAttribute("checked");
         }
 
-        Page page = getPage();
-
-        if (changed) {
+        if (changed && !getPage().getWebClient().getBrowserVersion()
+                .hasFeature(BrowserVersionFeatures.EVENT_ONCHANGE_LOSING_FOCUS)) {
             final ScriptResult scriptResult = fireEvent(Event.TYPE_CHANGE);
             if (scriptResult != null) {
                 page = scriptResult.getNewPage();
@@ -120,25 +122,19 @@ public class HtmlRadioButtonInput extends HtmlInput {
     // we need to preserve this method as it is there since many versions with the above documentation.
     @Override
     public String asText() {
-        if (isChecked()) {
-            return "checked";
-        }
-        return "unchecked";
+        return super.asText();
     }
 
     /**
      * Override of default clickAction that makes this radio button the selected
      * one when it is clicked.
      *
-     * @param defaultPage the default page to return if the action does not
-     * load a new page.
-     * @return the page that is currently loaded after execution of this method
      * @throws IOException if an IO error occurred
      */
     @Override
-    protected Page doClickAction(final Page defaultPage) throws IOException {
+    protected void doClickAction() throws IOException {
         setChecked(true);
-        return defaultPage;
+        super.doClickAction();
     }
 
     /**
@@ -159,7 +155,8 @@ public class HtmlRadioButtonInput extends HtmlInput {
     @Override
     public void setDefaultChecked(final boolean defaultChecked) {
         defaultCheckedState_ = defaultChecked;
-        if (getPage().getWebClient().getBrowserVersion().isFirefox()) {
+        if (getPage().getWebClient().getBrowserVersion()
+                .hasFeature(BrowserVersionFeatures.HTMLINPUT_DEFAULT_IS_CHECKED)) {
             setChecked(defaultChecked);
         }
     }
@@ -180,5 +177,38 @@ public class HtmlRadioButtonInput extends HtmlInput {
     protected boolean isStateUpdateFirst() {
         return true;
     }
-}
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected void onAddedToPage() {
+        if (getPage().getWebClient().getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_4)) {
+            setChecked(isDefaultChecked());
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void focus() {
+        super.focus();
+        valueAtFocus_ = isChecked();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    void removeFocus() {
+        super.removeFocus();
+
+        final boolean fireOnChange = getPage().getWebClient().getBrowserVersion()
+            .hasFeature(BrowserVersionFeatures.EVENT_ONCHANGE_LOSING_FOCUS);
+        if (fireOnChange && valueAtFocus_ != isChecked()) {
+            executeOnChangeHandlerIfAppropriate(this);
+        }
+        valueAtFocus_ = isChecked();
+    }
+}

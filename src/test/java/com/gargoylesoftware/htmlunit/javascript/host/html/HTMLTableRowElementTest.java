@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,24 +18,24 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Tests for {@link HTMLTableRowElement}.
  *
- * @version $Revision: 4608 $
+ * @version $Revision: 6465 $
  * @author Marc Guillemot
  */
 @RunWith(BrowserRunner.class)
-public class HTMLTableRowElementTest extends WebTestCase {
+public class HTMLTableRowElementTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if the test fails
      */
     @Test
     @Alerts(FF = "[object HTMLTableRowElement]", IE = "[object]")
-    public void testSimpleScriptable() throws Exception {
+    public void simpleScriptable() throws Exception {
         final String html = "<html><head>\n"
             + "<script>\n"
             + "  function test() {\n"
@@ -47,7 +47,7 @@ public class HTMLTableRowElementTest extends WebTestCase {
             + "    <tr id='myId'/>\n"
             + "  </table>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -83,7 +83,7 @@ public class HTMLTableRowElementTest extends WebTestCase {
             + "    </tr>\n"
             + "  </table>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -111,7 +111,7 @@ public class HTMLTableRowElementTest extends WebTestCase {
             + "    </tr>\n"
             + "  </table>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -149,7 +149,7 @@ public class HTMLTableRowElementTest extends WebTestCase {
             + "  alert(tr3.align);\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -179,7 +179,7 @@ public class HTMLTableRowElementTest extends WebTestCase {
             + "  alert(tr3.ch);\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -209,7 +209,7 @@ public class HTMLTableRowElementTest extends WebTestCase {
             + "  alert(tr3.chOff);\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -247,7 +247,7 @@ public class HTMLTableRowElementTest extends WebTestCase {
             + "  alert(tr3.vAlign);\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -274,7 +274,66 @@ public class HTMLTableRowElementTest extends WebTestCase {
             + "  <table><tr id='tr'><td>a</td></tr></table>\n"
             + "  </body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(FF = { "0", "0", "3", "1", "-1", "true", "false" },
+            IE = { "0", "0", "3", "1", "-1", "false", "true" })
+    public void rowIndex_sectionRowIndex() throws Exception {
+        final String html
+            = "<html><body><table>\n"
+            + "  <tr id='tr1'><td>a</td></tr>\n"
+            + "  <tr id='tr2'><td>b</td></tr>\n"
+            + "  <tfoot>\n"
+            + "    <tr id='trf1'><td>a</td></tr>\n"
+            + "    <tr id='trf2'><td>a</td></tr>\n"
+            + "  </tfoot>\n"
+            + "</table>\n"
+            + "<script>\n"
+            + "  var tr1 = document.getElementById('tr1');\n"
+            + "  var trf2 = document.getElementById('trf2');\n"
+            + "  alert(tr1.rowIndex);\n"
+            + "  alert(tr1.sectionRowIndex);\n"
+            + "  alert(trf2.rowIndex);\n"
+            + "  alert(trf2.sectionRowIndex);\n"
+            + "  var tr3 = document.createElement('tr');\n"
+            + "  alert(tr3.rowIndex);\n"
+            + "  alert(tr3.sectionRowIndex == -1);\n"
+            + "  alert(tr3.sectionRowIndex > 1000);\n"
+            + "</script>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Test for 3180939; same left offset for both
+     * rows is expected.
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts("true")
+    public void offsetLeftDifferentRows() throws Exception {
+        final String html
+            = "<html><body><table>\n"
+            + "  <tr>\n"
+            + "    <td id='td_1_1'>1_1</td>\n"
+            + "    <td id='td_1_2'>1_2</td>\n"
+            + "  </tr>\n"
+            + "  <tr>\n"
+            + "    <td id='td_2_1'>2_1</td>\n"
+            + "    <td id='td_2_2'>2_2</td>\n"
+            + "  </tr>\n"
+            + "</table>\n"
+            + "<script>\n"
+            + "  var o1 = document.getElementById('td_1_1').offsetLeft;\n"
+            + "  var o2 = document.getElementById('td_2_1').offsetLeft;\n"
+            + "  alert(o1 == o2 ? 'true' : o1 + ' != ' + o2);\n"
+            + "</script>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
 }

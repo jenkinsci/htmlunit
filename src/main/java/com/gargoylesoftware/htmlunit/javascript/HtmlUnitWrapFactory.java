@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,18 +19,17 @@ import java.io.Serializable;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 import net.sourceforge.htmlunit.corejs.javascript.WrapFactory;
+
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.NodeList;
 
 /**
  * Called by Rhino to Wrap Object as {@link Scriptable}.
  *
- * @version $Revision: 4402 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  */
 public class HtmlUnitWrapFactory extends WrapFactory implements Serializable {
-    private static final long serialVersionUID = 1779982280511278636L;
-
     /**
      * Constructor.
      */

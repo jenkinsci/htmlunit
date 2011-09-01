@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +18,18 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 
 /**
  * Tests for {@link HTMLTableColElement}.
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
+ * @author Ahmed Ashour
  */
 @RunWith(BrowserRunner.class)
-public class HTMLTableColElementTest extends WebTestCase {
+public class HTMLTableColElementTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if an error occurs
@@ -70,7 +71,7 @@ public class HTMLTableColElementTest extends WebTestCase {
             + "  alert(c3.align);\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -105,7 +106,7 @@ public class HTMLTableColElementTest extends WebTestCase {
             + "  alert(c3.ch);\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -140,7 +141,7 @@ public class HTMLTableColElementTest extends WebTestCase {
             + "  alert(c3.chOff);\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -182,7 +183,7 @@ public class HTMLTableColElementTest extends WebTestCase {
             + "  alert(c3.span);\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -225,7 +226,7 @@ public class HTMLTableColElementTest extends WebTestCase {
             + "  alert(c3.vAlign);\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -284,7 +285,52 @@ public class HTMLTableColElementTest extends WebTestCase {
             + "  alert(c6.width);\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts("128")
+    public void width_px() throws Exception {
+        final String html
+            = "<html><head>"
+            + "<script>\n"
+            + "  function test() {\n"
+            + "    myCol.width = '128px';\n"
+            + "    alert(myCol.width);\n"
+            + "  }\n"
+            + "</script>\n"
+            + "<body onload='test()'>\n"
+            + "<table>\n"
+            + "  <col id='myCol'></col>\n"
+            + "</table>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Regression test for bug 2948498.
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts({ "", "string" })
+    public void width_null() throws Exception {
+        final String html
+            = "<html><head>"
+            + "<script>\n"
+            + "  function test() {\n"
+            + "    myCol.width = null;\n"
+            + "    alert(myCol.width);\n"
+            + "    alert(typeof myCol.width);\n"
+            + "  }\n"
+            + "</script>\n"
+            + "<body onload='test()'>\n"
+            + "<table>\n"
+            + "  <col id='myCol'></col>\n"
+            + "</table>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
 }

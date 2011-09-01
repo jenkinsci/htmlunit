@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,12 +25,10 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 /**
  * An implementation of native ActiveX components using <a href="http://jacob-project.wiki.sourceforge.net/">Jacob</a>.
  *
- * @version $Revision: 4402 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  */
 public class ActiveXObjectImpl extends SimpleScriptable {
-
-    private static final long serialVersionUID = 6954481782205807262L;
 
     private static final Class< ? > activeXComponentClass_;
 
@@ -188,7 +186,7 @@ public class ActiveXObjectImpl extends SimpleScriptable {
     public void put(final String name, final Scriptable start, final Object value) {
         try {
             final Method setMethod = activeXComponentClass_.getMethod("setProperty", String.class, value.getClass());
-            setMethod.invoke(object_, name, value);
+            setMethod.invoke(object_, name, Context.toString(value));
         }
         catch (final Exception e) {
             throw Context.throwAsScriptRuntimeEx(e);

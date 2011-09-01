@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,12 @@
 package com.gargoylesoftware.htmlunit.html;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
 
-import org.apache.commons.httpclient.NameValuePair;
-
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.ElementNotFoundException;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.ScriptResult;
@@ -26,11 +28,12 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.WebAssert;
 import com.gargoylesoftware.htmlunit.javascript.JavaScriptEngine;
 import com.gargoylesoftware.htmlunit.javascript.host.Event;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Wrapper for the HTML element "input".
  *
- * @version $Revision: 4794 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -39,14 +42,14 @@ import com.gargoylesoftware.htmlunit.javascript.host.Event;
  * @author Daniel Gredler
  * @author Ahmed Ashour
  */
-public abstract class HtmlInput extends ClickableElement implements DisabledElement, SubmittableElement {
-
-    private static final long serialVersionUID = 3602129443357463947L;
-
+public abstract class HtmlInput extends HtmlElement implements DisabledElement, SubmittableElement,
+    FormFieldWithNameHistory {
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "input";
 
     private String defaultValue_;
+    private String originalName_;
+    private Collection<String> previousNames_ = Collections.emptySet();
 
     /**
      * Creates an instance.
@@ -70,6 +73,7 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
             final Map<String, DomAttr> attributes) {
         super(namespaceURI, qualifiedName, page, attributes);
         defaultValue_ = getValueAttribute();
+        originalName_ = getNameAttribute();
     }
 
     /**
@@ -185,6 +189,24 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
      */
     public final String getMaxLengthAttribute() {
         return getAttribute("maxlength");
+    }
+
+    /**
+     * Gets the max length if defined, Integer.MAX_VALUE if none.
+     * @return the max length
+     */
+    protected int getMaxLength() {
+        final String maxLength = getMaxLengthAttribute();
+        if (maxLength.length() == 0) {
+            return Integer.MAX_VALUE;
+        }
+
+        try {
+            return Integer.parseInt(maxLength.trim());
+        }
+        catch (final NumberFormatException e) {
+            return Integer.MAX_VALUE;
+        }
     }
 
     /**
@@ -333,7 +355,8 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
      * @see HtmlFileInput#setDefaultValue(String)
      */
     public void setDefaultValue(final String defaultValue) {
-        final boolean modifyValue = getPage().getWebClient().getBrowserVersion().isFirefox();
+        final boolean modifyValue = getPage().getWebClient().getBrowserVersion()
+            .hasFeature(BrowserVersionFeatures.HTMLINPUT_DEFAULT_IS_CHECKED);
         setDefaultValue(defaultValue, modifyValue);
     }
 
@@ -470,5 +493,33 @@ public abstract class HtmlInput extends ClickableElement implements DisabledElem
         }
 
         return page;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setAttributeNS(final String namespaceURI, final String qualifiedName, final String attributeValue) {
+        if ("name".equals(qualifiedName)) {
+            if (previousNames_.isEmpty()) {
+                previousNames_ = new HashSet<String>();
+            }
+            previousNames_.add(attributeValue);
+        }
+        super.setAttributeNS(namespaceURI, qualifiedName, attributeValue);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public String getOriginalName() {
+        return originalName_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public Collection<String> getPreviousNames() {
+        return previousNames_;
     }
 }

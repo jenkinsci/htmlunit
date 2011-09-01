@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,18 +14,19 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
-import static org.apache.commons.lang.ArrayUtils.contains;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
+
+import org.apache.commons.lang.ArrayUtils;
+
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 
 /**
  * The JavaScript object "HTMLBRElement".
  *
- * @version $Revision: 4569 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  */
 public class HTMLBRElement extends HTMLElement {
-
-    private static final long serialVersionUID = -3785200238092986918L;
 
     /** Valid values for the {@link #jsxGet_clear() clear} property. */
     private static final String[] VALID_CLEAR_VALUES = new String[] {"left", "right", "all", "none"};
@@ -43,7 +44,8 @@ public class HTMLBRElement extends HTMLElement {
      */
     public String jsxGet_clear() {
         final String clear = getDomNodeOrDie().getAttribute("clear");
-        if (!contains(VALID_CLEAR_VALUES, clear) && getBrowserVersion().isIE()) {
+        if (!ArrayUtils.contains(VALID_CLEAR_VALUES, clear)
+                && getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_42)) {
             return "";
         }
         return clear;
@@ -54,8 +56,9 @@ public class HTMLBRElement extends HTMLElement {
      * @param clear the value of the <tt>clear</tt> property
      */
     public void jsxSet_clear(final String clear) {
-        if (!contains(VALID_CLEAR_VALUES, clear) && getBrowserVersion().isIE()) {
-            Context.throwAsScriptRuntimeEx(new Exception("Invalid clear property value: '" + clear + "'."));
+        if (!ArrayUtils.contains(VALID_CLEAR_VALUES, clear)
+                && getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_43)) {
+            throw Context.reportRuntimeError("Invalid clear property value: '" + clear + "'.");
         }
         getDomNodeOrDie().setAttribute("clear", clear);
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,16 +18,14 @@ import java.io.Serializable;
 
 abstract class DoTypeProcessor implements Serializable {
 
-    private static final long serialVersionUID = -1857188321096014188L;
-
     void doType(final String currentValue, final int selectionStart, final int selectionEnd,
             final char c, final boolean shiftKey, final boolean ctrlKey, final boolean altKey) {
 
-        String newValue = currentValue;
+        final StringBuilder newValue = new StringBuilder(currentValue);
         int cursorPosition = selectionStart;
         if (c == '\b') {
             if (selectionStart > 0) {
-                newValue = currentValue.substring(0, selectionStart - 1) + currentValue.substring(selectionStart);
+                newValue.deleteCharAt(selectionStart - 1);
                 cursorPosition = selectionStart - 1;
             }
         }
@@ -37,15 +35,15 @@ abstract class DoTypeProcessor implements Serializable {
         }
         else if (acceptChar(c)) {
             if (selectionStart != currentValue.length()) {
-                newValue = currentValue.substring(0, selectionStart) + c + currentValue.substring(selectionEnd);
+                newValue.replace(selectionStart, selectionEnd, Character.toString(c));
             }
             else {
-                newValue += c;
+                newValue.append(c);
             }
             cursorPosition++;
         }
 
-        typeDone(newValue, cursorPosition);
+        typeDone(newValue.toString(), cursorPosition);
     }
 
     /**

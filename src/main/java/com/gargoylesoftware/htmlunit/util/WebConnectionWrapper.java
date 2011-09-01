@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import java.io.IOException;
 
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebConnection;
-import com.gargoylesoftware.htmlunit.WebRequestSettings;
+import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebResponse;
 
 /**
@@ -28,7 +28,7 @@ import com.gargoylesoftware.htmlunit.WebResponse;
  * <p>This class implements the Wrapper or Decorator pattern. Methods default to calling through to the wrapped
  * web connection object.</p>
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6308 $
  * @author Marc Guillemot
  */
 public class WebConnectionWrapper implements WebConnection {
@@ -64,8 +64,15 @@ public class WebConnectionWrapper implements WebConnection {
      * {@inheritDoc}
      * The default behavior of this method is to return getResponse() on the wrapped connection object.
      */
-    public WebResponse getResponse(final WebRequestSettings settings) throws IOException {
-        return wrappedWebConnection_.getResponse(settings);
+    public WebResponse getResponse(final WebRequest request) throws IOException {
+        return wrappedWebConnection_.getResponse(request);
     }
 
+    /**
+     * Gets the wrapped {@link WebConnection}.
+     * @return the wrapped connection
+     */
+    public WebConnection getWrappedWebConnection() {
+        return wrappedWebConnection_;
+    }
 }

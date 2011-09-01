@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,13 +19,11 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 /**
  * Specifies a rectangle that contains a line of text in either an element or a TextRange object.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  * @see <a href="http://msdn2.microsoft.com/en-us/library/ms535906.aspx">MSDN Documentation</a>
  */
 public class TextRectangle extends SimpleScriptable {
-
-    private static final long serialVersionUID = 8045028432279353283L;
 
     private int bottom_;
     private int left_;
@@ -48,10 +46,10 @@ public class TextRectangle extends SimpleScriptable {
      * @param top the top coordinate of the rectangle surrounding the object content
      */
     public TextRectangle(final int bottom, final int left, final int right, final int top) {
-        this.bottom_ = bottom;
-        this.left_ = left;
-        this.right_ = right;
-        this.top_ = top;
+        bottom_ = bottom;
+        left_ = left;
+        right_ = right;
+        top_ = top;
     }
 
     /**
@@ -59,7 +57,7 @@ public class TextRectangle extends SimpleScriptable {
      * @param bottom the bottom coordinate of the rectangle surrounding the object content
      */
     public void jsxSet_bottom(final int bottom) {
-        this.bottom_ = bottom;
+        bottom_ = bottom;
     }
 
     /**
@@ -75,7 +73,7 @@ public class TextRectangle extends SimpleScriptable {
      * @param left the left coordinate of the rectangle surrounding the object content
      */
     public void jsxSet_left(final int left) {
-        this.left_ = left;
+        left_ = left;
     }
 
     /**
@@ -91,7 +89,7 @@ public class TextRectangle extends SimpleScriptable {
      * @param right the right coordinate of the rectangle surrounding the object content
      */
     public void jsxSet_right(final int right) {
-        this.right_ = right;
+        right_ = right;
     }
 
     /**
@@ -107,7 +105,7 @@ public class TextRectangle extends SimpleScriptable {
      * @param top the top coordinate of the rectangle surrounding the object content
      */
     public void jsxSet_top(final int top) {
-        this.top_ = top;
+        top_ = top;
     }
 
     /**

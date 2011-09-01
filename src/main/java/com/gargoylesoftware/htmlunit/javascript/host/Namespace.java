@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,13 +21,12 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 /**
  * A JavaScript object for a Namespace.
  *
- * @version $Revision: 4402 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  * @see <a href="http://msdn.microsoft.com/en-us/library/ms535854.aspx">MSDN documentation</a>
  */
 public class Namespace extends SimpleScriptable {
 
-    private static final long serialVersionUID = -5554898606769625960L;
     private String name_;
     private String urn_;
 

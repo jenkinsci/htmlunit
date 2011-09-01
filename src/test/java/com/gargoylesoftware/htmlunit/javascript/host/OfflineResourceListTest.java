@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,29 +18,29 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 
 /**
  * Unit tests for {@link OfflineResourceList}.
  *
- * @version $Revision: 4772 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
  */
 @RunWith(BrowserRunner.class)
-public class OfflineResourceListTest extends WebTestCase {
+public class OfflineResourceListTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(IE = "undefined", FF2 = "undefined", FF3 = "[object OfflineResourceList]")
+    @Alerts(IE = "undefined", FF = "[object OfflineResourceList]")
     public void existence() throws Exception {
         final String html
             = "<html><body><script>\n"
             + "alert(window.applicationCache);\n"
             + "</script></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
 }

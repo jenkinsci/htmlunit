@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,21 +14,18 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.xml;
 
-import org.apache.commons.lang.StringEscapeUtils;
-
 import com.gargoylesoftware.htmlunit.javascript.host.Attr;
+import com.gargoylesoftware.htmlunit.util.StringUtils;
 
 /**
  * A JavaScript object for an Attribute of XMLElement.
  *
  * @see <a href="http://www.w3.org/TR/2000/REC-DOM-Level-2-Core-20001113/core.html#ID-63764602">W3C DOM Level 2</a>
  * @see <a href="http://msdn.microsoft.com/en-us/library/ms762738.aspx">MSDN documentation</a>
- * @version $Revision: 4791 $
+ * @version $Revision: 6204 $
  * @author Sudhan Moghe
  */
 public class XMLAttr extends Attr {
-
-    private static final long serialVersionUID = -9062357417620766444L;
 
     /**
      * Creates an instance. JavaScript objects must have a default constructor.
@@ -60,7 +57,7 @@ public class XMLAttr extends Attr {
         sb.append(jsxGet_name());
         sb.append('=');
         sb.append('"');
-        sb.append(StringEscapeUtils.escapeXml(jsxGet_value()));
+        sb.append(StringUtils.escapeXmlAttributeValue(jsxGet_value()));
         sb.append('"');
         return sb.toString();
     }

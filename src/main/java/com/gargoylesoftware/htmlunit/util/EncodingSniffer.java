@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,29 +14,24 @@
  */
 package com.gargoylesoftware.htmlunit.util;
 
-import static org.apache.commons.lang.ArrayUtils.contains;
-import static org.apache.commons.lang.ArrayUtils.indexOf;
-import static org.apache.commons.lang.ArrayUtils.isEquals;
-import static org.apache.commons.lang.ArrayUtils.subarray;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.util.List;
 
-import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 /**
  * Sniffs encoding settings from HTML, XML or other content. The HTML encoding sniffing algorithm is based on the
- * <a href="http://www.whatwg.org/specs/web-apps/current-work/multipage/syntax.html#determining-the-character-encoding">HTML5
+ * <a href="http://www.whatwg.org/specs/web-apps/current-work/multipage/parsing.html#determining-the-character-encoding">HTML5
  * encoding sniffing algorithm</a>.
  *
- * @version $Revision: 4578 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
+ * @author Ahmed Ashour
  */
 public final class EncodingSniffer {
 
@@ -109,7 +104,7 @@ public final class EncodingSniffer {
     /**
      * <p>If the specified content is HTML content, this method sniffs encoding settings
      * from the specified HTML content and/or the corresponding HTTP headers based on the
-     * <a href="http://www.whatwg.org/specs/web-apps/current-work/multipage/syntax.html#determining-the-character-encoding">HTML5
+     * <a href="http://www.whatwg.org/specs/web-apps/current-work/multipage/parsing.html#determining-the-character-encoding">HTML5
      * encoding sniffing algorithm</a>.</p>
      *
      * <p>If the specified content is XML content, this method sniffs encoding settings
@@ -195,7 +190,7 @@ public final class EncodingSniffer {
 
     /**
      * <p>Sniffs encoding settings from the specified HTML content and/or the corresponding HTTP headers based on the
-     * <a href="http://www.whatwg.org/specs/web-apps/current-work/multipage/syntax.html#determining-the-character-encoding">HTML5
+     * <a href="http://www.whatwg.org/specs/web-apps/current-work/multipage/parsing.html#determining-the-character-encoding">HTML5
      * encoding sniffing algorithm</a>.</p>
      *
      * <p>Note that if an encoding is found but it is not supported on the current platform, this method returns
@@ -323,13 +318,13 @@ public final class EncodingSniffer {
         final byte[] markerUTF8 = {(byte) 0xef, (byte) 0xbb, (byte) 0xbf};
         final byte[] markerUTF16BE = {(byte) 0xfe, (byte) 0xff};
         final byte[] markerUTF16LE = {(byte) 0xff, (byte) 0xfe};
-        if (bytes != null && isEquals(markerUTF8, subarray(bytes, 0, 3))) {
+        if (bytes != null && ArrayUtils.isEquals(markerUTF8, ArrayUtils.subarray(bytes, 0, 3))) {
             encoding = UTF8;
         }
-        else if (bytes != null && isEquals(markerUTF16BE, subarray(bytes, 0, 2))) {
+        else if (bytes != null && ArrayUtils.isEquals(markerUTF16BE, ArrayUtils.subarray(bytes, 0, 2))) {
             encoding = UTF16_BE;
         }
-        else if (bytes != null && isEquals(markerUTF16LE, subarray(bytes, 0, 2))) {
+        else if (bytes != null && ArrayUtils.isEquals(markerUTF16LE, ArrayUtils.subarray(bytes, 0, 2))) {
             encoding = UTF16_LE;
         }
         if (encoding != null && LOG.isDebugEnabled()) {
@@ -415,7 +410,7 @@ public final class EncodingSniffer {
 
     /**
      * Extracts an attribute from the specified byte array, starting at the specified index, using the
-     * <a href="http://www.whatwg.org/specs/web-apps/current-work/multipage/syntax.html#concept-get-attributes-when-sniffing">HTML5
+     * <a href="http://www.whatwg.org/specs/web-apps/current-work/multipage/parsing.html#concept-get-attributes-when-sniffing">HTML5
      * attribute algorithm</a>.
      *
      * @param bytes the byte array to extract an attribute from
@@ -435,11 +430,11 @@ public final class EncodingSniffer {
         if (bytes[i] == '>') {
             return null;
         }
-        String name = "";
-        String value = "";
+        final StringBuilder name = new StringBuilder();
+        final StringBuilder value = new StringBuilder();
         for ( ;; i++) {
             if (i >= bytes.length) {
-                return new Attribute(name, value, i);
+                return new Attribute(name.toString(), value.toString(), i);
             }
             if (bytes[i] == '=' && name.length() > 0) {
                 i++;
@@ -449,27 +444,27 @@ public final class EncodingSniffer {
                 while (bytes[i] == 0x09 || bytes[i] == 0x0A || bytes[i] == 0x0C || bytes[i] == 0x0D || bytes[i] == 0x20) {
                     i++;
                     if (i >= bytes.length) {
-                        return new Attribute(name, value, i);
+                        return new Attribute(name.toString(), value.toString(), i);
                     }
                 }
                 if (bytes[i] != '=') {
-                    return new Attribute(name, value, i);
+                    return new Attribute(name.toString(), value.toString(), i);
                 }
                 i++;
                 break;
             }
             if (bytes[i] == '/' || bytes[i] == '>') {
-                return new Attribute(name, value, i);
+                return new Attribute(name.toString(), value.toString(), i);
             }
-            name += (char) bytes[i];
+            name.append((char) bytes[i]);
         }
         if (i >= bytes.length) {
-            return new Attribute(name, value, i);
+            return new Attribute(name.toString(), value.toString(), i);
         }
         while (bytes[i] == 0x09 || bytes[i] == 0x0A || bytes[i] == 0x0C || bytes[i] == 0x0D || bytes[i] == 0x20) {
             i++;
             if (i >= bytes.length) {
-                return new Attribute(name, value, i);
+                return new Attribute(name.toString(), value.toString(), i);
             }
         }
         if (bytes[i] == '"' || bytes[i] == '\'') {
@@ -477,43 +472,43 @@ public final class EncodingSniffer {
             for (i++; i < bytes.length; i++) {
                 if (bytes[i] == b) {
                     i++;
-                    return new Attribute(name, value, i);
+                    return new Attribute(name.toString(), value.toString(), i);
                 }
                 else if (bytes[i] >= 'A' && bytes[i] <= 'Z') {
                     final byte b2 = (byte) (bytes[i] + 0x20);
-                    value += (char) b2;
+                    value.append((char) b2);
                 }
                 else {
-                    value += (char) bytes[i];
+                    value.append((char) bytes[i]);
                 }
             }
-            return new Attribute(name, value, i);
+            return new Attribute(name.toString(), value.toString(), i);
         }
         else if (bytes[i] == '>') {
-            return new Attribute(name, value, i);
+            return new Attribute(name.toString(), value.toString(), i);
         }
         else if (bytes[i] >= 'A' && bytes[i] <= 'Z') {
             final byte b = (byte) (bytes[i] + 0x20);
-            value += (char) b;
+            value.append((char) b);
             i++;
         }
         else {
-            value += (char) bytes[i];
+            value.append((char) bytes[i]);
             i++;
         }
         for ( ; i < bytes.length; i++) {
             if (bytes[i] == 0x09 || bytes[i] == 0x0A || bytes[i] == 0x0C || bytes[i] == 0x0D || bytes[i] == 0x20 || bytes[i] == 0x3E) {
-                return new Attribute(name, value, i);
+                return new Attribute(name.toString(), value.toString(), i);
             }
             else if (bytes[i] >= 'A' && bytes[i] <= 'Z') {
                 final byte b = (byte) (bytes[i] + 0x20);
-                value += (char) b;
+                value.append((char) b);
             }
             else {
-                value += (char) bytes[i];
+                value.append((char) bytes[i]);
             }
         }
-        return new Attribute(name, value, i);
+        return new Attribute(name.toString(), value.toString(), i);
     }
 
     /**
@@ -563,29 +558,29 @@ public final class EncodingSniffer {
             if (bytes.length <= i + 1) {
                 return null;
             }
-            final int index = indexOf(bytes, (byte) '"', i + 1);
+            final int index = ArrayUtils.indexOf(bytes, (byte) '"', i + 1);
             if (index == -1) {
                 return null;
             }
-            final String charset = new String(subarray(bytes, i + 1, index));
+            final String charset = new String(ArrayUtils.subarray(bytes, i + 1, index));
             return isSupportedCharset(charset) ? charset : null;
         }
         if (bytes[i] == '\'') {
             if (bytes.length <= i + 1) {
                 return null;
             }
-            final int index = indexOf(bytes, (byte) '\'', i + 1);
+            final int index = ArrayUtils.indexOf(bytes, (byte) '\'', i + 1);
             if (index == -1) {
                 return null;
             }
-            final String charset = new String(subarray(bytes, i + 1, index));
+            final String charset = new String(ArrayUtils.subarray(bytes, i + 1, index));
             return isSupportedCharset(charset) ? charset : null;
         }
         int end = skipToAnyOf(bytes, i, new byte[] {0x09, 0x0A, 0x0C, 0x0D, 0x20, 0x3B});
         if (end == -1) {
             end = bytes.length;
         }
-        final String charset = new String(subarray(bytes, i, end));
+        final String charset = new String(ArrayUtils.subarray(bytes, i, end));
         return isSupportedCharset(charset) ? charset : null;
     }
 
@@ -599,7 +594,7 @@ public final class EncodingSniffer {
     static String sniffEncodingFromXmlDeclaration(final byte[] bytes) {
         String encoding = null;
         final byte[] declarationPrefix = "<?xml ".getBytes();
-        if (isEquals(declarationPrefix, subarray(bytes, 0, declarationPrefix.length))) {
+        if (ArrayUtils.isEquals(declarationPrefix, ArrayUtils.subarray(bytes, 0, declarationPrefix.length))) {
             final int index = ArrayUtils.indexOf(bytes, (byte) '?', 2);
             if (index + 1 < bytes.length && bytes[index + 1] == '>') {
                 final String declaration = new String(bytes, 0, index + 2);
@@ -690,7 +685,7 @@ public final class EncodingSniffer {
      */
     static int skipToAnyOf(final byte[] bytes, int i, final byte[] targets) {
         for ( ; i < bytes.length; i++) {
-            if (contains(targets, bytes[i])) {
+            if (ArrayUtils.contains(targets, bytes[i])) {
                 break;
             }
         }
@@ -712,6 +707,9 @@ public final class EncodingSniffer {
     static int indexOfSubArray(final byte[] array, final byte[] subarray, final int startIndex) {
         for (int i = startIndex; i < array.length; i++) {
             boolean found = true;
+            if (i + subarray.length > array.length) {
+                break;
+            }
             for (int j = 0; j < subarray.length; j++) {
                 final byte a = array[i + j];
                 final byte b = subarray[j];

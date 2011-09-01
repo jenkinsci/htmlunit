@@ -1,6 +1,0 @@
-syntax: glob
-target
-*.iml
-*.iws
-*.ipr
-artifacts

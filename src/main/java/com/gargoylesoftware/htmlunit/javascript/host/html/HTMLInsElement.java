@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,10 @@ package com.gargoylesoftware.htmlunit.javascript.host.html;
 /**
  * The JavaScript object "HTMLInsElement".
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6220 $
  * @author Ahmed Ashour
  */
 public class HTMLInsElement extends HTMLElement {
-
-    private static final long serialVersionUID = -650948293847730361L;
 
     /**
      * Creates an instance.
@@ -36,10 +34,7 @@ public class HTMLInsElement extends HTMLElement {
      * @return the value of the "cite" property
      */
     public String jsxGet_cite() {
-        String cite = getDomNodeOrDie().getAttribute("cite");
-        if (cite == NOT_FOUND) {
-            cite = "";
-        }
+        final String cite = getDomNodeOrDie().getAttribute("cite");
         return cite;
     }
 
@@ -56,10 +51,7 @@ public class HTMLInsElement extends HTMLElement {
      * @return the value of the "dateTime" property
      */
     public String jsxGet_dateTime() {
-        String cite = getDomNodeOrDie().getAttribute("datetime");
-        if (cite == NOT_FOUND) {
-            cite = "";
-        }
+        final String cite = getDomNodeOrDie().getAttribute("datetime");
         return cite;
     }
 

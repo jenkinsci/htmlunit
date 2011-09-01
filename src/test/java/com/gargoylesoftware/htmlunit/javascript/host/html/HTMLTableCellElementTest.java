@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
@@ -26,11 +26,12 @@ import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
 /**
  * Tests for {@link HTMLTableCellElement}.
  *
- * @version $Revision: 4661 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
+ * @author Ahmed Ashour
  */
 @RunWith(BrowserRunner.class)
-public class HTMLTableCellElementTest extends WebTestCase {
+public class HTMLTableCellElementTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if an error occurs
@@ -69,7 +70,7 @@ public class HTMLTableCellElementTest extends WebTestCase {
             + "  alert(td3.align);\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -101,7 +102,7 @@ public class HTMLTableCellElementTest extends WebTestCase {
             + "  alert(td3.ch);\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -133,7 +134,7 @@ public class HTMLTableCellElementTest extends WebTestCase {
             + "  alert(td3.chOff);\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -173,7 +174,7 @@ public class HTMLTableCellElementTest extends WebTestCase {
             + "  alert(td3.vAlign);\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -200,7 +201,7 @@ public class HTMLTableCellElementTest extends WebTestCase {
             + "  <table><tr><td id='td'>a</td></tr></table>\n"
             + "  </body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -237,7 +238,7 @@ public class HTMLTableCellElementTest extends WebTestCase {
             + "  <table><tr><td id='td'>a</td></tr></table>\n"
             + "  </body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -266,7 +267,7 @@ public class HTMLTableCellElementTest extends WebTestCase {
             + "  <table><tr><td id='td'>a</td></tr></table>\n"
             + "  </body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -312,7 +313,7 @@ public class HTMLTableCellElementTest extends WebTestCase {
             + "  alert(td3.colSpan);\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -363,7 +364,7 @@ public class HTMLTableCellElementTest extends WebTestCase {
             + "  alert(td3.rowSpan);\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -394,7 +395,7 @@ public class HTMLTableCellElementTest extends WebTestCase {
             + "  <table><tr><td id='td'>a</td></tr></table>\n"
             + "  </body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -423,7 +424,50 @@ public class HTMLTableCellElementTest extends WebTestCase {
             + "alert(td2.offsetWidth + ',' + td2.offsetHeight);\n"
             + "alert(td3.offsetWidth + ',' + td3.offsetHeight);\n"
             + "</script></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(IE = { "100", "200", "400", "error", "400", "error", "400", "100", "10%" },
+            FF = { "100", "200", "400", "abc", "0", "100", "10%" })
+    public void width() throws Exception {
+        final String html =
+            "<html>\n"
+            + "  <head>\n"
+            + "    <script>\n"
+            + "      function set(e, value) {\n"
+            + "        try {\n"
+            + "          e.width = value;\n"
+            + "        } catch (e) {\n"
+            + "          alert('error');\n"
+            + "        }\n"
+            + "      }\n"
+            + "      function test() {\n"
+            + "        var td = document.getElementById('td');\n"
+            + "        set(td, '100px');\n"
+            + "        alert(td.width);\n"
+            + "        td.height = '200px';\n"
+            + "        alert(td.height);\n"
+            + "        set(td, '400');\n"
+            + "        alert(td.width);\n"
+            + "        set(td, 'abc');\n"
+            + "        alert(td.width);\n"
+            + "        set(td, -5);\n"
+            + "        alert(td.width);\n"
+            + "        set(td, 100.2);\n"
+            + "        alert(td.width);\n"
+            + "        set(td, '10%');\n"
+            + "        alert(td.width);\n"
+            + "      }\n"
+            + "    </script>\n"
+            + "  </head>\n"
+            + "  <body onload='test()'>\n"
+            + "  <table><tr><td id='td'>a</td></tr></table>\n"
+            + "  </body>\n"
+            + "</html>";
+        loadPageWithAlerts2(html);
+    }
 }

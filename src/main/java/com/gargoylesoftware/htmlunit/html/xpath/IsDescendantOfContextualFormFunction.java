@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,13 +32,12 @@ import com.gargoylesoftware.htmlunit.html.HtmlForm;
  * instance, this function considers {@link HtmlForm#getLostChildren() lost children} to be descendants of the
  * form, even if they aren't really descendants from a DOM point of view.
  *
- * @version $Revision: 4214 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
+ * @deprecated since HtmlUnit-2.8 without replacement as there is no internal usage for this classe.
  */
+@Deprecated
 public class IsDescendantOfContextualFormFunction extends FunctionDef1Arg {
-
-    /** Serial version UID. */
-    private static final long serialVersionUID = -7865865499040147609L;
 
     /**
      * {@inheritDoc}

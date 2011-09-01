@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import org.junit.runner.RunWith;
 /**
  * Tests for {@link IncorrectnessListener}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  */
 @RunWith(BrowserRunner.class)
@@ -34,7 +34,7 @@ public final class IncorrectnessListenerTest extends WebTestCase {
     @Test
     public void testNotification() throws Exception {
         final String html = "<html><head>\n"
-                + "<meta http-equiv='set-cookie' content='webm=none; path=/; expires=abcdef;'>\n"
+                + "<meta http-equiv='set-cookie' content='webm=none; path=/; a=b;'>\n"
                 + "</head>\n"
                 + "<body></body>\n"
                 + "</html>";
@@ -54,7 +54,7 @@ public final class IncorrectnessListenerTest extends WebTestCase {
         webClient.getPage(URL_FIRST);
 
         final String[] expectedIncorrectness = {
-            "set-cookie http-equiv meta tag: can't parse expiration date >abcdef<."
+            "set-cookie http-equiv meta tag: unknown attribute 'a'."
         };
         assertEquals(expectedIncorrectness, collectedIncorrectness);
     }

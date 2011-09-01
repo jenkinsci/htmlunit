@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,10 +20,9 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.httpclient.util.DateParseException;
-import org.apache.commons.httpclient.util.DateUtil;
 import org.apache.commons.lang.math.NumberUtils;
-import org.apache.commons.lang.time.DateUtils;
+import org.apache.http.impl.cookie.DateParseException;
+import org.apache.http.impl.cookie.DateUtils;
 import org.w3c.dom.css.CSSStyleSheet;
 
 /**
@@ -31,13 +30,11 @@ import org.w3c.dom.css.CSSStyleSheet;
  * compiled JavaScript files avoids unnecessary web requests and additional compilation overhead, while
  * caching parsed CSS snippets avoids very expensive CSS parsing.</p>
  *
- * @version $Revision: 4883 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  * @author Daniel Gredler
  */
 public class Cache implements Serializable {
-
-    private static final long serialVersionUID = -3864114727885057419L;
 
     /** The maximum size of the cache. */
     private int maxSize_ = 40;
@@ -54,9 +51,7 @@ public class Cache implements Serializable {
     /**
      * A cache entry.
      */
-    private class Entry implements Comparable<Entry>, Serializable {
-
-        private static final long serialVersionUID = 588400350259242484L;
+    private static class Entry implements Comparable<Entry>, Serializable {
         private final String key_;
         private final Object value_;
         private long lastAccess_;
@@ -91,9 +86,9 @@ public class Cache implements Serializable {
      * @param toCache the object that is to be cached, if possible (may be for instance a compiled script or
      * simply a WebResponse)
      */
-    public void cacheIfPossible(final WebRequestSettings request, final WebResponse response, final Object toCache) {
+    public void cacheIfPossible(final WebRequest request, final WebResponse response, final Object toCache) {
         if (isCacheable(request, response)) {
-            final String url = response.getRequestSettings().getUrl().toString();
+            final String url = response.getWebRequest().getUrl().toString();
             final Entry entry = new Entry(url, toCache);
             entries_.put(entry.key_, entry);
             deleteOverflow();
@@ -136,8 +131,8 @@ public class Cache implements Serializable {
      * @param response the received response
      * @return <code>true</code> if the response can be cached
      */
-    protected boolean isCacheable(final WebRequestSettings request, final  WebResponse response) {
-        return HttpMethod.GET == response.getRequestSettings().getHttpMethod()
+    protected boolean isCacheable(final WebRequest request, final  WebResponse response) {
+        return HttpMethod.GET == response.getWebRequest().getHttpMethod()
             && !isDynamicContent(response);
     }
 
@@ -160,13 +155,21 @@ public class Cache implements Serializable {
         final Date lastModified = parseDateHeader(response, "Last-Modified");
         final Date expires = parseDateHeader(response, "Expires");
 
-        final long delay = 10 * DateUtils.MILLIS_PER_MINUTE;
-        final long now = System.currentTimeMillis();
+        final long delay = 10 * org.apache.commons.lang.time.DateUtils.MILLIS_PER_MINUTE;
+        final long now = getCurrentTimestamp();
 
         final boolean cacheableContent = (expires != null && (expires.getTime() - now > delay)
                 || (expires == null && lastModified != null && (now - lastModified.getTime() > delay)));
 
         return !cacheableContent;
+    }
+
+    /**
+     * Gets the current time stamp. As method to allow overriding it, when simulating an other time.
+     * @return the current time stamp
+     */
+    protected long getCurrentTimestamp() {
+        return System.currentTimeMillis();
     }
 
     /**
@@ -180,31 +183,18 @@ public class Cache implements Serializable {
      */
     protected Date parseDateHeader(final WebResponse response, final String headerName) {
         final String value = response.getResponseHeaderValue(headerName);
-        Date date = null;
-        if (value != null) {
-            try {
-                date = DateUtil.parseDate(value);
-            }
-            catch (final DateParseException e) {
-                // Empty.
-            }
+        if (value == null) {
+            return null;
         }
-        return date;
-    }
-
-    /**
-     * Returns <tt>true</tt> if the provided response is JavaScript content. This method
-     * checks file extensions in addition to content types, because many web applications
-     * are badly configured and have incorrect headers.
-     *
-     * @param webResponse the response to analyze
-     * @return <code>true</code> if it can be considered as JavaScript
-     */
-    protected boolean isJavaScript(final WebResponse webResponse) {
-        final String contentType = webResponse.getContentType().toLowerCase();
-        return "text/javascript".equals(contentType)
-                || "application/x-javascript".equals(contentType)
-                || webResponse.getRequestSettings().getUrl().getPath().endsWith(".js");
+        else if (value.matches("-?\\d+")) {
+            return new Date();
+        }
+        try {
+            return DateUtils.parseDate(value);
+        }
+        catch (final DateParseException e) {
+            return null;
+        }
     }
 
     /**
@@ -214,7 +204,7 @@ public class Cache implements Serializable {
      * @param request the request whose corresponding cached compiled script is sought
      * @return the cached object corresponding to the specified request if any
      */
-    public Object getCachedObject(final WebRequestSettings request) {
+    public Object getCachedObject(final WebRequest request) {
         if (HttpMethod.GET != request.getHttpMethod()) {
             return null;
         }

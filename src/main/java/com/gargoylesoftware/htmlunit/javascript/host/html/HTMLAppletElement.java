@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,14 +29,12 @@ import com.gargoylesoftware.htmlunit.html.HtmlApplet;
 /**
  * The JavaScript object "HTMLAppletElement".
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6220 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
  * @author Daniel Gredler
  */
 public class HTMLAppletElement extends HTMLElement {
-
-    private static final long serialVersionUID = 1869359649341296910L;
 
     /**
      * Creates an instance.
@@ -72,8 +70,6 @@ public class HTMLAppletElement extends HTMLElement {
         // Rhino should provide the possibility to declare delegate for Functions as it does for properties!!!
         for (final Method method : applet.getClass().getMethods()) {
             final Function f = new BaseFunction() {
-                private static final long serialVersionUID = 1748611972272176674L;
-
                 @Override
                 public Object call(final Context cx, final Scriptable scope,
                         final Scriptable thisObj, final Object[] args) {
@@ -106,10 +102,7 @@ public class HTMLAppletElement extends HTMLElement {
      * @return the value of the "alt" property
      */
     public String jsxGet_alt() {
-        String alt = getDomNodeOrDie().getAttribute("alt");
-        if (alt == NOT_FOUND) {
-            alt = "";
-        }
+        final String alt = getDomNodeOrDie().getAttribute("alt");
         return alt;
     }
 
@@ -126,10 +119,7 @@ public class HTMLAppletElement extends HTMLElement {
      * @return the "border" attribute
      */
     public String jsxGet_border() {
-        String border = getDomNodeOrDie().getAttribute("border");
-        if (border == NOT_FOUND) {
-            border = "";
-        }
+        final String border = getDomNodeOrDie().getAttribute("border");
         return border;
     }
 

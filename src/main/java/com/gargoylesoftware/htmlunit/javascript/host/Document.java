@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,9 +22,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.ElementNotFoundException;
 import com.gargoylesoftware.htmlunit.SgmlPage;
-import com.gargoylesoftware.htmlunit.html.DomAttr;
 import com.gargoylesoftware.htmlunit.html.DomComment;
 import com.gargoylesoftware.htmlunit.html.DomDocumentFragment;
 import com.gargoylesoftware.htmlunit.html.DomElement;
@@ -34,6 +34,7 @@ import com.gargoylesoftware.htmlunit.html.FrameWindow;
 import com.gargoylesoftware.htmlunit.html.HTMLParser;
 import com.gargoylesoftware.htmlunit.html.HtmlDivision;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.html.impl.SimpleRange;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLCollection;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
@@ -42,7 +43,7 @@ import com.gargoylesoftware.htmlunit.xml.XmlUtil;
 /**
  * A JavaScript object for a Document.
  *
- * @version $Revision: 4789 $
+ * @version $Revision: 6472 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:chen_jun@users.sourceforge.net">Chen Jun</a>
@@ -59,7 +60,6 @@ import com.gargoylesoftware.htmlunit.xml.XmlUtil;
  */
 public class Document extends EventNode {
 
-    private static final long serialVersionUID = 3700830050839613384L;
     private static final Log LOG = LogFactory.getLog(Document.class);
 
     private Window window_;
@@ -99,7 +99,7 @@ public class Document extends EventNode {
      * @return the value of the "referrer" property
      */
     public String jsxGet_referrer() {
-        final String referrer = getPage().getWebResponse().getRequestSettings().getAdditionalHeaders().get("Referer");
+        final String referrer = getPage().getWebResponse().getWebRequest().getAdditionalHeaders().get("Referer");
         if (referrer == null) {
             return "";
         }
@@ -137,7 +137,7 @@ public class Document extends EventNode {
      */
     public String jsxGet_designMode() {
         if (designMode_ == null) {
-            if (getBrowserVersion().isIE()) {
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_30)) {
                 if (getWindow().getWebWindow() instanceof FrameWindow) {
                     designMode_ = "Inherit";
                 }
@@ -157,7 +157,7 @@ public class Document extends EventNode {
      * @param mode a value which indicates whether or not the document can be edited
      */
     public void jsxSet_designMode(final String mode) {
-        final boolean ie = getBrowserVersion().isIE();
+        final boolean ie = getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_31);
         if (ie) {
             if (!"on".equalsIgnoreCase(mode) && !"off".equalsIgnoreCase(mode) && !"inherit".equalsIgnoreCase(mode)) {
                 throw Context.reportRuntimeError("Invalid document.designMode value '" + mode + "'.");
@@ -183,8 +183,8 @@ public class Document extends EventNode {
                 if (page instanceof HtmlPage) {
                     final HtmlPage htmlPage = (HtmlPage) page;
                     final DomNode child = htmlPage.getBody().getFirstChild();
-                    htmlPage.getSelection().setStart(child, 0);
-                    htmlPage.getSelection().collapse(true);
+                    final DomNode rangeNode = child != null ? child : htmlPage.getBody();
+                    htmlPage.setSelectionRange(new SimpleRange(rangeNode, 0));
                 }
             }
             else if ("off".equalsIgnoreCase(mode)) {
@@ -214,7 +214,7 @@ public class Document extends EventNode {
      * @return a newly created document fragment
      */
     public Object jsxFunction_createDocumentFragment() {
-        final DomDocumentFragment fragment = getDomNodeOrDie().getPage().createDomDocumentFragment();
+        final DomDocumentFragment fragment = this.<DomNode>getDomNodeOrDie().getPage().createDomDocumentFragment();
         final DocumentFragment node = new DocumentFragment();
         node.setParentScope(getParentScope());
         node.setPrototype(getPrototype(node.getClass()));
@@ -229,8 +229,7 @@ public class Document extends EventNode {
      * @return an attribute with the specified name
      */
     public Attr jsxFunction_createAttribute(final String attributeName) {
-        final DomAttr attr = new DomAttr(getPage(), null, attributeName, null);
-        return (Attr) attr.getScriptObject();
+        return (Attr) getPage().createAttribute(attributeName).getScriptObject();
     }
 
     /**
@@ -253,7 +252,7 @@ public class Document extends EventNode {
      * @return the imported node that belongs to this Document
      */
     public Object jsxFunction_importNode(final Node importedNode, final boolean deep) {
-        return importedNode.getDomNodeOrDie().cloneNode(deep).getScriptObject();
+        return importedNode.<DomNode>getDomNodeOrDie().cloneNode(deep).getScriptObject();
     }
 
     /**
@@ -302,13 +301,15 @@ public class Document extends EventNode {
     public Object jsxFunction_createTextNode(final String newData) {
         Object result = NOT_FOUND;
         try {
-            final DomNode domNode = new DomText(getDomNodeOrDie().getPage(), newData);
+            final DomNode domNode = new DomText(this.<DomNode>getDomNodeOrDie().getPage(), newData);
             final Object jsElement = getScriptableFor(domNode);
 
             if (jsElement == NOT_FOUND) {
-                LOG.debug("createTextNode(" + newData
-                    + ") cannot return a result as there isn't a JavaScript object for the DOM node "
-                    + domNode.getClass().getName());
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("createTextNode(" + newData
+                            + ") cannot return a result as there isn't a JavaScript object for the DOM node "
+                            + domNode.getClass().getName());
+                }
             }
             else {
                 result = jsElement;
@@ -326,7 +327,7 @@ public class Document extends EventNode {
      * @return the new Comment
      */
     public Object jsxFunction_createComment(final String comment) {
-        final DomNode domNode = new DomComment(getDomNodeOrDie().getPage(), comment);
+        final DomNode domNode = new DomComment(this.<DomNode>getDomNodeOrDie().getPage(), comment);
         return getScriptableFor(domNode);
     }
 
@@ -348,7 +349,7 @@ public class Document extends EventNode {
             xPathResult.setParentScope(getParentScope());
             xPathResult.setPrototype(getPrototype(xPathResult.getClass()));
         }
-        xPathResult.init(contextNode.getDomNodeOrDie().getByXPath(expression), type);
+        xPathResult.init(contextNode.<DomNode>getDomNodeOrDie().getByXPath(expression), type);
         return xPathResult;
     }
 
@@ -363,7 +364,8 @@ public class Document extends EventNode {
         try {
             final BrowserVersion browserVersion = getBrowserVersion();
 
-            if (tagName.startsWith("<") && tagName.endsWith(">") && browserVersion.isFirefox()) {
+            if (tagName.startsWith("<") && tagName.endsWith(">")
+                    && browserVersion.hasFeature(BrowserVersionFeatures.GENERATED_153)) {
                 tagName = tagName.substring(1, tagName.length() - 1);
                 if (!tagName.matches("\\w+")) {
                     LOG.error("Unexpected exception occurred while parsing HTML snippet");
@@ -377,9 +379,11 @@ public class Document extends EventNode {
             final Object jsElement = getScriptableFor(element);
 
             if (jsElement == NOT_FOUND) {
-                LOG.debug("createElement(" + tagName
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("createElement(" + tagName
                         + ") cannot return a result as there isn't a JavaScript object for the element "
                         + element.getClass().getName());
+                }
             }
             else {
                 result = jsElement;
@@ -400,7 +404,8 @@ public class Document extends EventNode {
      */
     public Object jsxFunction_createElementNS(final String namespaceURI, final String qualifiedName) {
         final org.w3c.dom.Element element;
-        if (getBrowserVersion().isFirefox()
+        final BrowserVersion browserVersion = getBrowserVersion();
+        if (browserVersion.hasFeature(BrowserVersionFeatures.XUL_SUPPORT)
                 && "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul".equals(namespaceURI)) {
             // simple hack, no need to implement the XUL objects (at least in a first time)
             element = new HtmlDivision(namespaceURI, qualifiedName, getPage(), null);
@@ -420,15 +425,32 @@ public class Document extends EventNode {
      * @return all the descendant elements with the specified tag name
      */
     public HTMLCollection jsxFunction_getElementsByTagName(final String tagName) {
-        final HTMLCollection collection = new HTMLCollection(this);
-        final String exp;
-        if (tagName.equals("*")) {
-            exp = "//*";
+        final String description = "Document.getElementsByTagName('" + tagName + "')";
+
+        final HTMLCollection collection;
+        if ("*".equals(tagName)) {
+            collection = new HTMLCollection(getDomNodeOrDie(), false, description) {
+                @Override
+                protected boolean isMatching(final DomNode node) {
+                    return true;
+                }
+            };
         }
         else {
-            exp = "//*[lower-case(local-name()) = '" + tagName.toLowerCase() + "']";
+            final boolean useLocalName = getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_32);
+            final String tagNameLC = tagName.toLowerCase();
+
+            collection = new HTMLCollection(getDomNodeOrDie(), false, description) {
+                @Override
+                protected boolean isMatching(final DomNode node) {
+                    if (useLocalName) {
+                        return tagNameLC.equalsIgnoreCase(node.getLocalName());
+                    }
+                    return tagNameLC.equalsIgnoreCase(node.getNodeName());
+                }
+            };
         }
-        collection.init(getDomNodeOrDie(), exp);
+
         return collection;
     }
 
@@ -440,17 +462,30 @@ public class Document extends EventNode {
      * @return a live NodeList of found elements in the order they appear in the tree
      */
     public Object jsxFunction_getElementsByTagNameNS(final Object namespaceURI, final String localName) {
-        final DomNode domNode = getDomNodeOrDie();
-        final HTMLCollection collection = new HTMLCollection(this);
-        final String xpath;
-        if (namespaceURI == null || namespaceURI.equals("*")) {
-            xpath = ".//*[local-name()='" + localName + "']";
+        final String description = "Document.getElementsByTagNameNS('" + namespaceURI + "', '" + localName + "')";
+        final DomElement domNode = getPage().getDocumentElement();
+
+        final String prefix;
+        if (namespaceURI != null && !"*".equals("*")) {
+            prefix = XmlUtil.lookupPrefix(domNode, Context.toString(namespaceURI));
         }
         else {
-            final String prefix = XmlUtil.lookupPrefix((DomElement) domNode, Context.toString(namespaceURI));
-            xpath = ".//" + prefix + ':' + localName;
+            prefix = null;
         }
-        collection.init(domNode, xpath);
+
+        final HTMLCollection collection = new HTMLCollection(domNode, false, description) {
+            @Override
+            protected boolean isMatching(final DomNode node) {
+                if (!localName.equals(node.getLocalName())) {
+                    return false;
+                }
+                if (prefix == null) {
+                    return true;
+                }
+                return true;
+            }
+        };
+
         return collection;
     }
 }

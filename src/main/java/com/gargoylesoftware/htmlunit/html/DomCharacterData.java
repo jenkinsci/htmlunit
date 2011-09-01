@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,14 +21,14 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the DOM node CharacterData.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
+ * @author Philip Graf
  */
 public abstract class DomCharacterData extends DomNode implements CharacterData {
 
-    private static final long serialVersionUID = -1880335251566663985L;
     /** The data string. */
     private String data_;
 
@@ -66,6 +66,14 @@ public abstract class DomCharacterData extends DomNode implements CharacterData 
     @Override
     public void setNodeValue(final String newValue) {
         data_ = newValue;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setTextContent(final String textContent) {
+        data_ = textContent;
     }
 
     /**
@@ -147,5 +155,49 @@ public abstract class DomCharacterData extends DomNode implements CharacterData 
     @Override
     public String getNodeValue() {
         return data_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getCanonicalXPath() {
+        return getParentNode().getCanonicalXPath() + '/' + getXPathToken();
+    }
+
+    /**
+     * Returns the XPath token for this node only.
+     */
+    private String getXPathToken() {
+        final DomNode parent = getParentNode();
+
+        // If there are other siblings of the same node type, we have to provide
+        // the node's index.
+        int siblingsOfSameType = 0;
+        int nodeIndex = 0;
+        for (final DomNode child : parent.getChildren()) {
+            if (child == this) {
+                nodeIndex = ++siblingsOfSameType;
+                if (nodeIndex > 1) {
+                    // Optimization: if the node index is greater than 1, there
+                    // are at least two nodes of the same type.
+                    break;
+                }
+            }
+            else if (child.getNodeType() == getNodeType()) {
+                siblingsOfSameType++;
+                if (nodeIndex > 0) {
+                    // Optimization: if the node index is greater than 0, there
+                    // are at least two nodes of the same type.
+                    break;
+                }
+            }
+        }
+
+        final String nodeName = getNodeName().substring(1) + "()";
+        if (siblingsOfSameType == 1) {
+            return nodeName;
+        }
+        return nodeName + '[' + nodeIndex + ']';
     }
 }

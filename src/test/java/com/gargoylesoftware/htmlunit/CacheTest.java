@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,8 @@
  */
 package com.gargoylesoftware.htmlunit;
 
-import java.io.IOException;
+import static com.gargoylesoftware.htmlunit.util.StringUtils.formatHttpDate;
+
 import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
@@ -24,9 +25,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.httpclient.Header;
-import org.apache.commons.httpclient.NameValuePair;
-import org.apache.commons.httpclient.util.DateUtil;
 import org.apache.commons.lang.time.DateUtils;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -35,11 +33,12 @@ import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Tests for {@link Cache}.
  *
- * @version $Revision: 4872 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
@@ -66,56 +65,23 @@ public class CacheTest extends WebTestCase {
         headers.put("Last-Modified", "Sun, 15 Jul 2007 20:46:27 GMT");
         assertFalse(cache.isDynamicContent(response));
 
-        headers.put("Last-Modified", DateUtil.formatDate(DateUtils.addMinutes(new Date(), -5)));
+        headers.put("Last-Modified", formatHttpDate(DateUtils.addMinutes(new Date(), -5)));
         assertTrue(cache.isDynamicContent(response));
 
-        headers.put("Expires", DateUtil.formatDate(DateUtils.addMinutes(new Date(), 5)));
+        headers.put("Expires", formatHttpDate(DateUtils.addMinutes(new Date(), 5)));
         assertTrue(cache.isDynamicContent(response));
 
-        headers.put("Expires", DateUtil.formatDate(DateUtils.addHours(new Date(), 1)));
+        headers.put("Expires", formatHttpDate(DateUtils.addHours(new Date(), 1)));
         assertFalse(cache.isDynamicContent(response));
 
         headers.remove("Last-Modified");
         assertFalse(cache.isDynamicContent(response));
-    }
 
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    @Browsers(Browser.NONE)
-    public void isJavascript() throws Exception {
-        final Cache cache = new Cache();
+        headers.put("Expires", "0");
+        assertTrue(cache.isDynamicContent(response));
 
-        final String[] contentType = {""};
-        final URL[] url = {URL_FIRST};
-        final WebResponse response = new DummyWebResponse() {
-            @Override
-            public String getContentType() {
-                return contentType[0];
-            }
-            @Override
-            public WebRequestSettings getRequestSettings() {
-                return new WebRequestSettings(url[0]);
-            }
-        };
-
-        assertFalse(cache.isJavaScript(response));
-
-        contentType[0] = "text/javascript";
-        assertTrue(cache.isJavaScript(response));
-
-        contentType[0] = "application/x-javascript";
-        assertTrue(cache.isJavaScript(response));
-
-        contentType[0] = "text/plain";
-        assertFalse(cache.isJavaScript(response));
-
-        url[0] = new URL(URL_FIRST, "foo.js");
-        assertTrue(cache.isJavaScript(response));
-
-        url[0] = new URL(URL_FIRST, "foo.js?1_1_40C");
-        assertTrue(cache.isJavaScript(response));
+        headers.put("Expires", "-1");
+        assertTrue(cache.isDynamicContent(response));
     }
 
     /**
@@ -148,10 +114,10 @@ public class CacheTest extends WebTestCase {
         final URL urlPage2 = new URL(URL_FIRST, "page2.html");
         connection.setResponse(urlPage2, content2);
 
-        final List<Header> headers = new ArrayList<Header>();
-        headers.add(new Header("Last-Modified", "Sun, 15 Jul 2007 20:46:27 GMT"));
-        connection.setResponse(new URL(URL_FIRST, "foo1.js"), script1, 200, "ok", "text/javascript", headers);
-        connection.setResponse(new URL(URL_FIRST, "foo2.js"), script2, 200, "ok", "text/javascript", headers);
+        final List<NameValuePair> headers = new ArrayList<NameValuePair>();
+        headers.add(new NameValuePair("Last-Modified", "Sun, 15 Jul 2007 20:46:27 GMT"));
+        connection.setResponse(new URL(URL_FIRST, "foo1.js"), script1, 200, "ok", JAVASCRIPT_MIME_TYPE, headers);
+        connection.setResponse(new URL(URL_FIRST, "foo2.js"), script2, 200, "ok", JAVASCRIPT_MIME_TYPE, headers);
 
         final List<String> collectedAlerts = new ArrayList<String>();
         webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
@@ -165,7 +131,7 @@ public class CacheTest extends WebTestCase {
 
         assertEquals(new String[] {"in foo2"}, collectedAlerts);
         assertEquals("no request for scripts should have been performed",
-                urlPage2, connection.getLastWebRequestSettings().getUrl());
+                urlPage2, connection.getLastWebRequest().getUrl());
     }
 
     /**
@@ -187,10 +153,10 @@ public class CacheTest extends WebTestCase {
         final URL pageUrl = new URL(URL_FIRST, "page1.html");
         connection.setResponse(pageUrl, html);
 
-        final List<Header> headers =
-            Collections.singletonList(new Header("Last-Modified", "Sun, 15 Jul 2007 20:46:27 GMT"));
-        connection.setResponse(new URL(URL_FIRST, "foo1.js"), ";", 200, "ok", "text/javascript", headers);
-        connection.setResponse(new URL(URL_FIRST, "foo2.js"), ";", 200, "ok", "text/javascript", headers);
+        final List<NameValuePair> headers =
+            Collections.singletonList(new NameValuePair("Last-Modified", "Sun, 15 Jul 2007 20:46:27 GMT"));
+        connection.setResponse(new URL(URL_FIRST, "foo1.js"), ";", 200, "ok", JAVASCRIPT_MIME_TYPE, headers);
+        connection.setResponse(new URL(URL_FIRST, "foo2.js"), ";", 200, "ok", JAVASCRIPT_MIME_TYPE, headers);
 
         client.getPage(pageUrl);
         assertEquals(1, client.getCache().getSize());
@@ -220,9 +186,9 @@ public class CacheTest extends WebTestCase {
         final URL pageUrl = new URL(URL_FIRST, "page1.html");
         connection.setResponse(pageUrl, html);
 
-        final List<Header> headers =
-            Collections.singletonList(new Header("Last-Modified", "Sun, 15 Jul 2007 20:46:27 GMT"));
-        connection.setResponse(new URL(URL_FIRST, "foo.css"), "", 200, "OK", "text/javascript", headers);
+        final List<NameValuePair> headers =
+            Collections.singletonList(new NameValuePair("Last-Modified", "Sun, 15 Jul 2007 20:46:27 GMT"));
+        connection.setResponse(new URL(URL_FIRST, "foo.css"), "", 200, "OK", JAVASCRIPT_MIME_TYPE, headers);
 
         client.getPage(pageUrl);
         assertEquals(2, client.getCache().getSize());
@@ -253,8 +219,8 @@ public class CacheTest extends WebTestCase {
 
         final MockWebConnection connection = getMockWebConnection();
 
-        final List<Header> headers =
-            Collections.singletonList(new Header("Last-Modified", "Sun, 15 Jul 2007 20:46:27 GMT"));
+        final List<NameValuePair> headers =
+            Collections.singletonList(new NameValuePair("Last-Modified", "Sun, 15 Jul 2007 20:46:27 GMT"));
         connection.setResponse(new URL(getDefaultUrl(), "foo.txt"), "hello", 200, "OK", "text/plain", headers);
 
         loadPageWithAlerts(html);
@@ -263,85 +229,79 @@ public class CacheTest extends WebTestCase {
     }
 }
 
-class DummyWebResponse implements WebResponse {
+class DummyWebResponse extends WebResponse {
 
-    private static final long serialVersionUID = 631259170130126480L;
+    DummyWebResponse() {
+        super(null, null, 0);
+    }
 
-    public InputStream getContentAsStream() throws IOException {
+    @Override
+    public InputStream getContentAsStream() {
         throw new RuntimeException("not implemented");
     }
 
+    @Override
     public String getContentAsString() {
         throw new RuntimeException("not implemented");
     }
 
+    @Override
     public String getContentAsString(final String encoding) {
         throw new RuntimeException("not implemented");
     }
 
+    @Override
     public byte[] getContentAsBytes() {
         throw new RuntimeException("not implemented");
     }
 
-    public String getContentCharSet() {
-        throw new RuntimeException("not implemented");
-    }
-
+    @Override
     public String getContentCharset() {
         throw new RuntimeException("not implemented");
     }
 
+    @Override
     public String getContentCharsetOrNull() {
         throw new RuntimeException("not implemented");
     }
 
+    @Override
     public String getContentType() {
         throw new RuntimeException("not implemented");
     }
 
-    public long getLoadTimeInMilliSeconds() {
-        throw new RuntimeException("not implemented");
-    }
-
+    @Override
     public long getLoadTime() {
         throw new RuntimeException("not implemented");
     }
 
-    /**
-     * {@inheritDoc}
-     * @deprecated As of 2.6, please use {@link #getRequestSettings()}.getHttpMethod()
-     */
-    @Deprecated
-    public HttpMethod getRequestMethod() {
-        throw new RuntimeException("not implemented");
-    }
-
+    @Override
     public List<NameValuePair> getResponseHeaders() {
         throw new RuntimeException("not implemented");
     }
 
+    @Override
     public String getResponseHeaderValue(final String headerName) {
         throw new RuntimeException("not implemented");
     }
 
+    @Override
     public int getStatusCode() {
         throw new RuntimeException("not implemented");
     }
 
+    @Override
     public String getStatusMessage() {
         throw new RuntimeException("not implemented");
     }
 
-    /**
-     * {@inheritDoc}
-     * @deprecated As of 2.6, please use {@link #getRequestSettings()}.getUrl()
-     */
-    @Deprecated
-    public URL getRequestUrl() {
+    @Override
+    public WebRequest getRequestSettings() {
         throw new RuntimeException("not implemented");
     }
 
-    public WebRequestSettings getRequestSettings() {
+    @Override
+    public WebRequest getWebRequest() {
         throw new RuntimeException("not implemented");
     }
 }

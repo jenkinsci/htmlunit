@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 /**
  * A container for all the JavaScript configuration information.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Chris Erskine
  * @author Ahmed Ashour
@@ -39,40 +39,34 @@ public final class ClassConfiguration {
     private Map<String, PropertyInfo> propertyMap_ = new HashMap<String, PropertyInfo>();
     private Map<String, FunctionInfo> functionMap_ = new HashMap<String, FunctionInfo>();
     private List<String> constants_ = new ArrayList<String>();
-    private String extendedClass_;
+    private String extendedClassName_;
+    private final Class< ? extends SimpleScriptable> hostClass_;
     /**
-     * The fully qualified name of the class that implements this class.
-     */
-    private final String className_;
-    private final Class< ? extends SimpleScriptable> linkedClass_;
-    /**
-     * The constructor method in the {@link #linkedClass_}
+     * The constructor method in the {@link #hostClass_}
      */
     private final Method jsConstructor_;
-    private final String htmlClassname_;
+    private final String htmlClassName_;
     private final boolean jsObject_;
 
     /**
      * Constructor.
      *
-     * @param classname the name of the configuration class this entry is for
-     * @param implementingClass - the fully qualified name of the class implementing this functionality
+     * @param hostClassName - the fully qualified name of the class implementing this functionality
      * @param jsConstructor the constructor of method <code>implementingClass</code>
-     * @param extendedClass - The name of the class that this class extends
-     * @param htmlClass the name of the HTML class that this object supports
+     * @param extendedClassName - The name of the class that this class extends
+     * @param htmlClassName the name of the HTML class that this object supports
      * @param jsObject boolean flag for if this object is a JavaScript object
      * @throws ClassNotFoundException - if the implementing class is not found
      */
     @SuppressWarnings("unchecked")
-    public ClassConfiguration(final String classname, final String implementingClass, final String jsConstructor,
-        final String extendedClass, final String htmlClass, final boolean jsObject)
+    public ClassConfiguration(final String hostClassName, final String jsConstructor,
+        final String extendedClassName, final String htmlClassName, final boolean jsObject)
         throws ClassNotFoundException {
-        className_ = classname;
-        extendedClass_ = extendedClass;
-        linkedClass_ = (Class< ? extends SimpleScriptable>) Class.forName(implementingClass);
+        extendedClassName_ = extendedClassName;
+        hostClass_ = (Class< ? extends SimpleScriptable>) Class.forName(hostClassName);
         if (jsConstructor != null && jsConstructor.length() != 0) {
             Method foundCtor = null;
-            for (final Method method : linkedClass_.getMethods()) {
+            for (final Method method : hostClass_.getMethods()) {
                 if (method.getName().equals(jsConstructor)) {
                     foundCtor = method;
                     break;
@@ -80,7 +74,7 @@ public final class ClassConfiguration {
             }
             if (foundCtor == null) {
                 throw new IllegalStateException("Constructor method \"" + jsConstructor
-                        + "\" in class \"" + implementingClass + " is not found.");
+                        + "\" in class \"" + hostClassName + " is not found.");
             }
             jsConstructor_ = foundCtor;
         }
@@ -88,45 +82,38 @@ public final class ClassConfiguration {
             jsConstructor_ = null;
         }
         jsObject_ = jsObject;
-        if (htmlClass != null && htmlClass.length() != 0) {
-            htmlClassname_ = htmlClass;
+        if (htmlClassName != null && htmlClassName.length() != 0) {
+            htmlClassName_ = htmlClassName;
         }
         else {
-            htmlClassname_ = null;
+            htmlClassName_ = null;
         }
-    }
-
-    /**
-     * @return the className
-     */
-    public String getClassName() {
-        return className_;
     }
 
     /**
      * Add the property to the configuration.
      * @param name name of the property
      * @param readable flag for if the property is readable
-     * @param writeable flag for if the property is writeable
+     * @param writable flag for if the property is writable
      */
-    public void addProperty(final String name, final boolean readable, final boolean writeable) {
+    public void addProperty(final String name, final boolean readable, final boolean writable) {
         final PropertyInfo info = new PropertyInfo();
         info.setReadable(readable);
-        info.setWriteable(writeable);
+        info.setWritable(writable);
         try {
             if (readable) {
-                info.setReadMethod(linkedClass_.getMethod(GETTER_PREFIX + name, (Class []) null));
+                info.setReadMethod(hostClass_.getMethod(GETTER_PREFIX + name, (Class []) null));
             }
         }
         catch (final NoSuchMethodException e) {
             throw new IllegalStateException("Method '" + GETTER_PREFIX + name + "' was not found for "
-                + name + " property in " + linkedClass_.getName());
+                + name + " property in " + hostClass_.getName());
         }
         // For the setters, we have to loop through the methods since we do not know what type of argument
         // the method takes.
-        if (writeable) {
+        if (writable) {
             final String setMethodName = SETTER_PREFIX + name;
-            for (final Method method : linkedClass_.getMethods()) {
+            for (final Method method : hostClass_.getMethods()) {
                 if (method.getName().equals(setMethodName) && method.getParameterTypes().length == 1) {
                     info.setWriteMethod(method);
                     break;
@@ -134,7 +121,7 @@ public final class ClassConfiguration {
             }
             if (info.getWriteMethod() == null) {
                 throw new IllegalStateException("Method '" + SETTER_PREFIX + name + "' was not found for " + name
-                    + " property in " + linkedClass_.getName());
+                    + " property in " + hostClass_.getName());
             }
         }
         propertyMap_.put(name, info);
@@ -179,7 +166,7 @@ public final class ClassConfiguration {
     public void addFunction(final String name) {
         final FunctionInfo info = new FunctionInfo();
         final String setMethodName = FUNCTION_PREFIX + name;
-        for (final Method method : linkedClass_.getMethods()) {
+        for (final Method method : hostClass_.getMethods()) {
             if (method.getName().equals(setMethodName)) {
                 info.setFunctionMethod(method);
                 break;
@@ -187,9 +174,23 @@ public final class ClassConfiguration {
         }
         if (info.getFunctionMethod() == null) {
             throw new IllegalStateException("Method '" + FUNCTION_PREFIX + name + "' was not found for " + name
-                + " function in " + linkedClass_.getName());
+                + " function in " + hostClass_.getName());
         }
         functionMap_.put(name, info);
+    }
+
+    /**
+     * Adds properties and function definitions from the provided configuration.
+     * @param virtualClassConfig the config to take definitions from.
+     */
+    void addAllDefinitions(final ClassConfiguration virtualClassConfig) {
+        if (!virtualClassConfig.getHostClass().isAssignableFrom(getHostClass())) {
+            throw new RuntimeException("Can't configure " + getHostClass() + " with info from "
+                + virtualClassConfig.getHostClass());
+        }
+        propertyMap_.putAll(virtualClassConfig.propertyMap_);
+        functionMap_.putAll(virtualClassConfig.functionMap_);
+        constants_.addAll(virtualClassConfig.constants_);
     }
 
     /**
@@ -210,15 +211,15 @@ public final class ClassConfiguration {
     /**
      * @return the extendedClass
      */
-    public String getExtendedClass() {
-        return extendedClass_;
+    public String getExtendedClassName() {
+        return extendedClassName_;
     }
 
     /**
      * @param extendedClass the extendedClass to set
      */
-    public void setExtendedClass(final String extendedClass) {
-        extendedClass_ = extendedClass;
+    public void setExtendedClassName(final String extendedClass) {
+        extendedClassName_ = extendedClass;
     }
 
     /**
@@ -269,12 +270,12 @@ public final class ClassConfiguration {
     }
 
     /**
-     * Currently, this is the hashcode for the name.
+     * Currently, this is the hashcode for the linkedClass name.
      * {@inheritDoc}
      */
     @Override
     public int hashCode() {
-        return className_.hashCode();
+        return hostClass_.getName().hashCode();
     }
 
     /**
@@ -323,13 +324,13 @@ public final class ClassConfiguration {
      * Gets the class of the JavaScript host object.
      * @return the class of the JavaScript host object
      */
-    public Class< ? extends SimpleScriptable> getLinkedClass() {
-        return linkedClass_;
+    public Class< ? extends SimpleScriptable> getHostClass() {
+        return hostClass_;
     }
 
     /**
-     * Gets the JavaScript constructor method in {@link #getLinkedClass()}.
-     * @return the JavaScript constructor method in {@link #getLinkedClass()}
+     * Gets the JavaScript constructor method in {@link #getHostClass()}.
+     * @return the JavaScript constructor method in {@link #getHostClass()}
      */
     public Method getJsConstructor() {
         return jsConstructor_;
@@ -339,7 +340,7 @@ public final class ClassConfiguration {
      * @return the htmlClassname
      */
     public String getHtmlClassname() {
-        return htmlClassname_;
+        return htmlClassName_;
     }
 
     /**
@@ -350,12 +351,12 @@ public final class ClassConfiguration {
     }
 
     /**
-     * Class used to contain the property information if the property is readable, writeable and the
+     * Class used to contain the property information if the property is readable, writable and the
      * methods that implement the get and set functions.
      */
-    protected class PropertyInfo {
+    protected static class PropertyInfo {
         private boolean readable_ = false;
-        private boolean writeable_ = false;
+        private boolean writable_ = false;
         private boolean hasBrowsers_ = false;
         private Map<String, BrowserInfo> browserMap_;
         private Method readMethod_;
@@ -417,15 +418,15 @@ public final class ClassConfiguration {
                 if (browserMap_.size() != info.browserMap_.size()) {
                     return false;
                 }
-                for (final String key : browserMap_.keySet()) {
-                    if (!browserMap_.get(key).valueEquals(info.browserMap_.get(key))) {
+                for (final Map.Entry<String, BrowserInfo> entry : browserMap_.entrySet()) {
+                    if (!entry.getValue().valueEquals(info.browserMap_.get(entry.getKey()))) {
                         return false;
                     }
                 }
 
             }
             return (readable_ == info.readable_)
-                && (writeable_ == info.writeable_);
+                && (writable_ == info.writable_);
         }
 
         /**
@@ -436,14 +437,14 @@ public final class ClassConfiguration {
         }
 
         /**
-         * @param writeable the writeable to set
+         * @param writable the writable to set
          */
-        private void setWriteable(final boolean writeable) {
-            writeable_ = writeable;
+        private void setWritable(final boolean writable) {
+            writable_ = writable;
         }
     }
 
-    private class FunctionInfo {
+    private static class FunctionInfo {
         private boolean hasBrowsers_ = false;
         private Map<String, BrowserInfo> browserMap_;
         private Method functionMethod_;
@@ -467,8 +468,8 @@ public final class ClassConfiguration {
                 if (browserMap_.size() != info.browserMap_.size()) {
                     return false;
                 }
-                for (final String key : browserMap_.keySet()) {
-                    if (browserMap_.get(key).valueEquals(info.browserMap_.get(key))) {
+                for (final Map.Entry<String, BrowserInfo> entry : browserMap_.entrySet()) {
+                    if (entry.getValue().valueEquals(info.browserMap_.get(entry.getKey()))) {
                         return false;
                     }
                 }
@@ -492,7 +493,7 @@ public final class ClassConfiguration {
         }
     }
 
-    private final class BrowserInfo {
+    private static final class BrowserInfo {
         private String browserName_;
         private String minVersion_;
         private String maxVersion_;

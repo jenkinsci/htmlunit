@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,24 +21,24 @@ import java.util.List;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import com.gargoylesoftware.htmlunit.html.HtmlTextArea;
 
 /**
  * Tests for {@link ComputedCSSStyleDeclaration}.
  *
- * @version $Revision: 4772 $
+ * @version $Revision: 6479 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
  */
 @RunWith(BrowserRunner.class)
-public class ComputedCSSStyleDeclarationTest extends WebTestCase {
+public class ComputedCSSStyleDeclarationTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if the test fails
@@ -60,7 +60,7 @@ public class ComputedCSSStyleDeclarationTest extends WebTestCase {
             + "  <div id='myDiv'></div>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -91,7 +91,7 @@ public class ComputedCSSStyleDeclarationTest extends WebTestCase {
 
         final String expectedText = "cssText=:,azimuth=:,background=:,"
             + "backgroundAttachment=:scroll,backgroundColor=:transparent,backgroundImage=:none,"
-            + "backgroundPosition=:,backgroundRepeat=:repeat,border=:,borderCollapse=:separate,borderColor=:,"
+            + "backgroundPosition=:0% 0%,backgroundRepeat=:repeat,border=:,borderCollapse=:separate,borderColor=:,"
             + "borderSpacing=:0px 0px,borderStyle=:,borderTop=:,borderRight=:,borderBottom=:,borderLeft=:,"
             + "borderTopColor=:rgb(0, 0, 0),borderRightColor=:rgb(0, 0, 0),borderBottomColor=:rgb(0, 0, 0),"
             + "borderLeftColor=:rgb(0, 0, 0),borderTopStyle=:none,borderRightStyle=:none,borderBottomStyle=:none,"
@@ -124,15 +124,18 @@ public class ComputedCSSStyleDeclarationTest extends WebTestCase {
             + "MozOutlineRadiusBottomright=:0px,MozOutlineStyle=:none,MozOutlineWidth=:0px,MozOutlineOffset=:0px,"
             + "MozPaddingEnd=:,MozPaddingStart=:,MozUserFocus=:none,MozUserInput=:auto,MozUserModify=:read-only,"
             + "MozUserSelect=:auto,opacity=:1,outlineOffset=:0px,overflowX=:visible,overflowY=:visible,";
-        final HtmlPage page = loadPage(getBrowserVersion(), html, null);
+
+        final WebDriver driver = loadPage2(html);
         final List<String> expectedValues = stringProperties(expectedText);
-        final List<String> collectedValues =
-            stringProperties(page.<HtmlTextArea>getHtmlElementById("myTextarea").getText());
+        final List<String> collectedValues = stringProperties(driver.findElement(By.id("myTextarea")).getText());
         assertEquals(expectedValues.toString(), collectedValues.toString());
     }
 
     private List<String> stringProperties(final String string) throws Exception {
         final List<String> values = new ArrayList<String>();
+        if (string.length() == 0) {
+            return values;
+        }
 
         //string.split(",") will not work because we have values of 'rgb(0, 0, 0)'
         int i = string.indexOf('=');
@@ -185,7 +188,7 @@ public class ComputedCSSStyleDeclarationTest extends WebTestCase {
             + "  <div id='myDiv2'/>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -220,7 +223,7 @@ public class ComputedCSSStyleDeclarationTest extends WebTestCase {
             + "  <div id='myDiv2'/>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -244,7 +247,7 @@ public class ComputedCSSStyleDeclarationTest extends WebTestCase {
             + "  <div id='myDiv'></div>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -265,7 +268,7 @@ public class ComputedCSSStyleDeclarationTest extends WebTestCase {
             + "</script>\n"
             + "</body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -299,7 +302,7 @@ public class ComputedCSSStyleDeclarationTest extends WebTestCase {
             + "alert(d.style.marginRight + ' ' + cs.marginRight);\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -326,7 +329,7 @@ public class ComputedCSSStyleDeclarationTest extends WebTestCase {
             + "    alert(x('table') + ' ' + x('thead') + ' ' + x('tbody') + ' ' + x('th') + ' ' + x('tr') +\n"
             + "      ' ' + x('td') + ' ' + x('ul') + ' ' + x('li') + ' ' + x('div'));</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -356,7 +359,7 @@ public class ComputedCSSStyleDeclarationTest extends WebTestCase {
             + "alert(cs2.backgroundColor);\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -380,7 +383,7 @@ public class ComputedCSSStyleDeclarationTest extends WebTestCase {
             + "alert(cs1.fontSize);\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -402,7 +405,7 @@ public class ComputedCSSStyleDeclarationTest extends WebTestCase {
             + "  <div id='myDiv1'></div>\n"
             + "  <div id='myDiv2' style='display:none'/>\n"
             + "</body></html>";
-        loadPageWithAlerts(content);
+        loadPageWithAlerts2(content);
     }
 
     /**
@@ -427,7 +430,7 @@ public class ComputedCSSStyleDeclarationTest extends WebTestCase {
             + "alert(as.borderCollapse + ',' + bs.borderCollapse);\n"
             + "alert(acs.borderCollapse + ',' + bcs.borderCollapse);\n"
             + "</script></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -462,6 +465,78 @@ public class ComputedCSSStyleDeclarationTest extends WebTestCase {
             + "<div class='A' id='fooA'>A\n"
             + "<div class='B' id='fooB'>B</div></div>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(FF = { "200px,400px", "200,400", "200px,400px", "50%,25%", "100,100", "100px,100px" },
+            IE = { "200px,400px", "200,400", "200px,400px", "50%,25%", "100,100", "50%,25%" })
+    public void widthAndHeightPercentagesAndPx() throws Exception {
+        final String html = "<html><body onload='test()'>\n"
+            + "<div id='d1' style='width:200px;height:400px'><div id='d2' style='width:50%;height:25%'></div></div>\n"
+            + "<script>\n"
+            + "  function test(){\n"
+            + "    var d1 = document.getElementById('d1');\n"
+            + "    var s1 = window.getComputedStyle ? window.getComputedStyle(d1, null) : d1.currentStyle;\n"
+            + "    var d2 = document.getElementById('d2');\n"
+            + "    var s2 = window.getComputedStyle ? window.getComputedStyle(d2, null) : d2.currentStyle;\n"
+            + "    alert(d1.style.width + ',' + d1.style.height);\n"
+            + "    alert(d1.offsetWidth + ',' + d1.offsetHeight);\n"
+            + "    alert(s1.width + ',' + s1.height);\n"
+            + "    alert(d2.style.width + ',' + d2.style.height);\n"
+            + "    alert(d2.offsetWidth + ',' + d2.offsetHeight);\n"
+            + "    alert(s2.width + ',' + s2.height);\n"
+            + "  }\n"
+            + "</script>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(FF = { "10em,20em", "160,320", "160px,320px", "50%,25%", "80,80", "80px,80px" },
+            IE = { "10em,20em", "160,320", "10em,20em", "50%,25%", "80,80", "50%,25%" })
+    public void widthAndHeightPercentagesAndEm() throws Exception {
+        final String html = "<html><body onload='test()'>\n"
+            + "<div id='d1' style='width:10em;height:20em'><div id='d2' style='width:50%;height:25%'></div></div>\n"
+            + "<script>\n"
+            + "  function test(){\n"
+            + "    var d1 = document.getElementById('d1');\n"
+            + "    var s1 = window.getComputedStyle ? window.getComputedStyle(d1, null) : d1.currentStyle;\n"
+            + "    var d2 = document.getElementById('d2');\n"
+            + "    var s2 = window.getComputedStyle ? window.getComputedStyle(d2, null) : d2.currentStyle;\n"
+            + "    alert(d1.style.width + ',' + d1.style.height);\n"
+            + "    alert(d1.offsetWidth + ',' + d1.offsetHeight);\n"
+            + "    alert(s1.width + ',' + s1.height);\n"
+            + "    alert(d2.style.width + ',' + d2.style.height);\n"
+            + "    alert(d2.offsetWidth + ',' + d2.offsetHeight);\n"
+            + "    alert(s2.width + ',' + s2.height);\n"
+            + "  }\n"
+            + "</script>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * NullPointerException occurred in offsetX computation in HtmlUnit-2.7-SNAPSHOT (19.01.2010).
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts({ "true", "true" })
+    public void widthAndHeightPercentagesHTML() throws Exception {
+        final String html = "<html style='height: 100%'>\n"
+            + "<body>\n"
+            + "<script>\n"
+            + "  var h = document.documentElement;\n"
+            + "  alert(h.offsetWidth > 0);\n"
+            + "  alert(h.offsetHeight > 0);\n"
+            + "</script>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
     }
 }

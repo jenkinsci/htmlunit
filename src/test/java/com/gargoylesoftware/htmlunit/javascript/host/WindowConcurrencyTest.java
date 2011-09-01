@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 /**
  * Tests for {@link Window} that use background jobs.
  *
- * @version $Revision: 4789 $
+ * @version $Revision: 6269 $
  * @author Brad Clarke
  * @author Daniel Gredler
  */
@@ -177,7 +177,7 @@ public class WindowConcurrencyTest extends WebTestCase {
             + "<script>var id = setInterval('document.getElementById(\"d\").innerHTML += \"x\"', 0);</script>\n"
             + "</body></html>";
 
-        WebClient client = new WebClient(BrowserVersion.FIREFOX_3);
+        WebClient client = new WebClient(BrowserVersion.FIREFOX_3_6);
         try {
             final HtmlPage page1 = loadPage(client, html, new ArrayList<String>());
             Thread.sleep(1000);
@@ -379,7 +379,6 @@ public class WindowConcurrencyTest extends WebTestCase {
         final List<String> collectedAlerts = new ArrayList<String>();
         final HtmlPage page = loadPage(client_, html, collectedAlerts);
         final Function mySpecialFunction = new BaseFunction() {
-            private static final long serialVersionUID = -2445994102698852899L;
             @Override
             public Object call(final Context cx, final Scriptable scope,
                     final Scriptable thisObj, final Object[] args) {
@@ -460,14 +459,11 @@ public class WindowConcurrencyTest extends WebTestCase {
     }
 
     /**
-     * Our Window proxy causes troubles.
+     * Our Window proxy caused troubles.
      * @throws Exception if the test fails
      */
     @Test
     public void setTimeoutOnFrameWindow() throws Exception {
-        if (notYetImplemented()) {
-            return;
-        }
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
             + "    frames[0].setTimeout(f, 0);\n"
@@ -518,7 +514,7 @@ public class WindowConcurrencyTest extends WebTestCase {
             + "setInterval(forceStyleComputationInParent, 10);\n"
             + "</script></head></body></html>";
 
-        client_ = new WebClient(BrowserVersion.FIREFOX_3);
+        client_ = new WebClient(BrowserVersion.FIREFOX_3_6);
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, html);
         webConnection.setDefaultResponse(html2);
@@ -529,7 +525,6 @@ public class WindowConcurrencyTest extends WebTestCase {
         // Recreating what can occur with two threads requires
         // to know a bit about the style invalidation used in Window.DomHtmlAttributeChangeListenerImpl
         final HtmlElement elt = new HtmlDivision("", "div", page1, new HashMap<String, DomAttr>()) {
-            private static final long serialVersionUID = 7744039421294716167L;
             @Override
             public DomNode getParentNode() {
                 // this gets called by CSS invalidation logic

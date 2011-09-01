@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlForm;
 /**
  * Base class for all JavaScript object corresponding to form fields.
  *
- * @version $Revision: 4649 $
+ * @version $Revision: 6483 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Marc Guillemot
@@ -31,8 +31,6 @@ import com.gargoylesoftware.htmlunit.html.HtmlForm;
  * @author Ahmed Ashour
  */
 public class FormField extends FormChild {
-
-    private static final long serialVersionUID = 3712016051364495710L;
 
     /**
      * Sets the associated DOM node and sets the enclosing form as parent scope of the current element.

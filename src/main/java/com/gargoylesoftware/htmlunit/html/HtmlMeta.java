@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,26 +14,26 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import java.net.URL;
+import java.util.Date;
 import java.util.Map;
+import java.util.regex.Pattern;
 
-import org.apache.commons.httpclient.Cookie;
-import org.apache.commons.httpclient.util.DateParseException;
-import org.apache.commons.httpclient.util.DateUtil;
 import org.apache.commons.lang.StringUtils;
 
 import com.gargoylesoftware.htmlunit.SgmlPage;
+import com.gargoylesoftware.htmlunit.util.Cookie;
 
 /**
  * Wrapper for the HTML element "meta".
  *
- * @version $Revision: 4463 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
  */
 public class HtmlMeta extends HtmlElement {
-
-    private static final long serialVersionUID = 7408601325303605790L;
+    private static final Pattern COOKIES_SPLIT_PATTERN = Pattern.compile("\\s*;\\s*");
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "meta";
@@ -60,31 +60,37 @@ public class HtmlMeta extends HtmlElement {
      * like <tt>&lt;meta http-equiv='set-cookie' content='webm=none; path=/;'&gt;</tt>.
      */
     protected void performSetCookie() {
-        final String[] parts = getContentAttribute().split("\\s*;\\s*");
+        final String[] parts = COOKIES_SPLIT_PATTERN.split(getContentAttribute(), 0);
         final String name = StringUtils.substringBefore(parts[0], "=");
         final String value = StringUtils.substringAfter(parts[0], "=");
-        final Cookie cookie = new Cookie(getPage().getWebResponse().getRequestSettings().getUrl().getHost(),
-                name, value);
+        final URL url = getPage().getWebResponse().getWebRequest().getUrl();
+        final String host = url.getHost();
+        final boolean secure = "https".equals(url.getProtocol());
+        String path = null;
+        Date expires = null;
         for (int i = 1; i < parts.length; i++) {
             final String partName = StringUtils.substringBefore(parts[i], "=").trim().toLowerCase();
             final String partValue = StringUtils.substringAfter(parts[i], "=").trim();
             if ("path".equals(partName)) {
-                cookie.setPath(partValue);
+                path = partValue;
             }
             else if ("expires".equals(partName)) {
-                try {
-                    cookie.setExpiryDate(DateUtil.parseDate(partValue));
-                }
-                catch (final DateParseException e) {
-                    notifyIncorrectness("set-cookie http-equiv meta tag: can't parse expiration date >"
-                            + partValue + "<.");
-                }
+                expires = com.gargoylesoftware.htmlunit.util.StringUtils.parseHttpDate(partValue);
             }
             else {
-                notifyIncorrectness("set-cookie http-equiv meta tag: unknown attribute >" + partName + "<");
+                notifyIncorrectness("set-cookie http-equiv meta tag: unknown attribute '" + partName + "'.");
             }
-            getPage().getWebClient().getCookieManager().addCookie(cookie);
         }
+        final Cookie cookie = new Cookie(host, name, value, path, expires, secure);
+        getPage().getWebClient().getCookieManager().addCookie(cookie);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean mayBeDisplayed() {
+        return false;
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,25 +14,28 @@
  */
 package com.gargoylesoftware.htmlunit;
 
+import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.httpclient.HttpStatus;
-import org.apache.commons.httpclient.NameValuePair;
+import org.apache.http.HttpStatus;
+
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * A simple WebResponse created from a string. Content is assumed to be of type <tt>text/html</tt>.
  *
- * @version $Revision: 4460 $
+ * @version $Revision: 6299 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Marc Guillemot
  * @author Brad Clarke
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
-public class StringWebResponse extends WebResponseImpl {
+public class StringWebResponse extends WebResponse {
 
-    private static final long serialVersionUID = 8001886227379566491L;
+    private boolean fromJavascript_;
 
     /**
      * Helper method for constructors. Converts the specified string into {@link WebResponseData}
@@ -45,7 +48,12 @@ public class StringWebResponse extends WebResponseImpl {
         final byte[] content = TextUtil.stringToByteArray(contentString, charset);
         final List<NameValuePair> compiledHeaders = new ArrayList<NameValuePair>();
         compiledHeaders.add(new NameValuePair("Content-Type", "text/html"));
-        return new WebResponseData(content, HttpStatus.SC_OK, "OK", compiledHeaders);
+        try {
+            return new WebResponseData(content, HttpStatus.SC_OK, "OK", compiledHeaders);
+        }
+        catch (final IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -54,7 +62,8 @@ public class StringWebResponse extends WebResponseImpl {
      * @param originatingURL the URL that this should be associated with
      */
     public StringWebResponse(final String content, final URL originatingURL) {
-        super(getWebResponseData(content, TextUtil.DEFAULT_CHARSET), originatingURL, HttpMethod.GET, 0);
+        // use UTF-8 here to be sure, all chars in the string are part of the charset
+        this(content, "UTF-8", originatingURL);
     }
 
     /**
@@ -64,6 +73,30 @@ public class StringWebResponse extends WebResponseImpl {
      * @param originatingURL the URL that this should be associated with
      */
     public StringWebResponse(final String content, final String charset, final URL originatingURL) {
-        super(getWebResponseData(content, charset), new WebRequestSettings(originatingURL, HttpMethod.GET), 0);
+        super(getWebResponseData(content, charset), buildWebRequest(originatingURL, charset), 0);
+    }
+
+    private static WebRequest buildWebRequest(final URL originatingURL, final String charset) {
+        final WebRequest webRequest = new WebRequest(originatingURL, HttpMethod.GET);
+        webRequest.setCharset(charset);
+        return webRequest;
+    }
+
+    /**
+     * Returns the fromJavascript property. This is true, if the response was created
+     * from javascript (usually document.write).
+     * @return the from fromJavascript_
+     */
+    public boolean isFromJavascript() {
+        return fromJavascript_;
+    }
+
+    /**
+     * Sets the fromJavascript_ property. Set this to true, if the response was created
+     * from javascript (usually document.write).
+     * @param fromJavascript the new fromJavascript
+     */
+    public void setFromJavascript(final boolean fromJavascript) {
+        fromJavascript_ = fromJavascript;
     }
 }

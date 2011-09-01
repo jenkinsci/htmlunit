@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,15 +17,13 @@ package com.gargoylesoftware.htmlunit.javascript.host;
 /**
  * A JavaScript object for DocumentFragment.
  *
- * @version $Revision: 4753 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  *
  * @see <a href="http://www.w3.org/TR/2000/WD-DOM-Level-1-20000929/level-one-core.html#ID-B63ED1A3">
  * W3C Dom Level 1</a>
  */
 public class DocumentFragment extends Node {
-
-    private static final long serialVersionUID = -9081976556072827541L;
 
     /**
      * {@inheritDoc}

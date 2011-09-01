@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 /**
  * Tests for {@link HTMLFrameElement} when used for {@link com.gargoylesoftware.htmlunit.html.HtmlFrame}.
  *
- * @version $Revision: 4900 $
+ * @version $Revision: 6434 $
  * @author Chris Erskine
  * @author Marc Guillemot
  * @author Thomas Robbs
@@ -185,10 +185,7 @@ public class HTMLFrameElementTest extends WebTestCase {
     @Alerts("DIV")
     @Test
     public void testFrameLoadedAfterParent() throws Exception {
-        final WebClient webClient = getWebClient();
-        final MockWebConnection webConnection = new MockWebConnection();
-
-        final String mainContent
+        final String html
             = "<html><head><title>first</title></head><body>\n"
             + "<iframe name='testFrame' src='testFrame.html'></iframe>\n"
             + "<div id='aButton'>test text</div>\n"
@@ -200,15 +197,8 @@ public class HTMLFrameElementTest extends WebTestCase {
             + "</script>\n"
             + "</body></html>";
 
-        webConnection.setResponse(URL_GARGOYLE, mainContent);
-        webConnection.setResponse(new URL(URL_GARGOYLE + "testFrame.html"), frameContent);
-
-        webClient.setWebConnection(webConnection);
-        final List<String> collectedAlerts = new ArrayList<String>();
-        webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-
-        webClient.getPage(URL_GARGOYLE);
-        assertEquals(getExpectedAlerts(), collectedAlerts);
+        getMockWebConnection().setResponse(new URL(getDefaultUrl() + "testFrame.html"), frameContent);
+        loadPageWithAlerts(html);
     }
 
     /**
@@ -249,7 +239,7 @@ public class HTMLFrameElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts({ "\nfunction handler() {\n}\n", "null" })
+    @Alerts({ "function handler() {\n}", "null" })
     public void testOnloadNull() throws Exception {
         final String html =
             "<html><head>\n"

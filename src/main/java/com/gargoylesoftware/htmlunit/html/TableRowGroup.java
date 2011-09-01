@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,21 +18,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.SgmlPage;
 
 /**
  * Superclass for the wrappers for the HTML elements "thead", "tbody" and "tfoot".
  *
- * @version $Revision: 4356 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
  * @author Daniel Gredler
  */
-public abstract class TableRowGroup extends ClickableElement {
-
-    private static final long serialVersionUID = 7770034627964024386L;
+public abstract class TableRowGroup extends HtmlElement {
 
     /**
      * Creates an instance of TableRowGroup.
@@ -45,8 +44,9 @@ public abstract class TableRowGroup extends ClickableElement {
     protected TableRowGroup(final String namespaceURI, final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
         super(namespaceURI, qualifiedName, page, attributes);
-        final boolean ff = getPage().getWebClient().getBrowserVersion().isFirefox();
-        if (ff && !hasAttribute("align")) {
+        final boolean invalidAlign = getPage().getWebClient().getBrowserVersion()
+            .hasFeature(BrowserVersionFeatures.HTMLELEMENT_ALIGN_INVALID);
+        if (invalidAlign && !hasAttribute("align")) {
             setAttribute("align", "left");
         }
     }

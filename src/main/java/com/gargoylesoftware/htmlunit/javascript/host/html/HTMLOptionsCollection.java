@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.WebAssert;
 import com.gargoylesoftware.htmlunit.html.DomText;
 import com.gargoylesoftware.htmlunit.html.HTMLParser;
@@ -29,7 +30,7 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 /**
  * This is the array returned by the "options" property of Select.
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6204 $
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Marc Guillemot
@@ -39,7 +40,6 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
  */
 public class HTMLOptionsCollection extends SimpleScriptable implements ScriptableWithFallbackGetter {
 
-    private static final long serialVersionUID = -4790255174217201235L;
     private HtmlSelect htmlSelect_;
 
     /**
@@ -129,7 +129,7 @@ public class HTMLOptionsCollection extends SimpleScriptable implements Scriptabl
      * @return {@inheritDoc}
      */
     public Object getWithFallback(final String name) {
-        if (!getBrowserVersion().isIE() && name.equals("childNodes")) {
+        if (!getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_87) && "childNodes".equals(name)) {
             return NOT_FOUND;
         }
         // If the name was NOT_FOUND on the prototype, then just drop through
@@ -202,7 +202,7 @@ public class HTMLOptionsCollection extends SimpleScriptable implements Scriptabl
                 final HtmlOption option = (HtmlOption) HTMLParser.getFactory(HtmlOption.TAG_NAME).createElement(
                         htmlSelect_.getPage(), HtmlOption.TAG_NAME, null);
                 htmlSelect_.appendOption(option);
-                if (!getBrowserVersion().isIE()) {
+                if (!getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_88)) {
                     option.appendChild(new DomText(option.getPage(), ""));
                 }
             }
@@ -234,8 +234,6 @@ public class HTMLOptionsCollection extends SimpleScriptable implements Scriptabl
      * Microsoft DHTML reference page for the JavaScript add() method of the options collection</a>,
      * the index parameter is specified as follows:
      * <dl>
-     * <dt></dt>
-     * <dd>
      * <i>Optional. Integer that specifies the index position in the collection where the element is
      * placed. If no value is given, the method places the element at the end of the collection.</i>
      * </dl>
@@ -261,5 +259,19 @@ public class HTMLOptionsCollection extends SimpleScriptable implements Scriptabl
         // The put method either appends or replaces an object in the list,
         // depending on the value of index
         put(index, null, newOptionObject);
+    }
+
+    /**
+     * Removes the option at the specified index.
+     * @param index the option index
+     */
+    public void jsxFunction_remove(final int index) {
+        if (index < 0) {
+            Context.reportRuntimeError("Invalid index: " + index);
+        }
+
+        if (index < jsxGet_length()) {
+            htmlSelect_.removeOption(index);
+        }
     }
 }

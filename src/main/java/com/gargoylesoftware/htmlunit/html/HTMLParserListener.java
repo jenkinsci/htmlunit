@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import org.apache.commons.logging.LogFactory;
  * by the parser. This is only an indication and in some cases the position where
  * the problem has to be solved is located lines before.
  *
- * @version $Revision: 4789 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  */
 public interface HTMLParserListener {
@@ -69,18 +69,14 @@ class SimpleHTMLParserListener implements HTMLParserListener {
     private static final Log LOG = LogFactory.getLog(HTMLParserListener.class);
 
     public void error(final String message, final URL url, final int line, final int column, final String key) {
-        if (LOG.isErrorEnabled()) {
-            LOG.error(format(message, url, line, column, key));
-        }
+        LOG.error(format(message, url, line, column));
     }
 
     public void warning(final String message, final URL url, final int line, final int column, final String key) {
-        if (LOG.isWarnEnabled()) {
-            LOG.warn(format(message, url, line, column, key));
-        }
+        LOG.warn(format(message, url, line, column));
     }
 
-    private String format(final String message, final URL url, final int line, final int column, final String key) {
+    private String format(final String message, final URL url, final int line, final int column) {
         final StringBuilder buffer = new StringBuilder(message);
         buffer.append(" (");
         buffer.append(url.toExternalForm());

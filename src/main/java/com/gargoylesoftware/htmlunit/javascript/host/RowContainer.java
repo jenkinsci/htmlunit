@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,10 @@ package com.gargoylesoftware.htmlunit.javascript.host;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.Undefined;
 
+import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.html.HtmlTableRow;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLCollection;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
@@ -27,7 +29,7 @@ import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
  * Superclass for all row-containing JavaScript host classes, including tables,
  * table headers, table bodies and table footers.
  *
- * @version $Revision: 4590 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
  * @author Chris Erskine
  * @author Marc Guillemot
@@ -35,7 +37,6 @@ import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
  */
 public class RowContainer extends HTMLElement {
 
-    private static final long serialVersionUID = 3258129146093056308L;
     private HTMLCollection rows_; // has to be a member to have equality (==) working
 
     /**
@@ -51,18 +52,24 @@ public class RowContainer extends HTMLElement {
      */
     public Object jsxGet_rows() {
         if (rows_ == null) {
-            rows_ = new HTMLCollection(this);
-            rows_.init(getDomNodeOrDie(), getXPathRows());
+            rows_ = new HTMLCollection(getDomNodeOrDie(), false, "rows") {
+                @Override
+                protected boolean isMatching(final DomNode node) {
+                    return node instanceof HtmlTableRow && isContainedRow((HtmlTableRow) node);
+                }
+
+            };
         }
         return rows_;
     }
 
     /**
-     * Returns the XPath expression, relative to this node, enabling the retrieval of this container's rows.
-     * @return the XPath expression, relative to this node, enabling the retrieval of this container's rows
+     * Indicates if the row belongs to this container.
+     * @param row the row to test
+     * @return <code>true</code> if it belongs to this container
      */
-    protected String getXPathRows() {
-        return "./tr";
+    protected boolean isContainedRow(final HtmlTableRow row) {
+        return row.getParentNode() == getDomNodeOrDie();
     }
 
     /**
@@ -78,8 +85,8 @@ public class RowContainer extends HTMLElement {
         }
         final boolean rowIndexValid = (rowIndex >= 0 && rowIndex < rowCount);
         if (rowIndexValid) {
-            final SimpleScriptable row = (SimpleScriptable) rows.jsxFunction_item(new Integer(rowIndex));
-            row.getDomNodeOrDie().remove();
+            final SimpleScriptable row = (SimpleScriptable) rows.jsxFunction_item(Integer.valueOf(rowIndex));
+            row.<DomNode>getDomNodeOrDie().remove();
         }
     }
 
@@ -128,13 +135,13 @@ public class RowContainer extends HTMLElement {
             getDomNodeOrDie().appendChild(newRow);
         }
         else {
-            final SimpleScriptable row = (SimpleScriptable) rows.jsxFunction_item(new Integer(index));
+            final SimpleScriptable row = (SimpleScriptable) rows.jsxFunction_item(Integer.valueOf(index));
             // if at the end, then in the same "sub-container" as the last existing row
             if (index >= rowCount - 1) {
-                row.getDomNodeOrDie().getParentNode().appendChild(newRow);
+                row.<DomNode>getDomNodeOrDie().getParentNode().appendChild(newRow);
             }
             else {
-                row.getDomNodeOrDie().insertBefore(newRow);
+                row.<DomNode>getDomNodeOrDie().insertBefore(newRow);
             }
         }
         return getScriptableFor(newRow);
@@ -153,9 +160,9 @@ public class RowContainer extends HTMLElement {
         final boolean sourceIndexValid = (sourceIndex >= 0 && sourceIndex < rowCount);
         final boolean targetIndexValid = (targetIndex >= 0 && targetIndex < rowCount);
         if (sourceIndexValid && targetIndexValid) {
-            final SimpleScriptable sourceRow = (SimpleScriptable) rows.jsxFunction_item(new Integer(sourceIndex));
-            final SimpleScriptable targetRow = (SimpleScriptable) rows.jsxFunction_item(new Integer(targetIndex));
-            targetRow.getDomNodeOrDie().insertBefore(sourceRow.getDomNodeOrDie());
+            final SimpleScriptable sourceRow = (SimpleScriptable) rows.jsxFunction_item(Integer.valueOf(sourceIndex));
+            final SimpleScriptable targetRow = (SimpleScriptable) rows.jsxFunction_item(Integer.valueOf(targetIndex));
+            targetRow.<DomNode>getDomNodeOrDie().insertBefore(sourceRow.<DomNode>getDomNodeOrDie());
             return sourceRow;
         }
         return null;

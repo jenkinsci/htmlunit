@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,20 +16,22 @@ package com.gargoylesoftware.htmlunit.html;
 
 import java.util.Map;
 
+import org.w3c.dom.Node;
+
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.SgmlPage;
+import com.gargoylesoftware.htmlunit.WebClient;
 
 /**
  * Wrapper for the HTML element "noscript".
  *
- * @version $Revision: 4097 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
  */
-public class HtmlNoScript extends ClickableElement {
-
-    private static final long serialVersionUID = -8157919390565102613L;
+public class HtmlNoScript extends HtmlElement {
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "noscript";
@@ -45,5 +47,15 @@ public class HtmlNoScript extends ClickableElement {
     HtmlNoScript(final String namespaceURI, final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
         super(namespaceURI, qualifiedName, page, attributes);
+    }
+
+    @Override
+    public DomNode appendChild(final Node node) {
+        final WebClient webClient = getPage().getWebClient();
+        if (!webClient.isJavaScriptEnabled()
+            || webClient.getBrowserVersion().hasFeature(BrowserVersionFeatures.NOSCRIPT_BODY_AS_TEXT)) {
+            return super.appendChild(node);
+        }
+        return null;
     }
 }

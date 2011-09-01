@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,21 +14,19 @@
  */
 package com.gargoylesoftware.htmlunit;
 
-import static com.gargoylesoftware.htmlunit.attachment.Attachment.isAttachment;
-
 import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
 import java.io.Serializable;
+import java.lang.ref.WeakReference;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
@@ -39,40 +37,41 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 
-import net.sourceforge.htmlunit.corejs.javascript.Context;
-import net.sourceforge.htmlunit.corejs.javascript.ContextFactory;
-import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
+import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
 
 import org.apache.commons.codec.DecoderException;
-import org.apache.commons.httpclient.HttpStatus;
-import org.apache.commons.httpclient.NameValuePair;
-import org.apache.commons.httpclient.URI;
-import org.apache.commons.httpclient.URIException;
-import org.apache.commons.httpclient.auth.CredentialsProvider;
-import org.apache.commons.httpclient.protocol.Protocol;
-import org.apache.commons.httpclient.protocol.ProtocolSocketFactory;
-import org.apache.commons.httpclient.util.URIUtil;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.http.HttpStatus;
+import org.apache.http.client.CredentialsProvider;
 import org.w3c.css.sac.ErrorHandler;
 
+import com.gargoylesoftware.htmlunit.attachment.Attachment;
 import com.gargoylesoftware.htmlunit.attachment.AttachmentHandler;
+import com.gargoylesoftware.htmlunit.gae.GAEUtils;
+import com.gargoylesoftware.htmlunit.html.BaseFrame;
+import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.html.FrameWindow;
-import com.gargoylesoftware.htmlunit.html.HTMLParser;
 import com.gargoylesoftware.htmlunit.html.HTMLParserListener;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.javascript.JavaScriptEngine;
+import com.gargoylesoftware.htmlunit.javascript.JavaScriptErrorListener;
 import com.gargoylesoftware.htmlunit.javascript.ProxyAutoConfig;
 import com.gargoylesoftware.htmlunit.javascript.host.Event;
+import com.gargoylesoftware.htmlunit.javascript.host.Location;
+import com.gargoylesoftware.htmlunit.javascript.host.Node;
 import com.gargoylesoftware.htmlunit.javascript.host.Window;
+import com.gargoylesoftware.htmlunit.javascript.host.css.ComputedCSSStyleDeclaration;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLDocument;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
 import com.gargoylesoftware.htmlunit.protocol.data.DataUrlDecoder;
-import com.gargoylesoftware.htmlunit.ssl.InsecureSSLProtocolSocketFactory;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 import com.gargoylesoftware.htmlunit.util.UrlUtils;
+import com.gargoylesoftware.htmlunit.util.WebConnectionWrapper;
 
 /**
  * The main starting point in HtmlUnit: this class simulates a web browser.
@@ -88,8 +87,10 @@ import com.gargoylesoftware.htmlunit.util.UrlUtils;
  * final {@link HtmlPage} startPage = webClient.getPage("http://htmlunit.sf.net");<br/>
  * assertEquals("HtmlUnit - Welcome to HtmlUnit", startPage.{@link HtmlPage#getTitleText() getTitleText}());
  * </code>
- *
- * @version $Revision: 4876 $
+ * <p>
+ * Note: a {@link WebClient} instance is <b>not thread safe</b>. It is intended to be used from a single thread.
+ * </p>
+ * @version $Revision: 6489 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:gudujarlson@sf.net">Mike J. Bresnahan</a>
  * @author Dominique Broeglin
@@ -108,11 +109,11 @@ import com.gargoylesoftware.htmlunit.util.UrlUtils;
  * @author Bruce Chapman
  * @author Sudhan Moghe
  * @author Martin Tamme
+ * @author Amit Manjhi
+ * @author Nicolas Belisle
+ * @author Ronald Brill
  */
 public class WebClient implements Serializable {
-
-    /** Serial version UID. */
-    private static final long serialVersionUID = -7214321203864969635L;
 
     /** Logging support. */
     private static final Log LOG = LogFactory.getLog(WebClient.class);
@@ -120,16 +121,16 @@ public class WebClient implements Serializable {
     /** Like the Firefox default value for network.http.redirection-limit. */
     private static final int ALLOWED_REDIRECTIONS_SAME_URL = 20;
 
-    private transient WebConnection webConnection_;
+    private transient WebConnection webConnection_ = createWebConnection();
     private boolean printContentOnFailingStatusCode_ = true;
     private boolean throwExceptionOnFailingStatusCode_ = true;
     private CredentialsProvider credentialsProvider_ = new DefaultCredentialsProvider();
     private ProxyConfig proxyConfig_;
     private CookieManager cookieManager_ = new CookieManager();
-    private JavaScriptEngine scriptEngine_;
+    private transient JavaScriptEngine scriptEngine_;
     private boolean javaScriptEnabled_ = true;
     private boolean cssEnabled_ = true;
-    private boolean appletEnabled_ = false;
+    private boolean appletEnabled_;
     private boolean popupBlockerEnabled_;
     private String homePage_;
     private final Map<String, String> requestHeaders_ = Collections.synchronizedMap(new HashMap<String, String>(89));
@@ -169,6 +170,7 @@ public class WebClient implements Serializable {
     private boolean activeXNative_;
     private RefreshHandler refreshHandler_ = new ImmediateRefreshHandler();
     private boolean throwExceptionOnScriptError_ = true;
+    private JavaScriptErrorListener javaScriptErrorListener_;
 
     /**
      * Creates a web client instance using the browser version returned by
@@ -206,38 +208,15 @@ public class WebClient implements Serializable {
      * @param proxyConfig the proxy configuration to use
      */
     private void init(final BrowserVersion browserVersion, final ProxyConfig proxyConfig) {
-        homePage_ = "http://www.gargoylesoftware.com/";
+        homePage_ = "http://htmlunit.sf.net/";
         browserVersion_ = browserVersion;
         proxyConfig_ = proxyConfig;
-        try {
-            scriptEngine_ = createJavaScriptEngineIfPossible(this);
-        }
-        catch (final NoClassDefFoundError e) {
-            scriptEngine_ = null;
-        }
+
+        scriptEngine_ = new JavaScriptEngine(this);
         // The window must be constructed AFTER the script engine.
-        addWebWindowListener(new CurrentWindowTracker());
+        addWebWindowListener(new CurrentWindowTracker(this));
         currentWindow_ = new TopLevelWindow("", this);
         fireWindowOpened(new WebWindowEvent(currentWindow_, WebWindowEvent.OPEN, null, null));
-    }
-
-    /**
-     * Creates a JavaScript engine if possible.
-     *
-     * @param webClient the webclient that we are creating the script engine for
-     * @return a JavaScript engine or <tt>null</tt> if one could not be created
-     */
-    private static JavaScriptEngine createJavaScriptEngineIfPossible(final WebClient webClient) {
-        try {
-            Class.forName("net.sourceforge.htmlunit.corejs.javascript.Context");
-            return new JavaScriptEngine(webClient);
-        }
-        catch (final ClassNotFoundException e) {
-            return null;
-        }
-        catch (final NoClassDefFoundError e) {
-            return null;
-        }
     }
 
     /**
@@ -246,10 +225,7 @@ public class WebClient implements Serializable {
      * <p>Return the object that will resolve all URL requests<p>
      * @return the connection that will be used
      */
-    public synchronized WebConnection getWebConnection() {
-        if (webConnection_ == null) {
-            webConnection_ = new HttpWebConnection(this);
-        }
+    public WebConnection getWebConnection() {
         return webConnection_;
     }
 
@@ -277,27 +253,28 @@ public class WebClient implements Serializable {
      * {@link TextPage} for other text content and {@link UnexpectedPage} for anything else.
      *
      * @param webWindow the WebWindow to load the result of the request into
-     * @param parameters Parameter object for the web request
+     * @param webRequest the web request
      * @param <P> the page type
      * @return the page returned by the server when the specified request was made in the specified window
      * @throws IOException if an IO error occurs
      * @throws FailingHttpStatusCodeException if the server returns a failing status code AND the property
      *         {@link #setThrowExceptionOnFailingStatusCode(boolean)} is set to true
      *
-     * @see WebRequestSettings
+     * @see WebRequest
      */
     @SuppressWarnings("unchecked")
-    public <P extends Page> P getPage(final WebWindow webWindow, final WebRequestSettings parameters)
+    public <P extends Page> P getPage(final WebWindow webWindow, final WebRequest webRequest)
         throws IOException, FailingHttpStatusCodeException {
 
         final Page page = webWindow.getEnclosedPage();
 
         if (page != null) {
-            final URL prev = page.getWebResponse().getRequestSettings().getUrl();
-            final URL current = parameters.getUrl();
-            if (current.sameFile(prev) && !StringUtils.equals(current.getRef(), prev.getRef())) {
+            final URL prev = page.getWebResponse().getWebRequest().getUrl();
+            final URL current = webRequest.getUrl();
+            if (current.sameFile(prev) && current.getRef() != null
+                && !StringUtils.equals(current.getRef(), prev.getRef())) {
                 // We're just navigating to an anchor within the current page.
-                page.getWebResponse().getRequestSettings().setUrl(current);
+                page.getWebResponse().getWebRequest().setUrl(current);
                 webWindow.getHistory().addPage(page);
                 return (P) page;
             }
@@ -306,29 +283,38 @@ public class WebClient implements Serializable {
         if (page instanceof HtmlPage) {
             final HtmlPage htmlPage = (HtmlPage) page;
             if (!htmlPage.isOnbeforeunloadAccepted()) {
-                LOG.debug("The registered OnbeforeunloadHandler rejected to load a new page.");
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("The registered OnbeforeunloadHandler rejected to load a new page.");
+                }
                 return (P) page;
             }
         }
 
-        LOG.debug("Get page for window named '" + webWindow.getName() + "', using " + parameters);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Get page for window named '" + webWindow.getName() + "', using " + webRequest);
+        }
 
         final WebResponse webResponse;
-        final String protocol = parameters.getUrl().getProtocol();
-        if (protocol.equals("javascript")) {
-            webResponse = makeWebResponseForJavaScriptUrl(webWindow, parameters.getUrl(), parameters.getCharset());
+        final String protocol = webRequest.getUrl().getProtocol();
+        if ("javascript".equals(protocol)) {
+            webResponse = makeWebResponseForJavaScriptUrl(webWindow, webRequest.getUrl(), webRequest.getCharset());
             if (webWindow.getEnclosedPage() != null && webWindow.getEnclosedPage().getWebResponse() == webResponse) {
                 // a javascript:... url with result of type undefined didn't changed the page
                 return (P) webWindow.getEnclosedPage();
             }
         }
         else {
-            webResponse = loadWebResponse(parameters);
+            webResponse = loadWebResponse(webRequest);
         }
 
         printContentIfNecessary(webResponse);
         loadWebResponseInto(webResponse, webWindow);
         throwFailingHttpStatusCodeExceptionIfNecessary(webResponse);
+
+        // start execution here.
+        if (scriptEngine_ != null) {
+            scriptEngine_.registerWindowAndMaybeStartEventLoop(webWindow);
+        }
 
         return (P) webWindow.getEnclosedPage();
     }
@@ -337,7 +323,7 @@ public class WebClient implements Serializable {
      * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
      *
      * <p>Open a new web window and populate it with a page loaded by
-     * {@link #getPage(WebWindow,WebRequestSettings)}</p>
+     * {@link #getPage(WebWindow,WebRequest)}</p>
      *
      * @param opener the web window that initiated the request
      * @param target the name of the window to be opened (the name that will be passed into the
@@ -350,14 +336,14 @@ public class WebClient implements Serializable {
      * @throws IOException if an IO problem occurs
      */
     @SuppressWarnings("unchecked")
-    public <P extends Page> P getPage(final WebWindow opener, final String target, final WebRequestSettings params)
+    public <P extends Page> P getPage(final WebWindow opener, final String target, final WebRequest params)
         throws FailingHttpStatusCodeException, IOException {
         return (P) getPage(openTargetWindow(opener, target, "_self"), params);
     }
 
     /**
      * Convenient method to build an URL and load it into the current WebWindow as it would be done
-     * by {@link #getPage(WebWindow, WebRequestSettings)}.
+     * by {@link #getPage(WebWindow, WebRequest)}.
      * @param url the URL of the new content
      * @param <P> the page type
      * @return the new page
@@ -374,7 +360,7 @@ public class WebClient implements Serializable {
 
     /**
      * Convenient method to load a URL into the current top WebWindow as it would be done
-     * by {@link #getPage(WebWindow, WebRequestSettings)}.
+     * by {@link #getPage(WebWindow, WebRequest)}.
      * @param url the URL of the new content
      * @param <P> the page type
      * @return the new page
@@ -384,7 +370,7 @@ public class WebClient implements Serializable {
      */
     @SuppressWarnings("unchecked")
     public <P extends Page> P getPage(final URL url) throws IOException, FailingHttpStatusCodeException {
-        return (P) getPage(getCurrentWindow().getTopWindow(), new WebRequestSettings(url));
+        return (P) getPage(getCurrentWindow().getTopWindow(), new WebRequest(url));
     }
 
     /**
@@ -395,10 +381,10 @@ public class WebClient implements Serializable {
      * @throws FailingHttpStatusCodeException if the server returns a failing status code AND the property
      *         {@link #setThrowExceptionOnFailingStatusCode(boolean)} is set to true.
      * @throws IOException if an IO problem occurs
-     * @see #getPage(WebWindow,WebRequestSettings)
+     * @see #getPage(WebWindow,WebRequest)
      */
     @SuppressWarnings("unchecked")
-    public <P extends Page> P getPage(final WebRequestSettings request) throws IOException,
+    public <P extends Page> P getPage(final WebRequest request) throws IOException,
         FailingHttpStatusCodeException {
         return (P) getPage(getCurrentWindow().getTopWindow(), request);
     }
@@ -430,7 +416,7 @@ public class WebClient implements Serializable {
             return webWindow.getEnclosedPage();
         }
 
-        if (attachmentHandler_ != null && isAttachment(webResponse)) {
+        if (attachmentHandler_ != null && Attachment.isAttachment(webResponse)) {
             final WebWindow w = openWindow(null, null, webWindow);
             final Page page = pageCreator_.createPage(webResponse, w);
             attachmentHandler_.handleAttachment(page);
@@ -443,7 +429,7 @@ public class WebClient implements Serializable {
             oldPage.cleanUp();
         }
         Page newPage = null;
-        if (windows_.contains(webWindow) || getBrowserVersion().isIE()) {
+        if (windows_.contains(webWindow) || getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_150)) {
             newPage = pageCreator_.createPage(webResponse, webWindow);
 
             if (windows_.contains(webWindow)) {
@@ -452,6 +438,19 @@ public class WebClient implements Serializable {
                 // The page being loaded may already have been replaced by another page via JavaScript code.
                 if (webWindow.getEnclosedPage() == newPage) {
                     newPage.initialize();
+                    // hack: onload should be fired the same way for all type of pages
+                    // here is a hack to handle non HTML pages
+                    if (webWindow instanceof FrameWindow && !(newPage instanceof HtmlPage)) {
+                        final FrameWindow fw = (FrameWindow) webWindow;
+                        final BaseFrame frame = fw.getFrameElement();
+                        if (frame.hasEventHandlers("onload")) {
+                            if (LOG.isDebugEnabled()) {
+                                LOG.debug("Executing onload handler for " + frame);
+                            }
+                            final Event event = new Event(frame, "load");
+                            ((Node) frame.getScriptObject()).executeEvent(event);
+                        }
+                    }
                 }
             }
         }
@@ -612,7 +611,7 @@ public class WebClient implements Serializable {
      * @return <tt>true</tt> if JavaScript is enabled
      */
     public boolean isJavaScriptEnabled() {
-        return javaScriptEnabled_ && scriptEngine_ != null;
+        return javaScriptEnabled_;
     }
 
     /**
@@ -789,6 +788,22 @@ public class WebClient implements Serializable {
     }
 
     /**
+     * Sets the javascript error listener for this webclient.
+     * @param javaScriptErrorListener the new javaScriptErrorHandler or null if none is specified
+     */
+    public void setJavaScriptErrorListener(final JavaScriptErrorListener javaScriptErrorListener) {
+        javaScriptErrorListener_ = javaScriptErrorListener;
+    }
+
+    /**
+     * Returns the javascript error listener for this webclient.
+     * @return the javascript error listener or null if one hasn't been set
+     */
+    public JavaScriptErrorListener getJavaScriptErrorListener() {
+        return javaScriptErrorListener_;
+    }
+
+    /**
      * Returns the current browser version.
      * @return the current browser version
      */
@@ -816,7 +831,7 @@ public class WebClient implements Serializable {
             return;
         }
         //onBlur event is triggered for focused element of old current window
-        if (currentWindow_ != null) {
+        if (currentWindow_ != null && !currentWindow_.isClosed()) {
             final Page enclosedPage = currentWindow_.getEnclosedPage();
             if (enclosedPage instanceof HtmlPage) {
                 final HtmlElement focusedElement = ((HtmlPage) enclosedPage).getFocusedElement();
@@ -832,8 +847,9 @@ public class WebClient implements Serializable {
         if (enclosedPage instanceof HtmlPage) {
             final Window jsWindow = (Window) currentWindow_.getScriptObject();
             if (jsWindow != null) {
-                if (getBrowserVersion().isIE()) {
-                    final HTMLElement activeElement = (HTMLElement) jsWindow.jsxGet_document().jsxGet_activeElement();
+                if (getBrowserVersion().hasFeature(BrowserVersionFeatures.WINDOW_ACTIVE_ELEMENT_FOCUSED)) {
+                    final HTMLElement activeElement =
+                            (HTMLElement) ((HTMLDocument) jsWindow.getDocument()).jsxGet_activeElement();
                     if (activeElement != null) {
                         ((HtmlPage) enclosedPage).setFocusedElement(activeElement.getDomNodeOrDie(), true);
                     }
@@ -912,12 +928,13 @@ public class WebClient implements Serializable {
         final HtmlPage openerPage = (HtmlPage) opener.getEnclosedPage();
         if (url != null) {
             try {
-                final WebRequestSettings settings = new WebRequestSettings(url);
-                if (!getBrowserVersion().isIE() && openerPage != null) {
-                    final String referer = openerPage.getWebResponse().getRequestSettings().getUrl().toExternalForm();
-                    settings.setAdditionalHeader("Referer", referer);
+                final WebRequest request = new WebRequest(url);
+                if (getBrowserVersion().hasFeature(BrowserVersionFeatures.DIALOGWINDOW_REFERER)
+                        && openerPage != null) {
+                    final String referer = openerPage.getWebResponse().getWebRequest().getUrl().toExternalForm();
+                    request.setAdditionalHeader("Referer", referer);
                 }
-                getPage(window, settings);
+                getPage(window, request);
             }
             catch (final IOException e) {
                 LOG.error("Error loading content into window", e);
@@ -928,7 +945,7 @@ public class WebClient implements Serializable {
             if (openerPage != null) {
                 final Window jsWindow = (Window) window.getScriptObject();
                 jsWindow.setDomNode(openerPage);
-                jsWindow.jsxGet_document().setDomNode(openerPage);
+                jsWindow.getDocument().setDomNode(openerPage);
             }
         }
         return window;
@@ -956,33 +973,12 @@ public class WebClient implements Serializable {
             windowToOpen = defaultName;
         }
 
-        WebWindow webWindow = null;
-        if (windowToOpen.equals("_self")) {
-            webWindow = opener;
-            windowToOpen = "";
-        }
-        else if (windowToOpen.equals("_parent")) {
-            webWindow = opener.getParentWindow();
-            windowToOpen = "";
-        }
-        else if (windowToOpen.equals("_top")) {
-            webWindow = opener.getTopWindow();
-            windowToOpen = "";
-        }
-        else if (windowToOpen.equals("_blank")) {
-            // Leave window null to create a new window.
-            windowToOpen = "";
-        }
-        else if (windowToOpen.length() != 0) {
-            try {
-                webWindow = getWebWindowByName(windowToOpen);
-            }
-            catch (final WebWindowNotFoundException e) {
-                // Fall through - a new window will be created below
-            }
-        }
+        WebWindow webWindow = resolveWindow(opener, windowToOpen);
 
         if (webWindow == null) {
+            if ("_blank".equals(windowToOpen)) {
+                windowToOpen = "";
+            }
             webWindow = new TopLevelWindow(windowToOpen, this);
             fireWindowOpened(new WebWindowEvent(webWindow, WebWindowEvent.OPEN, null, null));
         }
@@ -992,6 +988,30 @@ public class WebClient implements Serializable {
         }
 
         return webWindow;
+    }
+
+    private WebWindow resolveWindow(final WebWindow opener, final String name) {
+        if (name == null || name.length() == 0 || "_self".equals(name)) {
+            return opener;
+        }
+        else if ("_parent".equals(name)) {
+            return opener.getParentWindow();
+        }
+        else if ("_top".equals(name)) {
+            return opener.getTopWindow();
+        }
+        else if ("_blank".equals(name)) {
+            return null;
+        }
+        else if (name.length() != 0) {
+            try {
+                return getWebWindowByName(name);
+            }
+            catch (final WebWindowNotFoundException e) {
+                // Fall through - a new window will be created below
+            }
+        }
+        return null;
     }
 
     /**
@@ -1014,13 +1034,13 @@ public class WebClient implements Serializable {
         fireWindowOpened(new WebWindowEvent(window, WebWindowEvent.OPEN, null, null));
 
         final HtmlPage openerPage = (HtmlPage) opener.getEnclosedPage();
-        final WebRequestSettings settings = new WebRequestSettings(url);
-        if (!getBrowserVersion().isIE()) {
-            final String referer = openerPage.getWebResponse().getRequestSettings().getUrl().toExternalForm();
-            settings.setAdditionalHeader("Referer", referer);
+        final WebRequest request = new WebRequest(url);
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.DIALOGWINDOW_REFERER)) {
+            final String referer = openerPage.getWebResponse().getWebRequest().getUrl().toExternalForm();
+            request.setAdditionalHeader("Referer", referer);
         }
 
-        getPage(window, settings);
+        getPage(window, request);
 
         return window;
     }
@@ -1044,21 +1064,28 @@ public class WebClient implements Serializable {
     }
 
     /**
-     * If set to <tt>true</tt>, the client will accept connections to any host, regardless of
+     * If set to <code>true</code>, the client will accept connections to any host, regardless of
      * whether they have valid certificates or not. This is especially useful when you are trying to
      * connect to a server with expired or corrupt certificates.
-     *
+     * <p>
+     * This method works only if {@link #getWebConnection()} returns an {@link HttpWebConnection}
+     * (which is the default) or a {@link WebConnectionWrapper} wrapping an {@link HttpWebConnection}.
+     * </p>
      * @param useInsecureSSL whether or not to use insecure SSL
      * @throws GeneralSecurityException if a security error occurs
      */
     public void setUseInsecureSSL(final boolean useInsecureSSL) throws GeneralSecurityException {
-        if (useInsecureSSL) {
-            final ProtocolSocketFactory factory = new InsecureSSLProtocolSocketFactory();
-            final Protocol https = new Protocol("https", factory, 443);
-            Protocol.registerProtocol("https", https);
+        //FIXME Depends on the implementation.
+        WebConnection webConnection = getWebConnection();
+        while (webConnection instanceof WebConnectionWrapper) {
+            webConnection = ((WebConnectionWrapper) webConnection).getWrappedWebConnection();
+        }
+
+        if (webConnection instanceof HttpWebConnection) {
+            ((HttpWebConnection) webConnection).setUseInsecureSSL(useInsecureSSL);
         }
         else {
-            Protocol.unregisterProtocol("https");
+            LOG.warn("Can't configure useInsecureSSL on " + webConnection_);
         }
     }
 
@@ -1111,9 +1138,7 @@ public class WebClient implements Serializable {
      */
     public void initialize(final WebWindow webWindow) {
         WebAssert.notNull("webWindow", webWindow);
-        if (scriptEngine_ != null) {
-            scriptEngine_.initialize(webWindow);
-        }
+        scriptEngine_.initialize(webWindow);
     }
 
     /**
@@ -1124,9 +1149,7 @@ public class WebClient implements Serializable {
      */
     public void initialize(final Page newPage) {
         WebAssert.notNull("newPage", newPage);
-        if (scriptEngine_ != null) {
-            ((Window) newPage.getEnclosingWindow().getScriptObject()).initialize(newPage);
-        }
+        ((Window) newPage.getEnclosingWindow().getScriptObject()).initialize(newPage);
     }
 
     /**
@@ -1138,10 +1161,8 @@ public class WebClient implements Serializable {
      */
     public void initializeEmptyWindow(final WebWindow webWindow) {
         WebAssert.notNull("webWindow", webWindow);
-        if (scriptEngine_ != null) {
-            initialize(webWindow);
-            ((Window) webWindow.getScriptObject()).initialize();
-        }
+        initialize(webWindow);
+        ((Window) webWindow.getScriptObject()).initialize();
     }
 
     /**
@@ -1186,8 +1207,8 @@ public class WebClient implements Serializable {
         return UrlUtils.toUrlUnsafe(newUrl);
     }
 
-    private WebResponse makeWebResponseForDataUrl(final WebRequestSettings webRequestSettings) throws IOException {
-        final URL url = webRequestSettings.getUrl();
+    private WebResponse makeWebResponseForDataUrl(final WebRequest webRequest) throws IOException {
+        final URL url = webRequest.getUrl();
         final List<NameValuePair> responseHeaders = new ArrayList<NameValuePair>();
         DataUrlDecoder decoder;
         try {
@@ -1198,14 +1219,15 @@ public class WebClient implements Serializable {
         }
         responseHeaders.add(new NameValuePair("content-type",
             decoder.getMediaType() + ";charset=" + decoder.getCharset()));
-        final WebResponseData data = new WebResponseData(url.openStream(), 200, "OK", responseHeaders);
-        return new WebResponseImpl(data, url, webRequestSettings.getHttpMethod(), 0);
+        final DownloadedContent downloadedContent = HttpWebConnection.downloadContent(url.openStream());
+        final WebResponseData data = new WebResponseData(downloadedContent, 200, "OK", responseHeaders);
+        return new WebResponse(data, url, webRequest.getHttpMethod(), 0);
     }
 
     private WebResponse makeWebResponseForAboutUrl(final URL url) {
         final String urlWithoutQuery = StringUtils.substringBefore(url.toExternalForm(), "?");
-        if (!StringUtils.substringAfter(urlWithoutQuery, "about:").equalsIgnoreCase("blank")) {
-            throw new IllegalArgumentException(url + "is not supported, only about:blank is supported now.");
+        if (!"blank".equalsIgnoreCase(StringUtils.substringAfter(urlWithoutQuery, "about:"))) {
+            throw new IllegalArgumentException(url + " is not supported, only about:blank is supported now.");
         }
         return WEB_RESPONSE_FOR_ABOUT_BLANK;
     }
@@ -1219,8 +1241,8 @@ public class WebClient implements Serializable {
      * @return the web response
      * @throws IOException if an IO problem occurs
      */
-    private WebResponse makeWebResponseForFileUrl(final URL url, final String charset) throws IOException {
-        URL cleanUrl = url;
+    private WebResponse makeWebResponseForFileUrl(final WebRequest webRequest) throws IOException {
+        URL cleanUrl = webRequest.getUrl();
         if (cleanUrl.getQuery() != null) {
             // Get rid of the query portion before trying to load the file.
             cleanUrl = UrlUtils.getUrlWithNewQuery(cleanUrl, null);
@@ -1233,47 +1255,11 @@ public class WebClient implements Serializable {
         final File file = FileUtils.toFile(cleanUrl);
         final String contentType = guessContentType(file);
 
-        if (contentType.startsWith("text")) {
-            final String str = IOUtils.toString(new FileInputStream(file), charset);
-            return new StringWebResponse(str, charset, url) {
-                private static final long serialVersionUID = 5713127877370126236L;
-                @Override
-                public String getContentType() {
-                    return contentType;
-                }
-            };
-        }
-        final byte[] data = IOUtils.toByteArray(new FileInputStream(file));
-        return new BinaryWebResponse(data, url, contentType);
-    }
-
-    /**
-     * A simple WebResponse created from a byte array. Content is assumed to be
-     * of some binary type.
-     *
-     * @author Paul King
-     */
-    private static final class BinaryWebResponse extends WebResponseImpl {
-
-        private static final long serialVersionUID = 8000117717229261957L;
-
-        private final byte[] data_;
-
-        private static WebResponseData getWebResponseData(final byte[] data, final String contentType) {
-            final List<NameValuePair> compiledHeaders = new ArrayList<NameValuePair>();
-            compiledHeaders.add(new NameValuePair("Content-Type", contentType));
-            return new WebResponseData(data, HttpStatus.SC_OK, "OK", compiledHeaders);
-        }
-
-        private BinaryWebResponse(final byte[] data, final URL originatingURL, final String contentType) {
-            super(getWebResponseData(data, contentType), originatingURL, HttpMethod.GET, 0);
-            data_ = data;
-        }
-
-        @Override
-        public InputStream getContentAsStream() {
-            return new ByteArrayInputStream(data_);
-        }
+        final DownloadedContent content = new DownloadedContent.OnFile(file);
+        final List<NameValuePair> compiledHeaders = new ArrayList<NameValuePair>();
+        compiledHeaders.add(new NameValuePair("Content-Type", contentType));
+        final WebResponseData responseData = new WebResponseData(content, 200, "OK", compiledHeaders);
+        return new WebResponse(responseData, webRequest, 0);
     }
 
     /**
@@ -1326,7 +1312,7 @@ public class WebClient implements Serializable {
             Page currentPage = webWindow.getEnclosedPage();
             if (currentPage == null) {
                 // Starting with a JavaScript URL; quickly fill an "about:blank".
-                currentPage = getPage(webWindow, new WebRequestSettings(WebClient.URL_ABOUT_BLANK));
+                currentPage = getPage(webWindow, new WebRequest(WebClient.URL_ABOUT_BLANK));
             }
             page = (HtmlPage) currentPage;
         }
@@ -1338,36 +1324,38 @@ public class WebClient implements Serializable {
         }
 
         final String contentString = r.getJavaScriptResult().toString();
-        return new StringWebResponse(contentString, charset, url);
+        final StringWebResponse response = new StringWebResponse(contentString, charset, url);
+        response.setFromJavascript(true);
+        return response;
     }
 
     /**
      * Loads a {@link WebResponse} from the server.
-     * @param webRequestSettings settings to use when making the request
+     * @param webRequest the request
      * @throws IOException if an IO problem occurs
      * @return the WebResponse
      */
-    public WebResponse loadWebResponse(final WebRequestSettings webRequestSettings)
+    public WebResponse loadWebResponse(final WebRequest webRequest)
         throws IOException {
 
         final WebResponse response;
-        final String protocol = webRequestSettings.getUrl().getProtocol();
-        if (protocol.equals("about")) {
-            response = makeWebResponseForAboutUrl(webRequestSettings.getUrl());
+        final String protocol = webRequest.getUrl().getProtocol();
+        if ("about".equals(protocol)) {
+            response = makeWebResponseForAboutUrl(webRequest.getUrl());
         }
-        else if (protocol.equals("file")) {
-            response = makeWebResponseForFileUrl(webRequestSettings.getUrl(), webRequestSettings.getCharset());
+        else if ("file".equals(protocol)) {
+            response = makeWebResponseForFileUrl(webRequest);
         }
-        else if (protocol.equals("data")) {
-            if (browserVersion_.isFirefox()) {
-                response = makeWebResponseForDataUrl(webRequestSettings);
+        else if ("data".equals(protocol)) {
+            if (browserVersion_.hasFeature(BrowserVersionFeatures.PROTOCOL_DATA)) {
+                response = makeWebResponseForDataUrl(webRequest);
             }
             else {
                 throw new MalformedURLException("Unknown protocol: data");
             }
         }
         else {
-            response = loadWebResponseFromWebConnection(webRequestSettings, ALLOWED_REDIRECTIONS_SAME_URL);
+            response = loadWebResponseFromWebConnection(webRequest, ALLOWED_REDIRECTIONS_SAME_URL);
         }
 
         return response;
@@ -1375,25 +1363,32 @@ public class WebClient implements Serializable {
 
     /**
      * Loads a {@link WebResponse} from the server through the WebConnection.
-     * @param webRequestSettings settings to use when making the request
+     * @param webRequest the request
+     * @param allowedRedirects the number of allowed redirects remaining
      * @throws IOException if an IO problem occurs
      * @return the resultant {@link WebResponse}
      */
-    private WebResponse loadWebResponseFromWebConnection(final WebRequestSettings webRequestSettings,
-        final int nbAllowedRedirections) throws IOException {
+    private WebResponse loadWebResponseFromWebConnection(final WebRequest webRequest,
+        final int allowedRedirects) throws IOException {
 
-        final URL url = webRequestSettings.getUrl();
-        final HttpMethod method = webRequestSettings.getHttpMethod();
-        final List<NameValuePair> parameters = webRequestSettings.getRequestParameters();
+        URL url = webRequest.getUrl();
+        final HttpMethod method = webRequest.getHttpMethod();
+        final List<NameValuePair> parameters = webRequest.getRequestParameters();
 
         WebAssert.notNull("url", url);
         WebAssert.notNull("method", method);
         WebAssert.notNull("parameters", parameters);
 
-        LOG.debug("Load response for " + url.toExternalForm());
+        url = UrlUtils.encodeUrl(url, getBrowserVersion().hasFeature(
+                BrowserVersionFeatures.URL_MINIMAL_QUERY_ENCODING));
+        webRequest.setUrl(url);
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Load response for " + method + " " + url.toExternalForm());
+        }
 
         // If the request settings don't specify a custom proxy, use the default client proxy...
-        if (webRequestSettings.getProxyHost() == null) {
+        if (webRequest.getProxyHost() == null) {
             if (proxyConfig_.getProxyAutoConfigUrl() != null) {
                 if (!proxyConfig_.getProxyAutoConfigUrl().equals(url.toExternalForm())) {
                     String content = proxyConfig_.getProxyAutoConfigContent();
@@ -1403,97 +1398,99 @@ public class WebClient implements Serializable {
                         proxyConfig_.setProxyAutoConfigContent(content);
                     }
                     final String allValue = ProxyAutoConfig.evaluate(content, url);
-                    LOG.debug("Proxy Auto-Config: value '" + allValue + "' for URL " + url);
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("Proxy Auto-Config: value '" + allValue + "' for URL " + url);
+                    }
                     String value = allValue.split(";")[0].trim();
                     if (value.startsWith("PROXY")) {
                         value = value.substring(6);
                         final int colonIndex = value.indexOf(':');
-                        webRequestSettings.setProxyHost(value.substring(0, colonIndex));
-                        webRequestSettings.setProxyPort(Integer.parseInt(value.substring(colonIndex + 1)));
+                        webRequest.setSocksProxy(false);
+                        webRequest.setProxyHost(value.substring(0, colonIndex));
+                        webRequest.setProxyPort(Integer.parseInt(value.substring(colonIndex + 1)));
+                    }
+                    else if (value.startsWith("SOCKS")) {
+                        value = value.substring(6);
+                        final int colonIndex = value.indexOf(':');
+                        webRequest.setSocksProxy(true);
+                        webRequest.setProxyHost(value.substring(0, colonIndex));
+                        webRequest.setProxyPort(Integer.parseInt(value.substring(colonIndex + 1)));
                     }
                 }
             }
             // ...unless the host needs to bypass the configured client proxy!
-            else if (!proxyConfig_.shouldBypassProxy(webRequestSettings.getUrl().getHost())) {
-                webRequestSettings.setProxyHost(proxyConfig_.getProxyHost());
-                webRequestSettings.setProxyPort(proxyConfig_.getProxyPort());
+            else if (!proxyConfig_.shouldBypassProxy(webRequest.getUrl().getHost())) {
+                webRequest.setProxyHost(proxyConfig_.getProxyHost());
+                webRequest.setProxyPort(proxyConfig_.getProxyPort());
+                webRequest.setSocksProxy(proxyConfig_.isSocksProxy());
             }
         }
 
-        // Encode the URL.
-        // TODO: This should probably be handled inside of WebRequestSettings and
-        // could cause a bug if anything above here reads the URL again.
-        final URL fixedUrl = encodeUrl(url);
-        webRequestSettings.setUrl(fixedUrl);
-
         // Add the headers that are sent with every request.
-        addDefaultHeaders(webRequestSettings);
+        addDefaultHeaders(webRequest);
 
         // Retrieve the response, either from the cache or from the server.
-        final Object fromCache = getCache().getCachedObject(webRequestSettings);
+        final Object fromCache = getCache().getCachedObject(webRequest);
         final WebResponse webResponse;
         if (fromCache != null && fromCache instanceof WebResponse) {
-            webResponse = new WebResponseFromCache((WebResponse) fromCache, webRequestSettings);
+            webResponse = new WebResponseFromCache((WebResponse) fromCache, webRequest);
         }
         else {
-            webResponse = getWebConnection().getResponse(webRequestSettings);
-            getCache().cacheIfPossible(webRequestSettings, webResponse, webResponse);
+            webResponse = getWebConnection().getResponse(webRequest);
+            getCache().cacheIfPossible(webRequest, webResponse, webResponse);
         }
 
         // Continue according to the HTTP status code.
-        final int statusCode = webResponse.getStatusCode();
-        if (statusCode == HttpStatus.SC_USE_PROXY) {
+        final int status = webResponse.getStatusCode();
+        if (status == HttpStatus.SC_USE_PROXY) {
             getIncorrectnessListener().notify("Ignoring HTTP status code [305] 'Use Proxy'", this);
         }
-        else if (statusCode >= HttpStatus.SC_MOVED_PERMANENTLY
-            && statusCode <= HttpStatus.SC_TEMPORARY_REDIRECT
-            && statusCode != HttpStatus.SC_NOT_MODIFIED
+        else if (status >= HttpStatus.SC_MOVED_PERMANENTLY
+            && status <= HttpStatus.SC_TEMPORARY_REDIRECT
+            && status != HttpStatus.SC_NOT_MODIFIED
             && isRedirectEnabled()) {
+
             final URL newUrl;
             String locationString = null;
             try {
                 locationString = webResponse.getResponseHeaderValue("Location");
-                newUrl = expandUrl(fixedUrl, locationString);
+                if (locationString == null) {
+                    return webResponse;
+                }
+                newUrl = expandUrl(url, locationString);
             }
             catch (final MalformedURLException e) {
-                getIncorrectnessListener().notify("Got a redirect status code [" + statusCode + " "
+                getIncorrectnessListener().notify("Got a redirect status code [" + status + " "
                     + webResponse.getStatusMessage()
                     + "] but the location is not a valid URL [" + locationString
                     + "]. Skipping redirection processing.", this);
                 return webResponse;
             }
 
-            LOG.debug("Got a redirect status code [" + statusCode + "] new location=[" + locationString + "]");
-
-            if (webRequestSettings.getHttpMethod() == HttpMethod.GET
-                    && webResponse.getRequestSettings().getUrl().toExternalForm().equals(locationString)) {
-
-                if (nbAllowedRedirections == 0) {
-                    LOG.warn("Max redirections allowed to the same location reached for ["
-                            + locationString + "]. Skipping redirection.");
-                }
-                else {
-                    LOG.debug("Got a redirect with location same as the page we just loaded. "
-                            + "Nb self redirection allowed: " + nbAllowedRedirections);
-                    return loadWebResponseFromWebConnection(webRequestSettings, nbAllowedRedirections - 1);
-                }
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Got a redirect status code [" + status + "] new location = [" + locationString + "]");
             }
-            else if ((statusCode == HttpStatus.SC_MOVED_PERMANENTLY || statusCode == HttpStatus.SC_TEMPORARY_REDIRECT)
+
+            if (allowedRedirects == 0) {
+                throw new FailingHttpStatusCodeException("Too much redirect for "
+                    + webResponse.getWebRequest().getUrl(), webResponse);
+            }
+            else if ((status == HttpStatus.SC_MOVED_PERMANENTLY || status == HttpStatus.SC_TEMPORARY_REDIRECT)
                 && method.equals(HttpMethod.GET)) {
-                final WebRequestSettings wrs = new WebRequestSettings(newUrl);
+                final WebRequest wrs = new WebRequest(newUrl);
                 wrs.setRequestParameters(parameters);
-                for (Map.Entry<String, String> entry : webRequestSettings.getAdditionalHeaders().entrySet()) {
+                for (Map.Entry<String, String> entry : webRequest.getAdditionalHeaders().entrySet()) {
                     wrs.setAdditionalHeader(entry.getKey(), entry.getValue());
                 }
-                return loadWebResponse(wrs);
+                return loadWebResponseFromWebConnection(wrs, allowedRedirects - 1);
             }
-            else if (statusCode <= HttpStatus.SC_SEE_OTHER) {
-                final WebRequestSettings wrs = new WebRequestSettings(newUrl);
+            else if (status <= HttpStatus.SC_SEE_OTHER) {
+                final WebRequest wrs = new WebRequest(newUrl);
                 wrs.setHttpMethod(HttpMethod.GET);
-                for (Map.Entry<String, String> entry : webRequestSettings.getAdditionalHeaders().entrySet()) {
+                for (Map.Entry<String, String> entry : webRequest.getAdditionalHeaders().entrySet()) {
                     wrs.setAdditionalHeader(entry.getKey(), entry.getValue());
                 }
-                return loadWebResponse(wrs);
+                return loadWebResponseFromWebConnection(wrs, allowedRedirects - 1);
             }
         }
 
@@ -1501,108 +1498,14 @@ public class WebClient implements Serializable {
     }
 
     /**
-     * Encodes illegal parameter in path or query string (if any) as done by browsers.
-     * Example: changes "http://first/?a=b c" to "http://first/?a=b%20c"
-     * @param url the URL to encode
-     * @return the provided URL if no change needed, the fixed URL else
-     * @throws MalformedURLException if the new URL could note be instantiated
-     * @throws URIException if the default protocol charset is not supported
-     */
-    protected URL encodeUrl(final URL url) throws MalformedURLException, URIException {
-        final String path = url.getPath();
-        final String fixedPath = encode(path, URI.allowed_abs_path);
-        final String query = url.getQuery();
-        final String fixedQuery = encodeQuery(query, false);
-
-        if (!StringUtils.equals(path, fixedPath) || !StringUtils.equals(query, fixedQuery)) {
-            final StringBuilder newUrl = new StringBuilder();
-            newUrl.append(url.getProtocol());
-            newUrl.append("://");
-            newUrl.append(url.getHost());
-            if (url.getPort() != -1) {
-                newUrl.append(":");
-                newUrl.append(url.getPort());
-            }
-            newUrl.append(fixedPath);
-            if (url.getUserInfo() != null) {
-                newUrl.append(url.getUserInfo());
-            }
-            if (fixedQuery != null) {
-                newUrl.append("?");
-                newUrl.append(fixedQuery);
-            }
-            if (url.getRef() != null) {
-                newUrl.append("#");
-                newUrl.append(url.getRef());
-            }
-
-            return new URL(newUrl.toString());
-        }
-        return url;
-    }
-
-    /**
-     * Encodes unallowed characters in a string
-     * @param str the string to encode
-     * @param allowed the allowed characters
-     * @return the encoded string
-     * @throws URIException if encoding fails
-     */
-    private String encode(final String str, final BitSet allowed) throws URIException {
-        if (str == null) {
-            return null;
-        }
-        final BitSet bits = new BitSet(str.length());
-        bits.set('%');
-        bits.set('+');
-        bits.or(allowed);
-        return URIUtil.encode(str, bits);
-    }
-
-    /**
-     * Encodes the URL query.
-     * @param query the URL query
-     * @param forceEncoding force encoding or no
-     * @return the encoded value
-     */
-    protected String encodeQuery(final String query, final boolean forceEncoding) {
-        if (query == null) {
-            return null;
-        }
-        if (forceEncoding || getBrowserVersion().isFirefox()) {
-            final BitSet allowed = URI.allowed_query;
-            allowed.set('%');
-            final Context cx = ContextFactory.getGlobal().enterContext();
-            try {
-                final Scriptable scope = cx.initStandardObjects();
-                final StringBuilder builder = new StringBuilder();
-                for (int i = 0; i < query.length(); i++) {
-                    final char ch = query.charAt(i);
-                    if (allowed.get(ch)) {
-                        builder.append(ch);
-                    }
-                    else {
-                        final Object escaped = cx.evaluateString(scope, "escape('" + ch + "')", "<escaped>", 1, null);
-                        builder.append(Context.toString(escaped));
-                    }
-                }
-                return builder.toString();
-            }
-            finally {
-                Context.exit();
-            }
-        }
-        return query.replace(" ", "%20");
-    }
-
-    /**
-     * Adds the headers that are sent with every request to the specified {@link WebRequestSettings} instance.
+     * Adds the headers that are sent with every request to the specified {@link WebRequest} instance.
      * @param wrs the <tt>WebRequestSettings</tt> instance to modify
      */
-    private void addDefaultHeaders(final WebRequestSettings wrs) {
+    private void addDefaultHeaders(final WebRequest wrs) {
         // Add standard HtmlUnit headers.
-        wrs.setAdditionalHeader("Accept", "*/*");
-        wrs.setAdditionalHeader("Accept-Language", getBrowserVersion().getBrowserLanguage());
+        if (!wrs.isAdditionalHeader("Accept-Language")) {
+            wrs.setAdditionalHeader("Accept-Language", getBrowserVersion().getBrowserLanguage());
+        }
         // Add user-specified headers last so that they can override HtmlUnit defaults.
         wrs.getAdditionalHeaders().putAll(requestHeaders_);
     }
@@ -1704,12 +1607,7 @@ public class WebClient implements Serializable {
     }
 
     /**
-     * Defines a listener for messages generated by the HTML parser.<br/>
-     * <b>Note</b>: If {@link #getIgnoreOutsideContent()} returns <code>false</code>, the parser
-     * will ignore closing &lt;body&gt; and &lt;html&gt; tags to be able to handle HTML content
-     * incorrectly located after the end of the HTML file. As a consequence it will finally
-     * notify as errors that &lt;body&gt; and &lt;html&gt; are not closed properly even if
-     * they were correctly present.
+     * Sets the listener for messages generated by the HTML parser.
      * @param listener the new listener, <code>null</code> if messages should be totally ignored
      */
     public void setHTMLParserListener(final HTMLParserListener listener) {
@@ -1743,32 +1641,6 @@ public class WebClient implements Serializable {
     public void setCssErrorHandler(final ErrorHandler cssErrorHandler) {
         WebAssert.notNull("cssErrorHandler", cssErrorHandler);
         cssErrorHandler_ = cssErrorHandler;
-    }
-
-    /**
-     * Sets the flag on the HtmlParser telling it to ignore the content that is outside
-     * of the BODY and HTML tags.
-     * @param ignoreOutsideContent the boolean flag to enable or disable the support of
-     *        content outside of the HTML and BODY tags
-     * @deprecated As of 2.6 without replacement (HtmlUnit tries to mimic browser's
-     * behavior and browsers don't ignore outside content)
-     */
-    @Deprecated
-    public static void setIgnoreOutsideContent(final boolean ignoreOutsideContent) {
-        HTMLParser.setIgnoreOutsideContent(ignoreOutsideContent);
-    }
-
-    /**
-     * Gets the state of the flag indicating whether or not to ignore content outside the
-     * BODY and HTML tags.
-     * @return the state of the flag indicating whether or not to ignore content outside
-     *         the BODY and HTML tags
-     * @deprecated As of 2.6 without replacement (HtmlUnit tries to mimic browser's
-     * behavior and browsers don't ignore outside content)
-     */
-    @Deprecated
-    public static boolean getIgnoreOutsideContent() {
-        return HTMLParser.getIgnoreOutsideContent();
     }
 
     /**
@@ -1876,7 +1748,7 @@ public class WebClient implements Serializable {
      * @param handler the new attachment handler
      */
     public void setAttachmentHandler(final AttachmentHandler handler) {
-        this.attachmentHandler_ = handler;
+        attachmentHandler_ = handler;
     }
 
     /**
@@ -1925,8 +1797,13 @@ public class WebClient implements Serializable {
     /**
      * Keeps track of the current window. Inspired by WebTest's logic to track the current response.
      */
-    class CurrentWindowTracker implements WebWindowListener, Serializable {
-        private static final long serialVersionUID = -987538223249485123L;
+    private static final class CurrentWindowTracker implements WebWindowListener, Serializable {
+        private WebClient webClient_;
+
+        private CurrentWindowTracker(final WebClient webClient) {
+            webClient_ = webClient;
+        }
+
         /**
          * {@inheritDoc}
          */
@@ -1934,23 +1811,23 @@ public class WebClient implements Serializable {
             final WebWindow window = event.getWebWindow();
             if (window instanceof TopLevelWindow) {
                 final TopLevelWindow tlw = (TopLevelWindow) event.getWebWindow();
-                topLevelWindows_.remove(tlw);
-                if (tlw.equals(getCurrentWindow())) {
-                    if (topLevelWindows_.isEmpty()) {
+                webClient_.topLevelWindows_.remove(tlw);
+                if (tlw.equals(webClient_.getCurrentWindow())) {
+                    if (webClient_.topLevelWindows_.isEmpty()) {
                         // Must always have at least window, and there are no top-level windows left; must create one.
-                        final TopLevelWindow newWindow = new TopLevelWindow("", WebClient.this);
-                        topLevelWindows_.push(newWindow);
-                        setCurrentWindow(newWindow);
+                        final TopLevelWindow newWindow = new TopLevelWindow("", webClient_);
+                        webClient_.topLevelWindows_.push(newWindow);
+                        webClient_.setCurrentWindow(newWindow);
                     }
                     else {
                         // The current window is now the previous top-level window.
-                        setCurrentWindow(topLevelWindows_.peek());
+                        webClient_.setCurrentWindow(webClient_.topLevelWindows_.peek());
                     }
                 }
             }
-            else if (event.getWebWindow() == getCurrentWindow()) {
+            else if (event.getWebWindow() == webClient_.getCurrentWindow()) {
                 // The current window is now the last top-level window.
-                setCurrentWindow(topLevelWindows_.peek());
+                webClient_.setCurrentWindow(webClient_.topLevelWindows_.peek());
             }
         }
         /**
@@ -1958,33 +1835,32 @@ public class WebClient implements Serializable {
          */
         public void webWindowContentChanged(final WebWindowEvent event) {
             final WebWindow window = event.getWebWindow();
-
-            final boolean takeItAsNew;
-            if (window instanceof TopLevelWindow && event.getOldPage() == null) {
-                takeItAsNew = true;
+            boolean use = false;
+            if (window instanceof DialogWindow) {
+                use = true;
             }
-            // content loaded in an other window as the "current" one
-            // by js becomes "current" only if new top window is opened
-            else if (getJavaScriptEngine().isScriptRunning()) {
-                if (window instanceof FrameWindow
-                    && !HtmlPage.READY_STATE_COMPLETE.equals(
-                        ((FrameWindow) window).getEnclosingPage().getDocumentElement().getReadyState())) {
-                    // Content of frame window has changed without javascript while enclosing page is loading,
-                    // it will NOT become current response");
-                    takeItAsNew = false;
+            else if (window instanceof TopLevelWindow) {
+                use = (event.getOldPage() == null);
+            }
+            else if (window instanceof FrameWindow) {
+                final FrameWindow fw = (FrameWindow) window;
+                final String enclosingPageState = fw.getEnclosingPage().getDocumentElement().getReadyState();
+                final URL frameUrl = fw.getEnclosedPage().getWebResponse().getWebRequest().getUrl();
+                if (!DomNode.READY_STATE_COMPLETE.equals(enclosingPageState) || frameUrl == URL_ABOUT_BLANK) {
+                    return;
                 }
-                else {
-                    // Content of window changed without javascript, it will become current response
-                    takeItAsNew = true;
+
+                // now looks at the visibility of the frame window
+                final BaseFrame frameElement = fw.getFrameElement();
+                if (frameElement.isDisplayed()) {
+                    final ScriptableObject scriptableObject = frameElement.getScriptObject();
+                    final ComputedCSSStyleDeclaration style = ((HTMLElement) scriptableObject).jsxGet_currentStyle();
+                    use = (style.getCalculatedWidth(false, false) != 0)
+                        && (style.getCalculatedHeight(false, false) != 0);
                 }
             }
-            else {
-                // Content of window changed with javascript, it will NOT become current response
-                takeItAsNew = false;
-            }
-
-            if (takeItAsNew) {
-                setCurrentWindow(window);
+            if (use) {
+                webClient_.setCurrentWindow(window);
             }
         }
         /**
@@ -1994,9 +1870,9 @@ public class WebClient implements Serializable {
             final WebWindow window = event.getWebWindow();
             if (window instanceof TopLevelWindow) {
                 final TopLevelWindow tlw = (TopLevelWindow) event.getWebWindow();
-                topLevelWindows_.push(tlw);
+                webClient_.topLevelWindows_.push(tlw);
             }
-            // page is not loaded yet, don't set it now as current window
+            // Page is not loaded yet, don't set it now as current window.
         }
     }
 
@@ -2004,6 +1880,9 @@ public class WebClient implements Serializable {
      * Closes all opened windows, stopping all background JavaScript processing.
      */
     public void closeAllWindows() {
+        if (scriptEngine_ != null) {
+            scriptEngine_.shutdownJavaScriptExecutor();
+        }
         // NB: this implementation is too simple as a new TopLevelWindow may be opened by
         // some JS script while we are closing the others
         final List<TopLevelWindow> topWindows = new ArrayList<TopLevelWindow>();
@@ -2016,6 +1895,10 @@ public class WebClient implements Serializable {
             if (topLevelWindows_.contains(topWindow)) {
                 topWindow.close();
             }
+        }
+        //FIXME Depends on the implementation
+        if (webConnection_ instanceof HttpWebConnection) {
+            ((HttpWebConnection) webConnection_).shutdown();
         }
     }
 
@@ -2130,4 +2013,193 @@ public class WebClient implements Serializable {
         return count;
     }
 
+    /**
+     * When we deserialize, re-initializie transient fields.
+     */
+    private void readObject(final ObjectInputStream in) throws IOException, ClassNotFoundException {
+        in.defaultReadObject();
+        webConnection_ = createWebConnection();
+        scriptEngine_ = new JavaScriptEngine(this);
+    }
+
+    private WebConnection createWebConnection() {
+        if (GAEUtils.isGaeMode()) {
+            return new UrlFetchWebConnection(this);
+        }
+
+        return new HttpWebConnection(this);
+    }
+
+    private static class LoadJob {
+        private final WebWindow requestingWindow_;
+        private final String target_;
+        private final WebResponse response_;
+        private final URL urlWithOnlyHashChange_;
+        private final WeakReference<Page> originalPage_;
+
+        LoadJob(final WebWindow requestingWindow, final String target, final WebResponse response) {
+            requestingWindow_ = requestingWindow;
+            target_ = target;
+            response_ = response;
+            urlWithOnlyHashChange_ = null;
+            originalPage_ = new WeakReference<Page>(requestingWindow.getEnclosedPage());
+        }
+        LoadJob(final WebWindow requestingWindow, final String target, final URL urlWithOnlyHashChange) {
+            requestingWindow_ = requestingWindow;
+            target_ = target;
+            response_ = null;
+            urlWithOnlyHashChange_ = urlWithOnlyHashChange;
+            originalPage_ = new WeakReference<Page>(requestingWindow.getEnclosedPage());
+        }
+        public boolean isOutdated() {
+            if (target_ != null && target_.length() != 0) {
+                return false;
+            }
+            else if (requestingWindow_.isClosed()) {
+                return true;
+            }
+            else if (requestingWindow_.getEnclosedPage() != originalPage_.get()) {
+                return true;
+            }
+
+            return false;
+        }
+    }
+
+    private final List<LoadJob> loadQueue_ = new ArrayList<LoadJob>();
+
+    /**
+     * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
+     *
+     * Perform the downloads and stores it for loading later into a window.
+     * In the future downloads should be performed in parallel in separated threads.
+     * TODO: refactor it before next release.
+     * @param requestingWindow the window from which the request comes
+     * @param target the name of the target window
+     * @param request the request to perform
+     * @param isHashJump in at least one case (anchor url is '#') it is not possible
+     *        to decide that this is only a hash jump; in this case you can provide
+     *        true here; otherwise use false
+     * @param description information about the origin of the request. Useful for debugging.
+     */
+    public void download(final WebWindow requestingWindow, final String target,
+        final WebRequest request, final boolean isHashJump, final String description) {
+        final WebWindow win = resolveWindow(requestingWindow, target);
+        final URL url = request.getUrl();
+        boolean justHashJump = isHashJump;
+
+        if (win != null && (HttpMethod.POST != request.getHttpMethod())) {
+            final Page page = win.getEnclosedPage();
+            if (page instanceof HtmlPage && !((HtmlPage) page).isOnbeforeunloadAccepted()) {
+                return;
+            }
+            final URL current = page.getWebResponse().getWebRequest().getUrl();
+            if (!justHashJump && url.sameFile(current) && StringUtils.isNotEmpty(url.getRef())) {
+                justHashJump = true;
+            }
+        }
+
+        synchronized (loadQueue_) {
+            // verify if this load job doesn't already exist
+            for (final LoadJob loadJob : loadQueue_) {
+                if (loadJob.response_ == null) {
+                    continue;
+                }
+                final WebRequest otherRequest = loadJob.response_.getWebRequest();
+                final URL otherUrl = otherRequest.getUrl();
+                // TODO: investigate but it seems that IE considers query string too but not FF
+                if (url.getPath().equals(otherUrl.getPath())
+                    && url.getHost().equals(otherUrl.getHost())
+                    && url.getProtocol().equals(otherUrl.getProtocol())
+                    && url.getPort() == otherUrl.getPort()
+                    && request.getHttpMethod() == otherRequest.getHttpMethod()) {
+                    return; // skip it;
+                }
+            }
+        }
+
+        final LoadJob loadJob;
+        if (justHashJump) {
+            loadJob = new LoadJob(win, target, url);
+        }
+        else {
+            try {
+                final WebResponse response = loadWebResponse(request);
+                loadJob = new LoadJob(requestingWindow, target, response);
+            }
+            catch (final IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        synchronized (loadQueue_) {
+            loadQueue_.add(loadJob);
+        }
+    }
+
+    /**
+     * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
+     *
+     * Loads downloaded responses into the corresponding windows.
+     * TODO: refactor it before next release.
+     * @throws IOException in case of exception
+     * @throws FailingHttpStatusCodeException in case of exception
+     */
+    public void loadDownloadedResponses() throws FailingHttpStatusCodeException, IOException {
+        final List<LoadJob> queue;
+
+        // synchronize access to the loadQueue_,
+        // to be sure no job is ignored
+        synchronized (loadQueue_) {
+            if (loadQueue_.isEmpty()) {
+                return;
+            }
+            queue = new ArrayList<LoadJob>(loadQueue_);
+            loadQueue_.clear();
+        }
+
+        final HashSet<WebWindow> updatedWindows = new HashSet<WebWindow>();
+        for (int i = queue.size() - 1; i >= 0; --i) {
+            final LoadJob downloadedResponse = queue.get(i);
+            if (downloadedResponse.isOutdated()) {
+                LOG.info("No usage of download: " + downloadedResponse);
+                continue;
+            }
+            if (downloadedResponse.urlWithOnlyHashChange_ != null) {
+                final WebWindow window = downloadedResponse.requestingWindow_;
+                final HtmlPage page = (HtmlPage) window.getEnclosedPage();
+                page.getWebResponse().getWebRequest().setUrl(downloadedResponse.urlWithOnlyHashChange_);
+                window.getHistory().addPage(page);
+
+                // update location.hash
+                final Window jsWindow = (Window) window.getScriptObject();
+                if (null != jsWindow) {
+                    final Location location = jsWindow.jsxGet_location();
+                    location.jsxSet_hash(downloadedResponse.urlWithOnlyHashChange_.getRef());
+                }
+            }
+            else {
+                final WebWindow window = resolveWindow(downloadedResponse.requestingWindow_,
+                    downloadedResponse.target_);
+                if (!updatedWindows.contains(window)) {
+                    final WebWindow win = openTargetWindow(downloadedResponse.requestingWindow_,
+                            downloadedResponse.target_, "_self");
+                    final Page pageBeforeLoad = win.getEnclosedPage();
+                    loadWebResponseInto(downloadedResponse.response_, win);
+                    throwFailingHttpStatusCodeExceptionIfNecessary(downloadedResponse.response_);
+
+                    // start execution here.
+                    if (scriptEngine_ != null) {
+                        scriptEngine_.registerWindowAndMaybeStartEventLoop(win);
+                    }
+
+                    if (pageBeforeLoad != win.getEnclosedPage()) {
+                        updatedWindows.add(win);
+                    }
+                }
+                else {
+                    LOG.info("No usage of download: " + downloadedResponse);
+                }
+            }
+        }
+    }
 }

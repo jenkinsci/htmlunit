@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 /**
  * Tests for {@link Popup}.
  *
- * @version $Revision: 4463 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  */
 @RunWith(BrowserRunner.class)
@@ -81,7 +81,7 @@ public class PopupTest extends WebTestCase {
         final HtmlPage secondPage = button.click();
         final String[] expectedAlerts = {"Pop-up window is Open"};
         assertEquals(expectedAlerts, collectedAlerts);
-        assertEquals("about:blank", secondPage.getWebResponse().getRequestSettings().getUrl());
+        assertEquals("about:blank", secondPage.getWebResponse().getWebRequest().getUrl());
         assertSame(secondPage.getEnclosingWindow(), secondPage.getWebClient().getCurrentWindow());
     }
 }

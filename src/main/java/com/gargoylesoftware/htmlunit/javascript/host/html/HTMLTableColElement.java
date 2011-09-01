@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,15 @@ package com.gargoylesoftware.htmlunit.javascript.host.html;
 
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
+
 /**
  * The JavaScript object "HTMLTableColElement".
  *
- * @version $Revision: 4583 $
+ * @version $Revision: 6392 $
  * @author Ahmed Ashour
  */
 public class HTMLTableColElement extends HTMLTableComponent {
-
-    private static final long serialVersionUID = -886020322532732229L;
 
     /**
      * Creates an instance.
@@ -57,10 +57,10 @@ public class HTMLTableColElement extends HTMLTableComponent {
      * @param span the value of the "span" property
      */
     public void jsxSet_span(final Object span) {
-        final Double d = Context.toNumber(span);
-        Integer i = d.intValue();
+        final double d = Context.toNumber(span);
+        int i = (int) d;
         if (i < 1) {
-            if (getBrowserVersion().isIE()) {
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_102)) {
                 final Exception e = new Exception("Cannot set the span property to invalid value: " + span);
                 Context.throwAsScriptRuntimeEx(e);
             }
@@ -68,7 +68,7 @@ public class HTMLTableColElement extends HTMLTableComponent {
                 i = 1;
             }
         }
-        getDomNodeOrDie().setAttribute("span", i.toString());
+        getDomNodeOrDie().setAttribute("span", Integer.toString(i));
     }
 
     /**
@@ -76,8 +76,8 @@ public class HTMLTableColElement extends HTMLTableComponent {
      * @return the value of the "width" property
      */
     public String jsxGet_width() {
-        final boolean ie = getBrowserVersion().isIE();
-        final Boolean returnNegativeValues = ie ? false : null;
+        final boolean ie = getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_103);
+        final Boolean returnNegativeValues = ie ? Boolean.FALSE : null;
         return getWidthOrHeight("width", returnNegativeValues);
     }
 
@@ -85,8 +85,8 @@ public class HTMLTableColElement extends HTMLTableComponent {
      * Sets the value of the "width" property.
      * @param width the value of the "width" property
      */
-    public void jsxSet_width(final String width) {
-        setWidthOrHeight("width", width, false);
+    public void jsxSet_width(final Object width) {
+        setWidthOrHeight("width", (width == null ? "" : Context.toString(width)), Boolean.FALSE);
     }
 
 }

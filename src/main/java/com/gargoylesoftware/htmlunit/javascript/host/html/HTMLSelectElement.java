@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,11 @@ package com.gargoylesoftware.htmlunit.javascript.host.html;
 import java.util.List;
 
 import net.sourceforge.htmlunit.corejs.javascript.Context;
+import net.sourceforge.htmlunit.corejs.javascript.EvaluatorException;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
+import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.HTMLParser;
 import com.gargoylesoftware.htmlunit.html.HtmlOption;
 import com.gargoylesoftware.htmlunit.html.HtmlSelect;
@@ -27,7 +30,7 @@ import com.gargoylesoftware.htmlunit.javascript.host.FormField;
 /**
  * The JavaScript object for {@link HtmlSelect}.
  *
- * @version $Revision: 4864 $
+ * @version $Revision: 6483 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author Marc Guillemot
@@ -36,7 +39,6 @@ import com.gargoylesoftware.htmlunit.javascript.host.FormField;
  */
 public class HTMLSelectElement extends FormField {
 
-    private static final long serialVersionUID = 4332789476842114628L;
     private HTMLOptionsCollection optionsArray_;
 
     /**
@@ -80,7 +82,7 @@ public class HTMLSelectElement extends FormField {
      * for Internet Explorer: the index where the element should be placed (optional).
      */
     public void jsxFunction_add(final HTMLOptionElement newOptionObject, final Object arg2) {
-        if (getBrowserVersion().isIE()) {
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_89)) {
             add_IE(newOptionObject, arg2);
         }
         else {
@@ -110,6 +112,27 @@ public class HTMLSelectElement extends FormField {
     }
 
     /**
+     * Gets the item at the specified index.
+     * @param index the position of the option to retrieve
+     * @return the option
+     */
+    public HTMLOptionElement jsxFunction_item(final int index) {
+        if (index < 0) {
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.JS_SELECT_ITEM_THROWS_IF_NEGATIVE)) {
+                throw Context.reportRuntimeError("Invalid index for select node: " + index);
+            }
+            return null;
+        }
+
+        final int length = jsxGet_length();
+        if (index > length) {
+            return null;
+        }
+
+        return (HTMLOptionElement) getHtmlSelect().getOption(index).getScriptObject();
+    }
+
+    /**
      * Adds a new item to the list (optionally) at the specified index in IE way.
      * @param newOptionObject the DomNode to insert
      * @param index (optional) the index where the node should be inserted
@@ -117,6 +140,10 @@ public class HTMLSelectElement extends FormField {
     protected void add_IE(final HTMLOptionElement newOptionObject, final Object index) {
         final HtmlSelect select = getHtmlSelect();
         final HtmlOption beforeOption;
+        if (index == null) {
+            throw new EvaluatorException("Null not supported as index.");
+        }
+
         if (Context.getUndefinedValue().equals(index)) {
             beforeOption = null;
         }
@@ -223,7 +250,8 @@ public class HTMLSelectElement extends FormField {
     public void jsxSet_selectedIndex(final int index) {
         final HtmlSelect htmlSelect = getHtmlSelect();
 
-        if (index != 0 && getBrowserVersion().isFirefox() && (index < -1 || index >= htmlSelect.getOptionSize())) {
+        if (index != 0 && getBrowserVersion().hasFeature(BrowserVersionFeatures.JS_SELECT_SELECTED_INDEX_THROWS_IF_BAD)
+                && (index < -1 || index >= htmlSelect.getOptionSize())) {
             throw Context.reportRuntimeError("Invalid index for select node: " + index);
         }
 
@@ -330,7 +358,7 @@ public class HTMLSelectElement extends FormField {
     public int jsxGet_size() {
         int size = 0;
         final String sizeAttribute = getDomNodeOrDie().getAttribute("size");
-        if (sizeAttribute != HtmlSelect.ATTRIBUTE_NOT_DEFINED && sizeAttribute != HtmlSelect.ATTRIBUTE_VALUE_EMPTY) {
+        if (sizeAttribute != DomElement.ATTRIBUTE_NOT_DEFINED && sizeAttribute != DomElement.ATTRIBUTE_VALUE_EMPTY) {
             try {
                 size = Integer.parseInt(sizeAttribute);
             }

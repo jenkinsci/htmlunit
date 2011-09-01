@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,26 +16,25 @@ package com.gargoylesoftware.htmlunit.html;
 
 import static org.junit.Assert.fail;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
-import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.FailingHttpStatusCodeException;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 
 /**
  * Tests for {@link HtmlScript}.
  *
- * @version $Revision: 4550 $
+ * @version $Revision: 6383 $
  * @author Marc Guillemot
  * @author Daniel Gredler
  * @author Ahmed Ashour
  */
+@RunWith(BrowserRunner.class)
 public class HtmlScriptTest extends WebTestCase {
 
     /**
@@ -52,7 +51,7 @@ public class HtmlScriptTest extends WebTestCase {
                 + "<script src='inexistent.js'></script>\n"
                 + "</head><body></body></html>";
 
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setDefaultResponse("inexistent", 404, "Not Found", "text/html");
@@ -81,19 +80,26 @@ public class HtmlScriptTest extends WebTestCase {
     }
 
     /**
+     * Regression test for bug 3236689.
      * @throws Exception if an error occurs
      */
     @Test
-    public void testAsText() throws Exception {
-        final String htmlContent
-            = "<html><head><title>foo</title></head><body>\n"
-            + "<script id='script1'>\n"
-            + "    var foo = 132;\n"
-            + "</script></body></html>";
+    public void badSrcUrl() throws Exception {
+        final String html = "<html><head>\n"
+                + "<script src='http://'>alert(1)</script>\n"
+                + "</head><body></body></html>";
 
-        final HtmlPage page = loadPage(htmlContent);
+        loadPageWithAlerts(html);
+    }
 
-        final HtmlScript script = page.getHtmlElementById("script1");
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void asText() throws Exception {
+        final String html = "<html><body><script id='s'>var foo = 132;</script></body></html>";
+        final HtmlPage page = loadPage(html);
+        final HtmlScript script = page.getHtmlElementById("s");
         assertEquals("", script.asText());
     }
 
@@ -113,8 +119,9 @@ public class HtmlScriptTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts({ "First script executes", "Second page loading" })
     public void testChangingLocationSkipsFurtherScriptsOnPage() throws Exception {
-        final String firstPage
+        final String html
             = "<html><head></head>\n"
             + "<body onload='alert(\"body onload executing but should be skipped\")'>\n"
             + "<script>alert('First script executes')</script>\n"
@@ -127,19 +134,8 @@ public class HtmlScriptTest extends WebTestCase {
             + "<script>alert('Second page loading')</script>\n"
             + "</body></html>";
 
-        final WebClient client = new WebClient();
-
-        final MockWebConnection webConnection = new MockWebConnection();
-        webConnection.setResponse(URL_FIRST, firstPage);
-        webConnection.setResponse(URL_SECOND, secondPage);
-        client.setWebConnection(webConnection);
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-
-        client.getPage(URL_FIRST);
-        final String[] expectedAlerts = {"First script executes", "Second page loading"};
-        assertEquals(expectedAlerts, collectedAlerts);
+        getMockWebConnection().setResponse(URL_SECOND, secondPage);
+        loadPageWithAlerts(html);
     }
 
     /**
@@ -148,20 +144,19 @@ public class HtmlScriptTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
+    @Alerts("a")
     public void testScriptIsNotRunWhenCloned() throws Exception {
         final String html = "<html><body onload='document.body.cloneNode(true)'>\n"
             + "<script>alert('a')</script></body></html>";
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(html, collectedAlerts);
 
-        final String[] expectedAlerts = {"a"};
-        assertEquals(expectedAlerts, collectedAlerts);
+        loadPageWithAlerts(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
+    @Alerts(FF = { "deferred", "normal", "onload" }, IE = { "normal", "deferred", "onload" })
     public void testDefer() throws Exception {
         final String html = "<html><head>\n"
             + "<script defer>alert('deferred')</script>\n"
@@ -170,15 +165,51 @@ public class HtmlScriptTest extends WebTestCase {
             + "<body onload='alert(\"onload\")'>test</body>\n"
             + "</html>";
 
-        final List<String> actualFF = new ArrayList<String>();
-        loadPage(BrowserVersion.FIREFOX_2, html, actualFF);
-        final String[] expectedFF = new String[] {"deferred", "normal", "onload"};
-        assertEquals(expectedFF, actualFF);
-
-        final List<String> actualIE = new ArrayList<String>();
-        loadPage(BrowserVersion.INTERNET_EXPLORER_7, html, actualIE);
-        final String[] expectedIE = new String[] {"normal", "deferred", "onload"};
-        assertEquals(expectedIE, actualIE);
+        loadPageWithAlerts(html);
     }
 
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(FF = "hello", IE = "exception")
+    public void addedFromDocumentFragment() throws Exception {
+        final String html = "<html><body>\n"
+            + "<span id='A'></span>\n"
+            + "<script>\n"
+            + "var text = '<script>alert(\"hello\");</sc' + 'ript>';\n"
+            + "var element = document.getElementById('A');\n"
+            + "try {\n"
+            + "  var range = element.ownerDocument.createRange();\n"
+            + "  range.selectNode(element);\n"
+            + "  var fragment = range.createContextualFragment(text);\n"
+            + "  element.parentNode.replaceChild(fragment, element);\n"
+            + "} catch(e) { alert('exception'); }\n"
+            + "</script></body></html>";
+
+        loadPageWithAlerts(html);
+    }
+
+    /**
+     * Regression test for replaceChild.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "false", "false" })
+    public void appendChild_newIdAndScriptAddedInOnce() throws Exception {
+        final String html
+            = "<html><body>\n"
+            + "<script>\n"
+            + "var div1 = document.createElement('div');\n"
+            + "div1.id = 'div1';\n"
+            + "var script = document.createElement('script');\n"
+            + "script.text = 'alert(document.getElementById(\"div1\") == null)';\n"
+            + "div1.appendChild(script);\n"
+            + "document.body.appendChild(div1);\n"
+            + "alert(document.getElementById('div1') == null);\n"
+            + "</script>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts(html);
+    }
 }

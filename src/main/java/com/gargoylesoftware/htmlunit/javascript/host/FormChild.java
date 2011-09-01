@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,12 +21,10 @@ import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLFormElement;
 /**
  * Base class for elements which have a parent form.
  *
- * @version $Revision: 4649 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
  */
 public class FormChild extends HTMLElement {
-
-    private static final long serialVersionUID = -4795537772440835895L;
 
     /**
      * Creates an instance.

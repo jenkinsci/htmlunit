@@ -1,10 +1,10 @@
-﻿<project xmlns="http://maven.apache.org/POM/4.0.0"
+<project xmlns="http://maven.apache.org/POM/4.0.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>net.sourceforge.htmlunit</groupId>
     <artifactId>htmlunit</artifactId>
-    <version>2.6</version>
+    <version>2.9</version>
     <name>HtmlUnit</name>
     <organization>
         <name>Gargoyle Software Inc.</name>
@@ -16,12 +16,21 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+    <!-- As explained in
+    https://docs.sonatype.org/display/Repository/Sonatype+OSS+Maven+Repository+Usage+Guide#SonatypeOSSMavenRepositoryUsageGuide-7.POMandsettingsconfig
+    but perhaps should we avoid it?
+    -->
+    <parent>
+        <groupId>org.sonatype.oss</groupId>
+        <artifactId>oss-parent</artifactId>
+        <version>7</version>
+    </parent>
     <build>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>2.0.2</version>
+                <version>2.3</version>
                 <configuration>
                     <!-- Update the links reference in javadoc, PDM and clover plugins when this changes -->
                     <source>1.5</source>
@@ -34,32 +43,48 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
-                <version>2.3</version>
+                <version>2.4</version>
                 <configuration>
                     <configLocation>checkstyle.xml</configLocation>
-                    <suppressionsLocation>checkstyle_suppressions.xml</suppressionsLocation>
                     <includeTestSourceDirectory>true</includeTestSourceDirectory>
                     <consoleOutput>true</consoleOutput>
                     <failsOnError>true</failsOnError>
+                    <propertyExpansion>
+                        checkstyle.suppressions.file=checkstyle_suppressions.xml
+                        checkstyle.header.file=LICENSE.txt
+                    </propertyExpansion>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>2.2</version>
+                <version>2.3</version>
                 <configuration>
                     <archive>
                         <manifest>
                             <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
                             <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
                         </manifest>
+                        <manifestEntries>
+                            <Url>${project.url}</Url>
+                            <!-- Following entries should be passed by CruiseControl on the CI server -->
+                            <SVN-Revision>${svnrevision}</SVN-Revision>
+                            <Build-Number>${label}</Build-Number>
+                        </manifestEntries>
                     </archive>
                 </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-site-plugin</artifactId>
-                <version>2.0.1</version>
+                <version>2.3</version>
                 <configuration>
                     <templateFile>${basedir}/src/site/maven-site.vm</templateFile>
                 </configuration>
@@ -67,7 +92,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>2.2-beta-4</version>
+                <version>2.2.1</version>
                 <executions>
                     <execution>
                         <id>make-assembly</id>
@@ -78,6 +103,7 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <attach>false</attach>
                     <descriptors>
                         <descriptor>${basedir}/src/assembly/bin-distribution.xml</descriptor>
                         <descriptor>${basedir}/src/assembly/src-distribution.xml</descriptor>
@@ -87,10 +113,9 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>2.0.4</version>
+                <version>2.1</version>
                 <executions>
                     <execution>
-                        <id>attach-sources</id>
                         <goals>
                             <goal>jar</goal>
                         </goals>
@@ -121,61 +146,46 @@
                                         <exclude name="*-src.zip"/>
                                     </fileset>
                                 </copy>
-                                <move file="${basedir}/artifacts/${project.artifactId}-${project.version}.zip"
+                                <move file="${basedir}/artifacts/${project.artifactId}-${project.version}-bin.zip"
                                     tofile="${basedir}/artifacts/${project.artifactId}-${project.version}-with-dependencies.zip"/>
                             </tasks>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-eclipse-plugin</artifactId>
+                <version>2.7</version>
+                <configuration>
+                    <downloadSources>true</downloadSources>
+                    <downloadJavadocs>true</downloadJavadocs>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>1.2</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
+        <extensions>
+            <extension>
+                <groupId>org.apache.maven.wagon</groupId>
+                <artifactId>wagon-ssh</artifactId>
+                <version>1.0</version>
+            </extension>
+        </extensions>
     </build>
     <profiles>
-        <profile>
-            <id>without-library-tests</id>
-            <activation>
-                <property>
-                    <name>withoutLibs</name>
-                </property>
-            </activation>
-            <build>
-                <!-- Explicitly exclude the library tests. -->
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-surefire-plugin</artifactId>
-                        <version>2.4.3</version>
-                        <configuration>
-                            <excludes>
-                                <exclude>**/libraries/*.java</exclude>
-                            </excludes>
-                            <argLine>-Xmx512m -Xms128m</argLine>
-                            <systemProperties>
-                                <property>
-                                    <name>htmlunit.webdriver</name>
-                                    <!-- Value can be one of 'ie6', 'ie7', 'ff2' or 'ff3' -->
-                                    <value></value>
-                                </property>
-                            </systemProperties>
-                        </configuration>
-                    </plugin>
-                </plugins>
-                <!-- Implicitly exclude all library test resources. -->
-                <testResources>
-                    <testResource>
-                        <directory>src/test/resources</directory>
-                        <includes>
-                            <include>**/applets/**/*.*</include>
-                            <include>**/com/**/*.*</include>
-                            <include>**/objects/**/*.*</include>
-                            <include>**/pjl-comp-filter/**/*.*</include>
-                            <include>**/testfiles/**/*.*</include>
-                            <include>*.*</include>
-                        </includes>
-                    </testResource>
-                </testResources>
-            </build>
-        </profile>
         <profile>
             <id>with-library-tests</id>
             <activation>
@@ -186,16 +196,107 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
-                        <version>2.4.3</version>
+                        <version>2.7.1</version>
                         <configuration>
                             <argLine>-Xmx512m -Xms128m</argLine>
-                            <systemProperties>
-                                <property>
-                                    <name>htmlunit.webdriver</name>
-                                    <!-- Value can be one of 'ie6', 'ie7', 'ff2' or 'ff3' -->
-                                    <value></value>
-                                </property>
-                            </systemProperties>
+                            <systemPropertyVariables>
+                                <htmlunit.maven>maven</htmlunit.maven>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>without-library-tests</id>
+            <activation>
+                <property>
+                    <name>withoutLibs</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <version>2.7.1</version>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/libraries/*.java</exclude>
+                            </excludes>
+                            <argLine>-Xmx512m -Xms128m</argLine>
+                            <systemPropertyVariables>
+                                <htmlunit.maven>maven</htmlunit.maven>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+                <testResources>
+                    <testResource>
+                        <directory>src/test/resources</directory>
+                        <excludes>
+                            <exclude>libraries/**/*.*</exclude>
+                        </excludes>
+                    </testResource>
+                </testResources>
+            </build>
+        </profile>
+        <profile>
+            <id>only-library-tests</id>
+            <activation>
+                <property>
+                    <name>onlyLibs</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <version>2.7.1</version>
+                        <configuration>
+                            <includes>
+                                <include>**/libraries/*.java</include>
+                            </includes>
+                            <argLine>-Xmx512m -Xms128m</argLine>
+                            <systemPropertyVariables>
+                                <htmlunit.maven>maven</htmlunit.maven>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+                <testResources>
+                    <testResource>
+                        <directory>src/test/resources</directory>
+                        <includes>
+                            <include>libraries/**/*.*</include>
+                        </includes>
+                    </testResource>
+                </testResources>
+            </build>
+        </profile>
+        <profile>
+            <id>mikeCI</id>
+            <activation>
+                <property>
+                    <name>mikeCI</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <version>2.7.1</version>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/H*Applet*Test.java</exclude>
+                                <exclude>**/HtmlFileInputTest.java</exclude>
+                            </excludes>
+                            <argLine>-Xmx512m -Xms128m</argLine>
+                            <systemPropertyVariables>
+                                <htmlunit.maven>maven</htmlunit.maven>
+                            </systemPropertyVariables>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -207,14 +308,14 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>2.6</version>
+                <version>2.7</version>
                 <configuration>
                     <excludePackageNames>com.gargoylesoftware.htmlunit.javascript:com.gargoylesoftware.htmlunit.protocol:com.gargoylesoftware.htmlunit.ssl:com.gargoylesoftware.htmlunit.html.xpath:com.gargoylesoftware.htmlunit.html.applets:com.gargoylesoftware.htmlunit.html.impl</excludePackageNames>
                     <links>
                         <link>http://java.sun.com/j2se/1.5.0/docs/api/</link>
                         <link>http://commons.apache.org/logging/apidocs/</link>
                         <link>http://commons.apache.org/codec/apidocs/</link>
-                        <link>http://hc.apache.org/httpclient-3.x/apidocs/</link>
+                        <link>http://hc.apache.org/httpcomponents-client/httpclient/apidocs/</link>
                     </links>
                     <stylesheet>maven</stylesheet>
                 </configuration>
@@ -222,22 +323,20 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jxr-plugin</artifactId>
+                <version>2.2</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-pmd-plugin</artifactId>
+                <version>2.5</version>
                 <configuration>
                     <targetJdk>1.5</targetJdk>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-changelog-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-changes-plugin</artifactId>
-                <version>2.1</version>
+                <version>2.5</version>
                 <reportSets>
                     <reportSet>
                         <reports>
@@ -254,11 +353,12 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>jdepend-maven-plugin</artifactId>
+                <version>2.0-beta-2</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-report-plugin</artifactId>
-                <version>2.4.2</version>
+                <version>2.7.1</version>
                 <configuration>
                     <showSuccess>false</showSuccess>
                 </configuration>
@@ -364,6 +464,13 @@
             <id>sudhan_moghe</id>
             <email>sudhan_moghe@users.sourceforge.net</email>
             <timezone>+5.5</timezone>
+        </developer>
+        <developer>
+            <name>Ronald Brill</name>
+            <id>rbri</id>
+            <email>rbri@rbri.de</email>
+            <url>http://www.wetator.org/</url>
+            <timezone>+1</timezone>
         </developer>
     </developers>
     <contributors>
@@ -530,6 +637,33 @@
         <contributor>
             <name>Mirko Friedenhagen</name>
         </contributor>
+        <contributor>
+            <name>Richard Eggert</name>
+        </contributor>
+        <contributor>
+            <name>Tomasz Kalkosinski</name>
+        </contributor>
+        <contributor>
+            <name>Peter Faller</name>
+        </contributor>
+        <contributor>
+            <name>Benoit Heinrich</name>
+        </contributor>
+        <contributor>
+            <name>Amit Manjhi</name>
+        </contributor>
+        <contributor>
+            <name>Nicolas Belisle</name>
+        </contributor>
+        <contributor>
+            <name>Amit Khanna</name>
+        </contributor>
+        <contributor>
+            <name>Nikolai Avteniev</name>
+        </contributor>
+        <contributor>
+            <name>Kostadin Chikov</name>
+        </contributor>
     </contributors>
     <dependencies>
         <dependency>
@@ -551,12 +685,24 @@
         <dependency>
             <groupId>commons-lang</groupId>
             <artifactId>commons-lang</artifactId>
-            <version>2.4</version>
+            <version>2.6</version>
         </dependency>
         <dependency>
-            <groupId>commons-httpclient</groupId>
-            <artifactId>commons-httpclient</artifactId>
-            <version>3.1</version>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.1.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.1.2</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpmime</artifactId>
+            <version>4.1.2</version>
         </dependency>
         <dependency>
             <groupId>commons-codec</groupId>
@@ -566,7 +712,7 @@
         <dependency>
             <groupId>net.sourceforge.htmlunit</groupId>
             <artifactId>htmlunit-core-js</artifactId>
-            <version>2.6</version>
+            <version>2.9</version>
         </dependency>
         <!-- This is an indirect dependency, used by Xalan and NekoHtml -->
         <dependency>
@@ -577,7 +723,7 @@
         <dependency>
             <groupId>net.sourceforge.nekohtml</groupId>
             <artifactId>nekohtml</artifactId>
-            <version>1.9.13</version>
+            <version>1.9.15</version>
             <exclusions>
                 <exclusion>
                     <groupId>xerces</groupId>
@@ -593,7 +739,7 @@
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
-            <version>1.4</version>
+            <version>2.0.1</version>
         </dependency>
         <dependency>
             <groupId>commons-logging</groupId>
@@ -604,7 +750,7 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.7</version>
+            <version>4.8.2</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -616,38 +762,38 @@
         <dependency>
             <groupId>org.easymock</groupId>
             <artifactId>easymock</artifactId>
-            <version>2.5.1</version>
+            <version>3.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>log4j</groupId>
             <artifactId>log4j</artifactId>
-            <version>1.2.14</version>
+            <version>1.2.16</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>commons-fileupload</groupId>
             <artifactId>commons-fileupload</artifactId>
-            <version>1.2.1</version>
+            <version>1.2.2</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.mortbay.jetty</groupId>
             <artifactId>jetty</artifactId>
-            <version>6.1.20</version>
+            <version>6.1.26</version>
             <scope>test</scope>
         </dependency>
         <!-- The presence of slf4j on the classpath during the unit tests triggers correct logging in Jetty. -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>1.5.8</version>
+            <version>1.6.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-log4j12</artifactId>
-            <version>1.5.8</version>
+            <version>1.6.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -658,9 +804,9 @@
         </dependency>
         <!-- WebDriver -->
         <dependency>
-            <groupId>net.sourceforge.htmlunit</groupId>
-            <artifactId>webdriver</artifactId>
-            <version>2.6</version>
+            <groupId>org.seleniumhq.selenium</groupId>
+            <artifactId>selenium-htmlunit-driver</artifactId>
+            <version>2.1.0</version>
             <scope>test</scope>
             <exclusions>
                 <exclusion>
@@ -670,22 +816,16 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>org.seleniumhq.webdriver</groupId>
-            <artifactId>webdriver-firefox</artifactId>
-            <version>0.9.7089</version>
+            <groupId>org.seleniumhq.selenium</groupId>
+            <artifactId>selenium-ie-driver</artifactId>
+            <version>2.1.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.seleniumhq.webdriver</groupId>
-            <artifactId>webdriver-ie</artifactId>
-            <version>0.9.7089</version>
+            <groupId>org.seleniumhq.selenium</groupId>
+            <artifactId>selenium-firefox-driver</artifactId>
+            <version>2.1.0</version>
             <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.sun.jna</groupId>
-                    <artifactId>jna</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
     </dependencies>
     <distributionManagement>

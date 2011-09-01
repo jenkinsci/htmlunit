@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,24 +22,27 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import org.apache.commons.httpclient.NameValuePair;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Tests for {@link HtmlButton}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6241 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author Brad Clarke
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
+@RunWith(BrowserRunner.class)
 public class HtmlButtonTest extends WebTestCase {
 
     /**
@@ -206,24 +209,12 @@ public class HtmlButtonTest extends WebTestCase {
 
     /**
      * According to the HTML spec, the default type for a button is "submit".
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testDefaultButtonType_StandardsCompliantBrowser() throws Exception {
-        doTestDefaultButtonType(BrowserVersion.FIREFOX_2, "submit");
-    }
-
-    /**
      * IE is different than the HTML spec and has a default type of "button".
      * @throws Exception if the test fails
      */
     @Test
-    public void testDefaultButtonType_InternetExplorer() throws Exception {
-        doTestDefaultButtonType(BrowserVersion.INTERNET_EXPLORER_6, "button");
-    }
-
-    private void doTestDefaultButtonType(final BrowserVersion browserVersion,
-            final String expectedType) throws Exception {
+    public void testDefaultButtonType_StandardsCompliantBrowser() throws Exception {
+        final String expectedType = getBrowserVersion().isFirefox() ? "submit" : "button";
         final String firstContent
             = "<html><head><title>First</title></head><body>\n"
             + "<form id='form1' action='" + URL_SECOND + "' method='post'>\n"
@@ -231,7 +222,7 @@ public class HtmlButtonTest extends WebTestCase {
             + "</form></body></html>";
         final String secondContent
             = "<html><head><title>Second</title></head><body'></body></html>";
-        final WebClient client = new WebClient(browserVersion);
+        final WebClient client = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
@@ -245,7 +236,7 @@ public class HtmlButtonTest extends WebTestCase {
         final HtmlPage page2 = button.click();
         final List<NameValuePair> expectedParameters;
         final String expectedSecondPageTitle;
-        if (expectedType.equals("submit")) {
+        if ("submit".equals(expectedType)) {
             expectedParameters = Collections.singletonList(new NameValuePair("button", "pushme"));
             expectedSecondPageTitle = "Second";
         }
@@ -274,7 +265,7 @@ public class HtmlButtonTest extends WebTestCase {
 
         final String[] expectedAlerts = {"[object HTMLButtonElement]"};
         final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(BrowserVersion.FIREFOX_2, html, collectedAlerts);
+        final HtmlPage page = loadPage(BrowserVersion.FIREFOX_3_6, html, collectedAlerts);
         assertTrue(HtmlButton.class.isInstance(page.getHtmlElementById("myId")));
         assertEquals(expectedAlerts, collectedAlerts);
     }

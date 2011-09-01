@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,19 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
+import com.gargoylesoftware.htmlunit.html.DomNode;
+
 /**
  * JavaScript object representing a Keyboard Event.
- * For general information on which properties and functions
- * should be supported, see
- * <a href="http://www.w3.org/TR/DOM-Level-3-Events/events.html#Events-KeyboardEvents-Interfaces">
+ * For general information on which properties and functions should be supported, see
+ * <a href="http://www.w3c.org/TR/DOM-Level-3-Events/#Events-KeyboardEvents-Interfaces">
  * DOM Level 3 Events</a>.
  *
- * @version $Revision: 4890 $
+ * @version $Revision: 6391 $
  * @author Ahmed Ashour
  */
 public class KeyboardEvent extends UIEvent {
-
-    private static final long serialVersionUID = -2422855531523175841L;
 
     /** Constant for DOM_VK_MULTIPLY. */
     public static final int DOM_VK_MULTIPLY = 106;
@@ -373,6 +373,49 @@ public class KeyboardEvent extends UIEvent {
     /** Constant for DOM_VK_NUMPAD9. */
     public static final int DOM_VK_NUMPAD9 = 105;
 
+    private int charCode_;
+
+    /**
+     * Creates a new keyboard event instance.
+     */
+    public KeyboardEvent() {
+        // Empty.
+    }
+
+    /**
+     * Creates a new keyboard event instance.
+     *
+     * @param domNode the DOM node that triggered the event
+     * @param type the event type
+     * @param character the character associated with the event
+     * @param shiftKey true if SHIFT is pressed
+     * @param ctrlKey true if CTRL is pressed
+     * @param altKey true if ALT is pressed
+     */
+    public KeyboardEvent(final DomNode domNode, final String type, final int character,
+            final boolean shiftKey, final boolean ctrlKey, final boolean altKey) {
+        super(domNode, type);
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_113)) {
+            if (jsxGet_type().equals(Event.TYPE_KEY_PRESS)) {
+                setKeyCode(Integer.valueOf(character));
+            }
+            else {
+                setKeyCode(Integer.valueOf(charToKeyCode(character)));
+            }
+        }
+        else {
+            if (jsxGet_type().equals(Event.TYPE_KEY_PRESS) && character >= 33 && character <= 126) {
+                charCode_ = character;
+            }
+            else {
+                setKeyCode(Integer.valueOf(charToKeyCode(character)));
+            }
+        }
+        setShiftKey(shiftKey);
+        setCtrlKey(ctrlKey);
+        setAltKey(altKey);
+    }
+
     /**
      * Implementation of the DOM Level 3 Event method for initializing the key event.
      *
@@ -403,7 +446,50 @@ public class KeyboardEvent extends UIEvent {
         setCtrlKey(ctrlKey);
         setAltKey(altKey);
         setShiftKey(shiftKey);
-        setKeyCode(keyCode);
-        //TODO: what about charCode
+        setKeyCode(Integer.valueOf(keyCode));
+        setMetaKey(metaKey);
+        charCode_ = 0;
+    }
+
+    /**
+     * Returns the char code associated with the event.
+     * @return the char code associated with the event
+     */
+    public int jsxGet_charCode() {
+        return charCode_;
+    }
+
+    /**
+     * Returns the numeric keyCode of the key pressed, or the charCode for an alphanumeric key pressed.
+     * @return the numeric keyCode of the key pressed, or the charCode for an alphanumeric key pressed
+     */
+    public Object jsxGet_which() {
+        return charCode_ != 0 ? Integer.valueOf(charCode_) : jsxGet_keyCode();
+    }
+
+    /**
+     * Converts a Java character to a keyCode.
+     * @see <a href="http://www.w3.org/TR/DOM-Level-3-Events/#keyset-keyidentifiers">DOM 3 Events</a>
+     * @param c the character
+     * @return the corresponding keycode
+     */
+    private static int charToKeyCode(final int c) {
+        if (c >= 'a' && c <= 'z') {
+            return 'A' + c - 'a';
+        }
+
+        switch (c) {
+            case '.':
+                return DOM_VK_PERIOD;
+
+            case ',':
+                return DOM_VK_COMMA;
+
+            case '/':
+                return DOM_VK_SLASH;
+
+            default:
+                return c;
+        }
     }
 }

@@ -3,7 +3,7 @@
 
     <properties>
         <title>Submitting Patches</title>
-        <revision>$Revision: 2219 $</revision>
+        <revision>$Revision: 5827 $</revision>
         <author email="mbowler@GargoyleSoftware.com">Mike Bowler</author>
         <author email="asashour@users.sourceforge.net">Ahmed Ashour</author>
     </properties>
@@ -39,6 +39,7 @@
                     <li>
                         Make sure the new code has automated unit tests written for
                         <a href="http://www.junit.org">JUnit</a>.  No code will get merged without tests.
+                        Whenever possible, tests classes should extend WebDriverTestCase.
                     </li>
                     <li>
                     	If you are fixing a bug but not adding new functionality then we still require
@@ -70,11 +71,6 @@
 	                    will submit separate patches for each file in the diff and this just
 	                    makes more work for the committer.  Please also submit it as one single diff, 
 	                    not zipped up - again because it's easier for the committers.
-                    </li>
-                    <li>
-                        For all newly added .java files, please make sure they have two SVN properties:
-                        <tt>svn:keywords</tt> with a value of "<tt>Author Date Id Revision</tt>"
-                        (without the double quotes), and <tt>svn:eol-style</tt> with a value of "<tt>native</tt>".
                     </li>
                 </ul>
             </p>

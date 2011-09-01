@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,30 +14,139 @@
  */
 package com.gargoylesoftware.htmlunit.util;
 
-import static com.gargoylesoftware.htmlunit.WebClient.URL_ABOUT_BLANK;
-import static org.apache.commons.lang.StringUtils.equalsIgnoreCase;
-
+import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLStreamHandler;
+import java.util.BitSet;
 
-import com.gargoylesoftware.htmlunit.TextUtil;
+import org.apache.commons.codec.DecoderException;
+import org.apache.commons.codec.net.URLCodec;
+
 import com.gargoylesoftware.htmlunit.WebAssert;
 
 /**
  * URL utilities class that makes it easy to create new URLs based off of old URLs
  * without having to assemble or parse them yourself.
  *
- * @version $Revision: 4791 $
+ * @version $Revision: 6470 $
  * @author Daniel Gredler
  * @author Martin Tamme
  * @author Sudhan Moghe
+ * @author Marc Guillemot
+ * @author Ahmed Ashour
  */
 public final class UrlUtils {
+    private static final BitSet PATH_ALLOWED_CHARS = new BitSet(256);
+    private static final BitSet QUERY_ALLOWED_CHARS = new BitSet(256);
+    private static final BitSet ANCHOR_ALLOWED_CHARS = new BitSet(256);
+    private static final URLCreator URL_CREATOR = URLCreator.getCreator();
 
-    private static final URLStreamHandler JS_HANDLER = new com.gargoylesoftware.htmlunit.protocol.javascript.Handler();
-    private static final URLStreamHandler ABOUT_HANDLER = new com.gargoylesoftware.htmlunit.protocol.about.Handler();
-    private static final URLStreamHandler DATA_HANDLER = new com.gargoylesoftware.htmlunit.protocol.data.Handler();
+    /**
+     * URI allowed char initialization; based on HttpClient 3.1's URI bit sets.
+     */
+    static {
+        final BitSet reserved = new BitSet(256);
+        reserved.set(';');
+        reserved.set('/');
+        reserved.set('?');
+        reserved.set(':');
+        reserved.set('@');
+        reserved.set('&');
+        reserved.set('=');
+        reserved.set('+');
+        reserved.set('$');
+        reserved.set(',');
+
+        final BitSet mark = new BitSet(256);
+        mark.set('-');
+        mark.set('_');
+        mark.set('.');
+        mark.set('!');
+        mark.set('~');
+        mark.set('*');
+        mark.set('\'');
+        mark.set('(');
+        mark.set(')');
+
+        final BitSet alpha = new BitSet(256);
+        for (int i = 'a'; i <= 'z'; i++) {
+            alpha.set(i);
+        }
+        for (int i = 'A'; i <= 'Z'; i++) {
+            alpha.set(i);
+        }
+
+        final BitSet digit = new BitSet(256);
+        for (int i = '0'; i <= '9'; i++) {
+            digit.set(i);
+        }
+
+        final BitSet alphanumeric = new BitSet(256);
+        alphanumeric.or(alpha);
+        alphanumeric.or(digit);
+
+        final BitSet unreserved = new BitSet(256);
+        unreserved.or(alphanumeric);
+        unreserved.or(mark);
+
+        final BitSet hex = new BitSet(256);
+        hex.or(digit);
+        for (int i = 'a'; i <= 'f'; i++) {
+            hex.set(i);
+        }
+        for (int i = 'A'; i <= 'F'; i++) {
+            hex.set(i);
+        }
+
+        final BitSet escaped = new BitSet(256);
+        escaped.set('%');
+        escaped.or(hex);
+
+        final BitSet uric = new BitSet(256);
+        uric.or(reserved);
+        uric.or(unreserved);
+        uric.or(escaped);
+
+        final BitSet pchar = new BitSet(256);
+        pchar.or(unreserved);
+        pchar.or(escaped);
+        pchar.set(':');
+        pchar.set('@');
+        pchar.set('&');
+        pchar.set('=');
+        pchar.set('+');
+        pchar.set('$');
+        pchar.set(',');
+
+        final BitSet param = pchar;
+
+        final BitSet segment = new BitSet(256);
+        segment.or(pchar);
+        segment.set(';');
+        segment.or(param);
+
+        final BitSet pathSegments = new BitSet(256);
+        pathSegments.set('/');
+        pathSegments.or(segment);
+
+        final BitSet absPath = new BitSet(256);
+        absPath.set('/');
+        absPath.or(pathSegments);
+
+        final BitSet allowedAbsPath = new BitSet(256);
+        allowedAbsPath.or(absPath);
+
+        final BitSet allowedFragment = new BitSet(256);
+        allowedFragment.or(uric);
+//        allowedFragment.clear('%');
+
+        final BitSet allowedQuery = new BitSet(256);
+        allowedQuery.or(uric);
+
+        PATH_ALLOWED_CHARS.or(allowedAbsPath);
+        QUERY_ALLOWED_CHARS.or(allowedQuery);
+        ANCHOR_ALLOWED_CHARS.or(allowedFragment);
+    }
 
     /**
      * Disallow instantiation of this class.
@@ -81,20 +190,103 @@ public final class UrlUtils {
      */
     public static URL toUrlUnsafe(final String url) throws MalformedURLException {
         WebAssert.notNull("url", url);
-        if (TextUtil.startsWithIgnoreCase(url, "javascript:")) {
-            return new URL(null, url, JS_HANDLER);
+        return URL_CREATOR.toUrlUnsafeClassic(url);
+    }
+
+    /**
+     * <p>Encodes illegal characters in the specified URL's path, query string and anchor according to the URL
+     * encoding rules observed in real browsers.</p>
+     *
+     * <p>For example, this method changes <tt>"http://first/?a=b c"</tt> to <tt>"http://first/?a=b%20c"</tt>.</p>
+     *
+     * @param url the URL to encode
+     * @param minimalQueryEncoding whether or not to perform minimal query encoding, like IE does
+     * @return the encoded URL
+     */
+    public static URL encodeUrl(final URL url, final boolean minimalQueryEncoding) {
+        final String p = url.getProtocol();
+        if ("javascript".equalsIgnoreCase(p) || "about".equalsIgnoreCase(p) || "data".equalsIgnoreCase(p)) {
+            // Special exception.
+            return url;
         }
-        else if (TextUtil.startsWithIgnoreCase(url, "about:")) {
-            if (URL_ABOUT_BLANK != null && equalsIgnoreCase(URL_ABOUT_BLANK.toExternalForm(), url)) {
-                return URL_ABOUT_BLANK;
+        try {
+            String path = url.getPath();
+            if (path != null) {
+                path = encode(path, PATH_ALLOWED_CHARS, "utf-8");
             }
-            return new URL(null, url, ABOUT_HANDLER);
+            String query = url.getQuery();
+            if (query != null) {
+                if (minimalQueryEncoding) {
+                    query = org.apache.commons.lang.StringUtils.replace(query, " ", "%20");
+                }
+                else {
+                    query = encode(query, QUERY_ALLOWED_CHARS, "windows-1252");
+                }
+            }
+            String anchor = url.getRef();
+            if (anchor != null) {
+                anchor = encode(anchor, ANCHOR_ALLOWED_CHARS, "utf-8");
+            }
+            return createNewUrl(url.getProtocol(), url.getHost(), url.getPort(), path, anchor, query);
         }
-        else if (TextUtil.startsWithIgnoreCase(url, "data:")) {
-            return new URL(null, url, DATA_HANDLER);
+        catch (final MalformedURLException e) {
+            // Impossible... I think.
+            throw new RuntimeException(e);
         }
-        else {
-            return new URL(url);
+    }
+
+    /**
+     * Encodes and escapes the specified URI anchor string.
+     *
+     * @param anchor the anchor string to encode and escape
+     * @return the encoded and escaped anchor string
+     */
+    public static String encodeAnchor(String anchor) {
+        if (anchor != null) {
+            anchor = encode(anchor, ANCHOR_ALLOWED_CHARS, "utf-8");
+        }
+        return anchor;
+    }
+
+    /**
+     * Unescapes and decodes the specified string.
+     *
+     * @param escaped the string to be unescaped and decoded
+     * @return the unescaped and decoded string
+     */
+    public static String decode(final String escaped) {
+        try {
+            final byte[] bytes = escaped.getBytes("US-ASCII");
+            final byte[] bytes2 = URLCodec.decodeUrl(bytes);
+            return new String(bytes2, "UTF-8");
+        }
+        catch (final UnsupportedEncodingException e) {
+            // Should never happen.
+            throw new RuntimeException(e);
+        }
+        catch (final DecoderException e) {
+            // Should never happen.
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Escapes and encodes the specified string. Based on HttpClient 3.1's <tt>URIUtil.encode()</tt> method.
+     *
+     * @param unescaped the string to encode
+     * @param allowed allowed characters that shouldn't be escaped
+     * @param charset the charset to use
+     * @return the escaped string
+     */
+    private static String encode(final String unescaped, final BitSet allowed, final String charset) {
+        try {
+            final byte[] bytes = unescaped.getBytes(charset);
+            final byte[] bytes2 = URLCodec.encodeUrl(allowed, bytes);
+            return new String(bytes2, "US-ASCII");
+        }
+        catch (final UnsupportedEncodingException e) {
+            // Should never happen.
+            throw new RuntimeException(e);
         }
     }
 
@@ -185,7 +377,7 @@ public final class UrlUtils {
             s.append(":").append(port);
         }
         if (path != null && path.length() > 0) {
-            if (!path.startsWith("/")) {
+            if (!('/' == path.charAt(0))) {
                 s.append("/");
             }
             s.append(path);
@@ -194,7 +386,7 @@ public final class UrlUtils {
             s.append("?").append(query);
         }
         if (ref != null) {
-            if (!ref.startsWith("#")) {
+            if (!((ref.length() > 0) && ('#' == ref.charAt(0)))) {
                 s.append("#");
             }
             s.append(ref);
@@ -465,7 +657,7 @@ public final class UrlUtils {
         url.location_ = baseUrl.location_;
         // Step 4: If the embedded URL path is preceded by a slash "/", the
         //         path is not relative and we skip to Step 7.
-        if ((url.path_ != null) && url.path_.startsWith("/")) {
+        if ((url.path_ != null) && ((url.path_.length() > 0) && ('/' == url.path_.charAt(0)))) {
             url.path_ = removeLeadingSlashPoints(url.path_);
             return url;
         }
@@ -496,7 +688,7 @@ public final class UrlUtils {
         //         appended in its place.  The following operations are
         //         then applied, in order, to the new path:
         final String basePath = baseUrl.path_;
-        String path = new String();
+        String path = "";
 
         if (basePath != null) {
             final int lastSlashIndex = basePath.lastIndexOf('/');
@@ -533,7 +725,7 @@ public final class UrlUtils {
             if (slashIndex < 0) {
                 continue;
             }
-            if (!pathSegment.substring(slashIndex).equals("..")) {
+            if (!"..".equals(pathSegment.substring(slashIndex))) {
                 path = path.substring(0, slashIndex + 1).concat(path.substring(pathSegmentIndex + 4));
             }
         }

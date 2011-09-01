@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,19 +20,22 @@ import static org.junit.Assert.assertSame;
 import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
 
 /**
  * Tests for {@link HtmlTableRow}.
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:gallaherm@pragmatics.com">Mike Gallaher</a>
  * @author Mike Bowler
  * @author Ahmed Ashour
  * @author Marc Guillemot
  */
+@RunWith(BrowserRunner.class)
 public class HtmlTableRowTest extends WebTestCase {
 
     private static final String htmlContent = "<html><head><title>foo</title></head><body>\n"

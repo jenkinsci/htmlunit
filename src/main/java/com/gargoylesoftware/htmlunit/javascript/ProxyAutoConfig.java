@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.TimeZone;
+import java.util.regex.Pattern;
 
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.ContextFactory;
@@ -33,10 +34,12 @@ import net.sourceforge.htmlunit.corejs.javascript.Undefined;
  *
  * @see <a href="http://lib.ru/WEBMASTER/proxy-live.txt">PAC file format</a>
  *
- * @version $Revision: 4619 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  */
 public final class ProxyAutoConfig {
+
+    private static final Pattern DOT_SPLIT_PATTERN = Pattern.compile("\\.");
 
     private ProxyAutoConfig() {
     }
@@ -139,9 +142,9 @@ public final class ProxyAutoConfig {
      * @return true if the IP address of the host matches the specified IP address pattern.
      */
     public static boolean isInNet(final String host, final String pattern, final String mask) {
-        final String[] hostTokens = dnsResolve(host).split("\\.");
-        final String[] patternTokens = pattern.split("\\.");
-        final String[] maskTokens = mask.split("\\.");
+        final String[] hostTokens = DOT_SPLIT_PATTERN.split(dnsResolve(host));
+        final String[] patternTokens = DOT_SPLIT_PATTERN.split(pattern);
+        final String[] maskTokens = DOT_SPLIT_PATTERN.split(mask);
         for (int i = 0; i < hostTokens.length; i++) {
             if (Integer.parseInt(maskTokens[i]) != 0 && !hostTokens[i].equals(patternTokens[i])) {
                 return false;
@@ -251,7 +254,7 @@ public final class ProxyAutoConfig {
         //actual values length
         int length;
         for (length = values.length - 1; length >= 0; length--) {
-            if (Context.toString(values[length]).equals("GMT")) {
+            if ("GMT".equals(Context.toString(values[length]))) {
                 timezone = TimeZone.getTimeZone("GMT");
                 break;
             }
@@ -396,7 +399,7 @@ public final class ProxyAutoConfig {
         //actual values length
         int length;
         for (length = values.length - 1; length >= 0; length--) {
-            if (Context.toString(values[length]).equals("GMT")) {
+            if ("GMT".equals(Context.toString(values[length]))) {
                 timezone = TimeZone.getTimeZone("GMT");
                 break;
             }

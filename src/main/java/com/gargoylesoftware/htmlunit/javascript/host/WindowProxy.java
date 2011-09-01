@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,17 +15,16 @@
 package com.gargoylesoftware.htmlunit.javascript.host;
 
 import com.gargoylesoftware.htmlunit.WebWindow;
-import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptableProxy;
 
 /**
- * Builds a proxy for the {@link Window} script object of a {@link WebWindow}.
+ * Proxy for a {@link Window} script object.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  */
-public class WindowProxy extends SimpleScriptableProxy {
-    private static final long serialVersionUID = -9124838618636683398L;
+public class WindowProxy extends SimpleScriptableProxy<Window> {
+
     private final WebWindow webWindow_;
 
     /**
@@ -37,11 +36,11 @@ public class WindowProxy extends SimpleScriptableProxy {
     }
 
     /**
-     * Gets the currently wrapped window JavaScript object.
-     * @return the current window object
+     * {@inheritDoc}
      */
     @Override
-    public SimpleScriptable getWrappedScriptable() {
+    public Window getDelegee() {
         return (Window) webWindow_.getScriptObject();
     }
+
 }

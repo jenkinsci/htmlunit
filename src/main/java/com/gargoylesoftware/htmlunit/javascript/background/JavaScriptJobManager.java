@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.gargoylesoftware.htmlunit.Page;
 /**
  * A manager for {@link JavaScriptJob}s.
  *
- * @version $Revision: 4756 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
  */
 public interface JavaScriptJobManager extends Serializable {
@@ -88,4 +88,16 @@ public interface JavaScriptJobManager extends Serializable {
      */
     void shutdown();
 
+    /**
+     * Gets the earliest job for this manager.
+     * @return <code>null</code> if none
+     */
+    JavaScriptJob getEarliestJob();
+
+    /**
+     * Runs the provided job if it is the right time for it.
+     * @param job the job to run
+     * @return returns true if the job was run.
+     */
+    boolean runSingleJob(final JavaScriptJob job);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,12 +21,10 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "listing".
  *
- * @version $Revision: 4009 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  */
 public class HtmlListing extends HtmlElement {
-
-    private static final long serialVersionUID = -2767516293373572947L;
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "listing";

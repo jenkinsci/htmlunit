@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
 /**
  * Unit tests for {@link MimeType}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6269 $
  * @author Marc Guillemot
  */
 public class MimeTypeTest extends WebTestCase {
@@ -56,7 +56,7 @@ public class MimeTypeTest extends WebTestCase {
         createTestPageForRealBrowserIfNeeded(html, expectedAlerts);
 
         final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(BrowserVersion.FIREFOX_2, html, collectedAlerts);
+        loadPage(BrowserVersion.FIREFOX_3_6, html, collectedAlerts);
         assertEquals(expectedAlerts, collectedAlerts);
     }
 
@@ -80,14 +80,14 @@ public class MimeTypeTest extends WebTestCase {
 
         final List<String> collectedAlerts = new ArrayList<String>();
         final Set<PluginConfiguration> plugins =
-            new HashSet<PluginConfiguration>(BrowserVersion.FIREFOX_2.getPlugins());
-        BrowserVersion.FIREFOX_2.getPlugins().clear();
+            new HashSet<PluginConfiguration>(BrowserVersion.FIREFOX_3_6.getPlugins());
+        BrowserVersion.FIREFOX_3_6.getPlugins().clear();
         try {
-            loadPage(BrowserVersion.FIREFOX_2, html, collectedAlerts);
+            loadPage(BrowserVersion.FIREFOX_3_6, html, collectedAlerts);
             assertEquals(expectedAlerts, collectedAlerts);
         }
         finally {
-            BrowserVersion.FIREFOX_2.getPlugins().addAll(plugins);
+            BrowserVersion.FIREFOX_3_6.getPlugins().addAll(plugins);
         }
     }
 }

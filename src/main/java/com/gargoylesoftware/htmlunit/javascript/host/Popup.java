@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLDocument;
 /**
  * A JavaScript object for IE's Popup.
  *
- * @version $Revision: 4756 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  * @author David K. Taylor
  * @author Ahmed Ashour
@@ -38,7 +38,6 @@ import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLDocument;
  */
 public class Popup extends SimpleScriptable {
 
-    private static final long serialVersionUID = 2016351591254223906L;
     private boolean opened_;
     private HTMLDocument document_;
 
@@ -110,9 +109,6 @@ public class Popup extends SimpleScriptable {
  * with a {@link Popup}.
  */
 class PopupPseudoWebWindow implements WebWindow {
-
-    /** Serial version UID. */
-    private static final long serialVersionUID = 8592029101424531167L;
 
     private final WebClient webClient_;
     private Object scriptObject_;
@@ -198,5 +194,12 @@ class PopupPseudoWebWindow implements WebWindow {
      */
     public void setScriptObject(final Object scriptObject) {
         scriptObject_ = scriptObject;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public boolean isClosed() {
+        return false;
     }
 }

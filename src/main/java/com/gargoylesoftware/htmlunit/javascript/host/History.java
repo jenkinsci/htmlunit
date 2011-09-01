@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,20 +19,19 @@ import java.io.IOException;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.WebWindow;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 
 /**
  * A JavaScript object for the client's browsing history.
  *
- * @version $Revision: 4607 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Chris Erskine
  * @author Daniel Gredler
  */
 public class History extends SimpleScriptable {
-
-    private static final long serialVersionUID = -285158453206844475L;
 
     /**
      * Creates an instance. JavaScript objects must have a default constructor.
@@ -47,13 +46,13 @@ public class History extends SimpleScriptable {
     @Override
     public Object[] getIds() {
         Object[] ids = super.getIds();
-        if (getBrowserVersion().isFirefox()) {
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_156)) {
             final int len = getWindow().getWebWindow().getHistory().getLength();
             if (len > 0) {
                 final Object[] allIds = new Object[ids.length + len];
                 System.arraycopy(ids, 0, allIds, 0, ids.length);
                 for (int i = 0; i < len; i++) {
-                    allIds[ids.length + i] = new Integer(i);
+                    allIds[ids.length + i] = Integer.valueOf(i);
                 }
                 ids = allIds;
             }
@@ -66,7 +65,7 @@ public class History extends SimpleScriptable {
      */
     @Override
     public boolean has(final int index, final Scriptable start) {
-        if (getBrowserVersion().isFirefox()) {
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_157)) {
             final History h = (History) start;
             if (index >= 0 && index < h.jsxGet_length()) {
                 return true;

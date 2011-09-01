@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import org.junit.runner.RunWith;
 import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Tries;
 import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.html.HtmlButton;
 import com.gargoylesoftware.htmlunit.html.HtmlDivision;
@@ -36,7 +37,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlTable;
 /**
  * Tests for 2.2 version of <a href="http://www.extjs.com/">Ext JS</a>.
  *
- * @version $Revision: 4794 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  */
 @RunWith(BrowserRunner.class)
@@ -48,7 +49,7 @@ public class ExtJS22Test extends WebTestCase {
      * After.
      */
     @After
-    public void After() {
+    public void after() {
         webClient_.closeAllWindows();
     }
 
@@ -118,7 +119,7 @@ public class ExtJS22Test extends WebTestCase {
     }
 
     private boolean core_spotlight_isDisabled(final HtmlButton button) {
-        final HtmlTable table = (HtmlTable) button.getParentNode().getParentNode().getParentNode().getParentNode();
+        final HtmlTable table = (HtmlTable) button.getEnclosingElement("table");
         if (getBrowserVersion().isIE()) {
             return table.hasAttribute("disabled");
         }
@@ -138,10 +139,10 @@ public class ExtJS22Test extends WebTestCase {
     }
 
     /**
-     * Returns the Ext JS directory being tested.
-     * @return the Ext JS directory being tested
+     * Returns the Ext JS version being tested.
+     * @return the Ext JS version being tested
      */
-    protected String getDirectory() {
+    protected String getVersion() {
         return "2.2";
     }
 
@@ -154,7 +155,7 @@ public class ExtJS22Test extends WebTestCase {
      * @throws Exception if an error occurs
      */
     protected HtmlPage getPage(final String example, final String htmlName) throws Exception {
-        final String resource = "ExtJS/" + getDirectory() + "/examples/" + example + "/" + htmlName + ".html";
+        final String resource = "libraries/ExtJS/" + getVersion() + "/examples/" + example + "/" + htmlName + ".html";
         final URL url = getClass().getClassLoader().getResource(resource);
         assertNotNull(url);
         webClient_ = getWebClient();
@@ -200,6 +201,7 @@ public class ExtJS22Test extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
+    @Tries(3)
     public void grid_binding() throws Exception {
         final HtmlPage page = getPage("grid", "binding");
         page.getWebClient().waitForBackgroundJavaScriptStartingBefore(2000);

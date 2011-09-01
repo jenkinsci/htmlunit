@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,19 +19,26 @@ import java.util.List;
 
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.Function;
+import net.sourceforge.htmlunit.corejs.javascript.Interpreter;
+import net.sourceforge.htmlunit.corejs.javascript.JavaScriptException;
+import net.sourceforge.htmlunit.corejs.javascript.RhinoException;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 import net.sourceforge.htmlunit.corejs.javascript.Undefined;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.ScriptResult;
 import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.html.DomDocumentFragment;
+import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.DomNode;
+import com.gargoylesoftware.htmlunit.html.DomText;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLCollection;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLHtmlElement;
 import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLSerializer;
 import com.gargoylesoftware.htmlunit.xml.XmlPage;
 
@@ -39,7 +46,7 @@ import com.gargoylesoftware.htmlunit.xml.XmlPage;
  * The JavaScript object "Node" which is the base class for all DOM
  * objects. This will typically wrap an instance of {@link DomNode}.
  *
- * @version $Revision: 4864 $
+ * @version $Revision: 6370 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author Barnaby Court
@@ -50,8 +57,6 @@ import com.gargoylesoftware.htmlunit.xml.XmlPage;
  * @author Ahmed Ashour
  */
 public class Node extends SimpleScriptable {
-
-    private static final long serialVersionUID = -5695262053081637445L;
 
     /** "Live" child nodes collection; has to be a member to have equality (==) working. */
     private HTMLCollection childNodes_;
@@ -125,7 +130,7 @@ public class Node extends SimpleScriptable {
      * @return the node type
      */
     public short jsxGet_nodeType() {
-        return getDomNodeOrDie().getNodeType();
+        return this.<DomNode>getDomNodeOrDie().getNodeType();
     }
 
     /**
@@ -133,7 +138,7 @@ public class Node extends SimpleScriptable {
      * @return the node name
      */
     public String jsxGet_nodeName() {
-        return getDomNodeOrDie().getNodeName();
+        return this.<DomNode>getDomNodeOrDie().getNodeName();
     }
 
     /**
@@ -141,7 +146,7 @@ public class Node extends SimpleScriptable {
      * @return the node value
      */
     public String jsxGet_nodeValue() {
-        return getDomNodeOrDie().getNodeValue();
+        return this.<DomNode>getDomNodeOrDie().getNodeValue();
     }
 
     /**
@@ -149,7 +154,7 @@ public class Node extends SimpleScriptable {
      * @param newValue the new node value
      */
     public void jsxSet_nodeValue(final String newValue) {
-        getDomNodeOrDie().setNodeValue(newValue);
+        this.<DomNode>getDomNodeOrDie().setNodeValue(newValue);
     }
 
     /**
@@ -160,8 +165,21 @@ public class Node extends SimpleScriptable {
     public Object jsxFunction_appendChild(final Object childObject) {
         Object appendedChild = null;
         if (childObject instanceof Node) {
+            final Node childNode = (Node) childObject;
+
+            // is the node allowed here?
+            if (!isNodeInsertable(childNode)) {
+                if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_117)) {
+                    return childObject; // IE silently ignores it
+                }
+
+                throw asJavaScriptException(
+                    new DOMException("Node cannot be inserted at the specified point in the hierarchy",
+                        DOMException.HIERARCHY_REQUEST_ERR));
+            }
+
             // Get XML node for the DOM node passed in
-            final DomNode childDomNode = ((Node) childObject).getDomNodeOrDie();
+            final DomNode childDomNode = childNode.getDomNodeOrDie();
 
             // Get the parent XML node that the child should be added to.
             final DomNode parentNode = getDomNodeOrDie();
@@ -174,12 +192,45 @@ public class Node extends SimpleScriptable {
             //create a DocumentFragment to be the parentNode's parentNode.
             if (!(parentNode instanceof SgmlPage)
                     && !(this instanceof DocumentFragment) && parentNode.getParentNode() == null
-                    && getBrowserVersion().isIE()) {
+                    && getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_118)) {
                 final DomDocumentFragment fragment = parentNode.getPage().createDomDocumentFragment();
                 fragment.appendChild(parentNode);
             }
         }
         return appendedChild;
+    }
+
+    private RhinoException asJavaScriptException(final DOMException exception) {
+        exception.setPrototype(getWindow().getPrototype(exception.getClass()));
+        exception.setParentScope(getWindow());
+
+        // get current line and file name
+        // this method can only be used in interpreted mode. If one day we choose to use compiled mode,
+        // then we'll have to find an other way here.
+        final String fileName;
+        final int lineNumber;
+        if (Context.getCurrentContext().getOptimizationLevel() == -1) {
+            final int[] linep = new int[1];
+            final String sourceName = new Interpreter().getSourcePositionFromStack(Context.getCurrentContext(), linep);
+            fileName = sourceName.replaceFirst("script in (.*) from .*", "$1");
+            lineNumber = linep[0];
+        }
+        else {
+            throw new Error("HtmlUnit not ready to run in compiled mode");
+        }
+
+        exception.setLocation(fileName, lineNumber);
+
+        return new JavaScriptException(exception, fileName, lineNumber);
+    }
+
+    /**
+     * Indicates if the node can be inserted.
+     * @param childObject the node
+     * @return <code>false</code> if it is not allowed here
+     */
+    private boolean isNodeInsertable(final Node childObject) {
+        return !(childObject instanceof HTMLHtmlElement);
     }
 
     /**
@@ -192,7 +243,8 @@ public class Node extends SimpleScriptable {
         final DomNode clonedNode = domNode.cloneNode(deep);
 
         final Node jsClonedNode = getJavaScriptNode(clonedNode);
-        if (getBrowserVersion().isIE()) { // need to copy the event listener when they exist
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_119)) {
+            // need to copy the event listener when they exist
             copyEventListenersWhenNeeded(domNode, clonedNode);
         }
         return jsClonedNode;
@@ -247,8 +299,17 @@ public class Node extends SimpleScriptable {
         Object appendedChild = null;
 
         if (newChildObject instanceof Node) {
+            final Node newChild = (Node) newChildObject;
+            final DomNode newChildNode = newChild.getDomNodeOrDie();
 
-            final DomNode newChildNode = ((Node) newChildObject).getDomNodeOrDie();
+            // is the node allowed here?
+            if (!isNodeInsertable(newChild)) {
+                if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_120)) {
+                    return newChildNode; // IE silently ignores it
+                }
+                throw Context.reportRuntimeError("Node cannot be inserted at the specified point in the hierarchy");
+            }
+
             if (newChildNode instanceof DomDocumentFragment) {
                 final DomDocumentFragment fragment = (DomDocumentFragment) newChildNode;
                 for (final DomNode child : fragment.getChildren()) {
@@ -259,7 +320,7 @@ public class Node extends SimpleScriptable {
             final DomNode refChildNode;
             // IE accepts non standard calls with only one arg
             if (refChildObject == Undefined.instance) {
-                if (getBrowserVersion().isIE()) {
+                if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_121)) {
                     if (args.length > 1) {
                         throw Context.reportRuntimeError("Invalid argument.");
                     }
@@ -292,9 +353,10 @@ public class Node extends SimpleScriptable {
                 appendedChild = newChildObject;
             }
 
-            //if parentNode is null in IE, create a DocumentFragment to be the parentNode
+            // if parentNode is null in IE, create a DocumentFragment to be the parentNode
             if (domNode.getParentNode() == null
-                    && getWindow().getWebWindow().getWebClient().getBrowserVersion().isIE()) {
+                    && getWindow().getWebWindow().getWebClient().getBrowserVersion()
+                    .hasFeature(BrowserVersionFeatures.GENERATED_122)) {
                 final DomDocumentFragment fragment = domNode.getPage().createDomDocumentFragment();
                 fragment.appendChild(domNode);
             }
@@ -341,7 +403,7 @@ public class Node extends SimpleScriptable {
      * @return boolean true if this node has any children, false otherwise
      */
     public boolean jsxFunction_hasChildNodes() {
-        return getDomNodeOrDie().getChildren().iterator().hasNext();
+        return this.<DomNode>getDomNodeOrDie().getChildren().iterator().hasNext();
     }
 
     /**
@@ -350,10 +412,49 @@ public class Node extends SimpleScriptable {
      */
     public HTMLCollection jsxGet_childNodes() {
         if (childNodes_ == null) {
-            childNodes_ = new HTMLCollection(this);
-            childNodes_.initFromChildren(getDomNodeOrDie());
+            final DomNode node = getDomNodeOrDie();
+            final boolean isXmlPage = node.getOwnerDocument() instanceof XmlPage;
+            final boolean isIE = getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_45);
+            final Boolean xmlSpaceDefault = isXMLSpaceDefault(node);
+            final boolean skipEmptyTextNode = isIE && isXmlPage && !Boolean.FALSE.equals(xmlSpaceDefault);
+
+            childNodes_ = new HTMLCollection(node, false, "Node.childNodes") {
+                @Override
+                protected List<Object> computeElements() {
+                    final List<Object> response = new ArrayList<Object>();
+                    for (final DomNode child : node.getChildren()) {
+                        //IE: XmlPage ignores all empty text nodes
+                        if (skipEmptyTextNode && child instanceof DomText
+                            && StringUtils.isBlank(((DomText) child).getNodeValue())) { //and 'xml:space' is 'default'
+                            continue;
+                        }
+                        response.add(child);
+                    }
+
+                    return response;
+                }
+            };
         }
         return childNodes_;
+    }
+
+    /**
+     * Recursively checks whether "xml:space" attribute is set to "default".
+     * @param node node to start checking from
+     * @return {@link Boolean#TRUE} if "default" is set, {@link Boolean#FALSE} for other value,
+     *         or null if nothing is set.
+     */
+    private static Boolean isXMLSpaceDefault(DomNode node) {
+        for ( ; node instanceof DomElement; node = node.getParentNode()) {
+            final String value = ((DomElement) node).getAttribute("xml:space");
+            if (value.length() != 0) {
+                if ("default".equals(value)) {
+                    return Boolean.TRUE;
+                }
+                return Boolean.FALSE;
+            }
+        }
+        return null;
     }
 
     /**
@@ -369,7 +470,7 @@ public class Node extends SimpleScriptable {
             final DocumentFragment fragment = (DocumentFragment) newChildObject;
             Node firstNode = null;
             final Node refChildObject = ((Node) oldChildObject).jsxGet_nextSibling();
-            for (final DomNode node : fragment.getDomNodeOrDie().getChildren()) {
+            for (final DomNode node : fragment.<DomNode>getDomNodeOrDie().getChildren()) {
                 if (firstNode == null) {
                     jsxFunction_replaceChild(node.getScriptObject(), oldChildObject);
                     firstNode = (Node) node.getScriptObject();
@@ -384,8 +485,15 @@ public class Node extends SimpleScriptable {
             removedChild = oldChildObject;
         }
         else if (newChildObject instanceof Node && oldChildObject instanceof Node) {
+            final Node newChild = (Node) newChildObject;
+
+            // is the node allowed here?
+            if (!isNodeInsertable(newChild)) {
+                throw Context.reportRuntimeError("Node cannot be inserted at the specified point in the hierarchy");
+            }
+
             // Get XML nodes for the DOM nodes passed in
-            final DomNode newChildNode = ((Node) newChildObject).getDomNodeOrDie();
+            final DomNode newChildNode = newChild.getDomNodeOrDie();
             final DomNode oldChildNode;
             // Replace the old child with the new child.
             oldChildNode = ((Node) oldChildObject).getDomNodeOrDie();
@@ -397,12 +505,20 @@ public class Node extends SimpleScriptable {
     }
 
     /**
+     * Returns this node's parent node.
+     * @return this node's parent node
+     */
+    public Node getParent() {
+        return getJavaScriptNode(this.<DomNode>getDomNodeOrDie().getParentNode());
+    }
+
+    /**
      * Gets the JavaScript property "parentNode" for the node that
      * contains the current node.
      * @return the parent node
      */
-    public Node jsxGet_parentNode() {
-        return getJavaScriptNode(getDomNodeOrDie().getParentNode());
+    public Object jsxGet_parentNode() {
+        return getJavaScriptNode(this.<DomNode>getDomNodeOrDie().getParentNode());
     }
 
     /**
@@ -412,7 +528,7 @@ public class Node extends SimpleScriptable {
      * no next sibling.
      */
     public Node jsxGet_nextSibling() {
-        return getJavaScriptNode(getDomNodeOrDie().getNextSibling());
+        return getJavaScriptNode(this.<DomNode>getDomNodeOrDie().getNextSibling());
     }
 
     /**
@@ -422,7 +538,7 @@ public class Node extends SimpleScriptable {
      * no previous sibling.
      */
     public Node jsxGet_previousSibling() {
-        return getJavaScriptNode(getDomNodeOrDie().getPreviousSibling());
+        return getJavaScriptNode(this.<DomNode>getDomNodeOrDie().getPreviousSibling());
     }
 
     /**
@@ -432,7 +548,7 @@ public class Node extends SimpleScriptable {
      * no children.
      */
     public Node jsxGet_firstChild() {
-        return getJavaScriptNode(getDomNodeOrDie().getFirstChild());
+        return getJavaScriptNode(this.<DomNode>getDomNodeOrDie().getFirstChild());
     }
 
     /**
@@ -442,7 +558,7 @@ public class Node extends SimpleScriptable {
      * no children.
      */
     public Node jsxGet_lastChild() {
-        return getJavaScriptNode(getDomNodeOrDie().getLastChild());
+        return getJavaScriptNode(this.<DomNode>getDomNodeOrDie().getLastChild());
     }
 
     /**
@@ -519,8 +635,8 @@ public class Node extends SimpleScriptable {
     public ScriptResult executeEvent(final Event event) {
         if (eventListenersContainer_ != null) {
 
-            final HtmlPage page = (HtmlPage) getDomNodeOrDie().getPage();
-            final boolean isIE = getBrowserVersion().isIE();
+            final HtmlPage page = (HtmlPage) this.<DomNode>getDomNodeOrDie().getPage();
+            final boolean isIE = getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_123);
             final Window window = (Window) page.getEnclosingWindow().getScriptObject();
             final Object[] args = new Object[] {event};
 
@@ -551,8 +667,8 @@ public class Node extends SimpleScriptable {
      * @return the result
      */
     public ScriptResult fireEvent(final Event event) {
-        final HtmlPage page = (HtmlPage) getDomNodeOrDie().getPage();
-        final boolean ie = getBrowserVersion().isIE();
+        final HtmlPage page = (HtmlPage) this.<DomNode>getDomNodeOrDie().getPage();
+        final boolean ie = getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_124);
         final Window window = (Window) page.getEnclosingWindow().getScriptObject();
         final Object[] args = new Object[] {event};
 
@@ -628,9 +744,9 @@ public class Node extends SimpleScriptable {
     }
 
     /**
-     * Gets an event handler.
-     * @param eventName the event name (ex: "onclick")
-     * @return the handler function, <code>null</code> if the property is null or not a function
+     * Returns the specified event handler.
+     * @param eventName the event name (e.g. "onclick")
+     * @return the handler function, or <tt>null</tt> if the property is null or not a function
      */
     public Function getEventHandler(final String eventName) {
         if (eventListenersContainer_ == null) {
@@ -640,8 +756,20 @@ public class Node extends SimpleScriptable {
     }
 
     /**
+     * Returns <tt>true</tt> if there are any event handlers for the specified event.
+     * @param eventName the event name (e.g. "onclick")
+     * @return <tt>true</tt> if there are any event handlers for the specified event, <tt>false</tt> otherwise
+     */
+    public boolean hasEventHandlers(final String eventName) {
+        if (eventListenersContainer_ == null) {
+            return false;
+        }
+        return eventListenersContainer_.hasEventHandlers(StringUtils.substring(eventName, 2));
+    }
+
+    /**
      * Defines an event handler.
-     * @param eventName the event name (like "onclick")
+     * @param eventName the event name (e.g. "onclick")
      * @param eventHandler the handler (<code>null</code> to reset it)
      */
     public void setEventHandler(final String eventName, final Function eventHandler) {
@@ -650,7 +778,7 @@ public class Node extends SimpleScriptable {
 
     /**
      * Defines an event handler (or maybe any other object).
-     * @param eventName the event name (like "onclick")
+     * @param eventName the event name (e.g. "onclick")
      * @param value the property (<code>null</code> to reset it)
      */
     protected void setEventHandlerProp(final String eventName, final Object value) {
@@ -659,7 +787,7 @@ public class Node extends SimpleScriptable {
 
     /**
      * Gets the property defined as event handler (not necessary a Function if something else has been set).
-     * @param eventName the event name (like "onclick")
+     * @param eventName the event name (e.g. "onclick")
      * @return the property
      */
     protected Object getEventHandlerProp(final String eventName) {
@@ -674,7 +802,7 @@ public class Node extends SimpleScriptable {
      * @return the document
      */
     public Object jsxGet_ownerDocument() {
-        final Object document = getDomNodeOrDie().getOwnerDocument();
+        final Object document = this.<DomNode>getDomNodeOrDie().getOwnerDocument();
         if (document == null) {
             return null;
         }
@@ -682,12 +810,14 @@ public class Node extends SimpleScriptable {
     }
 
     /**
-     * Returns The Namespace prefix.
-     * @return the Namespace prefix
+     * Returns the namespace prefix.
+     * @return the namespace prefix
      */
     public String jsxGet_prefix() {
-        final String prefix = getDomNodeOrDie().getPrefix();
-        if (getBrowserVersion().isIE() && (prefix == null || getDomNodeOrDie().getPage() instanceof HtmlPage)) {
+        final DomNode domNode = getDomNodeOrDie();
+        final String prefix = domNode.getPrefix();
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_125)
+                && (prefix == null || domNode.getPage() instanceof HtmlPage)) {
             return "";
         }
         return prefix;
@@ -698,7 +828,7 @@ public class Node extends SimpleScriptable {
      * @return the local name of this element
      */
     public String jsxGet_localName() {
-        return getDomNodeOrDie().getLocalName();
+        return this.<DomNode>getDomNodeOrDie().getLocalName();
     }
 
     /**
@@ -706,10 +836,11 @@ public class Node extends SimpleScriptable {
      * @return the URI that identifies an XML namespace
      */
     public String jsxGet_namespaceURI() {
-        if (getBrowserVersion().isIE()) {
+        final String namespaceURI = this.<DomNode>getDomNodeOrDie().getNamespaceURI();
+        if (namespaceURI == null && getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_126)) {
             return "";
         }
-        return getDomNodeOrDie().getNamespaceURI();
+        return namespaceURI;
     }
 
     /**
@@ -718,7 +849,8 @@ public class Node extends SimpleScriptable {
     @Override
     public void setDomNode(final DomNode domNode) {
         super.setDomNode(domNode);
-        if (getBrowserVersion().isIE() && !(getDomNodeOrDie().getPage() instanceof HtmlPage)) {
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_127)
+                && !(this.<DomNode>getDomNodeOrDie().getPage() instanceof HtmlPage)) {
             ActiveXObject.addProperty(this, "namespaceURI", true, false);
             ActiveXObject.addProperty(this, "prefix", true, false);
         }
@@ -732,14 +864,14 @@ public class Node extends SimpleScriptable {
      * @see org.w3c.dom.Node#compareDocumentPosition(org.w3c.dom.Node)
      */
     public short jsxFunction_compareDocumentPosition(final Node node) {
-        return getDomNodeOrDie().compareDocumentPosition(node.getDomNodeOrDie());
+        return this.<DomNode>getDomNodeOrDie().compareDocumentPosition(node.getDomNodeOrDie());
     }
 
     /**
      * Merges adjacent TextNode objects to produce a normalized document object model.
      */
     public void jsxFunction_normalize() {
-        getDomNodeOrDie().normalize();
+        this.<DomNode>getDomNodeOrDie().normalize();
     }
 
     /**
@@ -753,7 +885,8 @@ public class Node extends SimpleScriptable {
                 final XMLSerializer serializer = new XMLSerializer();
                 serializer.setParentScope(getParentScope());
                 String xml = serializer.jsxFunction_serializeToString(this);
-                if (getBrowserVersion().isIE() && xml.endsWith("\r\n")) {
+                if (getBrowserVersion().hasFeature(BrowserVersionFeatures.JS_XML_SERIALIZER_APPENDS_CRLF)
+                        && xml.endsWith("\r\n")) {
                     xml = xml.substring(0, xml.length() - 2);
                 }
                 return xml;
@@ -763,4 +896,35 @@ public class Node extends SimpleScriptable {
         return Undefined.instance;
     }
 
+    /**
+     * Gets the textContent attribute.
+     * @return the contents of this node as text
+     */
+    public String jsxGet_textContent() {
+        return this.<DomNode>getDomNodeOrDie().getTextContent();
+    }
+
+    /**
+     * Gets the innerText attribute.
+     * @return the contents of this node as text
+     */
+    public String jsxGet_innerText() {
+        return ""; // currently just as place holder, correct implementation in subclasses
+    }
+
+    /**
+     * Currently just as place holder, correct implementation in subclasses.
+     * @param value the new value for the contents of this node
+     */
+    public void jsxSet_innerText(final String value) {
+     // nothing, currently just as place holder, correct implementation in subclasses
+    }
+
+    /**
+     * Replace all children elements of this element with the supplied value.
+     * @param value - the new value for the contents of this node
+     */
+    public void jsxSet_textContent(final Object value) {
+        this.<DomNode>getDomNodeOrDie().setTextContent(value == null ? null : Context.toString(value));
+    }
 }

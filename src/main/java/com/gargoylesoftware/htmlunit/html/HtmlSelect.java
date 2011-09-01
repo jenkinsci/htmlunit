@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,23 +15,26 @@
 package com.gargoylesoftware.htmlunit.html;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.httpclient.NameValuePair;
 import org.w3c.dom.Node;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.ElementNotFoundException;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.WebAssert;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Wrapper for the HTML element "select".
  *
- * @version $Revision: 4854 $
+ * @version $Revision: 6283 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:gudujarlson@sf.net">Mike J. Bresnahan</a>
  * @author David K. Taylor
@@ -41,12 +44,13 @@ import com.gargoylesoftware.htmlunit.WebAssert;
  * @author Daniel Gredler
  * @author Ahmed Ashour
  */
-public class HtmlSelect extends ClickableElement implements DisabledElement, SubmittableElement {
-
-    private static final long serialVersionUID = 7893240015923163203L;
+public class HtmlSelect extends HtmlElement implements DisabledElement, SubmittableElement, FormFieldWithNameHistory {
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "select";
+
+    private String originalName_;
+    private Collection<String> previousNames_ = Collections.emptySet();
 
     /**
      * Creates an instance.
@@ -59,6 +63,7 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
     HtmlSelect(final String namespaceURI, final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
         super(namespaceURI, qualifiedName, page, attributes);
+        originalName_ = getNameAttribute();
     }
 
     /**
@@ -108,7 +113,7 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
         if (isMultipleSelectEnabled()) {
             // Multiple selections possible.
             result = new ArrayList<HtmlOption>();
-            for (final HtmlElement element : getAllHtmlChildElements()) {
+            for (final HtmlElement element : getHtmlElementDescendants()) {
                 if (element instanceof HtmlOption && ((HtmlOption) element).isSelected()) {
                     result.add((HtmlOption) element);
                 }
@@ -118,7 +123,7 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
             // Only a single selection is possible.
             result = new ArrayList<HtmlOption>(1);
             HtmlOption lastSelected = null;
-            for (final HtmlElement element : getAllHtmlChildElements()) {
+            for (final HtmlElement element : getHtmlElementDescendants()) {
                 if (element instanceof HtmlOption) {
                     final HtmlOption option = (HtmlOption) element;
                     if (option.isSelected()) {
@@ -244,20 +249,23 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      *
      * @param isSelected true if the option is to become selected
      * @param optionValue the value of the option that is to change
-     * @return the page that occupies this window after this change is made (may or
-     *         may not be the same as the original page)
+     * @param <P> the page type
+     * @return the page contained in the current window as returned
+     * by {@link com.gargoylesoftware.htmlunit.WebClient#getCurrentWindow()}
      */
-    public Page setSelectedAttribute(final String optionValue, final boolean isSelected) {
+    @SuppressWarnings("unchecked")
+    public <P extends Page> P setSelectedAttribute(final String optionValue, final boolean isSelected) {
         try {
-            return setSelectedAttribute(getOptionByValue(optionValue), isSelected);
+            return (P) setSelectedAttribute(getOptionByValue(optionValue), isSelected);
         }
         catch (final ElementNotFoundException e) {
-            if (getPage().getWebClient().getBrowserVersion().isIE()) {
+            if (getPage().getWebClient().getBrowserVersion()
+                    .hasFeature(BrowserVersionFeatures.SELECT_DESELECT_ALL_IF_SWITCHING_UNKNOWN)) {
                 for (final HtmlOption o : getSelectedOptions()) {
                     o.setSelected(false);
                 }
             }
-            return getPage();
+            return (P) getPage();
         }
     }
 
@@ -269,11 +277,13 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      *
      * @param isSelected true if the option is to become selected
      * @param selectedOption the value of the option that is to change
-     * @return the page that occupies this window after this change is made (may or
-     *         may not be the same as the original page)
+     * @param <P> the page type
+     * @return the page contained in the current window as returned
+     * by {@link com.gargoylesoftware.htmlunit.WebClient#getCurrentWindow()}
      */
-    public Page setSelectedAttribute(final HtmlOption selectedOption, final boolean isSelected) {
-        return setSelectedAttribute(selectedOption, isSelected, true);
+    @SuppressWarnings("unchecked")
+    public <P extends Page> P setSelectedAttribute(final HtmlOption selectedOption, final boolean isSelected) {
+        return (P) setSelectedAttribute(selectedOption, isSelected, true);
     }
 
     /**
@@ -287,10 +297,12 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      * @param isSelected true if the option is to become selected
      * @param selectedOption the value of the option that is to change
      * @param invokeOnFocus whether to set focus or no.
-     * @return the page that occupies this window after this change is made (may or
-     *         may not be the same as the original page)
+     * @param <P> the page type
+     * @return the page contained in the current window as returned
+     * by {@link com.gargoylesoftware.htmlunit.WebClient#getCurrentWindow()}
      */
-    public Page setSelectedAttribute(final HtmlOption selectedOption, final boolean isSelected,
+    @SuppressWarnings("unchecked")
+    public <P extends Page> P setSelectedAttribute(final HtmlOption selectedOption, final boolean isSelected,
         final boolean invokeOnFocus) {
         if (isSelected && invokeOnFocus) {
             ((HtmlPage) getPage()).setFocusedElement(this);
@@ -300,10 +312,10 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
 
         if (changeSelectedState) {
             doSelectOption(selectedOption, isSelected);
-            return HtmlInput.executeOnChangeHandlerIfAppropriate(this);
+            HtmlInput.executeOnChangeHandlerIfAppropriate(this);
         }
-        // nothing to do
-        return getPage();
+
+        return (P) getPage().getWebClient().getCurrentWindow().getEnclosedPage();
     }
 
     private void doSelectOption(final HtmlOption selectedOption,
@@ -556,5 +568,33 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      */
     public final String getOnChangeAttribute() {
         return getAttribute("onchange");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setAttributeNS(final String namespaceURI, final String qualifiedName, final String attributeValue) {
+        if ("name".equals(qualifiedName)) {
+            if (previousNames_.isEmpty()) {
+                previousNames_ = new HashSet<String>();
+            }
+            previousNames_.add(attributeValue);
+        }
+        super.setAttributeNS(namespaceURI, qualifiedName, attributeValue);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public String getOriginalName() {
+        return originalName_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public Collection<String> getPreviousNames() {
+        return previousNames_;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,14 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.Undefined;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
+import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.html.HtmlTable;
@@ -25,14 +30,12 @@ import com.gargoylesoftware.htmlunit.html.HtmlTableRow;
 /**
  * A JavaScript object representing a TR.
  *
- * @version $Revision: 4608 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  * @author Chris Erskine
  * @author Ahmed Ashour
  */
 public class HTMLTableRowElement extends HTMLTableComponent {
-
-    private static final long serialVersionUID = 3256441404401397812L;
 
     private HTMLCollection cells_; // has to be a member to have equality (==) working
 
@@ -51,7 +54,38 @@ public class HTMLTableRowElement extends HTMLTableComponent {
     public int jsxGet_rowIndex() {
         final HtmlTableRow row = (HtmlTableRow) getDomNodeOrDie();
         final HtmlTable table = row.getEnclosingTable();
+        if (table == null) { // a not attached document.createElement('TR')
+            return -1;
+        }
         return table.getRows().indexOf(row);
+    }
+
+    /**
+     * Returns the index of the row within the enclosing thead, tbody or tfoot.
+     * @return the index of the row within the enclosing thead, tbody or tfoot
+     * @see <a href="http://msdn.microsoft.com/en-us/library/ms534621.aspx">MSDN Documentation</a>
+     * @see <a href="http://www.w3.org/TR/2000/WD-DOM-Level-1-20000929/level-one-html.html#ID-79105901">
+     * DOM Level 1</a>
+     */
+    public int jsxGet_sectionRowIndex() {
+        DomNode row = getDomNodeOrDie();
+        final HtmlTable table = ((HtmlTableRow) row).getEnclosingTable();
+        if (table == null) { // a not attached document.createElement('TR')
+            if (!getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_108)) {
+                return -1;
+            }
+            // IE 6, 7 and 8 return really strange values: large integers that are not constants
+            // as tests on different browsers give different results
+            return 5461640;
+        }
+        int index = -1;
+        while (row != null) {
+            if (row instanceof HtmlTableRow) {
+                ++index;
+            }
+            row = row.getPreviousSibling();
+        }
+        return index;
     }
 
     /**
@@ -60,8 +94,13 @@ public class HTMLTableRowElement extends HTMLTableComponent {
      */
     public Object jsxGet_cells() {
         if (cells_ == null) {
-            cells_ = new HTMLCollection(this);
-            cells_.init(getDomNodeOrDie(), "./td|th");
+            final HtmlTableRow row = (HtmlTableRow) getDomNodeOrDie();
+            cells_ = new HTMLCollection(row, false, "cells") {
+                @Override
+                protected List<Object> computeElements() {
+                    return new ArrayList<Object>(row.getCells());
+                }
+            };
         }
         return cells_;
     }
@@ -126,7 +165,7 @@ public class HTMLTableRowElement extends HTMLTableComponent {
         if (index != Undefined.instance) {
             position = (int) Context.toNumber(index);
         }
-        else if (getBrowserVersion().isFirefox()) {
+        else if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_172)) {
             throw Context.reportRuntimeError("No enough arguments");
         }
 

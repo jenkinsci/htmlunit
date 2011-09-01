@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,27 +15,35 @@
 package com.gargoylesoftware.htmlunit;
 
 import java.io.Serializable;
-import java.util.Arrays;
+import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
-import org.apache.commons.httpclient.Cookie;
-import org.apache.commons.httpclient.HttpState;
-import org.apache.commons.httpclient.cookie.CookiePolicy;
+import org.apache.commons.collections.set.ListOrderedSet;
 import org.apache.commons.lang.StringUtils;
+import org.apache.http.client.CookieStore;
+import org.apache.http.client.params.CookiePolicy;
+import org.apache.http.cookie.CookieOrigin;
+import org.apache.http.cookie.CookieSpec;
+import org.apache.http.cookie.CookieSpecRegistry;
+import org.apache.http.impl.client.DefaultHttpClient;
+
+import com.gargoylesoftware.htmlunit.util.Cookie;
 
 /**
  * Manages cookies for a {@link WebClient}. This class is thread-safe.
  *
- * @version $Revision: 4852 $
+ * @version $Revision: 6373 $
  * @author Daniel Gredler
  * @author Ahmed Ashour
+ * @author Nicolas Belisle
  */
 public class CookieManager implements Serializable {
-
-    /** Serial version UID. */
-    private static final long serialVersionUID = 4145377365165079425L;
 
     /**
      * HtmlUnit's cookie policy is to be browser-compatible. Code which requires access to
@@ -48,14 +56,17 @@ public class CookieManager implements Serializable {
     private boolean cookiesEnabled_;
 
     /** The cookies added to this cookie manager. */
-    private final Set<Cookie> cookies_;
+    @SuppressWarnings("unchecked")
+    private final Set<Cookie> cookies_ = new ListOrderedSet();
+
+    /** The cookies spec registry */
+    private final transient CookieSpecRegistry registry_ = new DefaultHttpClient().getCookieSpecs();
 
     /**
      * Creates a new instance.
      */
     public CookieManager() {
         cookiesEnabled_ = true;
-        cookies_ = new LinkedHashSet<Cookie>();
     }
 
     /**
@@ -83,18 +94,61 @@ public class CookieManager implements Serializable {
     }
 
     /**
-     * Returns the currently configured cookies for the specified domain, in an unmodifiable set.
-     * @param domain the domain on which to filter the returned cookies
-     * @return the currently configured cookies for the specified domain, in an unmodifiable set
+     * Returns the currently configured cookies applicable to the specified URL, in an unmodifiable set.
+     * @param url the URL on which to filter the returned cookies
+     * @return the currently configured cookies applicable to the specified URL, in an unmodifiable set
      */
-    public synchronized Set<Cookie> getCookies(final String domain) {
-        final Set<Cookie> cookies = new LinkedHashSet<Cookie>();
-        for (Cookie cookie : cookies_) {
-            if (StringUtils.equals(cookie.getDomain(), domain)) {
-                cookies.add(cookie);
+    public synchronized Set<Cookie> getCookies(final URL url) {
+        final String host = url.getHost();
+        final String path = url.getPath();
+        final String protocol = url.getProtocol();
+        final boolean secure = "https".equals(protocol);
+
+        // URLs like "about:blank" don't have cookies and we need to catch these
+        // cases here before HttpClient complains
+        if (host.length() == 0) {
+            return Collections.emptySet();
+        }
+
+        final int port = getPort(url);
+
+        // discard expired cookies
+        final Date now = new Date();
+        for (final Iterator<Cookie> iter = cookies_.iterator(); iter.hasNext();) {
+            final Cookie cookie = iter.next();
+            if (cookie.getExpires() != null && now.after(cookie.getExpires())) {
+                iter.remove();
             }
         }
+
+        final CookieSpec spec = registry_.getCookieSpec(HTMLUNIT_COOKIE_POLICY);
+        final org.apache.http.cookie.Cookie[] all = Cookie.toHttpClient(cookies_);
+        final CookieOrigin cookieOrigin = new CookieOrigin(host, port, path, secure);
+        final List<org.apache.http.cookie.Cookie> matches = new ArrayList<org.apache.http.cookie.Cookie>();
+        for (final org.apache.http.cookie.Cookie cookie : all) {
+            if (spec.match(cookie, cookieOrigin)) {
+                matches.add(cookie);
+            }
+        }
+
+        final Set<Cookie> cookies = new LinkedHashSet<Cookie>();
+        cookies.addAll(Cookie.fromHttpClient(matches));
         return Collections.unmodifiableSet(cookies);
+    }
+
+    /**
+     * Gets the port of the URL.
+     * This functionality is implemented here as protected method to allow subclass to change it
+     * as workaround to <a href="http://code.google.com/p/googleappengine/issues/detail?id=4784>
+     * Google App Engine bug 4784</a>.
+     * @param url the URL
+     * @return the port use to connect the server
+     */
+    protected int getPort(final URL url) {
+        if (url.getPort() != -1) {
+            return url.getPort();
+        }
+        return url.getDefaultPort();
     }
 
     /**
@@ -116,11 +170,12 @@ public class CookieManager implements Serializable {
      * @param cookie the cookie to add
      */
     public synchronized void addCookie(final Cookie cookie) {
-        if (cookie.getValue() == null) {
-            cookie.setValue("");
-        }
         cookies_.remove(cookie);
-        cookies_.add(cookie);
+
+        // don't add expired cookie
+        if (cookie.getExpires() == null || cookie.getExpires().after(new Date())) {
+            cookies_.add(cookie);
+        }
     }
 
     /**
@@ -128,9 +183,6 @@ public class CookieManager implements Serializable {
      * @param cookie the cookie to remove
      */
     public synchronized void removeCookie(final Cookie cookie) {
-        if (cookie.getValue() == null) {
-            cookie.setValue("");
-        }
         cookies_.remove(cookie);
     }
 
@@ -144,29 +196,29 @@ public class CookieManager implements Serializable {
     /**
      * Updates the specified HTTP state's cookie configuration according to the current cookie settings.
      * @param state the HTTP state to update
-     * @see #updateFromState(HttpState)
+     * @see #updateFromState(CookieStore)
      */
-    protected synchronized void updateState(final HttpState state) {
+    protected synchronized void updateState(final CookieStore state) {
         if (!cookiesEnabled_) {
             return;
         }
-        state.clearCookies();
+        state.clear();
         for (Cookie cookie : cookies_) {
-            state.addCookie(cookie);
+            state.addCookie(cookie.toHttpClient());
         }
     }
 
     /**
      * Updates the current cookie settings from the specified HTTP state's cookie configuration.
      * @param state the HTTP state to update from
-     * @see #updateState(HttpState)
+     * @see #updateState(CookieStore)
      */
-    protected synchronized void updateFromState(final HttpState state) {
+    protected synchronized void updateFromState(final CookieStore state) {
         if (!cookiesEnabled_) {
             return;
         }
         cookies_.clear();
-        cookies_.addAll(Arrays.asList(state.getCookies()));
+        cookies_.addAll(Cookie.fromHttpClient(state.getCookies()));
     }
 
 }

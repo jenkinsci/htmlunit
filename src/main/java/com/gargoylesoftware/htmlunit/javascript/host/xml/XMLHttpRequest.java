@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -26,40 +28,42 @@ import net.sourceforge.htmlunit.corejs.javascript.ContextAction;
 import net.sourceforge.htmlunit.corejs.javascript.ContextFactory;
 import net.sourceforge.htmlunit.corejs.javascript.Function;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
+import net.sourceforge.htmlunit.corejs.javascript.Undefined;
 
-import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.http.auth.UsernamePasswordCredentials;
 
 import com.gargoylesoftware.htmlunit.AjaxController;
 import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
-import com.gargoylesoftware.htmlunit.DefaultCredentialsProvider;
 import com.gargoylesoftware.htmlunit.HttpMethod;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebRequestSettings;
+import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.javascript.JavaScriptEngine;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 import com.gargoylesoftware.htmlunit.javascript.background.JavaScriptJob;
 import com.gargoylesoftware.htmlunit.javascript.host.ActiveXObject;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 import com.gargoylesoftware.htmlunit.util.WebResponseWrapper;
 import com.gargoylesoftware.htmlunit.xml.XmlPage;
 
 /**
  * A JavaScript object for a XMLHttpRequest.
  *
- * @version $Revision: 4872 $
+ * @version $Revision: 6444 $
  * @author Daniel Gredler
  * @author Marc Guillemot
  * @author Ahmed Ashour
  * @author Stuart Begg
+ * @author Ronald Brill
+ *
  * @see <a href="http://developer.apple.com/internet/webcontent/xmlhttpreq.html">Safari documentation</a>
  */
 public class XMLHttpRequest extends SimpleScriptable {
 
-    private static final long serialVersionUID = 2369039843039430664L;
     private static final Log LOG = LogFactory.getLog(XMLHttpRequest.class);
 
     /** The object has been created, but not initialized (the open() method has not been called). */
@@ -77,10 +81,15 @@ public class XMLHttpRequest extends SimpleScriptable {
         "status", "statusText", "abort", "getAllResponseHeaders", "getResponseHeader", "open", "send",
         "setRequestHeader"};
 
+    private static Collection<String> PROHIBITED_HEADERS_ = Arrays.asList("accept-charset", "accept-encoding",
+        "connection", "content-length", "cookie", "cookie2", "content-transfer-encoding", "date", "expect",
+        "host", "keep-alive", "referer", "te", "trailer", "transfer-encoding", "upgrade", "user-agent", "via");
+
     private int state_;
     private Function stateChangeHandler_;
+    private Function loadHandler_;
     private Function errorHandler_;
-    private WebRequestSettings requestSettings_;
+    private WebRequest webRequest_;
     private boolean async_;
     private int threadID_;
     private WebResponse webResponse_;
@@ -140,8 +149,8 @@ public class XMLHttpRequest extends SimpleScriptable {
         state_ = state;
 
         //Firefox doesn't trigger onreadystatechange handler for sync requests
-        final boolean isIE = getBrowserVersion().isIE();
-        if (stateChangeHandler_ != null && (isIE || async_)) {
+        final boolean ie = getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_135);
+        if (stateChangeHandler_ != null && (ie || async_)) {
             if (context == null) {
                 context = Context.getCurrentContext();
             }
@@ -166,13 +175,43 @@ public class XMLHttpRequest extends SimpleScriptable {
                 thisValue = this;
             }
             for (int i = 0; i < nbExecutions; i++) {
-                LOG.debug("Calling onreadystatechange handler for state " + state);
-                jsEngine.callFunction(containingPage_, stateChangeHandler_, context,
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Calling onreadystatechange handler for state " + state);
+                }
+                jsEngine.callFunction(containingPage_, stateChangeHandler_,
                         scope, thisValue, ArrayUtils.EMPTY_OBJECT_ARRAY);
-                LOG.debug("onreadystatechange handler: " + context.decompileFunction(stateChangeHandler_, 4));
-                LOG.debug("Calling onreadystatechange handler for state " + state + ". Done.");
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("onreadystatechange handler: " + context.decompileFunction(stateChangeHandler_, 4));
+                    LOG.debug("Calling onreadystatechange handler for state " + state + ". Done.");
+                }
             }
         }
+
+        // Firefox has a separate onload handler, too.
+        if (!ie && loadHandler_ != null && state == STATE_COMPLETED) {
+            if (context == null) {
+                context = Context.getCurrentContext();
+            }
+            final Scriptable scope = loadHandler_.getParentScope();
+            final JavaScriptEngine jsEngine = containingPage_.getWebClient().getJavaScriptEngine();
+            jsEngine.callFunction(containingPage_, loadHandler_, scope, this, ArrayUtils.EMPTY_OBJECT_ARRAY);
+        }
+    }
+
+    /**
+     * Returns the event handler that fires on load.
+     * @return the event handler that fires on load
+     */
+    public Function jsxGet_onload() {
+        return loadHandler_;
+    }
+
+    /**
+     * Sets the event handler that fires on load.
+     * @param loadHandler the event handler that fires on load
+     */
+    public void jsxSet_onload(final Function loadHandler) {
+        loadHandler_ = loadHandler;
     }
 
     /**
@@ -197,17 +236,21 @@ public class XMLHttpRequest extends SimpleScriptable {
      *                if <tt>null</tt>, the current thread's context is used.
      */
     private void processError(Context context) {
-        if (errorHandler_ != null && !getBrowserVersion().isIE()) {
+        if (errorHandler_ != null && !getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_136)) {
             if (context == null) {
                 context = Context.getCurrentContext();
             }
             final Scriptable scope = errorHandler_.getParentScope();
             final JavaScriptEngine jsEngine = containingPage_.getWebClient().getJavaScriptEngine();
 
-            LOG.debug("Calling onerror handler");
-            jsEngine.callFunction(containingPage_, errorHandler_, context, this, scope, ArrayUtils.EMPTY_OBJECT_ARRAY);
-            LOG.debug("onerror handler: " + context.decompileFunction(errorHandler_, 4));
-            LOG.debug("Calling onerror handler done.");
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Calling onerror handler");
+            }
+            jsEngine.callFunction(containingPage_, errorHandler_, this, scope, ArrayUtils.EMPTY_OBJECT_ARRAY);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("onerror handler: " + context.decompileFunction(errorHandler_, 4));
+                LOG.debug("Calling onerror handler done.");
+            }
         }
     }
 
@@ -234,7 +277,9 @@ public class XMLHttpRequest extends SimpleScriptable {
         if (webResponse_ != null) {
             return webResponse_.getContentAsString();
         }
-        LOG.debug("XMLHttpRequest.responseText was retrieved before the response was available.");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("XMLHttpRequest.responseText was retrieved before the response was available.");
+        }
         return "";
     }
 
@@ -243,11 +288,15 @@ public class XMLHttpRequest extends SimpleScriptable {
      * @return a DOM-compatible document object version of the data retrieved from the server
      */
     public Object jsxGet_responseXML() {
-        if (webResponse_.getContentType().contains("xml")) {
+        if (webResponse_ == null) {
+            return null; // send() has not been called
+        }
+        final String contentType = webResponse_.getContentType();
+        if (contentType.length() == 0 || contentType.contains("xml")) {
             try {
                 final XmlPage page = new XmlPage(webResponse_, getWindow().getWebWindow());
                 final XMLDocument doc;
-                if (getBrowserVersion().isIE()) {
+                if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_137)) {
                     doc = ActiveXObject.buildXMLDocument(null);
                 }
                 else {
@@ -259,13 +308,15 @@ public class XMLHttpRequest extends SimpleScriptable {
                 return doc;
             }
             catch (final IOException e) {
-                LOG.warn("Failed parsing XML document " + webResponse_.getRequestSettings().getUrl() + ": "
+                LOG.warn("Failed parsing XML document " + webResponse_.getWebRequest().getUrl() + ": "
                         + e.getMessage());
                 return null;
             }
         }
-        LOG.debug("XMLHttpRequest.responseXML was called but the response is "
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("XMLHttpRequest.responseXML was called but the response is "
                 + webResponse_.getContentType());
+        }
         return null;
     }
 
@@ -326,36 +377,58 @@ public class XMLHttpRequest extends SimpleScriptable {
         if (webResponse_ != null) {
             return webResponse_.getResponseHeaderValue(headerName);
         }
-        LOG.error("XMLHttpRequest.getResponseHeader() was called before the response was available.");
+
         return null;
     }
 
     /**
      * Assigns the destination URL, method and other optional attributes of a pending request.
      * @param method the method to use to send the request to the server (GET, POST, etc)
-     * @param url the URL to send the request to
+     * @param urlParam the URL to send the request to
      * @param async Whether or not to send the request to the server asynchronously
      * @param user If authentication is needed for the specified URL, the username to use to authenticate
      * @param password If authentication is needed for the specified URL, the password to use to authenticate
      */
-    public void jsxFunction_open(final String method, final String url, final boolean async,
-        final String user, final String password) {
-        // (URL + Method + User + Password) become a WebRequestSettings instance.
+    public void jsxFunction_open(final String method, final Object urlParam, final boolean async,
+        final Object user, final Object password) {
+        if (urlParam == null || "".equals(urlParam)) {
+            throw Context.reportRuntimeError("URL for XHR.open can't be empty!");
+        }
+
+        final String url = Context.toString(urlParam);
+
+        // (URL + Method + User + Password) become a WebRequest instance.
         containingPage_ = (HtmlPage) getWindow().getWebWindow().getEnclosedPage();
+
         try {
             final URL fullUrl = containingPage_.getFullyQualifiedUrl(url);
-            final WebRequestSettings settings = new WebRequestSettings(fullUrl);
-            settings.setCharset("UTF-8");
-            settings.setAdditionalHeader("Referer", containingPage_.getWebResponse().getRequestSettings().getUrl()
+            final URL originUrl = containingPage_.getWebResponse().getWebRequest().getUrl();
+            if (!isSameOrigin(originUrl, fullUrl)) {
+                throw Context.reportRuntimeError("Access to restricted URI denied");
+            }
+
+            final WebRequest request = new WebRequest(fullUrl);
+            request.setCharset("UTF-8");
+            request.setAdditionalHeader("Referer", containingPage_.getWebResponse().getWebRequest().getUrl()
                     .toExternalForm());
             final HttpMethod submitMethod = HttpMethod.valueOf(method.toUpperCase());
-            settings.setHttpMethod(submitMethod);
-            if (user != null) {
-                final DefaultCredentialsProvider dcp = new DefaultCredentialsProvider();
-                dcp.addCredentials(user, password);
-                settings.setCredentialsProvider(dcp);
+            request.setHttpMethod(submitMethod);
+            if (Undefined.instance != user || Undefined.instance != password) {
+                String userCred = null;
+                String passwordCred = "";
+                if (Undefined.instance != user) {
+                    userCred = user.toString();
+                }
+                if (Undefined.instance != password) {
+                    passwordCred = user.toString();
+                }
+
+                // password is ignored if no user defined
+                if (null != userCred) {
+                    request.setCredentials(new UsernamePasswordCredentials(userCred, passwordCred));
+                }
             }
-            requestSettings_ = settings;
+            webRequest_ = request;
         }
         catch (final MalformedURLException e) {
             LOG.error("Unable to initialize XMLHttpRequest using malformed URL '" + url + "'.");
@@ -365,6 +438,14 @@ public class XMLHttpRequest extends SimpleScriptable {
         async_ = async;
         // Change the state!
         setState(STATE_LOADING, null);
+    }
+
+    private boolean isSameOrigin(final URL originUrl, final URL newUrl) {
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_138)
+                && "about".equals(newUrl.getProtocol())) {
+            return true;
+        }
+        return originUrl.getHost().equals(newUrl.getHost());
     }
 
     /**
@@ -377,7 +458,7 @@ public class XMLHttpRequest extends SimpleScriptable {
         final WebClient client = getWindow().getWebWindow().getWebClient();
         final AjaxController ajaxController = client.getAjaxController();
         final HtmlPage page = (HtmlPage) getWindow().getWebWindow().getEnclosedPage();
-        final boolean synchron = ajaxController.processSynchron(page, requestSettings_, async_);
+        final boolean synchron = ajaxController.processSynchron(page, webRequest_, async_);
         if (synchron) {
             doSend(Context.getCurrentContext());
         }
@@ -401,23 +482,28 @@ public class XMLHttpRequest extends SimpleScriptable {
                     return "XMLHttpRequest Job " + getId();
                 }
             };
-            LOG.debug("Starting XMLHttpRequest thread for asynchronous request");
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Starting XMLHttpRequest thread for asynchronous request");
+            }
             threadID_ = getWindow().getWebWindow().getJobManager().addJob(job, page);
         }
     }
 
     /**
-     * Prepares the WebRequestSettings that will be sent.
+     * Prepares the WebRequest that will be sent.
      * @param content the content to send
      */
     private void prepareRequest(final Object content) {
-        if (HttpMethod.POST == requestSettings_.getHttpMethod()
-            && content != null
+        if (content != null
+            && (HttpMethod.POST == webRequest_.getHttpMethod()
+                    || HttpMethod.PUT == webRequest_.getHttpMethod())
             && !Context.getUndefinedValue().equals(content)) {
             final String body = Context.toString(content);
             if (body.length() > 0) {
-                LOG.debug("Setting request body to: " + body);
-                requestSettings_.setRequestBody(body);
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Setting request body to: " + body);
+                }
+                webRequest_.setRequestBody(body);
             }
         }
     }
@@ -430,14 +516,15 @@ public class XMLHttpRequest extends SimpleScriptable {
         final WebClient wc = getWindow().getWebWindow().getWebClient();
         try {
             setState(STATE_LOADED, context);
-            final WebResponse webResponse = wc.loadWebResponse(requestSettings_);
-            LOG.debug("Web response loaded successfully.");
+            final WebResponse webResponse = wc.loadWebResponse(webRequest_);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Web response loaded successfully.");
+            }
             if (overriddenMimeType_ == null) {
                 webResponse_ = webResponse;
             }
             else {
                 webResponse_ = new WebResponseWrapper(webResponse) {
-                    private static final long serialVersionUID = -3359539772772336918L;
                     @Override
                     public String getContentType() {
                         return overriddenMimeType_;
@@ -448,8 +535,10 @@ public class XMLHttpRequest extends SimpleScriptable {
             setState(STATE_COMPLETED, context);
         }
         catch (final IOException e) {
-            LOG.debug("IOException: returning a network error response.");
-            webResponse_ = new NetworkErrorWebResponse(requestSettings_);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("IOException: returning a network error response.", e);
+            }
+            webResponse_ = new NetworkErrorWebResponse(webRequest_);
             setState(STATE_COMPLETED, context);
             processError(context);
         }
@@ -462,12 +551,35 @@ public class XMLHttpRequest extends SimpleScriptable {
      * @param value the value of the header being set
      */
     public void jsxFunction_setRequestHeader(final String name, final String value) {
-        if (requestSettings_ != null) {
-            requestSettings_.setAdditionalHeader(name, value);
+        if (!isAuthorizedHeader(name)) {
+            LOG.warn("Ignoring XMLHttpRequest.setRequestHeader for " + name
+                + ": it is a restricted header");
+            return;
+        }
+
+        if (webRequest_ != null) {
+            webRequest_.setAdditionalHeader(name, value);
         }
         else {
             throw Context.reportRuntimeError("The open() method must be called before setRequestHeader().");
         }
+    }
+
+    /**
+     * Not all request headers can be set from JavaScript.
+     * @see <a href="http://www.w3.org/TR/XMLHttpRequest/#the-setrequestheader-method">W3C doc</a>
+     * @param name the header name
+     * @return <code>true</code> if the header can be set from JavaScript
+     */
+    static boolean isAuthorizedHeader(final String name) {
+        final String nameLowerCase = name.toLowerCase();
+        if (PROHIBITED_HEADERS_.contains(nameLowerCase)) {
+            return false;
+        }
+        else if (nameLowerCase.startsWith("proxy-") || nameLowerCase.startsWith("sec-")) {
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -513,88 +625,82 @@ public class XMLHttpRequest extends SimpleScriptable {
         super.put(name, start, value);
     }
 
-    private static final class NetworkErrorWebResponse implements WebResponse {
+    private static final class NetworkErrorWebResponse extends WebResponse {
+        private final WebRequest request_;
 
-        private static final long serialVersionUID = 6354426394575804571L;
-
-        private final WebRequestSettings webRequestSettings_;
-
-        private NetworkErrorWebResponse(final WebRequestSettings webRequestSettings) {
-            webRequestSettings_ = webRequestSettings;
+        private NetworkErrorWebResponse(final WebRequest webRequest) {
+            super(null, null, 0);
+            request_ = webRequest;
         }
 
+        @Override
         public int getStatusCode() {
             return 0;
         }
 
+        @Override
         public String getStatusMessage() {
             return "";
         }
 
+        @Override
         public String getContentType() {
             return "";
         }
 
+        @Override
         public String getContentAsString() {
             return "";
         }
 
+        @Override
         public String getContentAsString(final String encoding) {
             return "";
         }
 
-        public InputStream getContentAsStream() throws IOException {
+        @Override
+        public InputStream getContentAsStream() {
             return null;
         }
 
+        @Override
         public byte[] getContentAsBytes() {
             return new byte[0];
         }
 
-        /**
-         * {@inheritDoc}
-         * @deprecated As of 2.6, please use {@link #getRequestSettings()}.getUrl()
-         */
-        @Deprecated
-        public URL getRequestUrl() {
-            return webRequestSettings_.getUrl();
-        }
-
-        /**
-         * {@inheritDoc}
-         * @deprecated As of 2.6, please use {@link #getRequestSettings()}.getHttpMethod()
-         */
-        @Deprecated
-        public HttpMethod getRequestMethod() {
-            return webRequestSettings_.getHttpMethod();
-        }
-
+        @Override
         public List<NameValuePair> getResponseHeaders() {
             return Collections.emptyList();
         }
 
+        @Override
         public String getResponseHeaderValue(final String headerName) {
             return "";
         }
 
+        @Override
         public long getLoadTime() {
             return 0;
         }
 
-        public String getContentCharSet() {
-            return "";
-        }
-
+        @Override
         public String getContentCharset() {
             return "";
         }
 
+        @Override
         public String getContentCharsetOrNull() {
             return "";
         }
 
-        public WebRequestSettings getRequestSettings() {
-            return webRequestSettings_;
+        @Override
+        public WebRequest getRequestSettings() {
+            return request_;
+        }
+
+        @Override
+        public WebRequest getWebRequest() {
+            return request_;
         }
     }
 }

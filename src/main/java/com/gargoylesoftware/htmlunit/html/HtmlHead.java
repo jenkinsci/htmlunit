@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,14 +21,12 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "head".
  *
- * @version $Revision: 4059 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
  */
 public class HtmlHead extends HtmlElement {
-
-    private static final long serialVersionUID = -2444843516326322458L;
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "head";
@@ -55,6 +53,14 @@ public class HtmlHead extends HtmlElement {
      */
     public final String getProfileAttribute() {
         return getAttribute("profile");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean mayBeDisplayed() {
+        return false;
     }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,30 +16,87 @@ package com.gargoylesoftware.htmlunit.javascript.host.css;
 
 import static org.apache.commons.lang.StringUtils.defaultIfEmpty;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import org.apache.commons.lang.StringUtils;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 
+import org.apache.commons.lang.StringUtils;
+import org.w3c.css.sac.Selector;
+
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
-import com.gargoylesoftware.htmlunit.html.HtmlHead;
+import com.gargoylesoftware.htmlunit.html.HtmlTableRow;
+import com.gargoylesoftware.htmlunit.javascript.host.Text;
+import com.gargoylesoftware.htmlunit.javascript.host.Window;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSStyleDeclaration.StyleElement;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLBodyElement;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLCanvasElement;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
 
 /**
  * A JavaScript object for a ComputedCSSStyleDeclaration.
  *
- * @version $Revision: 4661 $
+ * @version $Revision: 6477 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
+ * @author Ronald Brill
  */
 public class ComputedCSSStyleDeclaration extends CSSStyleDeclaration {
 
-    private static final long serialVersionUID = -1883166331827717255L;
+    /** The number of (horizontal) pixels to assume that each character occupies. */
+    private static final int PIXELS_PER_CHAR = 10;
+
+    /** The set of 'inheritable' attributes. */
+    private static final Set<String> INHERITABLE_ATTRIBUTES = new HashSet<String>(Arrays.asList(
+        "azimuth",
+        "border-collapse",
+        "border-spacing",
+        "caption-side",
+        "color",
+        "cursor",
+        "direction",
+        "elevation",
+        "empty-cells",
+        "font-family",
+        "font-size",
+        "font-style",
+        "font-variant",
+        "font-weight",
+        "font",
+        "letter-spacing",
+        "line-height",
+        "list-style-image",
+        "list-style-position",
+        "list-style-type",
+        "list-style",
+        "orphans",
+        "pitch-range",
+        "pitch",
+        "quotes",
+        "richness",
+        "speak-header",
+        "speak-numeral",
+        "speak-punctuation",
+        "speak",
+        "speech-rate",
+        "stress",
+        "text-align",
+        "text-indent",
+        "text-transform",
+        "visibility",
+        "voice-fFamily",
+        "volume",
+        "white-space",
+        "widows",
+        "word-spacing"));
 
     /**
      * Local modifications maintained here rather than in the element. We use a sorted
@@ -49,6 +106,33 @@ public class ComputedCSSStyleDeclaration extends CSSStyleDeclaration {
 
     /** Maps element types to custom display types (display types that are not "block". */
     private Map<String, String> defaultDisplays_;
+
+    /** The computed, cached width of the element to which this computed style belongs (no padding, borders, etc). */
+    private Integer width_;
+
+    /**
+     * The computed, cached height of the element to which this computed style belongs (no padding, borders, etc),
+     * taking child elements into account.
+     */
+    private Integer height_;
+
+    /**
+     * The computed, cached height of the element to which this computed style belongs (no padding, borders, etc),
+     * <b>not</b> taking child elements into account.
+     */
+    private Integer height2_;
+
+    /** The computed, cached horizontal padding (left + right) of the element to which this computed style belongs. */
+    private Integer paddingHorizontal_;
+
+    /** The computed, cached vertical padding (top + bottom) of the element to which this computed style belongs. */
+    private Integer paddingVertical_;
+
+    /** The computed, cached horizontal border (left + right) of the element to which this computed style belongs. */
+    private Integer borderHorizontal_;
+
+    /** The computed, cached vertical border (top + bottom) of the element to which this computed style belongs. */
+    private Integer borderVertical_;
 
     /**
      * Creates an instance. JavaScript objects must have a default constructor.
@@ -71,12 +155,12 @@ public class ComputedCSSStyleDeclaration extends CSSStyleDeclaration {
      * Overridden because some CSS properties are inherited from parent elements.
      */
     @Override
-    protected String getStyleAttribute(final String name, final boolean camelCase) {
-        String s = super.getStyleAttribute(name, camelCase);
-        if (s.length() == 0 && isInheritable(name, camelCase)) {
+    protected String getStyleAttribute(final String name, final Map<String, StyleElement> styleMap) {
+        String s = super.getStyleAttribute(name, null);
+        if (s.length() == 0 && isInheritable(name)) {
             final HTMLElement parent = getElement().getParentHTMLElement();
             if (parent != null) {
-                s = getWindow().jsxFunction_getComputedStyle(parent, null).getStyleAttribute(name, camelCase);
+                s = getWindow().jsxFunction_getComputedStyle(parent, null).getStyleAttribute(name, null);
             }
         }
         return s;
@@ -85,55 +169,11 @@ public class ComputedCSSStyleDeclaration extends CSSStyleDeclaration {
     /**
      * Returns <tt>true</tt> if the specified CSS property is inheritable from parent elements.
      * @param name the name of the style attribute to check for inheritability
-     * @param camelCase whether or not the name is expected to be in camel case
      * @return <tt>true</tt> if the specified CSS property is inheritable from parent elements
      * @see <a href="http://www.w3.org/TR/CSS21/propidx.html">CSS Property Table</a>
      */
-    private boolean isInheritable(String name, final boolean camelCase) {
-        if (!camelCase) {
-            name = camelize(name);
-        }
-        return    "azimuth".equals(name)
-               || "borderCollapse".equals(name)
-               || "borderSpacing".equals(name)
-               || "captionSide".equals(name)
-               || "color".equals(name)
-               || "cursor".equals(name)
-               || "direction".equals(name)
-               || "elevation".equals(name)
-               || "emptyCells".equals(name)
-               || "fontFamily".equals(name)
-               || "fontSize".equals(name)
-               || "fontStyle".equals(name)
-               || "fontVariant".equals(name)
-               || "fontWeight".equals(name)
-               || "font".equals(name)
-               || "letterSpacing".equals(name)
-               || "lineHeight".equals(name)
-               || "listStyleImage".equals(name)
-               || "listStylePosition".equals(name)
-               || "listStyleType".equals(name)
-               || "listStyle".equals(name)
-               || "orphans".equals(name)
-               || "pitchRange".equals(name)
-               || "pitch".equals(name)
-               || "quotes".equals(name)
-               || "richness".equals(name)
-               || "speakHeader".equals(name)
-               || "speakNumeral".equals(name)
-               || "speakPunctuation".equals(name)
-               || "speak".equals(name)
-               || "speechRate".equals(name)
-               || "stress".equals(name)
-               || "textAlign".equals(name)
-               || "textIndent".equals(name)
-               || "textTransform".equals(name)
-               || "visibility".equals(name)
-               || "voiceFamily".equals(name)
-               || "volume".equals(name)
-               || "whiteSpace".equals(name)
-               || "widows".equals(name)
-               || "wordSpacing".equals(name);
+    private boolean isInheritable(final String name) {
+        return INHERITABLE_ATTRIBUTES.contains(name);
     }
 
     /**
@@ -149,11 +189,33 @@ public class ComputedCSSStyleDeclaration extends CSSStyleDeclaration {
     /**
      * Makes a local, "computed", modification to this CSS style.
      *
-     * @param name the name of the style attribute to set
-     * @param newValue the value of the style attribute to set
+     * @param declaration the style declaration
+     * @param selector the selector determining that the style applies to this element
      */
-    public void setLocalStyleAttribute(final String name, final String newValue) {
-        final StyleElement element = new StyleElement(name, newValue, getCurrentElementIndex());
+    public void applyStyleFromSelector(final org.w3c.dom.css.CSSStyleDeclaration declaration, final Selector selector) {
+        final SelectorSpecificity specificity = new SelectorSpecificity(selector);
+        for (int k = 0; k < declaration.getLength(); k++) {
+            final String name = declaration.item(k);
+            final String value = declaration.getPropertyValue(name);
+            final String priority = declaration.getPropertyPriority(name);
+            applyLocalStyleAttribute(name, value, priority, specificity);
+        }
+    }
+
+    private void applyLocalStyleAttribute(final String name, final String newValue, final String priority,
+            final SelectorSpecificity specificity) {
+        if (!"important".equals(priority)) {
+            final StyleElement existingElement = localModifications_.get(name);
+            if (existingElement != null) {
+                if ("important".equals(existingElement.getPriority())) {
+                    return; // can't override a !important rule by a normal rule. Ignore it!
+                }
+                else if (specificity.compareTo(existingElement.getSpecificity()) < 0) {
+                    return; // can't override a rule with a rule having higher specificity
+                }
+            }
+        }
+        final StyleElement element = new StyleElement(name, newValue, priority, specificity, getCurrentElementIndex());
         localModifications_.put(name, element);
     }
 
@@ -174,17 +236,14 @@ public class ComputedCSSStyleDeclaration extends CSSStyleDeclaration {
      * {@inheritDoc}
      */
     @Override
-    protected Map<String, StyleElement> getStyleMap(final boolean camelCase) {
-        final Map<String, StyleElement> styleMap = super.getStyleMap(camelCase);
+    protected Map<String, StyleElement> getStyleMap() {
+        final Map<String, StyleElement> styleMap = super.getStyleMap();
         if (localModifications_ != null) {
             for (final StyleElement e : localModifications_.values()) {
-                String key = e.getName();
-                if (camelCase) {
-                    key = camelize(key);
-                }
+                final String key = e.getName();
                 final StyleElement existent = styleMap.get(key);
-                final StyleElement element = new StyleElement(key, e.getValue(), e.getIndex());
                 if (existent == null) {
+                    final StyleElement element = new StyleElement(key, e.getValue(), e.getIndex());
                     // Local modifications represent either default style elements or style elements
                     // defined in stylesheets; either way, they shouldn't overwrite any style
                     // elements derived directly from the HTML element's "style" attribute.
@@ -212,7 +271,8 @@ public class ComputedCSSStyleDeclaration extends CSSStyleDeclaration {
         if (StringUtils.isEmpty(value)) {
             value = "transparent";
         }
-        else if (getBrowserVersion().isFirefox()) {
+        else if (getBrowserVersion()
+                .hasFeature(BrowserVersionFeatures.JS_GET_BACKGROUND_COLOR_FOR_COMPUTED_STYLE_RETURNS_RGB)) {
             value = toRGBColor(value);
         }
         return value;
@@ -224,6 +284,24 @@ public class ComputedCSSStyleDeclaration extends CSSStyleDeclaration {
     @Override
     public String jsxGet_backgroundImage() {
         return defaultIfEmpty(super.jsxGet_backgroundImage(), "none");
+    }
+
+    /**
+     * Gets the "backgroundPosition" style attribute.
+     * @return the style attribute
+     */
+    public String jsxGet_backgroundPosition() {
+        String bg = super.jsxGet_backgroundPosition();
+        if (StringUtils.isNotBlank(bg)) {
+            bg = StringUtils.replace(bg, "left", "0%");
+            bg = StringUtils.replace(bg, "right", "100%");
+            bg = StringUtils.replace(bg, "center", "50%");
+
+            bg = StringUtils.replace(bg, "top", "0%");
+            bg = StringUtils.replace(bg, "bottom", "100%");
+        }
+
+        return defaultIfEmpty(bg, "0% 0%");
     }
 
     /**
@@ -440,7 +518,7 @@ public class ComputedCSSStyleDeclaration extends CSSStyleDeclaration {
             map.put("A", "inline");
             map.put("CODE", "inline");
             map.put("SPAN", "inline");
-            if (!getBrowserVersion().isIE()) {
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.CSS_DISPLAY_DEFAULT)) {
                 map.put("LI", "list-item");
                 map.put("TABLE", "table");
                 map.put("TBODY", "table-row-group");
@@ -529,7 +607,11 @@ public class ComputedCSSStyleDeclaration extends CSSStyleDeclaration {
      */
     @Override
     public String jsxGet_height() {
-        return pixelString(defaultIfEmpty(super.jsxGet_height(), "363px"));
+        return pixelString(getElement(), new CssValue(Window.WINDOW_HEIGHT) {
+            @Override public String get(final ComputedCSSStyleDeclaration style) {
+                return defaultIfEmpty(style.getStyleAttribute("height", null), "363px");
+            }
+        });
     }
 
     /**
@@ -1153,17 +1235,21 @@ public class ComputedCSSStyleDeclaration extends CSSStyleDeclaration {
      */
     @Override
     public String jsxGet_width() {
-        if (jsxGet_display().equals("none")) {
+        if ("none".equals(jsxGet_display())) {
             return "auto";
         }
         final String defaultWidth;
-        if (getBrowserVersion().isIE()) {
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.CSS_DEFAULT_WIDTH_AUTO)) {
             defaultWidth = "auto";
         }
         else {
-            defaultWidth = "1256px";
+            defaultWidth = Window.WINDOW_WIDTH + "px";
         }
-        return pixelString(defaultIfEmpty(super.jsxGet_width(), defaultWidth));
+        return pixelString(getElement(), new CssValue(Window.WINDOW_WIDTH) {
+            @Override public String get(final ComputedCSSStyleDeclaration style) {
+                return defaultIfEmpty(style.getStyleAttribute(WIDTH, null), defaultWidth);
+            }
+        });
     }
 
     /**
@@ -1173,28 +1259,97 @@ public class ComputedCSSStyleDeclaration extends CSSStyleDeclaration {
      * @return the element's width in pixels, possibly including its padding and border
      */
     public int getCalculatedWidth(final boolean includeBorder, final boolean includePadding) {
+        int width = getCalculatedWidth();
+        if (includeBorder) {
+            width += getBorderHorizontal();
+        }
+        if (includePadding) {
+            width += getPaddingHorizontal();
+        }
+        return width;
+    }
+
+    private int getCalculatedWidth() {
+        if (width_ != null) {
+            return width_.intValue();
+        }
+
+        final DomNode node = getElement().getDomNodeOrDie();
+        if (!node.mayBeDisplayed()) {
+            width_ = Integer.valueOf(0);
+            return 0;
+        }
+
+        final String display = jsxGet_display();
+        if ("none".equals(display)) {
+            width_ = Integer.valueOf(0);
+            return 0;
+        }
+
         int width;
         final String styleWidth = super.jsxGet_width();
-        final DomNode parent = getElement().getDomNodeOrDie().getParentNode();
+        final DomNode parent = node.getParentNode();
         if (StringUtils.isEmpty(styleWidth) && parent instanceof HtmlElement) {
-            // Width not explicitly set; just assume we fill the width provided by the parent...
-            // AS LONG AS we can use the parent!
-            final HTMLElement parentJS = (HTMLElement) parent.getScriptObject();
-            final String parentWidth = getWindow().jsxFunction_getComputedStyle(parentJS, null).jsxGet_width();
-            width = pixelValue(parentWidth);
+            // hack: TODO find a way to specify default values for different tags
+            if (getElement() instanceof HTMLCanvasElement) {
+                return 300;
+            }
+
+            // Width not explicitly set.
+            final String cssFloat = jsxGet_cssFloat();
+            if ("right".equals(cssFloat) || "left".equals(cssFloat)) {
+                // We're floating; simplistic approximation: text content * pixels per character.
+                width = this.<DomNode>getDomNodeOrDie().getTextContent().length() * PIXELS_PER_CHAR;
+            }
+            else if ("block".equals(display)) {
+                // Block elements take up 100% of the parent's width.
+                final HTMLElement parentJS = (HTMLElement) parent.getScriptObject();
+                final String parentWidth = getWindow().jsxFunction_getComputedStyle(parentJS, null).jsxGet_width();
+                if (getBrowserVersion().hasFeature(BrowserVersionFeatures.CSS_DEFAULT_WIDTH_AUTO)
+                        && "auto".equals(parentWidth)) {
+                    width = Window.WINDOW_WIDTH;
+                }
+                else {
+                    width = pixelValue(parentJS, new CssValue(Window.WINDOW_WIDTH) {
+                        @Override public String get(final ComputedCSSStyleDeclaration style) {
+                            return style.jsxGet_width();
+                        }
+                    });
+                }
+                width -= (getBorderHorizontal() + getPaddingHorizontal());
+            }
+            else {
+                // Inline elements take up however much space is required by their children.
+                width = getContentWidth();
+            }
         }
         else {
             // Width explicitly set in the style attribute, or there was no parent to provide guidance.
-            width = pixelValue(styleWidth);
-            if (includeBorder) {
-                final int borderLeft = pixelValue(jsxGet_borderLeftWidth());
-                final int borderRight = pixelValue(jsxGet_borderRightWidth());
-                width += borderLeft + borderRight;
+            width = pixelValue(getElement(), new CssValue(Window.WINDOW_WIDTH) {
+                @Override public String get(final ComputedCSSStyleDeclaration style) {
+                    return style.getStyleAttribute(WIDTH, null);
+                }
+            });
+        }
+
+        width_ = Integer.valueOf(width);
+        return width;
+    }
+
+    /**
+     * Returns the total width of the element's children.
+     * @return the total width of the element's children
+     */
+    public int getContentWidth() {
+        int width = 0;
+        for (DomNode child : this.<DomNode> getDomNodeOrDie().getChildren()) {
+            if (child.getScriptObject() instanceof HTMLElement) {
+                final HTMLElement e = (HTMLElement) child.getScriptObject();
+                final int w = e.jsxGet_currentStyle().getCalculatedWidth(true, true);
+                width += w;
             }
-            if (includePadding) {
-                final int paddingLeft = getPaddingLeft();
-                final int paddingRight = pixelValue(jsxGet_paddingRight());
-                width += paddingLeft + paddingRight;
+            else if (child.getScriptObject() instanceof Text) {
+                width += child.getTextContent().length() * PIXELS_PER_CHAR;
             }
         }
         return width;
@@ -1207,18 +1362,171 @@ public class ComputedCSSStyleDeclaration extends CSSStyleDeclaration {
      * @return the element's height, possibly including its padding and border
      */
     public int getCalculatedHeight(final boolean includeBorder, final boolean includePadding) {
-        int height = pixelValue(super.jsxGet_height());
+        int height = getCalculatedHeight();
         if (includeBorder) {
-            final int borderTop = pixelValue(jsxGet_borderTopWidth());
-            final int borderBottom = pixelValue(jsxGet_borderBottomWidth());
-            height += borderTop + borderBottom;
+            height += getBorderVertical();
         }
         if (includePadding) {
-            final int paddingTop = getPaddingTop();
-            final int paddingBottom = pixelValue(jsxGet_paddingBottom());
-            height += paddingTop + paddingBottom;
+            height += getPaddingVertical();
         }
         return height;
+    }
+
+    /**
+     * Returns the element's calculated height, taking both relevant CSS and the element's children into account.
+     * @return the element's calculated height, taking both relevant CSS and the element's children into account
+     */
+    private int getCalculatedHeight() {
+        if (height_ != null) {
+            return height_.intValue();
+        }
+
+        final int elementHeight = getEmptyHeight();
+        if (elementHeight == 0) {
+            height_ = Integer.valueOf(elementHeight);
+            return elementHeight;
+        }
+
+        final int contentHeight = getContentHeight();
+        final boolean useDefaultHeight = getBrowserVersion().hasFeature(
+                BrowserVersionFeatures.CSS_DEFAULT_ELMENT_HEIGHT_MARKS_MIN);
+        final boolean explicitHeightSpecified = super.jsxGet_height().length() > 0;
+
+        int height;
+        if (contentHeight > 0
+                && ((useDefaultHeight && contentHeight > elementHeight)
+                        || (!useDefaultHeight && !explicitHeightSpecified))) {
+            height = contentHeight;
+        }
+        else {
+            height = elementHeight;
+        }
+
+        height_ = Integer.valueOf(height);
+        return height;
+    }
+
+    /**
+     * Returns the element's calculated height taking relevant CSS into account, but <b>not</b> the element's child
+     * elements.
+     *
+     * @return the element's calculated height taking relevant CSS into account, but <b>not</b> the element's child
+     *         elements
+     */
+    private int getEmptyHeight() {
+        if (height2_ != null) {
+            return height2_.intValue();
+        }
+
+        final DomNode node = getElement().getDomNodeOrDie();
+        if (!node.mayBeDisplayed()) {
+            height2_ = Integer.valueOf(0);
+            return 0;
+        }
+
+        if ("none".equals(jsxGet_display())) {
+            height2_ = Integer.valueOf(0);
+            return 0;
+        }
+
+        if (getElement() instanceof HTMLBodyElement) {
+            height2_ = Integer.valueOf(Window.WINDOW_HEIGHT);
+            return Window.WINDOW_HEIGHT;
+        }
+
+        final boolean explicitHeightSpecified = super.jsxGet_height().length() > 0;
+
+        int defaultHeight = 20;
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.CSS_DEFAULT_ELMENT_HEIGHT_15)) {
+            defaultHeight = 15;
+        }
+
+        final int defaultValue = getElement() instanceof HTMLCanvasElement ? 150 : Window.WINDOW_HEIGHT;
+
+        int height = pixelValue(getElement(), new CssValue(defaultValue) {
+            @Override public String get(final ComputedCSSStyleDeclaration style) {
+                return style.getStyleAttribute("height", null);
+            }
+        });
+
+        final boolean useDefaultHeight = getBrowserVersion().hasFeature(
+                BrowserVersionFeatures.CSS_DEFAULT_ELMENT_HEIGHT_MARKS_MIN);
+        if (height == 0 && !explicitHeightSpecified || (useDefaultHeight && height < defaultHeight)) {
+            height = defaultHeight;
+        }
+
+        height2_ = Integer.valueOf(height);
+        return height;
+    }
+
+    /**
+     * Returns the total height of the element's children.
+     * @return the total height of the element's children
+     */
+    public int getContentHeight() {
+        // There are two different kinds of elements that might determine the content height:
+        //  - elements with position:static or position:relative (elements that flow and build on each other)
+        //  - elements with position:absolute (independent elements)
+
+        final DomNode node = getElement().getDomNodeOrDie();
+        if (!node.mayBeDisplayed()) {
+            return 0;
+        }
+
+        HTMLElement lastFlowing = null;
+        final Set<HTMLElement> independent = new HashSet<HTMLElement>();
+        for (DomNode child : node.getChildren()) {
+            if (child.mayBeDisplayed() && child.getScriptObject() instanceof HTMLElement) {
+                final HTMLElement e = (HTMLElement) child.getScriptObject();
+                final ComputedCSSStyleDeclaration style = e.jsxGet_currentStyle();
+                final String pos = style.getPositionWithInheritance();
+                if ("static".equals(pos) || "relative".equals(pos)) {
+                    lastFlowing = e;
+                }
+                else if ("absolute".equals(pos)) {
+                    independent.add(e);
+                }
+            }
+        }
+
+        final Set<HTMLElement> relevant = new HashSet<HTMLElement>();
+        relevant.addAll(independent);
+        if (lastFlowing != null) {
+            relevant.add(lastFlowing);
+        }
+
+        int max = 0;
+        for (HTMLElement e : relevant) {
+            final ComputedCSSStyleDeclaration style = e.jsxGet_currentStyle();
+            final int h = style.getTop(true, false, false) + style.getCalculatedHeight(true, true);
+            if (h > max) {
+                max = h;
+            }
+        }
+        return max;
+    }
+
+    /**
+     * Returns <tt>true</tt> if the element is scrollable along the specified axis.
+     * @param horizontal if <tt>true</tt>, the caller is interested in scrollability along the x-axis;
+     *        if <tt>false</tt>, the caller is interested in scrollability along the y-axis
+     * @return <tt>true</tt> if the element is scrollable along the specified axis
+     */
+    public boolean isScrollable(final boolean horizontal) {
+        final boolean scrollable;
+        final HTMLElement node = getElement();
+        final String overflow = jsxGet_overflow();
+        if (horizontal) {
+            // TODO: inherit, overflow-x
+            scrollable = (node instanceof HTMLBodyElement || "scroll".equals(overflow) || "auto".equals(overflow))
+                && getContentWidth() > getCalculatedWidth();
+        }
+        else {
+            // TODO: inherit, overflow-y
+            scrollable = (node instanceof HTMLBodyElement || "scroll".equals(overflow) || "auto".equals(overflow))
+                && getContentHeight() > getEmptyHeight();
+        }
+        return scrollable;
     }
 
     /**
@@ -1229,9 +1537,9 @@ public class ComputedCSSStyleDeclaration extends CSSStyleDeclaration {
      * @return the computed top (Y coordinate), relative to the node's parent's top edge
      */
     public int getTop(final boolean includeMargin, final boolean includeBorder, final boolean includePadding) {
-        final String p = jsxGet_position();
-        final String t = jsxGet_top();
-        final String b = jsxGet_bottom();
+        final String p = getPositionWithInheritance();
+        final String t = getTopWithInheritance();
+        final String b = getBottomWithInheritance();
 
         int top;
         if ("absolute".equals(p) && !"auto".equals(t)) {
@@ -1240,30 +1548,33 @@ public class ComputedCSSStyleDeclaration extends CSSStyleDeclaration {
         }
         else if ("absolute".equals(p) && !"auto".equals(b)) {
             // Estimate the vertical displacement caused by *all* siblings.
-            // This is very rough, and doesn't even take position or display types into account (hence the
-            // need for the explicit check for HtmlHead elements, which are display:none in regular UAs).
+            // This is very rough, and doesn't even take position or display types into account.
             // It also doesn't take into account the fact that the parent's height may be hardcoded in CSS.
             top = 0;
-            DomNode child = this.getElement().getDomNodeOrDie().getParentNode().getFirstChild();
+            DomNode child = getElement().getDomNodeOrDie().getParentNode().getFirstChild();
             while (child != null) {
-                if (child instanceof HtmlElement && !(child instanceof HtmlHead)) {
+                if (child instanceof HtmlElement && child.mayBeDisplayed()) {
                     top += 20;
                 }
-                child = child.getPreviousSibling();
+                child = child.getNextSibling();
             }
             top -= pixelValue(b);
         }
         else {
-            // Estimate the vertical displacement caused by *previous* siblings.
-            // This is very rough, and doesn't even take position or display types into account (hence the
-            // need for the explicit check for HtmlHead elements, which are display:none in regular UAs).
+            // Calculate the vertical displacement caused by *previous* siblings.
             top = 0;
-            DomNode prev = this.getElement().getDomNodeOrDie().getPreviousSibling();
-            while (prev != null) {
-                if (prev instanceof HtmlElement && !(prev instanceof HtmlHead)) {
-                    top += 20;
-                }
+            DomNode prev = getElement().getDomNodeOrDie().getPreviousSibling();
+            while (prev != null && !(prev instanceof HtmlElement)) {
                 prev = prev.getPreviousSibling();
+            }
+            if (prev != null) {
+                final HTMLElement e = (HTMLElement) ((HtmlElement) prev).getScriptObject();
+                final ComputedCSSStyleDeclaration style = e.jsxGet_currentStyle();
+                top = style.getTop(true, false, false) + style.getCalculatedHeight(true, true);
+            }
+            // If the position is relative, we also need to add the specified "top" displacement.
+            if ("relative".equals(p)) {
+                top += pixelValue(t);
             }
         }
 
@@ -1293,9 +1604,14 @@ public class ComputedCSSStyleDeclaration extends CSSStyleDeclaration {
      * @return the computed left (X coordinate), relative to the node's parent's left edge
      */
     public int getLeft(final boolean includeMargin, final boolean includeBorder, final boolean includePadding) {
-        final String p = jsxGet_position();
-        final String l = jsxGet_left();
-        final String r = jsxGet_right();
+        String p = getPositionWithInheritance();
+        final String l = getLeftWithInheritance();
+        final String r = getRightWithInheritance();
+
+        if ("fixed".equals(p) && getBrowserVersion().hasFeature(
+                BrowserVersionFeatures.TREATS_POSITION_FIXED_LIKE_POSITION_STATIC)) {
+            p = "static";
+        }
 
         int left;
         if ("absolute".equals(p) && !"auto".equals(l)) {
@@ -1303,18 +1619,41 @@ public class ComputedCSSStyleDeclaration extends CSSStyleDeclaration {
             left = pixelValue(l);
         }
         else if ("absolute".equals(p) && !"auto".equals(r)) {
-            // We *should* calculate the horizontal displacement caused by *all* siblings.
-            // However, that would require us to retrieve computed styles for all siblings,
-            // and that sounds like a lot of work. We'll use a bogus parent width until a
-            // scenario arises that requires a more exact calculation.
-            left = 200 - pixelValue(r);
+            // Need to calculate the horizontal displacement caused by *all* siblings.
+            final HTMLElement parent = getElement().getParentHTMLElement();
+            final int parentWidth = parent.jsxGet_currentStyle().getCalculatedWidth(false, false);
+            left = parentWidth - pixelValue(r);
+        }
+        else if ("fixed".equals(p) && "auto".equals(l)) {
+            // Fixed to the location at which the browser puts it via normal element flowing.
+            final HTMLElement parent = getElement().getParentHTMLElement();
+            left = pixelValue(parent.jsxGet_currentStyle().getLeftWithInheritance());
+        }
+        else if ("static".equals(p)) {
+            // We need to calculate the horizontal displacement caused by *previous* siblings.
+            left = 0;
+            for (DomNode n = getDomNodeOrDie(); n != null; n = n.getPreviousSibling()) {
+                if (n.getScriptObject() instanceof HTMLElement) {
+                    final HTMLElement e = (HTMLElement) n.getScriptObject();
+                    final String d = e.jsxGet_currentStyle().jsxGet_display();
+                    if ("block".equals(d)) {
+                        break;
+                    }
+                    else if (!"none".equals(d)) {
+                        left += e.jsxGet_currentStyle().getCalculatedWidth(true, true);
+                    }
+                }
+                else if (n.getScriptObject() instanceof Text) {
+                    left += n.getTextContent().length() * PIXELS_PER_CHAR;
+                }
+                if (n instanceof HtmlTableRow) {
+                    break;
+                }
+            }
         }
         else {
-            // We *should* calculate the horizontal displacement caused by *previous* siblings.
-            // However, that would require us to retrieve computed styles for these siblings,
-            // and that also sounds like a lot of work. We'll just use 0, which is actually correct
-            // for block elements.
-            left = 0;
+            // Just use the CSS specified value.
+            left = pixelValue(l);
         }
 
         if (includeMargin) {
@@ -1336,11 +1675,125 @@ public class ComputedCSSStyleDeclaration extends CSSStyleDeclaration {
     }
 
     /**
-     * Gets the top padding of the element.
+     * Returns the CSS <tt>position</tt> attribute, replacing inherited values with the actual parent values.
+     * @return the CSS <tt>position</tt> attribute, replacing inherited values with the actual parent values
+     */
+    public String getPositionWithInheritance() {
+        String p = jsxGet_position();
+        if ("inherit".equals(p)) {
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.CAN_INHERIT_CSS_PROPERTY_VALUES)) {
+                final HTMLElement parent = getElement().getParentHTMLElement();
+                p = (parent != null ? parent.jsxGet_currentStyle().getPositionWithInheritance() : "static");
+            }
+            else {
+                p = "static";
+            }
+        }
+        return p;
+    }
+
+    /**
+     * Returns the CSS <tt>left</tt> attribute, replacing inherited values with the actual parent values.
+     * @return the CSS <tt>left</tt> attribute, replacing inherited values with the actual parent values
+     */
+    public String getLeftWithInheritance() {
+        String left = jsxGet_left();
+        if ("inherit".equals(left)) {
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.CAN_INHERIT_CSS_PROPERTY_VALUES)) {
+                final HTMLElement parent = getElement().getParentHTMLElement();
+                left = (parent != null ? parent.jsxGet_currentStyle().getLeftWithInheritance() : "auto");
+            }
+            else {
+                left = "auto";
+            }
+        }
+        return left;
+    }
+
+    /**
+     * Returns the CSS <tt>right</tt> attribute, replacing inherited values with the actual parent values.
+     * @return the CSS <tt>right</tt> attribute, replacing inherited values with the actual parent values
+     */
+    public String getRightWithInheritance() {
+        String right = jsxGet_right();
+        if ("inherit".equals(right)) {
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.CAN_INHERIT_CSS_PROPERTY_VALUES)) {
+                final HTMLElement parent = getElement().getParentHTMLElement();
+                right = (parent != null ? parent.jsxGet_currentStyle().getRightWithInheritance() : "auto");
+            }
+            else {
+                right = "auto";
+            }
+        }
+        return right;
+    }
+
+    /**
+     * Returns the CSS <tt>top</tt> attribute, replacing inherited values with the actual parent values.
+     * @return the CSS <tt>top</tt> attribute, replacing inherited values with the actual parent values
+     */
+    public String getTopWithInheritance() {
+        String top = jsxGet_top();
+        if ("inherit".equals(top)) {
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.CAN_INHERIT_CSS_PROPERTY_VALUES)) {
+                final HTMLElement parent = getElement().getParentHTMLElement();
+                top = (parent != null ? parent.jsxGet_currentStyle().getTopWithInheritance() : "auto");
+            }
+            else {
+                top = "auto";
+            }
+        }
+        return top;
+    }
+
+    /**
+     * Returns the CSS <tt>bottom</tt> attribute, replacing inherited values with the actual parent values.
+     * @return the CSS <tt>bottom</tt> attribute, replacing inherited values with the actual parent values
+     */
+    public String getBottomWithInheritance() {
+        String bottom = jsxGet_bottom();
+        if ("inherit".equals(bottom)) {
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.CAN_INHERIT_CSS_PROPERTY_VALUES)) {
+                final HTMLElement parent = getElement().getParentHTMLElement();
+                bottom = (parent != null ? parent.jsxGet_currentStyle().getBottomWithInheritance() : "auto");
+            }
+            else {
+                bottom = "auto";
+            }
+        }
+        return bottom;
+    }
+
+    /**
+     * Gets the left margin of the element.
      * @return the value in pixels
      */
-    public int getPaddingTop() {
-        return pixelValue(jsxGet_paddingTop());
+    public int getMarginLeft() {
+        return pixelValue(jsxGet_marginLeft());
+    }
+
+    /**
+     * Gets the right margin of the element.
+     * @return the value in pixels
+     */
+    public int getMarginRight() {
+        return pixelValue(jsxGet_marginRight());
+    }
+
+    /**
+     * Gets the top margin of the element.
+     * @return the value in pixels
+     */
+    public int getMarginTop() {
+        return pixelValue(jsxGet_marginTop());
+    }
+
+    /**
+     * Gets the bottom margin of the element.
+     * @return the value in pixels
+     */
+    public int getMarginBottom() {
+        return pixelValue(jsxGet_marginBottom());
     }
 
     /**
@@ -1352,11 +1805,43 @@ public class ComputedCSSStyleDeclaration extends CSSStyleDeclaration {
     }
 
     /**
-     * Gets the left margin of the element.
+     * Gets the right padding of the element.
      * @return the value in pixels
      */
-    public int getMarginLeft() {
-        return pixelValue(jsxGet_marginLeft());
+    public int getPaddingRight() {
+        return pixelValue(jsxGet_paddingRight());
+    }
+
+    /**
+     * Gets the top padding of the element.
+     * @return the value in pixels
+     */
+    public int getPaddingTop() {
+        return pixelValue(jsxGet_paddingTop());
+    }
+
+    /**
+     * Gets the bottom padding of the element.
+     * @return the value in pixels
+     */
+    public int getPaddingBottom() {
+        return pixelValue(jsxGet_paddingBottom());
+    }
+
+    private int getPaddingHorizontal() {
+        if (paddingHorizontal_ == null) {
+            paddingHorizontal_ =
+                Integer.valueOf("none".equals(jsxGet_display()) ? 0 : getPaddingLeft() + getPaddingRight());
+        }
+        return paddingHorizontal_.intValue();
+    }
+
+    private int getPaddingVertical() {
+        if (paddingVertical_ == null) {
+            paddingVertical_ =
+                Integer.valueOf("none".equals(jsxGet_display()) ? 0 : getPaddingTop() + getPaddingBottom());
+        }
+        return paddingVertical_.intValue();
     }
 
     /**
@@ -1381,6 +1866,30 @@ public class ComputedCSSStyleDeclaration extends CSSStyleDeclaration {
      */
     public int getBorderTop() {
         return pixelValue(jsxGet_borderTopWidth());
+    }
+
+    /**
+     * Gets the size of the bottom border of the element.
+     * @return the value in pixels
+     */
+    public int getBorderBottom() {
+        return pixelValue(jsxGet_borderBottomWidth());
+    }
+
+    private int getBorderHorizontal() {
+        if (borderHorizontal_ == null) {
+            borderHorizontal_ =
+                Integer.valueOf("none".equals(jsxGet_display()) ? 0 : getBorderLeft() + getBorderRight());
+        }
+        return borderHorizontal_.intValue();
+    }
+
+    private int getBorderVertical() {
+        if (borderVertical_ == null) {
+            borderVertical_ =
+                Integer.valueOf("none".equals(jsxGet_display()) ? 0 : getBorderTop() + getBorderBottom());
+        }
+        return borderVertical_.intValue();
     }
 
     /**
@@ -1418,17 +1927,40 @@ public class ComputedCSSStyleDeclaration extends CSSStyleDeclaration {
 
     /**
      * Returns the specified length value as a pixel length value, as long as we're not emulating IE.
+     * This method does <b>NOT</b> handle percentages correctly; use {@link #pixelValue(HTMLElement, CssValue)}
+     * if you need percentage support).
      * @param value the length value to convert to a pixel length value
      * @return the specified length value as a pixel length value
+     * @see #pixelString(HTMLElement, CssValue)
      */
     protected String pixelString(final String value) {
-        if (getBrowserVersion().isIE()) {
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.JS_LENGTH_WITHOUT_PX)) {
             return value;
         }
         if (value.endsWith("px")) {
             return value;
         }
         return pixelValue(value) + "px";
+    }
+
+    /**
+     * Returns the specified length CSS attribute value value as a pixel length value, as long as
+     * we're not emulating IE. If the specified CSS attribute value is a percentage, this method
+     * uses the specified value object to recursively retrieve the base (parent) CSS attribute value.
+     * @param element the element for which the CSS attribute value is to be retrieved
+     * @param value the CSS attribute value which is to be retrieved
+     * @return the specified length CSS attribute value as a pixel length value
+     * @see #pixelString(String)
+     */
+    protected String pixelString(final HTMLElement element, final CssValue value) {
+        final String s = value.get(element);
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.JS_LENGTH_WITHOUT_PX)) {
+            return s;
+        }
+        if (s.endsWith("px")) {
+            return s;
+        }
+        return pixelValue(element, value) + "px";
     }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,23 +14,21 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import org.xml.sax.helpers.AttributesImpl;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.DomText;
 import com.gargoylesoftware.htmlunit.html.HTMLParser;
 import com.gargoylesoftware.htmlunit.html.HtmlOption;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import com.gargoylesoftware.htmlunit.javascript.host.Attr;
+import com.gargoylesoftware.htmlunit.html.HtmlSelect;
 import com.gargoylesoftware.htmlunit.javascript.host.FormChild;
 
 /**
  * The JavaScript object that represents an option.
  *
- * @version $Revision: 4649 $
+ * @version $Revision: 6281 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author Chris Erskine
@@ -38,17 +36,6 @@ import com.gargoylesoftware.htmlunit.javascript.host.FormChild;
  * @author Ahmed Ashour
  */
 public class HTMLOptionElement extends FormChild {
-
-    private static final long serialVersionUID = 947015932373556314L;
-
-    private static final Set<String> namesIEAttributeAlwaysAvailable_ = new HashSet<String>();
-
-    static {
-        final String[] names = {"id", "value", "selected"};
-        for (final String name : names) {
-            namesIEAttributeAlwaysAvailable_.add(name);
-        }
-    }
 
     /**
      * Creates an instance.
@@ -79,10 +66,10 @@ public class HTMLOptionElement extends FormChild {
         htmlOption.setSelected(selected);
         setDomNode(htmlOption);
 
-        if (newText != null && !newText.equals("undefined")) {
+        if (!"undefined".equals(newText)) {
             htmlOption.appendChild(new DomText(page, newText));
         }
-        if (newValue != null && !newValue.equals("undefined")) {
+        if (!"undefined".equals(newValue)) {
             htmlOption.setValueAttribute(newValue);
         }
     }
@@ -93,7 +80,8 @@ public class HTMLOptionElement extends FormChild {
      */
     public String jsxGet_value() {
         String value = getDomNodeOrNull().getAttribute("value");
-        if (value == DomElement.ATTRIBUTE_NOT_DEFINED && getBrowserVersion().isFirefox()) {
+        if (value == DomElement.ATTRIBUTE_NOT_DEFINED
+                && getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_170)) {
             value = getDomNodeOrNull().getText();
         }
         return value;
@@ -145,7 +133,19 @@ public class HTMLOptionElement extends FormChild {
      * @param selected the new selected property
      */
     public void jsxSet_selected(final boolean selected) {
-        getDomNodeOrNull().setSelected(selected);
+        final HtmlOption optionNode = getDomNodeOrNull();
+        final HtmlSelect enclosingSelect = optionNode.getEnclosingSelect();
+        if (!selected && optionNode.isSelected()
+                && enclosingSelect != null & !enclosingSelect.isMultipleSelectEnabled()) {
+
+            // un-selecting selected option has no effect in IE and selects first option in FF
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.HTMLOPTION_UNSELECT_SELECTS_FIRST)) {
+                enclosingSelect.getOption(0).setSelected(true);
+            }
+        }
+        else {
+            optionNode.setSelected(selected);
+        }
     }
 
     /**
@@ -170,23 +170,5 @@ public class HTMLOptionElement extends FormChild {
      */
     public void jsxSet_label(final String label) {
         getDomNodeOrNull().setLabelAttribute(label);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Object jsxFunction_getAttributeNode(final String attributeName) {
-        final Object response = super.jsxFunction_getAttributeNode(attributeName);
-        if (response == null && getBrowserVersion().isIE()
-            && namesIEAttributeAlwaysAvailable_.contains(attributeName)) {
-            final Attr att = new Attr();
-            att.setPrototype(getPrototype(Attr.class));
-            att.setParentScope(getWindow());
-            att.init(attributeName, getDomNodeOrDie());
-            return att;
-        }
-
-        return response;
     }
 }

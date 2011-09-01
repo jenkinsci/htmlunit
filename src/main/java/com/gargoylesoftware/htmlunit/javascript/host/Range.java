@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,13 +17,18 @@ package com.gargoylesoftware.htmlunit.javascript.host;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.collections.ListUtils;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
+
+import org.apache.commons.collections.ListUtils;
+import org.apache.commons.logging.LogFactory;
 
 import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.html.DomDocumentFragment;
+import com.gargoylesoftware.htmlunit.html.DomNode;
+import com.gargoylesoftware.htmlunit.html.HTMLParser;
+import com.gargoylesoftware.htmlunit.html.impl.SimpleRange;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
-import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLDocument;
 
 /**
  * The JavaScript object that represents a Range.
@@ -31,19 +36,59 @@ import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
  * @see <a href="http://www.xulplanet.com/references/objref/Range.html">XULPlanet</a>
  * @see <a href="http://www.w3.org/TR/DOM-Level-2-Traversal-Range/ranges.html">
  * DOM-Level-2-Traversal-Range</a>
- * @version $Revision: 4506 $
+ * @version $Revision: 6392 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
+ * @author Daniel Gredler
  */
 public class Range extends SimpleScriptable {
-    private static final long serialVersionUID = 4326375945958952177L;
     private Node startContainer_, endContainer_;
     private int startOffset_, endOffset_;
 
+    /** Comparison mode for compareBoundaryPoints. */
+    public static final short START_TO_START = 0;
+
+    /** Comparison mode for compareBoundaryPoints. */
+    public static final short START_TO_END = 1;
+
+    /** Comparison mode for compareBoundaryPoints. */
+    public static final short END_TO_END = 2;
+
+    /** Comparison mode for compareBoundaryPoints. */
+    public static final short END_TO_START = 3;
+
     /**
-     * Creates an instance.
+     * Creates a new instance.
      */
     public Range() {
+        // Empty.
+    }
+
+    /**
+     * Creates a new instance.
+     * @param document the HTML document creating the range
+     */
+    public Range(final HTMLDocument document) {
+        startContainer_ = document;
+        endContainer_ = document;
+    }
+
+    Range(final org.w3c.dom.ranges.Range w3cRange) {
+        final DomNode domNodeStartContainer = (DomNode) w3cRange.getStartContainer();
+        startContainer_ = (Node) (domNodeStartContainer).getScriptObject();
+        startOffset_ = w3cRange.getStartOffset();
+
+        final DomNode domNodeEndContainer = (DomNode) w3cRange.getEndContainer();
+        endContainer_ = (Node) (domNodeEndContainer).getScriptObject();
+        endOffset_ = w3cRange.getEndOffset();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Object getDefaultValue(final Class< ? > hint) {
+        return toW3C().toString();
     }
 
     /**
@@ -90,6 +135,9 @@ public class Range extends SimpleScriptable {
      * @param offset the offset value within the node
      */
     public void jsxFunction_setStart(final Node refNode, final int offset) {
+        if (refNode == null) {
+            throw Context.reportRuntimeError("It is illegal to call Range.setStart() with a null node.");
+        }
         startContainer_ = refNode;
         startOffset_ = offset;
     }
@@ -99,7 +147,10 @@ public class Range extends SimpleScriptable {
      * @param refNode the reference node
      */
     public void jsxFunction_setStartAfter(final Node refNode) {
-        startContainer_ = refNode.jsxGet_parentNode();
+        if (refNode == null) {
+            throw Context.reportRuntimeError("It is illegal to call Range.setStartAfter() with a null node.");
+        }
+        startContainer_ = refNode.getParent();
         startOffset_ = getPositionInContainer(refNode) + 1;
     }
 
@@ -108,7 +159,10 @@ public class Range extends SimpleScriptable {
      * @param refNode the reference node
      */
     public void jsxFunction_setStartBefore(final Node refNode) {
-        startContainer_ = refNode.jsxGet_parentNode();
+        if (refNode == null) {
+            throw Context.reportRuntimeError("It is illegal to call Range.setStartBefore() with a null node.");
+        }
+        startContainer_ = refNode.getParent();
         startOffset_ = getPositionInContainer(refNode);
     }
 
@@ -136,6 +190,9 @@ public class Range extends SimpleScriptable {
      * @param offset the offset value within the node
      */
     public void jsxFunction_setEnd(final Node refNode, final int offset) {
+        if (refNode == null) {
+            throw Context.reportRuntimeError("It is illegal to call Range.setEnd() with a null node.");
+        }
         endContainer_ = refNode;
         endOffset_ = offset;
     }
@@ -145,7 +202,10 @@ public class Range extends SimpleScriptable {
      * @param refNode the reference node
      */
     public void jsxFunction_setEndAfter(final Node refNode) {
-        endContainer_ = refNode.jsxGet_parentNode();
+        if (refNode == null) {
+            throw Context.reportRuntimeError("It is illegal to call Range.setEndAfter() with a null node.");
+        }
+        endContainer_ = refNode.getParent();
         endOffset_ = getPositionInContainer(refNode) + 1;
     }
 
@@ -154,7 +214,10 @@ public class Range extends SimpleScriptable {
      * @param refNode the reference node
      */
     public void jsxFunction_setEndBefore(final Node refNode) {
-        startContainer_ = refNode.jsxGet_parentNode();
+        if (refNode == null) {
+            throw Context.reportRuntimeError("It is illegal to call Range.setEndBefore() with a null node.");
+        }
+        startContainer_ = refNode.getParent();
         startOffset_ = getPositionInContainer(refNode);
     }
 
@@ -179,8 +242,8 @@ public class Range extends SimpleScriptable {
     }
 
     /**
-     * Collapse a Range onto one of its boundary-points.
-     * @param toStart If <code>true</code>, collapses the Range onto its start; else collapses it onto its end
+     * Collapse a Range onto one of its boundaries.
+     * @param toStart if <code>true</code>, collapses the Range onto its start; else collapses it onto its end
      */
     public void jsxFunction_collapse(final boolean toStart) {
         if (toStart) {
@@ -194,33 +257,43 @@ public class Range extends SimpleScriptable {
     }
 
     /**
-     * Gets the deepest common ancestor container of the Range's two boundary-points.
-     * @return the ancestor
+     * Returns the deepest common ancestor container of the Range's two boundary points.
+     * @return the deepest common ancestor container of the Range's two boundary points
      */
-    @SuppressWarnings("unchecked")
     public Object jsxGet_commonAncestorContainer() {
-        if (startContainer_ == null) {
+        final Node ancestor = getCommonAncestor();
+        if (ancestor == null) {
             return Context.getUndefinedValue();
         }
+        return ancestor;
+    }
 
-        final List<Node> startContainerAncestor = getAncestorsAndSelf(startContainer_);
-        final List<Node> endContainerAncestor = getAncestorsAndSelf(endContainer_);
-
-        final List<Node> commonAncestors = ListUtils.intersection(startContainerAncestor, endContainerAncestor);
+    /**
+     * Returns the deepest common ancestor container of the Range's two boundary points.
+     * @return the deepest common ancestor container of the Range's two boundary points
+     */
+    @SuppressWarnings("unchecked")
+    private Node getCommonAncestor() {
+        final List<Node> startAncestors = getAncestorsAndSelf(startContainer_);
+        final List<Node> endAncestors = getAncestorsAndSelf(endContainer_);
+        final List<Node> commonAncestors = ListUtils.intersection(startAncestors, endAncestors);
+        if (commonAncestors.isEmpty()) {
+            return null;
+        }
         return commonAncestors.get(commonAncestors.size() - 1);
     }
 
     /**
-     * Gets the ancestors of the node.
+     * Returns the ancestors of the specified node.
      * @param node the node to start with
-     * @return a list of node
+     * @return the ancestors of the specified node
      */
-    protected List<Node> getAncestorsAndSelf(final Node node) {
+    private List<Node> getAncestorsAndSelf(final Node node) {
         final List<Node> ancestors = new ArrayList<Node>();
         Node ancestor = node;
         while (ancestor != null) {
             ancestors.add(0, ancestor);
-            ancestor = ancestor.jsxGet_parentNode();
+            ancestor = ancestor.getParent();
         }
         return ancestors;
     }
@@ -232,9 +305,88 @@ public class Range extends SimpleScriptable {
      * @see <a href="http://developer.mozilla.org/en/docs/DOM:range.createContextualFragment">Mozilla documentation</a>
      */
     public Object jsxFunction_createContextualFragment(final String valueAsString) {
-        final SgmlPage page = startContainer_.getDomNodeOrDie().getPage();
+        final SgmlPage page = startContainer_.<DomNode>getDomNodeOrDie().getPage();
         final DomDocumentFragment fragment = new DomDocumentFragment(page);
-        HTMLElement.parseHtmlSnippet(fragment, true, valueAsString);
+        try {
+            HTMLParser.parseFragment(fragment, startContainer_.getDomNodeOrDie(), valueAsString);
+        }
+        catch (final Exception e) {
+            LogFactory.getLog(Range.class).error("Unexpected exception occurred in createContextualFragment", e);
+            throw Context.reportRuntimeError("Unexpected exception occurred in createContextualFragment: "
+                    + e.getMessage());
+        }
+
         return fragment.getScriptObject();
+    }
+
+    /**
+     * Moves this range's contents from the document tree into a document fragment.
+     * @return the new document fragment containing the range contents
+     */
+    public Object jsxFunction_extractContents() {
+        return toW3C().extractContents().getScriptObject();
+    }
+
+    /**
+     * Returns a W3C {@link org.w3c.dom.ranges.Range} version of this object.
+     * @return a W3C {@link org.w3c.dom.ranges.Range} version of this object
+     */
+    public SimpleRange toW3C() {
+        return new SimpleRange(startContainer_.getDomNodeOrNull(), startOffset_,
+            endContainer_.getDomNodeOrDie(), endOffset_);
+    }
+
+    /**
+     * Compares the boundary points of two Ranges.
+     * @param how a constant describing the comparison method
+     * @param sourceRange the Range to compare boundary points with this range
+     * @return -1, 0, or 1, indicating whether the corresponding boundary-point of range is respectively before,
+     * equal to, or after the corresponding boundary-point of sourceRange.
+     */
+    public Object jsxFunction_compareBoundaryPoints(final int how, final Range sourceRange) {
+        final Node nodeForThis;
+        final int offsetForThis;
+        final int containingMoficator;
+        if (START_TO_START == how || END_TO_START == how) {
+            nodeForThis = startContainer_;
+            offsetForThis = startOffset_;
+            containingMoficator = 1;
+        }
+        else {
+            nodeForThis = endContainer_;
+            offsetForThis = endOffset_;
+            containingMoficator = -1;
+        }
+
+        final Node nodeForOther;
+        final int offsetForOther;
+        if (START_TO_END == how || START_TO_START == how) {
+            nodeForOther = sourceRange.startContainer_;
+            offsetForOther = sourceRange.startOffset_;
+        }
+        else {
+            nodeForOther = sourceRange.endContainer_;
+            offsetForOther = sourceRange.endOffset_;
+        }
+
+        if (nodeForThis == nodeForOther) {
+            if (offsetForThis < offsetForOther) {
+                return Integer.valueOf(-1);
+            }
+            else if (offsetForThis < offsetForOther) {
+                return Integer.valueOf(1);
+            }
+            return Integer.valueOf(0);
+        }
+
+        final byte nodeComparision = (byte) nodeForThis.jsxFunction_compareDocumentPosition(nodeForOther);
+        if ((nodeComparision & Node.DOCUMENT_POSITION_CONTAINED_BY) != 0) {
+            return Integer.valueOf(-1 * containingMoficator);
+        }
+        else if ((nodeComparision & Node.DOCUMENT_POSITION_PRECEDING) != 0) {
+            return Integer.valueOf(-1);
+        }
+        // TODO: handle other cases!
+        return Integer.valueOf(1);
     }
 }

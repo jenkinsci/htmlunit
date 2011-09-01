@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,15 @@ package com.gargoylesoftware.htmlunit.javascript.host.html;
 
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
+
 /**
  * Base class for list-type elements (<tt>ul</tt>, <tt>ol</tt>, <tt>dir</tt>, etc).
  *
- * @version $Revision: 4791 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
  */
 public class HTMLListElement extends HTMLElement {
-
-    private static final long serialVersionUID = -7951473922719370327L;
 
     /**
      * Returns the value of the <tt>compact</tt> attribute.
@@ -51,11 +51,11 @@ public class HTMLListElement extends HTMLElement {
      * {@inheritDoc}
      */
     @Override
-    public Object jsxFunction_getAttribute(final String attributeName) {
-        if ("compact".equals(attributeName) && getBrowserVersion().isIE()) {
+    public Object jsxFunction_getAttribute(final String attributeName, final Integer flags) {
+        if ("compact".equals(attributeName) && getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_85)) {
             return jsxGet_compact();
         }
-        return super.jsxFunction_getAttribute(attributeName);
+        return super.jsxFunction_getAttribute(attributeName, flags);
     }
 
 }

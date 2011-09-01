@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,17 +17,18 @@ package com.gargoylesoftware.htmlunit.html;
 import java.io.IOException;
 import java.util.Map;
 
-import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.lang.StringUtils;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.ElementNotFoundException;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.SgmlPage;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Wrapper for the HTML element "input".
  *
- * @version $Revision: 4791 $
+ * @version $Revision: 6359 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -36,8 +37,6 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
  * @author Ahmed Ashour
  */
 public class HtmlImageInput extends HtmlInput {
-
-    private static final long serialVersionUID = -2955826367201282767L;
 
     // For click with x, y position.
     private boolean wasPositionSpecified_;
@@ -73,9 +72,11 @@ public class HtmlImageInput extends HtmlInput {
         }
 
         if (wasPositionSpecified_) {
-            final NameValuePair valueX = new NameValuePair(prefix + 'x', String.valueOf(xPosition_));
-            final NameValuePair valueY = new NameValuePair(prefix + 'y', String.valueOf(yPosition_));
-            if (prefix.length() > 0 && getPage().getWebClient().getBrowserVersion().isFirefox()) {
+            final NameValuePair valueX = new NameValuePair(prefix + 'x', Integer.toString(xPosition_));
+            final NameValuePair valueY = new NameValuePair(prefix + 'y', Integer.toString(yPosition_));
+            if (prefix.length() > 0 && getPage().getWebClient().getBrowserVersion()
+                    .hasFeature(BrowserVersionFeatures.HTMLIMAGE_NAME_VALUE_PARAMS)
+                    && getValueAttribute().length() > 0) {
                 return new NameValuePair[] {valueX, valueY,
                     new NameValuePair(getNameAttribute(), getValueAttribute()) };
             }
@@ -105,18 +106,16 @@ public class HtmlImageInput extends HtmlInput {
      * requiring different behavior (like {@link HtmlSubmitInput}) will override this
      * method.
      *
-     * @param defaultPage the default page to return if the action does not
-     * load a new page.
-     * @return the page that is currently loaded after execution of this method
      * @throws IOException if an IO error occurred
      */
     @Override
-    protected Page doClickAction(final Page defaultPage) throws IOException {
+    protected void doClickAction() throws IOException {
         final HtmlForm form = getEnclosingForm();
         if (form != null) {
-            return form.submit(this);
+            form.submit(this);
+            return;
         }
-        return super.doClickAction(defaultPage);
+        super.doClickAction();
     }
 
     /**

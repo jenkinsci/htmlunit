@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,14 +26,12 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
  * worry about supporting with this implementation will probably be either Firefox 3.5
  * or Firefox 4.</p>
  *
- * @version $Revision: 4652 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
  * @see <a href="https://developer.mozilla.org/en/offline_resources_in_firefox">Offline Resources in Firefox</a>
  * @see <a href="https://developer.mozilla.org/en/nsIDOMOfflineResourceList">Mozilla Documentation</a>
  */
 public class OfflineResourceList extends SimpleScriptable {
-
-    private static final long serialVersionUID = -1003302627764098209L;
 
     /** The object isn't associated with an application cache. */
     public static final short STATUS_UNCACHED = 0;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,20 +17,29 @@ package com.gargoylesoftware.htmlunit.html;
 import java.io.IOException;
 import java.net.URL;
 
+import javax.imageio.ImageReader;
+
+import org.apache.commons.io.IOUtils;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.WebServerTestCase;
 
 /**
  * Tests for {@link HtmlImage}.
  *
- * @version $Revision: 4713 $
+ * @version $Revision: 6204 $
  * @author Knut Johannes Dahle
  * @author Ahmed Ashour
  * @author Marc Guillemot
+ * @author Lukas Botsch
  */
+@RunWith(BrowserRunner.class)
 public class HtmlImageDownloadTest extends WebServerTestCase {
     private static final String base_file_path_ = "src/test/resources/com/gargoylesoftware/htmlunit/html";
 
@@ -46,7 +55,7 @@ public class HtmlImageDownloadTest extends WebServerTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testImageHeight() throws Exception {
+    public void imageHeight() throws Exception {
         final HtmlImage htmlimage = getHtmlElementToTest("image1");
         Assert.assertEquals("Image height", 612, htmlimage.getHeight());
     }
@@ -55,7 +64,7 @@ public class HtmlImageDownloadTest extends WebServerTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testImageWidth() throws Exception {
+    public void imageWidth() throws Exception {
         final HtmlImage htmlimage = getHtmlElementToTest("image1");
         Assert.assertEquals("Image width", 879, htmlimage.getWidth());
     }
@@ -64,16 +73,17 @@ public class HtmlImageDownloadTest extends WebServerTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testImageFileSize() throws Exception {
+    public void imageFileSize() throws Exception {
         final HtmlImage htmlimage = getHtmlElementToTest("image1");
-        Assert.assertEquals("Image filesize", 140144, htmlimage.getWebResponse(true).getContentAsBytes().length);
+        Assert.assertEquals("Image filesize", 140144,
+                IOUtils.toByteArray(htmlimage.getWebResponse(true).getContentAsStream()).length);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    public void testGetImageReader() throws Exception {
+    public void getImageReader() throws Exception {
         final HtmlImage htmlimage = getHtmlElementToTest("image1");
         Assert.assertNotNull("ImageReader should not be null", htmlimage.getImageReader());
     }
@@ -82,7 +92,7 @@ public class HtmlImageDownloadTest extends WebServerTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testGetImageReaderNoneSupportedImage() throws Exception {
+    public void getImageReaderNoneSupportedImage() throws Exception {
         final HtmlImage htmlimage = getHtmlElementToTest("image1");
         final String url = "/HtmlImageDownloadTest.html";
         htmlimage.setAttribute("src", url);
@@ -91,7 +101,7 @@ public class HtmlImageDownloadTest extends WebServerTestCase {
             Assert.fail("it was not an image!");
         }
         catch (final IOException ioe) {
-            // Correct behaviour
+            // Correct behavior
         }
     }
 
@@ -99,24 +109,47 @@ public class HtmlImageDownloadTest extends WebServerTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testGetWebResponse() throws Exception {
+    public void getWebResponse() throws Exception {
         final HtmlImage htmlimage = getHtmlElementToTest("image1");
-        final URL url = htmlimage.getPage().getWebResponse().getRequestSettings().getUrl();
+        final URL url = htmlimage.getPage().getWebResponse().getWebRequest().getUrl();
         Assert.assertNull(htmlimage.getWebResponse(false));
         final WebResponse resp = htmlimage.getWebResponse(true);
         Assert.assertNotNull(resp);
-        assertEquals(url.toExternalForm(), resp.getRequestSettings().getAdditionalHeaders().get("Referer"));
+        assertEquals(url.toExternalForm(), resp.getWebRequest().getAdditionalHeaders().get("Referer"));
     }
 
     /**
-     * Common code for the tests to load the testpage and fetch the HtmlImage object.
+     * The image should be redownloaded when the src attribute changes.
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void redownloadOnSrcAttributeChanged() throws Exception {
+        final HtmlImage htmlimage = getHtmlElementToTest("image1");
+        final ImageReader imagereader = htmlimage.getImageReader();
+        htmlimage.setAttribute("src", htmlimage.getAttribute("src") + "#changed");
+        Assert.assertFalse("Src attribute changed but ImageReader was not reloaded",
+                imagereader.equals(htmlimage.getImageReader()));
+    }
+
+    /**
+     * Common code for the tests to load the test page and fetch the HtmlImage object.
      * @param id value of image id attribute
      * @return the found HtmlImage
      * @throws Exception if an error occurs
      */
     private HtmlImage getHtmlElementToTest(final String id) throws Exception {
         final String url = "http://localhost:" + PORT + "/HtmlImageDownloadTest.html";
-        final HtmlPage page = loadUrl(url);
+        final WebClient client = getWebClient();
+        final HtmlPage page = client.getPage(url);
         return (HtmlImage) page.getElementById(id);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @After
+    public void tearDown() throws Exception {
+        Thread.sleep(100);
+        super.tearDown();
     }
 }

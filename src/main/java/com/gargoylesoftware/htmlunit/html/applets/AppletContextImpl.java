@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ import com.gargoylesoftware.htmlunit.javascript.host.Window;
  * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
  * {@link AppletContext} implementation for HtmlUnit.
  * @author Marc Guillemot
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  */
 public class AppletContextImpl implements AppletContext {
     private static final Enumeration<Applet> EMPTY_ENUMERATION

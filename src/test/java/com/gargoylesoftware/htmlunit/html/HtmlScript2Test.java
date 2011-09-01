@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,12 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
-import static org.apache.commons.httpclient.HttpStatus.SC_NO_CONTENT;
-
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.httpclient.NameValuePair;
+import org.apache.http.HttpStatus;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -31,11 +29,12 @@ import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Tests for {@link HtmlScript}, but with BrowserRunner.
  *
- * @version $Revision: 4772 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  */
 @RunWith(BrowserRunner.class)
@@ -101,7 +100,7 @@ public class HtmlScript2Test extends WebTestCase {
 
         final MockWebConnection conn = new MockWebConnection();
         conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, js, "text/javascript");
+        conn.setResponse(URL_SECOND, js, JAVASCRIPT_MIME_TYPE);
         client.setWebConnection(conn);
 
         final List<String> actual = new ArrayList<String>();
@@ -167,23 +166,19 @@ public class HtmlScript2Test extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    public void testAsXml() throws Exception {
+    @Alerts("hello")
+    public void asXml() throws Exception {
         final String html
             = "<html><head><title>foo</title></head><body>\n"
             + "<script id='script1'>\n"
             + "    alert('hello');\n"
             + "</script></body></html>";
 
-        final String[] expectedAlerts = {"hello"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(getBrowserVersion(), html, collectedAlerts);
-        assertEquals(expectedAlerts, collectedAlerts);
+        final HtmlPage page = loadPageWithAlerts(html);
 
         // asXml() should be reusable
         final String xml = page.asXml();
-        collectedAlerts.clear();
-        loadPage(xml, collectedAlerts);
-        assertEquals(expectedAlerts, collectedAlerts);
+        loadPageWithAlerts(xml);
     }
 
     /**
@@ -235,7 +230,7 @@ public class HtmlScript2Test extends WebTestCase {
      */
     @Test
     @Alerts(IE = "[object]", FF = "[object HTMLScriptElement]")
-    public void testSimpleScriptable() throws Exception {
+    public void simpleScriptable() throws Exception {
         final String html = "<html><head>\n"
             + "<script>\n"
             + "  function test() {\n"
@@ -262,7 +257,8 @@ public class HtmlScript2Test extends WebTestCase {
         final MockWebConnection conn = new MockWebConnection();
         conn.setResponse(URL_FIRST, html);
         final ArrayList<NameValuePair> headers = new ArrayList<NameValuePair>();
-        conn.setResponse(URL_SECOND, (String) null, SC_NO_CONTENT, "No Content", "text/javascript", headers);
+        conn.setResponse(URL_SECOND, (String) null, HttpStatus.SC_NO_CONTENT, "No Content", JAVASCRIPT_MIME_TYPE,
+                headers);
         client.setWebConnection(conn);
         client.getPage(URL_FIRST);
     }
@@ -288,7 +284,7 @@ public class HtmlScript2Test extends WebTestCase {
             + "    document.body.insertBefore(s2, document.body.firstChild);\n"
             + "    \n"
             + "    var s3 = document.createElement('script');\n"
-            + "    s3.src = '" + URL_SECOND + "';\n"
+            + "    s3.src = 'script.js';\n"
             + "    if(s3.addEventListener) s3.addEventListener('load', function(){alert('z')}, false);\n"
             + "    document.body.insertBefore(s3, document.body.firstChild);\n"
             + "  }\n"
@@ -296,13 +292,80 @@ public class HtmlScript2Test extends WebTestCase {
             + "</head>\n"
             + "<body onload='test()'></body>\n"
             + "</html>";
+
+        getMockWebConnection().setDefaultResponse("", JAVASCRIPT_MIME_TYPE);
+        loadPageWithAlerts(html);
+    }
+
+    /**
+     * @throws Exception on test failure
+     */
+    @Test
+    @Alerts(FF = "f")
+    public void addEventListener_error_clientThrows() throws Exception {
+        addEventListener_error(true);
+    }
+
+    /**
+     * @throws Exception on test failure
+     */
+    @Test
+    @Alerts(FF = "f")
+    public void addEventListener_error_clientDoesNotThrow() throws Exception {
+        addEventListener_error(false);
+    }
+
+    private void addEventListener_error(final boolean throwOnFailingStatusCode) throws Exception {
+        final URL fourOhFour = new URL(URL_FIRST, "/404");
+        final String html
+            = "<html><head>\n"
+            + "<script>\n"
+            + "  function test() {\n"
+            + "    var s1 = document.createElement('script');\n"
+            + "    s1.text = 'var foo';\n"
+            + "    if(s1.addEventListener) s1.addEventListener('error', function(){alert('a')}, false);\n"
+            + "    document.body.insertBefore(s1, document.body.firstChild);\n"
+            + "    \n"
+            + "    var s2 = document.createElement('script');\n"
+            + "    s2.text = 'varrrr foo';\n"
+            + "    if(s2.addEventListener) s2.addEventListener('error', function(){alert('b')}, false);\n"
+            + "    document.body.insertBefore(s2, document.body.firstChild);\n"
+            + "    \n"
+            + "    var s3 = document.createElement('script');\n"
+            + "    s3.src = '//:';\n"
+            + "    if(s3.addEventListener) s3.addEventListener('error', function(){alert('c')}, false);\n"
+            + "    document.body.insertBefore(s3, document.body.firstChild);\n"
+            + "    \n"
+            + "    var s4 = document.createElement('script');\n"
+            + "    s4.src = '" + URL_SECOND + "';\n"
+            + "    if(s4.addEventListener) s4.addEventListener('error', function(){alert('d')}, false);\n"
+            + "    document.body.insertBefore(s4, document.body.firstChild);\n"
+            + "    \n"
+            + "    var s5 = document.createElement('script');\n"
+            + "    s5.src = '" + URL_THIRD + "';\n"
+            + "    if(s5.addEventListener) s5.addEventListener('error', function(){alert('e')}, false);\n"
+            + "    document.body.insertBefore(s5, document.body.firstChild);\n"
+            + "    \n"
+            + "    var s6 = document.createElement('script');\n"
+            + "    s6.src = '" + fourOhFour + "';\n"
+            + "    if(s6.addEventListener) s6.addEventListener('error', function(){alert('f')}, false);\n"
+            + "    document.body.insertBefore(s6, document.body.firstChild);\n"
+            + "  }\n"
+            + "</script>\n"
+            + "</head>\n"
+            + "<body onload='test()'></body>\n"
+            + "</html>";
         final WebClient client = getWebClient();
+        client.setThrowExceptionOnFailingStatusCode(throwOnFailingStatusCode);
         final MockWebConnection conn = new MockWebConnection();
         conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, "", "text/javascript");
+        conn.setResponse(URL_SECOND, "var foo;", JAVASCRIPT_MIME_TYPE);
+        conn.setResponse(URL_THIRD, "varrrr foo;", JAVASCRIPT_MIME_TYPE);
+        conn.setResponse(fourOhFour, "", 404, "Missing", JAVASCRIPT_MIME_TYPE, new ArrayList< NameValuePair >());
         client.setWebConnection(conn);
         final List<String> actual = new ArrayList<String>();
         client.setAlertHandler(new CollectingAlertHandler(actual));
+        client.setThrowExceptionOnScriptError(false);
         client.getPage(URL_FIRST);
         assertEquals(getExpectedAlerts(), actual);
     }
@@ -356,4 +419,16 @@ public class HtmlScript2Test extends WebTestCase {
 
         loadPageWithAlerts(html);
     }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void isDisplayed() throws Exception {
+        final String html = "<html><head><title>Page A</title></head><body><script>var x = 1;</script></body></html>";
+        final HtmlPage page = loadPageWithAlerts(html);
+        final HtmlScript script = page.getFirstByXPath("//script");
+        assertFalse(script.isDisplayed());
+    }
+
 }

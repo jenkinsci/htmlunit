@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,12 +19,10 @@ import com.gargoylesoftware.htmlunit.html.DomProcessingInstruction;
 /**
  * A JavaScript object for a ProcessingInstruction.
  *
- * @version $Revision: 4753 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  */
 public final class ProcessingInstruction extends Node {
-
-    private static final long serialVersionUID = -1812065915680827446L;
 
     /**
      * Creates an instance. JavaScript objects must have a default constructor.

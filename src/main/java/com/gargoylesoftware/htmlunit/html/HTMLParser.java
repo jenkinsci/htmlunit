@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,7 +64,7 @@ import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
  * <p>SAX parser implementation that uses the NekoHTML {@link org.cyberneko.html.HTMLConfiguration}
  * to parse HTML into a HtmlUnit-specific DOM (HU-DOM) tree.</p>
  *
- * @version $Revision: 4871 $
+ * @version $Revision: 6432 $
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author David K. Taylor
  * @author Chris Erskine
@@ -79,139 +79,14 @@ public final class HTMLParser {
     public static final String XHTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 
     private static final Map<String, IElementFactory> ELEMENT_FACTORIES = new HashMap<String, IElementFactory>();
-    private static boolean IgnoreOutsideContent_;
 
     static {
         ELEMENT_FACTORIES.put(HtmlInput.TAG_NAME, InputElementFactory.instance);
 
         final DefaultElementFactory defaultElementFactory = new DefaultElementFactory();
-        ELEMENT_FACTORIES.put(HtmlAbbreviated.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlAcronym.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlAnchor.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlApplet.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlAddress.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlArea.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlBackgroundSound.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlBase.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlBaseFont.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlBidirectionalOverride.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlBig.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlBlink.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlBlockQuote.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlBody.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlBold.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlBreak.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlButton.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlCanvas.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlCaption.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlCenter.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlCitation.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlCode.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlDefinition.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlDefinitionDescription.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlDeletedText.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlDirectory.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlDivision.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlDefinitionList.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlDefinitionTerm.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlEmbed.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlEmphasis.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlFieldSet.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlFont.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlForm.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlFrame.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlFrameSet.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlHeading1.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlHeading2.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlHeading3.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlHeading4.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlHeading5.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlHeading6.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlHead.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlHorizontalRule.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlHtml.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlInlineFrame.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlImage.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlInsertedText.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlIsIndex.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlItalic.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlKeyboard.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlLabel.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlLegend.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlListing.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlListItem.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlLink.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlMap.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlMarquee.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlMenu.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlMeta.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlMultiColumn.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlNoBreak.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlNoEmbed.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlNoFrames.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlNoScript.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlObject.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlOrderedList.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlOptionGroup.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlOption.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlParagraph.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlParameter.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlPlainText.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlPreformattedText.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlInlineQuotation.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlS.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlSample.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlScript.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlSelect.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlSmall.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlSpacer.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlSpan.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlStrike.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlStrong.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlStyle.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlSubscript.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlSuperscript.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlTitle.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlTable.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlTableColumn.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlTableColumnGroup.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlTableBody.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlTableDataCell.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlTableHeaderCell.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlTableRow.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlTextArea.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlTableFooter.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlTableHeader.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlTeletype.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlUnderlined.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlUnorderedList.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlVariable.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlWordBreak.TAG_NAME, defaultElementFactory);
-        ELEMENT_FACTORIES.put(HtmlExample.TAG_NAME, defaultElementFactory);
-    }
-
-    /**
-     * Sets the flag to control validation of the HTML content that is outside of the
-     * BODY and HTML tags. This flag is false by default to maintain compatibility with
-     * current NekoHTML defaults.
-     * @param ignoreOutsideContent - boolean flag to set
-     * @deprecated As of 2.6 without replacement (HtmlUnit tries to mimic browser's
-     * behavior and browsers don't ignore outside content)
-     */
-    @Deprecated
-    public static void setIgnoreOutsideContent(final boolean ignoreOutsideContent) {
-        IgnoreOutsideContent_ = ignoreOutsideContent;
-    }
-
-    /**
-     * Gets the state of the flag to ignore content outside the BODY and HTML tags.
-     * @return the current state
-     * @deprecated As of 2.6 without replacement (HtmlUnit tries to mimic browser's
-     * behavior and browsers don't ignore outside content)
-     */
-    @Deprecated
-    public static boolean getIgnoreOutsideContent() {
-        return IgnoreOutsideContent_;
+        for (final String tagName : DefaultElementFactory.SUPPORTED_TAGS_) {
+            ELEMENT_FACTORIES.put(tagName, defaultElementFactory);
+        }
     }
 
     /**
@@ -243,13 +118,27 @@ public final class HTMLParser {
      * @throws IOException if an IO error occurs
      */
     public static void parseFragment(final DomNode parent, final String source) throws SAXException, IOException {
+        parseFragment(parent, parent, source);
+    }
+
+    /**
+     * Parses the HTML content from the given string into an object tree representation.
+     *
+     * @param parent where the new parsed nodes will be added to
+     * @param context the context to build the fragment context stack
+     * @param source the (X)HTML to be parsed
+     * @throws SAXException if a SAX error occurs
+     * @throws IOException if an IO error occurs
+     */
+    public static void parseFragment(final DomNode parent, final DomNode context, final String source)
+        throws SAXException, IOException {
         final HtmlPage page = (HtmlPage) parent.getPage();
-        final URL url = page.getWebResponse().getRequestSettings().getUrl();
+        final URL url = page.getWebResponse().getWebRequest().getUrl();
 
         final HtmlUnitDOMBuilder domBuilder = new HtmlUnitDOMBuilder(parent, url);
         domBuilder.setFeature("http://cyberneko.org/html/features/balance-tags/document-fragment", true);
         // build fragment context stack
-        DomNode node = parent;
+        DomNode node = context;
         final List<QName> ancestors = new ArrayList<QName>();
         while (node != null && node.getNodeType() != Node.DOCUMENT_NODE) {
             ancestors.add(0, new QName(null, node.getNodeName(), null, null));
@@ -278,20 +167,6 @@ public final class HTMLParser {
     }
 
     /**
-     * Parses the HTML content from the given WebResponse into an object tree representation.
-     *
-     * @param webResponse the response data
-     * @param webWindow the web window into which the page is to be loaded
-     * @return the page object which is the root of the DOM tree
-     * @throws IOException if there is an IO error
-     * @deprecated as of version 2.6, please use {@link #parseHtml(WebResponse, WebWindow)} instead
-     */
-    @Deprecated
-    public static HtmlPage parse(final WebResponse webResponse, final WebWindow webWindow) throws IOException {
-        return parseHtml(webResponse, webWindow);
-    }
-
-    /**
      * Parses the HTML content from the specified <tt>WebResponse</tt> into an object tree representation.
      *
      * @param webResponse the response data
@@ -300,7 +175,7 @@ public final class HTMLParser {
      * @throws IOException if there is an IO error
      */
     public static HtmlPage parseHtml(final WebResponse webResponse, final WebWindow webWindow) throws IOException {
-        final HtmlPage page = new HtmlPage(webResponse.getRequestSettings().getUrl(), webResponse, webWindow);
+        final HtmlPage page = new HtmlPage(webResponse.getWebRequest().getUrl(), webResponse, webWindow);
         parse(webResponse, webWindow, page);
         return page;
     }
@@ -314,7 +189,7 @@ public final class HTMLParser {
      * @throws IOException if there is an IO error
      */
     public static XHtmlPage parseXHtml(final WebResponse webResponse, final WebWindow webWindow) throws IOException {
-        final XHtmlPage page = new XHtmlPage(webResponse.getRequestSettings().getUrl(), webResponse, webWindow);
+        final XHtmlPage page = new XHtmlPage(webResponse.getWebRequest().getUrl(), webResponse, webWindow);
         parse(webResponse, webWindow, page);
         return page;
     }
@@ -324,7 +199,7 @@ public final class HTMLParser {
 
         webWindow.setEnclosedPage(page);
 
-        final URL url = webResponse.getRequestSettings().getUrl();
+        final URL url = webResponse.getWebRequest().getUrl();
         final HtmlUnitDOMBuilder domBuilder = new HtmlUnitDOMBuilder(page, url);
         String charset = webResponse.getContentCharsetOrNull();
         if (charset != null) {
@@ -336,7 +211,7 @@ public final class HTMLParser {
             }
         }
         else {
-            final String specifiedCharset = webResponse.getRequestSettings().getCharset();
+            final String specifiedCharset = webResponse.getWebRequest().getCharset();
             if (specifiedCharset != null) {
                 charset = specifiedCharset;
             }
@@ -374,8 +249,9 @@ public final class HTMLParser {
     private static void addBodyToPageIfNecessary(
             final HtmlPage page, final boolean originalCall, final boolean checkInsideFrameOnly) {
         // IE waits for the whole page to load before initializing bodies for frames.
-        final boolean ie = page.getWebClient().getBrowserVersion().isIE();
-        if (page.getEnclosingWindow() instanceof FrameWindow && ie && originalCall) {
+        final boolean waitToLoad = page.getWebClient().getBrowserVersion()
+            .hasFeature(BrowserVersionFeatures.PAGE_WAIT_LOAD_BEFORE_BODY);
+        if (page.getEnclosingWindow() instanceof FrameWindow && originalCall && waitToLoad) {
             return;
         }
 
@@ -397,7 +273,7 @@ public final class HTMLParser {
 
         // If this is IE, we need to initialize the bodies of any frames, as well.
         // This will already have been done when emulating FF (see above).
-        if (ie) {
+        if (waitToLoad) {
             for (final FrameWindow frame : page.getFrames()) {
                 final Page containedPage = frame.getEnclosedPage();
                 if (containedPage instanceof HtmlPage) {
@@ -430,6 +306,32 @@ public final class HTMLParser {
             }
         }
         return originalException;
+    }
+
+    /**
+     * Returns the pre-registered element factory corresponding to the specified tag, or an UnknownElementFactory.
+     * @param namespaceURI the namespace URI
+     * @param qualifiedName the qualified name
+     * @return the pre-registered element factory corresponding to the specified tag, or an UnknownElementFactory
+     */
+    static IElementFactory getElementFactory(final String namespaceURI, final String qualifiedName) {
+        if (namespaceURI == null || namespaceURI.length() == 0
+            || !qualifiedName.contains(":") || namespaceURI.equals(XHTML_NAMESPACE)) {
+            String tagName = qualifiedName;
+            final int index = tagName.indexOf(':');
+            if (index != -1) {
+                tagName = tagName.substring(index + 1);
+            }
+            else {
+                tagName = tagName.toLowerCase();
+            }
+            final IElementFactory factory = ELEMENT_FACTORIES.get(tagName);
+
+            if (factory != null) {
+                return factory;
+            }
+        }
+        return UnknownElementFactory.instance;
     }
 
     /**
@@ -466,7 +368,7 @@ public final class HTMLParser {
             try {
                 final WebResponse webResponse = page_.getWebResponse();
                 final String charset = webResponse.getContentCharset();
-                final String url = webResponse.getRequestSettings().getUrl().toString();
+                final String url = webResponse.getWebRequest().getUrl().toString();
                 final XMLInputSource in = new XMLInputSource(null, url, null, new StringReader(html), charset);
                 ((HTMLConfiguration) fConfiguration).evaluateInputSource(in);
             }
@@ -483,14 +385,15 @@ public final class HTMLParser {
          */
         private HtmlUnitDOMBuilder(final DomNode node, final URL url) {
             super(createConfiguration(node.getPage().getWebClient()));
-            this.page_ = (HtmlPage) node.getPage();
+            page_ = (HtmlPage) node.getPage();
 
             currentNode_ = node;
             for (final Node ancestor : currentNode_.getAncestors(true)) {
                 stack_.push((DomNode) ancestor);
             }
 
-            final HTMLParserListener listener = page_.getWebClient().getHTMLParserListener();
+            final WebClient webClient = page_.getWebClient();
+            final HTMLParserListener listener = webClient.getHTMLParserListener();
             final boolean reportErrors;
             if (listener != null) {
                 reportErrors = true;
@@ -504,9 +407,9 @@ public final class HTMLParser {
                 setFeature(FEATURE_AUGMENTATIONS, true);
                 setProperty("http://cyberneko.org/html/properties/names/elems", "default");
                 setFeature("http://cyberneko.org/html/features/report-errors", reportErrors);
-                setFeature("http://cyberneko.org/html/features/balance-tags/ignore-outside-content",
-                    IgnoreOutsideContent_);
-                setFeature(FEATURE_PARSE_NOSCRIPT, !page_.getWebClient().isJavaScriptEnabled());
+                setFeature(FEATURE_PARSE_NOSCRIPT, !webClient.isJavaScriptEnabled());
+                setFeature(HTMLScanner.ALLOW_SELFCLOSING_IFRAME,
+                    !webClient.getBrowserVersion().hasFeature(BrowserVersionFeatures.HTMLIFRAME_IGNORE_SELFCLOSING));
 
                 setContentHandler(this);
                 setLexicalHandler(this); //comments and CDATA
@@ -524,7 +427,7 @@ public final class HTMLParser {
         private static XMLParserConfiguration createConfiguration(final WebClient webClient) {
             final BrowserVersion browserVersion = webClient.getBrowserVersion();
             // for IE we need a special scanner that will be able to understand conditional comments
-            if (browserVersion.isIE()) {
+            if (browserVersion.hasFeature(BrowserVersionFeatures.HTMLCONDITIONAL_COMMENTS)) {
                 return new HTMLConfiguration() {
                     @Override
                     protected HTMLScanner createDocumentScanner() {
@@ -553,15 +456,18 @@ public final class HTMLParser {
 
         /** {@inheritDoc ContentHandler#startElement(String,String,String,Attributes)} */
         public void startElement(
-                final String namespaceURI, final String localName,
+                String namespaceURI, final String localName,
                 final String qName, final Attributes atts)
             throws SAXException {
 
             handleCharacters();
 
+            if (namespaceURI != null) {
+                namespaceURI = namespaceURI.trim();
+            }
             final String tagLower = localName.toLowerCase();
 
-            if (page_.isParsingHtmlSnippet() && (tagLower.equals("html") || tagLower.equals("body"))) {
+            if (page_.isParsingHtmlSnippet() && ("html".equals(tagLower) || "body".equals(tagLower))) {
                 return;
             }
 
@@ -570,7 +476,7 @@ public final class HTMLParser {
                 return;
             }
 
-            if (tagLower.equals("head")) {
+            if ("head".equals(tagLower)) {
                 if (headParsed_ || page_.isParsingHtmlSnippet()) {
                     parsingInnerHead_ = true;
                     return;
@@ -578,7 +484,7 @@ public final class HTMLParser {
                 headParsed_ = true;
             }
             // add a head if none was there
-            else if (!headParsed_ && (tagLower.equals("body") || tagLower.equals("frameset"))) {
+            else if (!headParsed_ && ("body".equals(tagLower) || "frameset".equals(tagLower))) {
                 final IElementFactory factory = getElementFactory(namespaceURI, "head");
                 final HtmlElement newElement = factory.createElement(page_, "head", null);
                 currentNode_.appendChild(newElement);
@@ -588,11 +494,14 @@ public final class HTMLParser {
             // If we're adding a body element, keep track of any temporary synthetic ones
             // that we may have had to create earlier (for document.write(), for example).
             HtmlBody oldBody = null;
-            if (tagLower.equals("body") && page_.getBody() instanceof HtmlBody) {
+            if ("body".equals(qName) && page_.getBody() instanceof HtmlBody) {
                 oldBody = (HtmlBody) page_.getBody();
             }
 
             // Add the new node.
+            if (!(page_ instanceof XHtmlPage) && XHTML_NAMESPACE.equals(namespaceURI)) {
+                namespaceURI = null;
+            }
             final IElementFactory factory = getElementFactory(namespaceURI, qName);
             final HtmlElement newElement = factory.createElementNS(page_, namespaceURI, qName, atts);
             newElement.setStartLocation(locator_.getLineNumber(), locator_.getColumnNumber());
@@ -606,16 +515,15 @@ public final class HTMLParser {
                 oldBody.quietlyRemoveAndMoveChildrenTo(newElement);
             }
 
-            if (tagLower.equals("body")) {
+            if ("body".equals(tagLower)) {
                 body_ = newElement;
             }
-            else if (tagLower.equals("head")) {
+            else if ("head".equals(tagLower)) {
                 head_ = newElement;
             }
 
             currentNode_ = newElement;
             stack_.push(currentNode_);
-
         }
 
         /**
@@ -656,15 +564,15 @@ public final class HTMLParser {
 
             final String tagLower = localName.toLowerCase();
 
-            if (page_.isParsingHtmlSnippet() && (tagLower.equals("html") || tagLower.equals("body"))) {
+            if (page_.isParsingHtmlSnippet() && ("html".equals(tagLower) || "body".equals(tagLower))) {
                 return;
             }
 
             if (parsingInnerHead_) {
-                if (tagLower.equals("head")) {
+                if ("head".equals(tagLower)) {
                     parsingInnerHead_ = false;
                 }
-                if (tagLower.equals("head") || page_.getWebClient().getBrowserVersion().hasFeature(
+                if ("head".equals(tagLower) || page_.getWebClient().getBrowserVersion().hasFeature(
                         BrowserVersionFeatures.IGNORE_CONTENTS_OF_INNER_HEAD)) {
                     return;
                 }
@@ -690,11 +598,11 @@ public final class HTMLParser {
             previousNode.onAllChildrenAddedToPage(postponed);
         }
 
-        /** @inheritDoc ContentHandler#characters(char,int,int) */
+        /** {@inheritDoc} */
         public void characters(final char[] ch, final int start, final int length) throws SAXException {
             if ((characters_ == null || characters_.length() == 0)
-                    && new String(ch, start, length).trim().length() == 0
-                    && page_.getWebClient().getBrowserVersion().isIE()) {
+                    && page_.getWebClient().getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_2)
+                    && StringUtils.isBlank(new String(ch, start, length))) {
 
                 DomNode node = currentNode_.getLastChild();
                 if (currentNode_ instanceof HTMLElement.ProxyDomNode) {
@@ -737,7 +645,7 @@ public final class HTMLParser {
             return true;
         }
 
-        /** @inheritDoc ContentHandler#ignorableWhitespace(char,int,int) */
+        /** {@inheritDoc} */
         public void ignorableWhitespace(final char[] ch, final int start, final int length) throws SAXException {
             if (characters_ == null) {
                 characters_ = new StringBuilder();
@@ -757,36 +665,23 @@ public final class HTMLParser {
                 }
                 else {
                     // Use the normal behavior: append a text node for the accumulated text.
-                    final DomText text = new DomText(page_, characters_.toString());
+                    final String textValue = characters_.toString();
+                    final DomText text = new DomText(page_, textValue);
                     characters_.setLength(0);
-                    currentNode_.appendChild(text);
+
+                    // malformed HTML: </td>some text</tr> => text comes before the table
+                    if (currentNode_ instanceof HtmlTableRow && StringUtils.isNotBlank(textValue)) {
+                        final HtmlTableRow row = (HtmlTableRow) currentNode_;
+                        final HtmlTable enclosingTable = row.getEnclosingTable();
+                        if (enclosingTable != null) { // may be null when called from Range.createContextualFragment
+                            enclosingTable.insertBefore(text);
+                        }
+                    }
+                    else {
+                        currentNode_.appendChild(text);
+                    }
                 }
             }
-        }
-
-        /**
-         * Returns the pre-registered element factory corresponding to the specified tag, or an UnknownElementFactory.
-         * @param namespaceURI the namespace URI
-         * @param qualifiedName the qualified name
-         * @return the pre-registered element factory corresponding to the specified tag, or an UnknownElementFactory
-         */
-        public static IElementFactory getElementFactory(final String namespaceURI, final String qualifiedName) {
-            if (namespaceURI.length() == 0 || !qualifiedName.contains(":") || namespaceURI.equals(XHTML_NAMESPACE)) {
-                String tagName = qualifiedName;
-                final int index = tagName.indexOf(":");
-                if (index != -1) {
-                    tagName = tagName.substring(index + 1);
-                }
-                else {
-                    tagName = tagName.toLowerCase();
-                }
-                final IElementFactory factory = ELEMENT_FACTORIES.get(tagName);
-
-                if (factory != null) {
-                    return factory;
-                }
-            }
-            return UnknownElementFactory.instance;
         }
 
         /** {@inheritDoc} */
@@ -817,8 +712,9 @@ public final class HTMLParser {
         /** {@inheritDoc} */
         public void comment(final char[] ch, final int start, final int length) {
             handleCharacters();
-            final String data = String.valueOf(ch, start, length);
-            if (!data.startsWith("[CDATA") || !page_.getWebClient().getBrowserVersion().isIE()) {
+            final String data = new String(ch, start, length);
+            if (!data.startsWith("[CDATA")
+                    || !page_.getWebClient().getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_3)) {
                 final DomComment comment = new DomComment(page_, data);
                 currentNode_.appendChild(comment);
             }
@@ -844,6 +740,7 @@ public final class HTMLParser {
         public void startDTD(final String name, final String publicId, final String systemId) {
             final DomDocumentType type = new DomDocumentType(page_, name, publicId, systemId);
             page_.setDocumentType(type);
+            page_.appendChild(type);
         }
 
         /** {@inheritDoc} */

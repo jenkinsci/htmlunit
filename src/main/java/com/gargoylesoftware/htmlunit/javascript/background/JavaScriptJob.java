@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,11 @@ package com.gargoylesoftware.htmlunit.javascript.background;
 /**
  * A JavaScript-triggered background job managed by a {@link JavaScriptJobManager}.
  *
- * @version $Revision: 4320 $
+ * @version $Revision: 6392 $
  * @author Daniel Gredler
+ * @author Amit Manjhi
  */
-public abstract class JavaScriptJob implements Runnable {
+public abstract class JavaScriptJob implements Runnable, Comparable<JavaScriptJob> {
 
     /** The job ID. */
     private Integer id_;
@@ -30,6 +31,17 @@ public abstract class JavaScriptJob implements Runnable {
 
     /** The amount of time to wait between executions of this job (may be <tt>null</tt>). */
     private final Integer period_;
+
+    private final boolean executeAsap_;
+
+    /**
+     * The time at which this job should be executed.
+     * Note: the browser will make its best effort to execute the job at the target
+     * time, as specified by the timeout/interval.  However, depending on other
+     * scheduled jobs, this target time may not be the actual time at which the job
+     * is executed.
+     */
+    private long targetExecutionTime_;
 
     /** Creates a new job instance that executes once, immediately. */
     public JavaScriptJob() {
@@ -44,6 +56,8 @@ public abstract class JavaScriptJob implements Runnable {
     public JavaScriptJob(final int initialDelay, final Integer period) {
         initialDelay_ = initialDelay;
         period_ = period;
+        setTargetExecutionTime(initialDelay + System.currentTimeMillis());
+        executeAsap_ = (initialDelay == 0); // XHR are currently run as jobs and should be prioritary
     }
 
     /**
@@ -90,6 +104,42 @@ public abstract class JavaScriptJob implements Runnable {
     @Override
     public String toString() {
         return "JavaScript Job " + id_;
+    }
+
+    /** {@inheritDoc} */
+    public int compareTo(final JavaScriptJob other) {
+        final boolean xhr1 = executeAsap_;
+        final boolean xhr2 = other.executeAsap_;
+
+        if (xhr1 && xhr2) {
+            return getId().intValue() - other.getId().intValue();
+        }
+
+        if (xhr1) {
+            return -1;
+        }
+
+        if (xhr2) {
+            return 1;
+        }
+
+        return (int) (targetExecutionTime_ - other.getTargetExecutionTime());
+    }
+
+    /**
+     * Returns the target execution time of the job.
+     * @return the target execution time in ms
+     */
+    public long getTargetExecutionTime() {
+        return targetExecutionTime_;
+    }
+
+    /**
+     * Sets the target execution time of the job.
+     * @param targetExecutionTime the new target execution time.
+     */
+    public void setTargetExecutionTime(final long targetExecutionTime) {
+        targetExecutionTime_ = targetExecutionTime;
     }
 
 }

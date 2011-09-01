@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,15 +20,17 @@ import com.gargoylesoftware.htmlunit.html.DomNode;
  * JavaScript object representing a UI event. For general information on which properties and functions should be
  * supported, see <a href="http://www.w3.org/TR/DOM-Level-3-Events/events.html#Events-UIEvent">DOM Level 3 Events</a>.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
+ * @author Ahmed Ashour
  */
 public class UIEvent extends Event {
 
-    private static final long serialVersionUID = 269569851849033800L;
-
     /** Specifies some detail information about the event. */
     private long detail_;
+
+    /** Whether or not the "meta" key was pressed during the firing of the event. */
+    private boolean metaKey_;
 
     /**
      * Creates a new UI event instance.
@@ -42,27 +44,9 @@ public class UIEvent extends Event {
      *
      * @param domNode the DOM node that triggered the event
      * @param type the event type
-     * @param shiftKey true if SHIFT is pressed
-     * @param ctrlKey true if CTRL is pressed
-     * @param altKey true if ALT is pressed
      */
-    public UIEvent(final DomNode domNode, final String type, final boolean shiftKey, final boolean ctrlKey,
-        final boolean altKey) {
-        super(domNode, type, shiftKey, ctrlKey, altKey);
-    }
-
-    /**
-     * Creates a new event instance for a keypress event.
-     * @param domNode the DOM node that triggered the event
-     * @param type the event type
-     * @param keyCode the key code associated with the event
-     * @param shiftKey true if SHIFT is pressed
-     * @param ctrlKey true if CTRL is pressed
-     * @param altKey true if ALT is pressed
-     */
-    public UIEvent(final DomNode domNode, final String type, final int keyCode,
-            final boolean shiftKey, final boolean ctrlKey, final boolean altKey) {
-        super(domNode, type, keyCode, shiftKey, ctrlKey, altKey);
+    public UIEvent(final DomNode domNode, final String type) {
+        super(domNode, type);
     }
 
     /**
@@ -112,6 +96,21 @@ public class UIEvent extends Event {
         jsxFunction_initEvent(type, bubbles, cancelable);
         // Ignore the view parameter; we always use the window.
         setDetail(detail);
+    }
+
+    /**
+     * Returns whether or not the "meta" key was pressed during the event firing.
+     * @return whether or not the "meta" key was pressed during the event firing
+     */
+    public boolean jsxGet_metaKey() {
+        return metaKey_;
+    }
+
+    /**
+     * @param metaKey whether Meta has been pressed during this event or not
+     */
+    protected void setMetaKey(final boolean metaKey) {
+        metaKey_ = metaKey;
     }
 
 }

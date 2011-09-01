@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,12 +20,10 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
  * A JavaScript object for XMLDOMParseError.
  * @see <a href="http://msdn2.microsoft.com/en-us/library/ms757019.aspx">MSDN documentation</a>
  *
- * @version $Revision: 4505 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  */
 public class XMLDOMParseError extends SimpleScriptable {
-
-    private static final long serialVersionUID = 8435555857574741660L;
 
     private int errorCode_;
     private int filepos_;
@@ -34,13 +32,6 @@ public class XMLDOMParseError extends SimpleScriptable {
     private String reason_ = "";
     private String srcText_ = "";
     private String url_ = "";
-
-    /**
-     * JavaScript constructor.
-     */
-    public void jsConstructor() {
-        // Empty.
-    }
 
     /**
      * Returns the error code of the last parse error.
@@ -99,30 +90,30 @@ public class XMLDOMParseError extends SimpleScriptable {
     }
 
     void setErrorCode(final int errorCode) {
-        this.errorCode_ = errorCode;
+        errorCode_ = errorCode;
     }
 
     void setFilepos(final int filepos) {
-        this.filepos_ = filepos;
+        filepos_ = filepos;
     }
 
     void setLine(final int line) {
-        this.line_ = line;
+        line_ = line;
     }
 
     void setLinepos(final int linepos) {
-        this.linepos_ = linepos;
+        linepos_ = linepos;
     }
 
     void setReason(final String reason) {
-        this.reason_ = reason;
+        reason_ = reason;
     }
 
     void setSrcText(final String srcText) {
-        this.srcText_ = srcText;
+        srcText_ = srcText;
     }
 
     void setUrl(final String url) {
-        this.url_ = url;
+        url_ = url;
     }
 }

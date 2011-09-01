@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,25 +14,22 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.css;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
+import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 
-import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
-import com.gargoylesoftware.htmlunit.javascript.host.Stylesheet;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A JavaScript object for a CSSRuleList.
  *
- * @version $Revision: 4502 $
+ * @version $Revision: 6446 $
  * @author Ahmed Ashour
  */
 public class CSSRuleList extends SimpleScriptable {
 
-    private static final long serialVersionUID = 6068213884501456020L;
-
-    private final Stylesheet stylesheet_;
+    private final CSSStyleSheet stylesheet_;
     private final org.w3c.dom.css.CSSRuleList rules_;
 
     /**
@@ -48,7 +45,7 @@ public class CSSRuleList extends SimpleScriptable {
      * Creates a new instance.
      * @param stylesheet the stylesheet
      */
-    public CSSRuleList(final Stylesheet stylesheet) {
+    public CSSRuleList(final CSSStyleSheet stylesheet) {
         stylesheet_ = stylesheet;
         rules_ = stylesheet.getWrappedSheet().getCssRules();
         setParentScope(stylesheet.getParentScope());
@@ -83,7 +80,7 @@ public class CSSRuleList extends SimpleScriptable {
         final List<String> idList = new ArrayList<String>();
 
         final int length = jsxGet_length();
-        if (!getBrowserVersion().isIE()) {
+        if (!getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_21)) {
             for (int i = 0; i < length; i++) {
                 idList.add(Integer.toString(i));
             }
@@ -106,7 +103,7 @@ public class CSSRuleList extends SimpleScriptable {
      */
     @Override
     public boolean has(final String name, final Scriptable start) {
-        if (name.equals("length") || name.equals("item")) {
+        if ("length".equals(name) || "item".equals(name)) {
             return true;
         }
         try {
@@ -127,6 +124,9 @@ public class CSSRuleList extends SimpleScriptable {
      */
     @Override
     public Object get(final int index, final Scriptable start) {
+        if (index < 0 || jsxGet_length() <= index) {
+            return NOT_FOUND;
+        }
         return CSSRule.create(stylesheet_, rules_.item(index));
     }
 

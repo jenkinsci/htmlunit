@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,16 +19,17 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
 
-import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.lang.StringUtils;
 
-import com.gargoylesoftware.htmlunit.KeyDataPair;
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.SgmlPage;
+import com.gargoylesoftware.htmlunit.util.KeyDataPair;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Wrapper for the HTML element "input".
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Daniel Gredler
@@ -37,7 +38,6 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
  */
 public class HtmlFileInput extends HtmlInput {
 
-    private static final long serialVersionUID = 7925479292349207154L;
     private String contentType_;
     private byte[] data_;
     private String valueAtFocus_;
@@ -54,7 +54,7 @@ public class HtmlFileInput extends HtmlInput {
         final Map<String, DomAttr> attributes) {
         super(namespaceURI, qualifiedName, page, attributes);
         setAttribute("value", "");
-        if (page.getWebClient().getBrowserVersion().isIE()) {
+        if (page.getWebClient().getBrowserVersion().hasFeature(BrowserVersionFeatures.FILEINPUT_EMPTY_DEFAULT_VALUE)) {
             setDefaultValue("");
         }
     }

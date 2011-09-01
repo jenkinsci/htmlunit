@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.gargoylesoftware.htmlunit.WebResponse;
  * An attachment represents a page received from the server which contains a
  * {@code Content-Disposition=attachment} header.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author Bruce Chapman
  * @author Sudhan Moghe
  * @author Daniel Gredler
@@ -60,7 +60,7 @@ public class Attachment {
             return null;
         }
         start += "filename=".length();
-        int end = disp.indexOf(";", start);
+        int end = disp.indexOf(';', start);
         if (end == -1) {
             end = disp.length();
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.javascript.host.RowContainer;
 
 /**
@@ -22,13 +23,11 @@ import com.gargoylesoftware.htmlunit.javascript.host.RowContainer;
  * {@link com.gargoylesoftware.htmlunit.html.HtmlTableHeader}, and
  * {@link com.gargoylesoftware.htmlunit.html.HtmlTableFooter}.
  *
- * @version $Revision: 4583 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
  * @author Ahmed Ashour
  */
 public class HTMLTableSectionElement extends RowContainer {
-
-    private static final long serialVersionUID = -3564660687852337070L;
 
     /** The valid "vAlign" values for this element, when emulating IE. */
     private static final String[] VALIGN_VALID_VALUES_IE = {"top", "bottom", "middle", "baseline"};
@@ -65,7 +64,7 @@ public class HTMLTableSectionElement extends RowContainer {
      */
     private String[] getValidVAlignValues() {
         String[] valid;
-        if (getBrowserVersion().isIE()) {
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_109)) {
             valid = VALIGN_VALID_VALUES_IE;
         }
         else {

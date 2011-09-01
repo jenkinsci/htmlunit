@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,8 @@
  */
 package com.gargoylesoftware.htmlunit.javascript;
 
-import java.io.Serializable;
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -22,9 +23,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.ContextAction;
 import net.sourceforge.htmlunit.corejs.javascript.Function;
@@ -33,17 +31,28 @@ import net.sourceforge.htmlunit.corejs.javascript.Script;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
 
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
+import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.ScriptException;
 import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.WebAssert;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebWindow;
+import com.gargoylesoftware.htmlunit.gae.GAEUtils;
 import com.gargoylesoftware.htmlunit.html.DomNode;
-import com.gargoylesoftware.htmlunit.html.HtmlElement;
+import com.gargoylesoftware.htmlunit.html.HtmlDivision;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.javascript.background.GAEJavaScriptExecutor;
+import com.gargoylesoftware.htmlunit.javascript.background.JavaScriptExecutor;
 import com.gargoylesoftware.htmlunit.javascript.configuration.ClassConfiguration;
 import com.gargoylesoftware.htmlunit.javascript.configuration.JavaScriptConfiguration;
 import com.gargoylesoftware.htmlunit.javascript.host.Element;
+import com.gargoylesoftware.htmlunit.javascript.host.StringCustom;
 import com.gargoylesoftware.htmlunit.javascript.host.Window;
 
 /**
@@ -52,7 +61,7 @@ import com.gargoylesoftware.htmlunit.javascript.host.Window;
  * Like all classes in this package, this class is not intended for direct use
  * and may change without notice.
  *
- * @version $Revision: 4789 $
+ * @version $Revision: 6444 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:chen_jun@users.sourceforge.net">Chen Jun</a>
  * @author David K. Taylor
@@ -62,20 +71,25 @@ import com.gargoylesoftware.htmlunit.javascript.host.Window;
  * @author Marc Guillemot
  * @author Daniel Gredler
  * @author Ahmed Ashour
+ * @author Amit Manjhi
+ * @author Ronald Brill
  * @see <a href="http://groups-beta.google.com/group/netscape.public.mozilla.jseng/browse_thread/thread/b4edac57329cf49f/069e9307ec89111f">
  * Rhino and Java Browser</a>
  */
-public class JavaScriptEngine implements Serializable {
+public class JavaScriptEngine {
 
-    private static final long serialVersionUID = -5414040051465432088L;
     private static final Log LOG = LogFactory.getLog(JavaScriptEngine.class);
 
     private final WebClient webClient_;
     private final HtmlUnitContextFactory contextFactory_;
+    private final JavaScriptConfiguration jsConfig_;
 
-    private static final ThreadLocal<Boolean> javaScriptRunning_ = new ThreadLocal<Boolean>();
-    private static final ThreadLocal<List<PostponedAction>> postponedActions_
-        = new ThreadLocal<List<PostponedAction>>();
+    private transient ThreadLocal<Boolean> javaScriptRunning_;
+    private transient ThreadLocal<List<PostponedAction>> postponedActions_;
+    private transient ThreadLocal<Boolean> holdPostponedActions_;
+
+    /** The JavaScriptExecutor corresponding to all windows of this Web client */
+    private transient JavaScriptExecutor javaScriptExecutor_;
 
     /**
      * Key used to place the scope in which the execution of some JavaScript code
@@ -92,13 +106,15 @@ public class JavaScriptEngine implements Serializable {
     public static final String KEY_STARTING_PAGE = "startingPage";
 
     /**
-     * Creates an instance for the specified webclient.
+     * Creates an instance for the specified {@link WebClient}.
      *
      * @param webClient the client that will own this engine
      */
     public JavaScriptEngine(final WebClient webClient) {
         webClient_ = webClient;
         contextFactory_ = new HtmlUnitContextFactory(webClient);
+        initTransientFields();
+        jsConfig_ = JavaScriptConfiguration.getInstance(webClient.getBrowserVersion());
     }
 
     /**
@@ -142,6 +158,14 @@ public class JavaScriptEngine implements Serializable {
     }
 
     /**
+     * Returns the JavaScriptExecutor.
+     * @return the JavaScriptExecutor.
+     */
+    public JavaScriptExecutor getJavaScriptExecutor() {
+        return javaScriptExecutor_;
+    }
+
+    /**
      * Initializes all the JS stuff for the window.
      * @param webWindow the web window
      * @param context the current context
@@ -149,49 +173,25 @@ public class JavaScriptEngine implements Serializable {
      */
     private void init(final WebWindow webWindow, final Context context) throws Exception {
         final WebClient webClient = webWindow.getWebClient();
+        final BrowserVersion browserVersion = webClient.getBrowserVersion();
         final Map<Class< ? extends SimpleScriptable>, Scriptable> prototypes =
             new HashMap<Class< ? extends SimpleScriptable>, Scriptable>();
         final Map<String, Scriptable> prototypesPerJSName = new HashMap<String, Scriptable>();
-        final Window window = new Window(this);
-        final JavaScriptConfiguration jsConfig = JavaScriptConfiguration.getInstance(webClient.getBrowserVersion());
+        final Window window = new Window();
         context.initStandardObjects(window);
 
         // remove some objects, that Rhino defines in top scope but that we don't want
-        final String[] undesirableWindowProps = {"javax", "org", "com", "edu", "net", "JavaAdapter",
-            "JavaImporter", "Continuation"};
-        for (final String property : undesirableWindowProps) {
-            window.delete(property);
-        }
-        if (webClient.getBrowserVersion().isIE()) {
-            final String[] undesirableWindowPropsIE = {"Packages", "java", "getClass", "XML", "XMLList",
-                "Namespace", "QName"};
-            for (final String property : undesirableWindowPropsIE) {
-                window.delete(property);
-            }
+        deleteProperties(window, "javax", "org", "com", "edu", "net", "JavaAdapter", "JavaImporter", "Continuation");
+        if (browserVersion.hasFeature(BrowserVersionFeatures.GENERATED_144)) {
+            deleteProperties(window, "Packages", "java", "getClass", "XML", "XMLList", "Namespace", "QName");
         }
 
         // put custom object to be called as very last prototype to call the fallback getter (if any)
-        final Scriptable fallbackCaller = new ScriptableObject() {
-            private static final long serialVersionUID = -7124423159070941606L;
-
-            @Override
-            public Object get(final String name, final Scriptable start) {
-                if (start instanceof ScriptableWithFallbackGetter) {
-                    return ((ScriptableWithFallbackGetter) start).getWithFallback(name);
-                }
-                return NOT_FOUND;
-            }
-
-            @Override
-            public String getClassName() {
-                return "htmlUnitHelper-fallbackCaller";
-            }
-        };
+        final Scriptable fallbackCaller = new FallbackCaller();
         ScriptableObject.getObjectPrototype(window).setPrototype(fallbackCaller);
 
-        for (final String jsClassName : jsConfig.keySet()) {
-            final ClassConfiguration config = jsConfig.getClassConfiguration(jsClassName);
-            final boolean isWindow = Window.class.getName().equals(config.getLinkedClass().getName());
+        for (final ClassConfiguration config : jsConfig_.getAll()) {
+            final boolean isWindow = Window.class.getName().equals(config.getHostClass().getName());
             if (isWindow) {
                 configureConstantsPropertiesAndFunctions(config, window);
             }
@@ -199,26 +199,24 @@ public class JavaScriptEngine implements Serializable {
                 final ScriptableObject prototype = configureClass(config, window);
                 if (config.isJsObject()) {
                     // for FF, place object with prototype property in Window scope
-                    if (!getWebClient().getBrowserVersion().isIE()) {
-                        final SimpleScriptable obj = config.getLinkedClass().newInstance();
+                    if (browserVersion.hasFeature(BrowserVersionFeatures.JS_HAS_OBJECT_WITH_PROTOTYPE_PROPERTY_IN_WINDOW_SCOPE)) {
+                        final SimpleScriptable obj = config.getHostClass().newInstance();
                         prototype.defineProperty("__proto__", prototype, ScriptableObject.DONTENUM);
                         obj.defineProperty("prototype", prototype, ScriptableObject.DONTENUM); // but not setPrototype!
                         obj.setParentScope(window);
-                        ScriptableObject.defineProperty(window, config.getClassName(), obj, ScriptableObject.DONTENUM);
+                        ScriptableObject.defineProperty(window, obj.getClassName(), obj, ScriptableObject.DONTENUM);
                         // this obj won't have prototype, constants need to be configured on it again
                         configureConstants(config, obj);
 
                         if (obj.getClass() == Element.class && webWindow.getEnclosedPage() instanceof HtmlPage) {
                             final DomNode domNode =
-                                new HtmlElement(null, "", (SgmlPage) webWindow.getEnclosedPage(), null) {
-                                    private static final long serialVersionUID = -5614158965497997095L;
-                                };
+                                new HtmlDivision(null, "", (SgmlPage) webWindow.getEnclosedPage(), null);
                             obj.setDomNode(domNode);
                         }
                     }
-                    prototypes.put(config.getLinkedClass(), prototype);
+                    prototypes.put(config.getHostClass(), prototype);
                 }
-                prototypesPerJSName.put(config.getClassName(), prototype);
+                prototypesPerJSName.put(config.getHostClass().getSimpleName(), prototype);
             }
         }
 
@@ -226,13 +224,13 @@ public class JavaScriptEngine implements Serializable {
         final Scriptable objectPrototype = ScriptableObject.getObjectPrototype(window);
         for (final Map.Entry<String, Scriptable> entry : prototypesPerJSName.entrySet()) {
             final String name = entry.getKey();
-            final ClassConfiguration config = jsConfig.getClassConfiguration(name);
+            final ClassConfiguration config = jsConfig_.getClassConfiguration(name);
             Scriptable prototype = entry.getValue();
             if (prototype.getPrototype() != null) {
                 prototype = prototype.getPrototype(); // "double prototype" hack for FF
             }
-            if (!StringUtils.isEmpty(config.getExtendedClass())) {
-                final Scriptable parentPrototype = prototypesPerJSName.get(config.getExtendedClass());
+            if (!StringUtils.isEmpty(config.getExtendedClassName())) {
+                final Scriptable parentPrototype = prototypesPerJSName.get(config.getExtendedClassName());
                 prototype.setPrototype(parentPrototype);
             }
             else {
@@ -241,15 +239,14 @@ public class JavaScriptEngine implements Serializable {
         }
 
         // eval hack (cf unit tests testEvalScopeOtherWindow and testEvalScopeLocal)
-        final Class< ? >[] evalFnTypes = {String.class};
-        final Member evalFn = Window.class.getMethod("custom_eval", evalFnTypes);
+        final Member evalFn = Window.class.getMethod("custom_eval", new Class[]{String.class});
         final FunctionObject jsCustomEval = new FunctionObject("eval", evalFn, window);
         window.associateValue("custom_eval", jsCustomEval);
 
-        for (final String jsClassName : jsConfig.keySet()) {
-            final ClassConfiguration config = jsConfig.getClassConfiguration(jsClassName);
+        for (final ClassConfiguration config : jsConfig_.getAll()) {
             final Method jsConstructor = config.getJsConstructor();
             if (jsConstructor != null) {
+                final String jsClassName = config.getHostClass().getSimpleName();
                 final Scriptable prototype = prototypesPerJSName.get(jsClassName);
                 if (prototype != null) {
                     final FunctionObject jsCtor = new FunctionObject(jsClassName, jsConstructor, window);
@@ -258,18 +255,48 @@ public class JavaScriptEngine implements Serializable {
             }
         }
 
-        // in IE, not all standard methods exists
-        if (webClient.getBrowserVersion().isIE()) {
-            final String[] objectPropertiesToRemove = {"__defineGetter__", "__defineSetter__", "__lookupGetter__",
-                "__lookupSetter__", "toSource"};
-            removePrototypeProperties(window, "Object", objectPropertiesToRemove);
-            final String[] arrayPropertiesToRemove = {"every", "filter", "forEach", "indexOf", "lastIndexOf", "map",
-                "some", "toSource"};
-            removePrototypeProperties(window, "Array", arrayPropertiesToRemove);
+        // Rhino defines too much methods for us, particularly since implementation of ECMAScript5
+        removePrototypeProperties(window, "String", "equals", "equalsIgnoreCase");
+        if (browserVersion.hasFeature(BrowserVersionFeatures.STRING_TRIM)) {
+            final ScriptableObject stringPrototype =
+                (ScriptableObject) ScriptableObject.getClassPrototype(window, "String");
+            stringPrototype.defineFunctionProperties(new String[] {"trimLeft", "trimRight"},
+                StringCustom.class, ScriptableObject.EMPTY);
         }
+        else {
+            removePrototypeProperties(window, "String", "trim");
+        }
+        removePrototypeProperties(window, "Function", "bind");
+        removePrototypeProperties(window, "Date", "toISOString", "toJSON");
+
+        // in IE, not all standard methods exists
+        if (browserVersion.hasFeature(BrowserVersionFeatures.GENERATED_146)) {
+            deleteProperties(window, "isXMLName", "uneval");
+            removePrototypeProperties(window, "Object", "__defineGetter__", "__defineSetter__", "__lookupGetter__",
+                    "__lookupSetter__", "toSource");
+            removePrototypeProperties(window, "Array", "every", "filter", "forEach", "indexOf", "lastIndexOf", "map",
+                    "reduce", "reduceRight", "some", "toSource");
+            removePrototypeProperties(window, "Date", "toSource");
+            removePrototypeProperties(window, "Function", "toSource");
+            removePrototypeProperties(window, "Number", "toSource");
+            removePrototypeProperties(window, "String", "toSource");
+        }
+
+        NativeFunctionToStringFunction.installFix(window, webClient.getBrowserVersion());
 
         window.setPrototypes(prototypes);
         window.initialize(webWindow);
+    }
+
+    /**
+     * Deletes the properties with the provided names.
+     * @param window the scope from which properties have to be removed
+     * @param propertiesToDelete the list of property names
+     */
+    private void deleteProperties(final Window window, final String... propertiesToDelete) {
+        for (final String property : propertiesToDelete) {
+            window.delete(property);
+        }
     }
 
     /**
@@ -278,7 +305,7 @@ public class JavaScriptEngine implements Serializable {
      * @param className the class for which properties should be removed
      * @param properties the properties to remove
      */
-    private void removePrototypeProperties(final Window window, final String className, final String[] properties) {
+    private void removePrototypeProperties(final Window window, final String className, final String... properties) {
         final ScriptableObject prototype = (ScriptableObject) ScriptableObject.getClassPrototype(window, className);
         for (final String property : properties) {
             prototype.delete(property);
@@ -296,7 +323,7 @@ public class JavaScriptEngine implements Serializable {
     private ScriptableObject configureClass(final ClassConfiguration config, final Scriptable window)
         throws InstantiationException, IllegalAccessException {
 
-        final Class< ? > jsHostClass = config.getLinkedClass();
+        final Class< ? > jsHostClass = config.getHostClass();
         final ScriptableObject prototype = (ScriptableObject) jsHostClass.newInstance();
         prototype.setParentScope(window);
 
@@ -324,7 +351,7 @@ public class JavaScriptEngine implements Serializable {
         }
 
         int attributes = ScriptableObject.EMPTY;
-        if (webClient_.getBrowserVersion().isIE()) {
+        if (webClient_.getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_147)) {
             attributes = ScriptableObject.DONTENUM;
         }
         // the functions
@@ -338,15 +365,60 @@ public class JavaScriptEngine implements Serializable {
     private void configureConstants(final ClassConfiguration config,
             final ScriptableObject scriptable) {
         for (final String constant : config.constants()) {
-            final Class< ? > linkedClass = config.getLinkedClass();
+            final Class< ? > linkedClass = config.getHostClass();
             try {
                 final Object value = linkedClass.getField(constant).get(null);
                 scriptable.defineProperty(constant, value, ScriptableObject.EMPTY);
             }
             catch (final Exception e) {
                 throw Context.reportRuntimeError("Cannot get field '" + constant + "' for type: "
-                    + config.getClassName());
+                    + config.getHostClass().getName());
             }
+        }
+    }
+
+    /**
+     * Register WebWindow with the JavaScriptExecutor.
+     * @param webWindow the WebWindow to be registered.
+     */
+    public void registerWindowAndMaybeStartEventLoop(final WebWindow webWindow) {
+        if (javaScriptExecutor_ == null) {
+            javaScriptExecutor_ = createJavaScriptExecutor();
+        }
+        javaScriptExecutor_.addWindow(webWindow);
+    }
+
+    /**
+     * Creates the {@link JavaScriptExecutor} that will be used to handle JS.
+     * @return the executor.
+     */
+    protected JavaScriptExecutor createJavaScriptExecutor() {
+        if (GAEUtils.isGaeMode()) {
+            return new GAEJavaScriptExecutor(webClient_);
+        }
+        return new JavaScriptExecutor(webClient_);
+    }
+
+    /**
+     * Executes the jobs in the eventLoop till timeoutMillis expires or the eventLoop becomes empty.
+     * No use in non-GAE mode (see {@link GAEUtils#isGaeMode}.
+     * @param timeoutMillis the timeout in milliseconds
+     * @return the number of jobs executed
+     */
+    public int pumpEventLoop(final long timeoutMillis) {
+        if (javaScriptExecutor_ == null) {
+            return 0;
+        }
+        return javaScriptExecutor_.pumpEventLoop(timeoutMillis);
+    }
+
+    /**
+     * Shutdown JavaScriptExecutor.
+     */
+    public void shutdownJavaScriptExecutor() {
+        if (javaScriptExecutor_ != null) {
+            javaScriptExecutor_.shutdown();
+            javaScriptExecutor_ = null;
         }
     }
 
@@ -396,6 +468,9 @@ public class JavaScriptEngine implements Serializable {
                            final int startLine) {
 
         final Script script = compile(htmlPage, sourceCode, sourceName, startLine);
+        if (script == null) { // happens with syntax error + throwExceptionOnScriptError = false
+            return null;
+        }
         return execute(htmlPage, script);
     }
 
@@ -435,18 +510,32 @@ public class JavaScriptEngine implements Serializable {
      */
     public Object callFunction(
             final HtmlPage htmlPage,
-            final Object javaScriptFunction,
-            final Object thisObject,
+            final Function javaScriptFunction,
+            final Scriptable thisObject,
             final Object [] args,
             final DomNode htmlElement) {
 
         final Scriptable scope = getScope(htmlPage, htmlElement);
 
-        final Function function = (Function) javaScriptFunction;
+        return callFunction(htmlPage, javaScriptFunction, scope, thisObject, args);
+    }
+
+    /**
+     * Calls the given function taking care of synchronization issues.
+     * @param htmlPage the HTML page that caused this script to executed
+     * @param function the JavaScript function to execute
+     * @param scope the execution scope
+     * @param thisObject the 'this' object
+     * @param args the function's arguments
+     * @return the function result
+     */
+    public Object callFunction(final HtmlPage htmlPage, final Function function,
+            final Scriptable scope, final Scriptable thisObject, final Object[] args) {
+
         final ContextAction action = new HtmlUnitContextAction(scope, htmlPage) {
             @Override
             public Object doRun(final Context cx) {
-                return callFunction(htmlPage, function, cx, scope, (Scriptable) thisObject, args);
+                return function.call(cx, scope, thisObject, args);
             }
             @Override
             protected String getSourceCode(final Context cx) {
@@ -468,28 +557,8 @@ public class JavaScriptEngine implements Serializable {
     }
 
     /**
-     * Calls the given function taking care of synchronization issues.
-     * @param htmlPage the HTML page that caused this script to executed
-     * @param function the js function to execute
-     * @param context the context in which execution should occur
-     * @param scope the execution scope
-     * @param thisObject the 'this' object
-     * @param args the function's arguments
-     * @return the function result
-     */
-    public Object callFunction(final HtmlPage htmlPage, final Function function, final Context context,
-            final Scriptable scope, final Scriptable thisObject, final Object[] args) {
-
-        synchronized (htmlPage) { // 2 scripts can't be executed in parallel for one page
-            final Object result = function.call(context, scope, thisObject, args);
-            processPostponedActions();
-            return result;
-        }
-    }
-
-    /**
-     * Indicates if JavaScript is running in current thread. <br/>
-     * This allows code to know if there own evaluation is has been  triggered by some JS code.
+     * Indicates if JavaScript is running in current thread.<br/>
+     * This allows code to know if there own evaluation is has been triggered by some JS code.
      * @return <code>true</code> if JavaScript is running
      */
     public boolean isScriptRunning() {
@@ -518,7 +587,7 @@ public class JavaScriptEngine implements Serializable {
                 cx.putThreadLocal(KEY_STARTING_PAGE, htmlPage_);
                 synchronized (htmlPage_) { // 2 scripts can't be executed in parallel for one page
                     final Object response = doRun(cx);
-                    processPostponedActions();
+                    doProcessPostponedActions();
                     return response;
                 }
             }
@@ -527,6 +596,10 @@ public class JavaScriptEngine implements Serializable {
                 return null;
             }
             catch (final TimeoutError e) {
+                final JavaScriptErrorListener javaScriptErrorListener = getWebClient().getJavaScriptErrorListener();
+                if (javaScriptErrorListener != null) {
+                    javaScriptErrorListener.timeoutError(htmlPage_, e.getAllowedTime(), e.getExecutionTime());
+                }
                 if (getWebClient().isThrowExceptionOnScriptError()) {
                     throw new RuntimeException(e);
                 }
@@ -543,13 +616,31 @@ public class JavaScriptEngine implements Serializable {
         protected abstract String getSourceCode(final Context cx);
     }
 
-    private void processPostponedActions() {
+    private void doProcessPostponedActions() {
+        if (Boolean.TRUE.equals(holdPostponedActions_.get())) {
+            return;
+        }
+
+        try {
+            getWebClient().loadDownloadedResponses();
+        }
+        catch (final RuntimeException e) {
+            throw e;
+        }
+        catch (final Exception e) {
+            throw new RuntimeException(e);
+        }
+
         final List<PostponedAction> actions = postponedActions_.get();
         postponedActions_.set(null);
         if (actions != null) {
             try {
                 for (final PostponedAction action : actions) {
-                    action.execute();
+                    // verify that the page that registered this PostponedAction is still alive
+                    final Page owningPage = action.getOwningPage();
+                    if (owningPage != null && owningPage == owningPage.getEnclosingWindow().getEnclosedPage()) {
+                        action.execute();
+                    }
                 }
             }
             catch (final Exception e) {
@@ -587,6 +678,10 @@ public class JavaScriptEngine implements Serializable {
                 }
             }
         }
+        final JavaScriptErrorListener javaScriptErrorListener = getWebClient().getJavaScriptErrorListener();
+        if (javaScriptErrorListener != null) {
+            javaScriptErrorListener.scriptException(page, scriptException);
+        }
         // Throw a Java exception if the user wants us to.
         if (getWebClient().isThrowExceptionOnScriptError()) {
             throw scriptException;
@@ -595,4 +690,58 @@ public class JavaScriptEngine implements Serializable {
         LOG.info("Caught script exception", scriptException);
     }
 
+    /**
+     * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
+     * Indicates that no postponed action should be executed.
+     */
+    public void holdPosponedActions() {
+        holdPostponedActions_.set(Boolean.TRUE);
+    }
+
+    /**
+     * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
+     * Process postponed actions, if any.
+     */
+    public void processPostponedActions() {
+        holdPostponedActions_.set(Boolean.FALSE);
+        doProcessPostponedActions();
+    }
+
+    /**
+     * Re-initializes transient fields when an object of this type is deserialized.
+     */
+    private void readObject(final ObjectInputStream in) throws IOException, ClassNotFoundException {
+        in.defaultReadObject();
+        initTransientFields();
+    }
+
+    private void initTransientFields() {
+        javaScriptRunning_ = new ThreadLocal<Boolean>();
+        postponedActions_ = new ThreadLocal<List<PostponedAction>>();
+        holdPostponedActions_ = new ThreadLocal<Boolean>();
+    }
+
+    private static class FallbackCaller extends ScriptableObject {
+        @Override
+        public Object get(final String name, final Scriptable start) {
+            if (start instanceof ScriptableWithFallbackGetter) {
+                return ((ScriptableWithFallbackGetter) start).getWithFallback(name);
+            }
+            return NOT_FOUND;
+        }
+
+        @Override
+        public String getClassName() {
+            return "htmlUnitHelper-fallbackCaller";
+        }
+    }
+
+    /**
+     * Gets the class of the JavaScript object for the node class.
+     * @param c the node class {@link DomNode} or some subclass.
+     * @return <code>null</code> if none found
+     */
+    public Class<? extends SimpleScriptable> getJavaScriptClass(final Class<?> c) {
+        return jsConfig_.getHtmlJavaScriptMapping().get(c);
+    }
 }

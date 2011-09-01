@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,12 +20,10 @@ import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
  * A JavaScript object for a CSSPrimitiveValue.
  *
  * @see org.w3c.dom.css.CSSPrimitiveValue
- * @version $Revision: 4789 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  */
 public class CSSPrimitiveValue extends CSSValue {
-
-    private static final long serialVersionUID = -1742690770021576031L;
 
     /**
      * The value is not a recognized CSS2 value. The value can only be

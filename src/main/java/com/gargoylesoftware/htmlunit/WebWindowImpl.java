@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import com.gargoylesoftware.htmlunit.html.FrameWindow;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.javascript.background.JavaScriptJobManager;
@@ -30,15 +33,14 @@ import com.gargoylesoftware.htmlunit.javascript.background.JavaScriptJobManagerI
  * exposed in any other places of the API. Internally we can cast to this class
  * when we need access to functionality that is not present in {@link WebWindow}
  *
- * @version $Revision: 4756 $
+ * @version $Revision: 6374 $
  * @author Brad Clarke
  * @author David K. Taylor
  * @author Ahmed Ashour
  */
 public abstract class WebWindowImpl implements WebWindow {
 
-    /** Serial version UID. */
-    private static final long serialVersionUID = -8407026088913790772L;
+    private static final Log LOG = LogFactory.getLog(WebWindowImpl.class);
 
     private WebClient webClient_;
     private Page enclosedPage_;
@@ -47,6 +49,7 @@ public abstract class WebWindowImpl implements WebWindow {
     private List<WebWindowImpl> childWindows_ = new ArrayList<WebWindowImpl>();
     private String name_ = "";
     private History history_ = new History(this);
+    private boolean closed_;
 
     /**
      * Never call this, used for Serialization.
@@ -66,7 +69,6 @@ public abstract class WebWindowImpl implements WebWindow {
         WebAssert.notNull("webClient", webClient);
         webClient_ = webClient;
         jobManager_ = new JavaScriptJobManagerImpl(this);
-        performRegistration();
     }
 
     /**
@@ -94,6 +96,9 @@ public abstract class WebWindowImpl implements WebWindow {
      * {@inheritDoc}
      */
     public void setEnclosedPage(final Page page) {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("setEnclosedPage: " + page);
+        }
         if (page == enclosedPage_) {
             return;
         }
@@ -156,15 +161,22 @@ public abstract class WebWindowImpl implements WebWindow {
     }
 
     void destroyChildren() {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("destroyChildren");
+        }
         getJobManager().removeAllJobs();
         for (final ListIterator<WebWindowImpl> iter = childWindows_.listIterator(); iter.hasNext();) {
             final WebWindowImpl window = iter.next();
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("closing child window: " + window);
+            }
+            window.setClosed();
+            window.getJobManager().shutdown();
             final Page page = window.getEnclosedPage();
             if (page instanceof HtmlPage) {
                 ((HtmlPage) page).cleanUp();
             }
             window.destroyChildren();
-            window.getJobManager().shutdown();
             iter.remove();
         }
     }
@@ -191,4 +203,17 @@ public abstract class WebWindowImpl implements WebWindow {
         return history_;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    public boolean isClosed() {
+        return closed_;
+    }
+
+    /**
+     * Sets this window as closed.
+     */
+    protected void setClosed() {
+        closed_ = true;
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,13 +17,11 @@ package com.gargoylesoftware.htmlunit.javascript.host.html;
 /**
  * The JavaScript object "HTMLHtmlElement".
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
  */
 public class HTMLHtmlElement extends HTMLElement {
-
-    private static final long serialVersionUID = 4942983761903195465L;
 
     /**
      * Creates an instance.
@@ -32,19 +30,19 @@ public class HTMLHtmlElement extends HTMLElement {
         // Empty.
     }
 
-    /**
-     * Returns "clientWidth" attribute.
-     * @return the clientWidth attribute
-     */
+    /** {@inheritDoc} */
+    @Override
+    public Object jsxGet_parentNode() {
+        return getWindow().jsxGet_document();
+    }
+
+    /** {@inheritDoc} */
     @Override
     public int jsxGet_clientWidth() {
         return getWindow().jsxGet_innerWidth();
     }
 
-    /**
-     * Returns "clientWidth" attribute.
-     * @return the clientWidth attribute
-     */
+    /** {@inheritDoc} */
     @Override
     public int jsxGet_clientHeight() {
         return getWindow().jsxGet_innerHeight();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,6 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
-import static com.gargoylesoftware.htmlunit.protocol.javascript.JavaScriptURLConnection.JAVASCRIPT_PREFIX;
-
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.GeneralPath;
 import java.awt.geom.Rectangle2D;
@@ -26,26 +24,23 @@ import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
 
-import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.SgmlPage;
-import com.gargoylesoftware.htmlunit.TextUtil;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebRequestSettings;
+import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebWindow;
+import com.gargoylesoftware.htmlunit.protocol.javascript.JavaScriptURLConnection;
 
 /**
  * Wrapper for the HTML element "area".
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6206 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
-public class HtmlArea extends ClickableElement {
-
-    private static final long serialVersionUID = 8933911141016200386L;
+public class HtmlArea extends HtmlElement {
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "area";
@@ -67,16 +62,17 @@ public class HtmlArea extends ClickableElement {
      * {@inheritDoc}
      */
     @Override
-    protected Page doClickAction(final Page defaultPage) throws IOException {
+    protected void doClickAction() throws IOException {
         final HtmlPage enclosingPage = (HtmlPage) getPage();
         final WebClient webClient = enclosingPage.getWebClient();
 
-        final String href = getHrefAttribute();
-        if (href != null && href.length() > 0) {
+        final String href = getHrefAttribute().trim();
+        if (href.length() > 0) {
             final HtmlPage page = (HtmlPage) getPage();
-            if (TextUtil.startsWithIgnoreCase(href, JAVASCRIPT_PREFIX)) {
-                return page.executeJavaScriptIfPossible(
-                    href, "javascript url", getStartLineNumber()).getNewPage();
+            if (StringUtils.startsWithIgnoreCase(href, JavaScriptURLConnection.JAVASCRIPT_PREFIX)) {
+                page.executeJavaScriptIfPossible(
+                    href, "javascript url", getStartLineNumber());
+                return;
             }
             final URL url;
             try {
@@ -86,14 +82,14 @@ public class HtmlArea extends ClickableElement {
                 throw new IllegalStateException(
                         "Not a valid url: " + getHrefAttribute());
             }
-            final WebRequestSettings settings = new WebRequestSettings(url);
+            final WebRequest request = new WebRequest(url);
+            request.setAdditionalHeader("Referer", page.getWebResponse().getWebRequest().getUrl().toExternalForm());
             final WebWindow webWindow = enclosingPage.getEnclosingWindow();
-            return webClient.getPage(
+            webClient.getPage(
                     webWindow,
                     enclosingPage.getResolvedTarget(getTargetAttribute()),
-                    settings);
+                    request);
         }
-        return defaultPage;
     }
 
     /**
@@ -219,7 +215,7 @@ public class HtmlArea extends ClickableElement {
             return true;
         }
         else if ("rect".equals(shape) && getCoordsAttribute() != null) {
-            final String[] coords = getCoordsAttribute().split(",");
+            final String[] coords = StringUtils.split(getCoordsAttribute(), ',');
             final double leftX = Double.parseDouble(coords[0].trim());
             final double topY = Double.parseDouble(coords[1].trim());
             final double rightX = Double.parseDouble(coords[2].trim());
@@ -231,7 +227,7 @@ public class HtmlArea extends ClickableElement {
             }
         }
         else if ("circle".equals(shape) && getCoordsAttribute() != null) {
-            final String[] coords = getCoordsAttribute().split(",");
+            final String[] coords = StringUtils.split(getCoordsAttribute(), ',');
             final double centerX = Double.parseDouble(coords[0].trim());
             final double centerY = Double.parseDouble(coords[1].trim());
             final String radiusString = coords[2].trim();
@@ -243,14 +239,14 @@ public class HtmlArea extends ClickableElement {
             catch (final NumberFormatException nfe) {
                 throw new NumberFormatException("Circle radius of " + radiusString + " is not yet implemented.");
             }
-            final Ellipse2D ellipse = new Ellipse2D.Double(centerX - radius / 2, centerY - radius / 2,
+            final Ellipse2D ellipse = new Ellipse2D.Double(centerX - (double) radius / 2, centerY - (double) radius / 2,
                     radius, radius);
             if (ellipse.contains(x, y)) {
                 return true;
             }
         }
         else if ("poly".equals(shape) && getCoordsAttribute() != null) {
-            final String[] coords = getCoordsAttribute().split(",");
+            final String[] coords = StringUtils.split(getCoordsAttribute(), ',');
             final GeneralPath path = new GeneralPath();
             for (int i = 0; i + 1 < coords.length; i += 2) {
                 if (i == 0) {

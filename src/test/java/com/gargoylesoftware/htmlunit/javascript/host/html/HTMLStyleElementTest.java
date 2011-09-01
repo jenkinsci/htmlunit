@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +18,17 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 
 /**
  * Tests for {@link HTMLStyleElement}.
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  */
 @RunWith(BrowserRunner.class)
-public class HTMLStyleElementTest extends WebTestCase {
+public class HTMLStyleElementTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if the test fails
@@ -49,6 +49,33 @@ public class HTMLStyleElementTest extends WebTestCase {
             + "</head><body onload='doTest()'>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * As of HtmlUnit-2.5 only the first child node of a STYLE was parsed.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("2")
+    public void styleChildren() throws Exception {
+        final String html
+            = "<html><head><title>foo</title><script>\n"
+            + "function doTest() {\n"
+            + "  var doc = document;\n"
+            + "  var style = doc.createElement('style');\n"
+            + "  doc.documentElement.firstChild.appendChild(style);\n"
+            + "  style.appendChild(doc.createTextNode('* { z-index: 0; }\\\n'));\n"
+            + "  style.appendChild(doc.createTextNode('DIV { z-index: 10; position: absolute; }\\\n'));\n"
+            + "  if (doc.styleSheets[0].cssRules)\n"
+            + "    rules = doc.styleSheets[0].cssRules;\n"
+            + "  else\n"
+            + "    rules = doc.styleSheets[0].rules;\n"
+            + "  alert(rules.length);\n"
+            + "}</script>\n"
+            + "</head><body onload='doTest()'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
     }
 }

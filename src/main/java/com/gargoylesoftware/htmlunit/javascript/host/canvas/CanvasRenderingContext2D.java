@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,17 +14,19 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.canvas;
 
+import net.sourceforge.htmlunit.corejs.javascript.Context;
+import net.sourceforge.htmlunit.corejs.javascript.Function;
+import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
+
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 
 /**
  * A JavaScript object for a CanvasRenderingContext2D.
  *
- * @version $Revision: 4481 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  */
 public class CanvasRenderingContext2D extends SimpleScriptable {
-
-    private static final long serialVersionUID = -693023667459214244L;
 
     /**
      * Returns the "fillStyle" property.
@@ -32,6 +34,24 @@ public class CanvasRenderingContext2D extends SimpleScriptable {
      */
     public Object jsxGet_fillStyle() {
         return null;
+    }
+
+    /**
+     * Changes the transformation matrix to apply a translation transformation with the given characteristics.
+     * @param x the translation distance in the horizontal direction
+     * @param y the translation distance in the vertical direction
+     */
+    public void jsxFunction_translate(final Object x, final Object y) {
+      // empty
+    }
+
+    /**
+     * Changes the transformation matrix to apply a scaling transformation with the given characteristics.
+     * @param x the scale factor in the horizontal direction
+     * @param y the scale factor in the vertical direction
+     */
+    public void jsxFunction_scale(final Object x, final Object y) {
+      //empty
     }
 
     /**
@@ -242,6 +262,18 @@ public class CanvasRenderingContext2D extends SimpleScriptable {
      * Creates a new clipping region.
      */
     public void jsxFunction_clip() {
+        //empty
+    }
+
+    /**
+     * Draws images onto the canvas.
+     * @param context the JavaScript context
+     * @param thisObj the scriptable
+     * @param args the arguments passed into the method
+     * @param function the function
+     */
+    public static void jsxFunction_drawImage(
+            final Context context, final Scriptable thisObj, final Object[] args, final Function function) {
         //empty
     }
 }

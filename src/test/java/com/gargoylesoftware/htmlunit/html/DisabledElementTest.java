@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
  * attribute:  <code>button</code>, <code>input</code>, <code>optgroup</code>, <code>option</code>, <code>select</code>
  * and <code>textarea</code>.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6241 $
  * @author David D. Kilzer
  * @author Ahmed Ashour
  */
@@ -122,7 +122,7 @@ public class DisabledElementTest extends WebTestCase {
 
         final String htmlContent = MessageFormat.format(htmlContent_, new Object[]{disabledAttribute});
         final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(BrowserVersion.FIREFOX_2, htmlContent, collectedAlerts);
+        final HtmlPage page = loadPage(BrowserVersion.FIREFOX_3_6, htmlContent, collectedAlerts);
 
         final HtmlForm form = page.getHtmlElementById("form1");
         final DisabledElement element = (DisabledElement) form.getElementById("element1");

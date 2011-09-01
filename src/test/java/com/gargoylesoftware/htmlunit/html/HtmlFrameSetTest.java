@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,22 +22,26 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.WebWindow;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
 
 /**
  * Tests for {@link HtmlFrameSet}.
  *
- * @version $Revision: 4282 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Marc Guillemot
  * @author Hans Donner
  * @author Ahmed Ashour
  */
+@RunWith(BrowserRunner.class)
 public class HtmlFrameSetTest extends WebTestCase {
 
     /**
@@ -58,7 +62,7 @@ public class HtmlFrameSetTest extends WebTestCase {
         final String secondContent = "<html><head><title>Second</title></head><body></body></html>";
         final String thirdContent  = "<html><head><title>Third</title></head><body></body></html>";
 
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
@@ -93,7 +97,7 @@ public class HtmlFrameSetTest extends WebTestCase {
             + "</html>";
         final String secondContent = "<html><head><title>Second</title></head><body></body></html>";
 
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
@@ -150,7 +154,7 @@ public class HtmlFrameSetTest extends WebTestCase {
         final URL firstURL = new URL(baseUrl + "/subdir2/first.html");
         final URL secondURL = new URL(baseUrl + "/second.html");
 
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(framesURL, framesContent);
@@ -203,7 +207,7 @@ public class HtmlFrameSetTest extends WebTestCase {
             + "</head>\n"
             + "<body onload='init()'></body></html>";
 
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
 
@@ -238,7 +242,7 @@ public class HtmlFrameSetTest extends WebTestCase {
             + "</html>";
         final String secondContent = "<html><head><title>Second</title></head><body></body></html>";
 
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
@@ -271,7 +275,7 @@ public class HtmlFrameSetTest extends WebTestCase {
             = "<html><body><script>alert(2);</script></body></html>";
         final String thirdContent
             = "alert('3');\n";
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
@@ -338,7 +342,7 @@ public class HtmlFrameSetTest extends WebTestCase {
             + "  This is the right frame, version 2.\n"
             + "</body></html>";
 
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
         final List<String> collectedAlerts = new ArrayList<String>();
         client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
@@ -361,10 +365,8 @@ public class HtmlFrameSetTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
+    @NotYetImplemented
     public void onunload() throws Exception {
-        if (notYetImplemented()) {
-            return;
-        }
         final String mainHtml =
             "<frameset onunload=\"document.location.href='3.html'\">\n"
             + "<frame name='f1' src='1.html'/>\n"
@@ -382,7 +384,7 @@ public class HtmlFrameSetTest extends WebTestCase {
             + "<body>hello</body>\n"
             + "</html>";
 
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
         final List<String> collectedAlerts = new ArrayList<String>();
         webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
         final MockWebConnection conn = new MockWebConnection();
@@ -417,7 +419,7 @@ public class HtmlFrameSetTest extends WebTestCase {
         final String secondContent = "<html><head><title>Second</title></head><body></body></html>";
         final String thirdContent  = "<html><head><title>Third</title></head><body></body></html>";
 
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
@@ -455,7 +457,7 @@ public class HtmlFrameSetTest extends WebTestCase {
         final String secondContent = "<html><head><title>Second</title></head><body></body></html>";
         final String thirdContent  = "<html><head><title>Third</title></head><body></body></html>";
 
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);

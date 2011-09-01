@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
 import com.gargoylesoftware.htmlunit.html.HtmlDivision;
 import com.gargoylesoftware.htmlunit.html.HtmlInlineFrame;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
@@ -36,10 +37,11 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 /**
  * Tests for {@link HTMLIFrameElement}.
  *
- * @version $Revision: 4900 $
+ * @version $Revision: 6313 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  * @author Daniel Gredler
+ * @author Ronald Brill
  */
 @RunWith(BrowserRunner.class)
 public class HTMLIFrameElementTest extends WebTestCase {
@@ -543,5 +545,101 @@ public class HTMLIFrameElementTest extends WebTestCase {
 
         webClient.getPage(URL_FIRST);
         assertEquals(getExpectedAlerts(), collectedAlerts);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts("128")
+    public void width_px() throws Exception {
+        final String html
+            = "<html><head>"
+            + "<script>\n"
+            + "  function test() {\n"
+            + "    var iframe = document.getElementById('myFrame');\n"
+            + "    iframe.width = '128px';\n"
+            + "    alert(iframe.width);\n"
+            + "  }\n"
+            + "</script>\n"
+            + "<body onload='test()'>\n"
+            + "  <iframe id='myFrame'></iframe>\n"
+            + "</body></html>";
+        loadPageWithAlerts(html);
+    }
+
+    /**
+     * IE: getElementById() returns a different object than with direct 'id' variable.
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(IE = { "[object]", "[object]", "undefined", "" },
+            FF = { "[object HTMLIFrameElement]", "[object HTMLIFrameElement]", "", "" })
+    @NotYetImplemented(Browser.IE)
+    public void idByName() throws Exception {
+        final String html
+            = "<html><head>"
+            + "<script>\n"
+            + "  function test() {\n"
+            + "    alert(myFrame);\n"
+            + "    alert(document.getElementById('myFrame'));\n"
+            + "    alert(myFrame.width);\n"
+            + "    alert(document.getElementById('myFrame').width);\n"
+            + "  }\n"
+            + "</script>\n"
+            + "<body onload='test()'>\n"
+            + "  <iframe id='myFrame'></iframe>\n"
+            + "</body></html>";
+        loadPageWithAlerts(html);
+    }
+
+    /**
+     * Regression test for bug 2940926.
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void settingInnerHtmlTriggersFrameLoad() throws Exception {
+        final String html
+            = "<html><body><div id='d' onclick='loadFrame()'>Click me to show frame</div><script>\n"
+            + "function loadFrame() {\n"
+            + "  var s = '<iframe id=\"i\" src=\"frame.html\">';\n"
+            + "  s += '<p>Your browser does not support frames</p>';\n"
+            + "  s += '</iframe>';\n"
+            + "  var d = document.getElementById('d');\n"
+            + "  d.innerHTML = s;\n"
+            + "}\n"
+            + "</script></body></html>";
+        final String html2 = "<html><body>foo</body></html>";
+
+        final MockWebConnection conn = new MockWebConnection();
+        conn.setResponse(URL_FIRST, html);
+        conn.setResponse(new URL(URL_FIRST, "frame.html"), html2);
+
+        final WebClient client = getWebClient();
+        client.setWebConnection(conn);
+
+        final HtmlPage page = client.getPage(URL_FIRST);
+        page.getElementById("d").click();
+
+        final HtmlInlineFrame frame = (HtmlInlineFrame) page.getElementById("i");
+        final HtmlPage framePage = (HtmlPage) frame.getEnclosedPage();
+        assertEquals("foo", framePage.getBody().asText());
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts("loaded")
+    public void onLoad_textFile() throws Exception {
+        final String html =
+              "<html>\n"
+            + "  <body>\n"
+            + "    <iframe id='i' onload='alert(\"loaded\");' src='foo.txt'></iframe>\n"
+            + "  </body>\n"
+            + "</html>";
+
+        getMockWebConnection().setDefaultResponse("hello", "text/plain");
+        loadPageWithAlerts(html);
     }
 }

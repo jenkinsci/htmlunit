@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,13 +19,11 @@ import java.net.URL;
 /**
  * An exception that is thrown when the server returns a failing status code.
  *
- * @version $Revision: 4463 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Marc Guillemot
  */
 public class FailingHttpStatusCodeException extends RuntimeException {
-
-    private static final long serialVersionUID = 4080165207084775250L;
 
     private final WebResponse response_;
 
@@ -34,6 +32,16 @@ public class FailingHttpStatusCodeException extends RuntimeException {
      * @param failingResponse the failing response
      */
     public FailingHttpStatusCodeException(final WebResponse failingResponse) {
+        this(buildMessage(failingResponse), failingResponse);
+    }
+
+    /**
+     * Creates an instance.
+     * @param message the message
+     * @param failingResponse the failing response
+     */
+    FailingHttpStatusCodeException(final String message, final WebResponse failingResponse) {
+        super(message);
         response_ = failingResponse;
     }
 
@@ -53,14 +61,10 @@ public class FailingHttpStatusCodeException extends RuntimeException {
         return response_.getStatusMessage();
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String getMessage() {
-        final int code = getStatusCode();
-        final String msg = getStatusMessage();
-        final URL url = getResponse().getRequestSettings().getUrl();
+    private static String buildMessage(final WebResponse failingResponse) {
+        final int code = failingResponse.getStatusCode();
+        final String msg = failingResponse.getStatusMessage();
+        final URL url = failingResponse.getWebRequest().getUrl();
         return code + " " + msg + " for " + url;
     }
 

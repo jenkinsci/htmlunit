@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,6 +45,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
@@ -53,7 +54,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 /**
  * Common superclass for HtmlUnit tests.
  *
- * @version $Revision: 4859 $
+ * @version $Revision: 6392 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David D. Kilzer
  * @author Marc Guillemot
@@ -68,7 +69,7 @@ public abstract class WebTestCase {
     private static final Log LOG = LogFactory.getLog(WebTestCase.class);
 
     /** The listener port for the web server. */
-    public static final int PORT = Integer.valueOf(System.getProperty("htmlunit.test.port", "12345"));
+    public static final int PORT = Integer.parseInt(System.getProperty("htmlunit.test.port", "12345"));
 
     /** Constant for the URL which is used in the tests. */
     public static final URL URL_FIRST;
@@ -76,11 +77,16 @@ public abstract class WebTestCase {
     /** Constant for the URL which is used in the tests. */
     public static final URL URL_SECOND;
 
-    /** Constant for the URL which is used in the tests. */
+    /**
+     * Constant for the URL which is used in the tests.
+     * This URL doesn't use the same host name as {@link #URL_FIRST} and {@link #URL_SECOND}.
+     **/
     public static final URL URL_THIRD;
 
-    /** Constant for the URL http://www.gargoylesoftware.com which is used in the tests. */
-    public static final URL URL_GARGOYLE;
+    /**
+     * The content type for JavaScript.
+     */
+    public static final String JAVASCRIPT_MIME_TYPE = "application/javascript";
 
     /**
      * The name of the system property used to determine if files should be generated
@@ -104,13 +110,13 @@ public abstract class WebTestCase {
     private List<String> generateTest_expectedAlerts_;
     private boolean generateTest_notYetImplemented_;
     private String generateTest_testName_;
+    private int nbJSThreadsBeforeTest_;
 
     static {
         try {
             URL_FIRST = new URL("http://localhost:" + PORT + "/");
             URL_SECOND = new URL("http://localhost:" + PORT + "/second/");
-            URL_THIRD = new URL("http://localhost:" + PORT + "/third/");
-            URL_GARGOYLE = new URL("http://www.gargoylesoftware.com/");
+            URL_THIRD = new URL("http://127.0.0.1:" + PORT + "/third/");
         }
         catch (final MalformedURLException e) {
             // This is theoretically impossible.
@@ -131,7 +137,7 @@ public abstract class WebTestCase {
      * @return the new page
      * @throws Exception if something goes wrong
      */
-    public static final HtmlPage loadPage(final String html) throws Exception {
+    public final HtmlPage loadPage(final String html) throws Exception {
         return loadPage(html, null);
     }
 
@@ -143,12 +149,12 @@ public abstract class WebTestCase {
      * @return the new page
      * @throws Exception if something goes wrong
      */
-    public static final HtmlPage loadPage(final BrowserVersion browserVersion,
+    public final HtmlPage loadPage(final BrowserVersion browserVersion,
             final String html, final List<String> collectedAlerts) throws Exception {
         if (generateTest_browserVersion_.get() == null) {
             generateTest_browserVersion_.set(browserVersion);
         }
-        return loadPage(browserVersion, html, collectedAlerts, URL_GARGOYLE);
+        return loadPage(browserVersion, html, collectedAlerts, getDefaultUrl());
     }
 
     /**
@@ -159,9 +165,10 @@ public abstract class WebTestCase {
      * @return the new page
      * @throws Exception if something goes wrong
      */
-    public static final HtmlPage loadPage(final String html, final List<String> collectedAlerts) throws Exception {
+    public final HtmlPage loadPage(final String html, final List<String> collectedAlerts) throws Exception {
         generateTest_browserVersion_.set(FLAG_ALL_BROWSERS);
-        return loadPage(BrowserVersion.getDefault(), html, collectedAlerts, URL_GARGOYLE);
+        final BrowserVersion version = (browserVersion_ != null) ? browserVersion_ : BrowserVersion.getDefault();
+        return loadPage(version, html, collectedAlerts, getDefaultUrl());
     }
 
     /**
@@ -202,7 +209,7 @@ public abstract class WebTestCase {
      * @return the new page
      * @throws Exception if something goes wrong
      */
-    protected static final HtmlPage loadPage(final String html, final List<String> collectedAlerts,
+    protected final HtmlPage loadPage(final String html, final List<String> collectedAlerts,
             final URL url) throws Exception {
 
         return loadPage(BrowserVersion.getDefault(), html, collectedAlerts, url);
@@ -217,11 +224,13 @@ public abstract class WebTestCase {
      * @return the new page
      * @throws Exception if something goes wrong
      */
-    protected static final HtmlPage loadPage(final BrowserVersion browserVersion,
+    protected final HtmlPage loadPage(final BrowserVersion browserVersion,
             final String html, final List<String> collectedAlerts, final URL url) throws Exception {
 
-        final WebClient client = new WebClient(browserVersion);
-        return loadPage(client, html, collectedAlerts, url);
+        if (webClient_ == null) {
+            webClient_ = new WebClient(browserVersion);
+        }
+        return loadPage(webClient_, html, collectedAlerts, url);
     }
 
     /**
@@ -255,10 +264,10 @@ public abstract class WebTestCase {
      * @return the new page
      * @throws Exception if something goes wrong
      */
-    protected static final HtmlPage loadPage(final WebClient client,
+    protected final HtmlPage loadPage(final WebClient client,
             final String html, final List<String> collectedAlerts) throws Exception {
 
-        return loadPage(client, html, collectedAlerts, URL_GARGOYLE);
+        return loadPage(client, html, collectedAlerts, getDefaultUrl());
     }
 
     /**
@@ -286,6 +295,24 @@ public abstract class WebTestCase {
      */
     protected void assertEquals(final Object expected, final Object actual) {
         Assert.assertEquals(expected, actual);
+    }
+
+    /**
+     * Asserts the two ints are equal.
+     * @param expected the expected int
+     * @param actual the int to test
+     */
+    protected void assertEquals(final int expected, final int actual) {
+        Assert.assertEquals(expected, actual);
+    }
+
+    /**
+     * Asserts the two boolean are equal.
+     * @param expected the expected boolean
+     * @param actual the boolean to test
+     */
+    protected void assertEquals(final boolean expected, final boolean actual) {
+        Assert.assertEquals(Boolean.valueOf(expected), Boolean.valueOf(actual));
     }
 
     /**
@@ -465,8 +492,10 @@ public abstract class WebTestCase {
             LOG.info("Test file written: " + f.getAbsolutePath());
         }
         else {
-            LOG.debug("System property \"" + PROPERTY_GENERATE_TESTPAGES
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("System property \"" + PROPERTY_GENERATE_TESTPAGES
                     + "\" not set, don't generate test HTML page for real browser");
+            }
         }
     }
 
@@ -605,26 +634,19 @@ public abstract class WebTestCase {
         final String resourcePath = getClass().getPackage().getName().replace('.', '/') + '/' + fileName;
         final URL url = getClass().getClassLoader().getResource(resourcePath);
 
-        final Map<String, BrowserVersion> testedBrowser = new HashMap<String, BrowserVersion>();
-        testedBrowser.put("FIREFOX_2", BrowserVersion.FIREFOX_2);
-        testedBrowser.put("INTERNET_EXPLORER_6_0", BrowserVersion.INTERNET_EXPLORER_6);
+        final String browserKey = getBrowserVersion().getNickname().substring(0, 2);
 
-        for (final Map.Entry<String, BrowserVersion> entry : testedBrowser.entrySet()) {
-            final String browserKey = entry.getKey();
-            final BrowserVersion browserVersion = entry.getValue();
+        final WebClient client = getWebClient();
 
-            final WebClient client = new WebClient(browserVersion);
+        final HtmlPage page = client.getPage(url);
+        final HtmlElement want = page.getHtmlElementById(browserKey);
 
-            final HtmlPage page = client.getPage(url);
-            final HtmlElement want = page.getHtmlElementById(browserKey);
+        final HtmlElement got = page.getHtmlElementById("log");
 
-            final HtmlElement got = page.getHtmlElementById("log");
+        final List<String> expected = readChildElementsText(want);
+        final List<String> actual = readChildElementsText(got);
 
-            final List<String> expected = readChildElementsText(want);
-            final List<String> actual = readChildElementsText(got);
-
-            Assert.assertEquals(expected, actual);
-        }
+        Assert.assertEquals(expected, actual);
     }
 
     private List<String> readChildElementsText(final HtmlElement elt) {
@@ -643,7 +665,7 @@ public abstract class WebTestCase {
      * Returns the WebClient instance for the current test with the current {@link BrowserVersion}.
      * @return a WebClient with the current {@link BrowserVersion}
      */
-    protected final WebClient createNewWebClient() {
+    protected WebClient createNewWebClient() {
         return new WebClient(getBrowserVersion());
     }
 
@@ -718,8 +740,8 @@ public abstract class WebTestCase {
 
     /**
      * Defines the provided HTML as the response of the MockWebConnection for {@link #getDefaultUrl()}
-     * and loads the page with this URL using the current browser version.
-     * Finally asserts the alerts equal the expected alerts.
+     * and loads the page with this URL using the current browser version; finally, asserts that the
+     * alerts equal the expected alerts (in which "§§URL§§" has been expanded to the default URL).
      * @param html the HTML to use
      * @return the new page
      * @throws Exception if something goes wrong
@@ -730,8 +752,8 @@ public abstract class WebTestCase {
 
     /**
      * Defines the provided HTML as the response of the MockWebConnection for {@link #getDefaultUrl()}
-     * and loads the page with this URL using the current browser version.
-     * Finally asserts the alerts equal the expected alerts.
+     * and loads the page with this URL using the current browser version; finally, asserts the alerts
+     * equal the expected alerts.
      * @param html the HTML to use
      * @param url the URL from which the provided HTML code should be delivered
      * @param waitForJS the milliseconds to wait for background JS tasks to complete. Ignored if -1.
@@ -743,6 +765,9 @@ public abstract class WebTestCase {
         if (expectedAlerts_ == null) {
             throw new IllegalStateException("You must annotate the test class with '@RunWith(BrowserRunner.class)'");
         }
+
+        // expand variables in expected alerts
+        expandExpectedAlertsVariables(url);
 
         createTestPageForRealBrowserIfNeeded(html, expectedAlerts_);
 
@@ -762,6 +787,19 @@ public abstract class WebTestCase {
     }
 
     /**
+     * Expand "§§URL§§" to the provided URL in the expected alerts.
+     * @param url the url to expand
+     */
+    protected void expandExpectedAlertsVariables(final URL url) {
+        if (expectedAlerts_ == null) {
+            throw new IllegalStateException("You must annotate the test class with '@RunWith(BrowserRunner.class)'");
+        }
+        for (int i = 0; i < expectedAlerts_.length; ++i) {
+            expectedAlerts_[i] = expectedAlerts_[i].replaceAll("§§URL§§", url.toExternalForm());
+        }
+    }
+
+    /**
      * A generics-friendly version of {@link SerializationUtils#clone(Serializable)}.
      * @param <T> the type of the object being cloned
      * @param object the object being cloned
@@ -776,8 +814,8 @@ public abstract class WebTestCase {
      * Gets the default URL used for the tests.
      * @return the url
      */
-    protected URL getDefaultUrl() {
-        return URL_GARGOYLE;
+    protected static URL getDefaultUrl() {
+        return URL_FIRST;
     }
 
     /**
@@ -823,6 +861,15 @@ public abstract class WebTestCase {
     }
 
     /**
+     * Reads the number of JS threads remaining from unit tests run before the current one.
+     * Ideally it should be always 0.
+     */
+    @Before
+    public void readJSThreadsBeforeTest() {
+        nbJSThreadsBeforeTest_ = getJavaScriptThreads().size();
+    }
+
+    /**
      * Cleanup after a test.
      */
     @After
@@ -832,5 +879,48 @@ public abstract class WebTestCase {
         }
         webClient_ = null;
         mockWebConnection_ = null;
+
+        final List<Thread> jsThreads = getJavaScriptThreads();
+        // collect stack traces
+        // caution: the threads may terminate after the threads have been returned by getJavaScriptThreads()
+        // and before stack traces are retrieved
+        if (jsThreads.size() > nbJSThreadsBeforeTest_) {
+            final Map<String, StackTraceElement[]> stackTraces = new HashMap<String, StackTraceElement[]>();
+            for (final Thread t : jsThreads) {
+                final StackTraceElement elts[] = t.getStackTrace();
+                if (elts != null) {
+                    stackTraces.put(t.getName(), elts);
+                }
+            }
+
+            if (!stackTraces.isEmpty()) {
+                System.err.println("JS threads still running:");
+                for (final Map.Entry<String, StackTraceElement[]> entry : stackTraces.entrySet()) {
+                    System.err.println("Thread: " + entry.getKey());
+                    final StackTraceElement elts[] = entry.getValue();
+                    for (final StackTraceElement elt : elts) {
+                        System.err.println(elt);
+                    }
+                }
+                throw new RuntimeException("JS threads are still running: " + jsThreads.size());
+            }
+        }
+    }
+
+    /**
+     * Gets the active JavaScript threads.
+     * @return the threads
+     */
+    protected List<Thread> getJavaScriptThreads() {
+        final Thread[] threads = new Thread[Thread.activeCount() + 10];
+        Thread.enumerate(threads);
+        final List<Thread> jsThreads = new ArrayList<Thread>();
+        for (final Thread t : threads) {
+            if (t != null && t.getName().startsWith("JS executor for")) {
+                jsThreads.add(t);
+            }
+        }
+
+        return jsThreads;
     }
 }

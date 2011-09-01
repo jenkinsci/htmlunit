@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,34 +14,50 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import static com.gargoylesoftware.htmlunit.javascript.host.html.HTMLDocument.EMPTY_COOKIE_NAME;
+import static com.gargoylesoftware.htmlunit.util.StringUtils.parseHttpDate;
 import static org.junit.Assert.fail;
 
+import java.lang.reflect.Field;
 import java.net.URL;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
+import com.gargoylesoftware.htmlunit.CookieManager;
 import com.gargoylesoftware.htmlunit.ScriptException;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
+import com.gargoylesoftware.htmlunit.WebWindow;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
 import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.html.HtmlPageTest;
 import com.gargoylesoftware.htmlunit.html.HtmlTextArea;
+import com.gargoylesoftware.htmlunit.util.Cookie;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Tests for {@link HTMLDocument}.
  *
- * @version $Revision: 4855 $
+ * @version $Revision: 6479 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
  */
 @RunWith(BrowserRunner.class)
-public class HTMLDocumentTest extends WebTestCase {
+public class HTMLDocumentTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if the test fails
@@ -61,22 +77,21 @@ public class HTMLDocumentTest extends WebTestCase {
             + "    }\n"
             + "    </script>\n"
             + "</head>\n"
-            + "<body onload='test()'>"
+            + "<body onload='test()'>\n"
             + "<div id='myDiv'>\n"
             + "  <div></div>\n"
             + "</div>\n"
             + "</body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(FF3 = { "function", "div1", "span2", "span3", "2", "1", "1", "0", "0", "0" },
-            FF2 = { "undefined", "exception" },
+    @Alerts(FF = { "function", "div1", "span2", "span3", "2", "1", "1", "0", "0", "0" },
             IE = { "undefined", "exception" })
     public void getElementsByClassName() throws Exception {
         final String html
@@ -105,7 +120,7 @@ public class HTMLDocumentTest extends WebTestCase {
             + "<span class='red' id='span4'>bye</span>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -198,7 +213,15 @@ public class HTMLDocumentTest extends WebTestCase {
             + "</body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        final WebDriver driver = loadPageWithAlerts2(html);
+        if (driver instanceof HtmlUnitDriver) {
+            final HtmlUnitDriver huDriver = (HtmlUnitDriver) driver;
+            final Field field = HtmlUnitDriver.class.getDeclaredField("currentWindow");
+            field.setAccessible(true);
+            final WebWindow webWindow = (WebWindow) field.get(huDriver);
+            final HtmlPage page = (HtmlPage) webWindow.getEnclosedPage();
+            assertEquals("BackCompat".equals(getExpectedAlerts()[0]), page.isQuirksMode());
+        }
     }
 
     /**
@@ -220,7 +243,7 @@ public class HTMLDocumentTest extends WebTestCase {
             + "</body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -244,11 +267,11 @@ public class HTMLDocumentTest extends WebTestCase {
             + "}\n"
             + "</script>\n"
             + "</head>\n"
-            + "<body onload='test()'>"
+            + "<body onload='test()'>\n"
             + "</body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -272,11 +295,11 @@ public class HTMLDocumentTest extends WebTestCase {
             + "}\n"
             + "</script>\n"
             + "</head>\n"
-            + "<body onload='test()'>"
+            + "<body onload='test()'>\n"
             + "</body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -295,11 +318,11 @@ public class HTMLDocumentTest extends WebTestCase {
             + "}\n"
             + "</script>\n"
             + "</head>\n"
-            + "<body onload='test()'>"
+            + "<body onload='test()'>\n"
             + "</body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -327,7 +350,7 @@ public class HTMLDocumentTest extends WebTestCase {
             + "  <span id='s1'></span>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -352,7 +375,7 @@ public class HTMLDocumentTest extends WebTestCase {
             + "</script>\n"
             + "<body onload='doTest()'>foo</body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -380,7 +403,7 @@ public class HTMLDocumentTest extends WebTestCase {
             + "}\n"
             + "catch(e) { alert('exception') }\n"
             + "</script></body>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -388,37 +411,17 @@ public class HTMLDocumentTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.IE)
-    @Alerts(IE = { "d", "1" })
+    @Alerts(FF = "exception", IE = { "d", "1" })
     public void documentMethodsWithoutDocument() throws Exception {
         final String html
             = "<div id='d' name='d'>d</div>\n"
-            + "<script>var i = document.getElementById; alert(i('d').id);</script>\n"
-            + "<script>var n = document.getElementsByName; alert(n('d').length);</script>";
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    @NotYetImplemented
-    @Alerts("Hello There")
-    public void write() throws Exception {
-        final String html = "<html>\n"
-            + "<head>\n"
-            + "<title>Test</title>\n"
             + "<script>\n"
-            + "function test() {\n"
-            + "  document.write('<html><body><scr'+'ipt>alert(\"Hello There\")</scr'+'ipt></body></html>');\n"
-            + "}\n"
-            + "</script>\n"
-            + "</head>\n"
-            + "<body onload='test()'>"
-            + "</body>\n"
-            + "</html>";
-
-        loadPageWithAlerts(html);
+            + "try {\n"
+            + "  var i = document.getElementById; alert(i('d').id);\n"
+            + "  var n = document.getElementsByName; alert(n('d').length);\n"
+            + "} catch(e) { alert('exception') }\n"
+            + "</script>";
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -435,14 +438,14 @@ public class HTMLDocumentTest extends WebTestCase {
             + "    }\n"
             + "    </script>\n"
             + "</head>\n"
-            + "<body onload='test()'>"
+            + "<body onload='test()'>\n"
             + "<div id='myDiv'>\n"
             + "  <div></div>\n"
             + "</div>\n"
             + "</body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -469,7 +472,7 @@ public class HTMLDocumentTest extends WebTestCase {
             + "    }\n"
             + "    </script>\n"
             + "</head>\n"
-            + "<body onload='test()'>"
+            + "<body onload='test()'>\n"
             + "<div>\n"
             + "  <textarea id='myTextarea' cols='80'></textarea>\n"
             + "</div>\n"
@@ -509,15 +512,15 @@ public class HTMLDocumentTest extends WebTestCase {
             + "  </head>\n"
             + "  <body id='body' onload='test()'>blah</body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = {"[object HTMLSpanElement]", "undefined" },
-            IE = {"[object]", "4", "red" })
+    @Alerts(FF = { "[object HTMLCollection]", "4", "red" },
+            IE = { "[object]", "4", "red" })
     public void identicalIDs() throws Exception {
         final String html =
             "<html>\n"
@@ -539,7 +542,7 @@ public class HTMLDocumentTest extends WebTestCase {
             + "    <span id='Item' style='color:blue'></span>\n"
             + "  </body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -558,7 +561,7 @@ public class HTMLDocumentTest extends WebTestCase {
             + "<body onload='doTest()'>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts(html, new URL("http://www.gargoylesoftware.com/"), -1);
     }
 
   /**
@@ -566,6 +569,7 @@ public class HTMLDocumentTest extends WebTestCase {
     */
     @Test
     @Browsers(Browser.FF)
+    @Alerts({ "www.gargoylesoftware.com", "gargoylesoftware.com" })
     public void domainMixedCaseNetscape() throws Exception {
         final URL urlGargoyleUpperCase = new URL("http://WWW.GARGOYLESOFTWARE.COM/");
 
@@ -579,12 +583,8 @@ public class HTMLDocumentTest extends WebTestCase {
             + "<body onload='doTest()'>\n"
             + "</body></html>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-
-        loadPage(getBrowserVersion(), html, collectedAlerts, urlGargoyleUpperCase);
-
-        final String[] expectedAlerts = {"www.gargoylesoftware.com", "gargoylesoftware.com"};
-        assertEquals(expectedAlerts, collectedAlerts);
+        getMockWebConnection().setResponse(new URL("http://www.gargoylesoftware.com/"), html);
+        loadPageWithAlerts(html, urlGargoyleUpperCase, -1);
     }
 
     /**
@@ -604,7 +604,7 @@ public class HTMLDocumentTest extends WebTestCase {
             + "<body onload='doTest()'>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts(html, new URL("http://www.gargoylesoftware.com/"), -1);
     }
 
     /**
@@ -701,38 +701,7 @@ public class HTMLDocumentTest extends WebTestCase {
             + "<iframe src='about:blank'></iframe>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * Caused infinite loop at some point of 2.6 snapshot.
-     * See <a href="http://sourceforge.net/support/tracker.php?aid=2824922">Bug 2824922</a>
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void write2_html_endhtml_in_head() throws Exception {
-        final String html = "<html><head>\n"
-            + "<script>\n"
-            + "document.write('<HTML></HTML>');\n"
-            + "</script>\n"
-            + "</head><body>\n"
-            + "</body></html>\n";
-
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * We couldn't document.write() script elements that contained the '<' character...
-     * @exception Exception if the test fails
-     */
-    @Test
-    @Alerts("true")
-    public void writeScript() throws Exception {
-        final String html =
-              "<html><body><script>\n"
-            + "  document.write('<scr'+'ipt>alert(1<2)</sc'+'ript>');\n"
-            + "</script></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts(html, new URL("http://www.gargoylesoftware.com/"), -1);
     }
 
     /**
@@ -755,7 +724,639 @@ public class HTMLDocumentTest extends WebTestCase {
             + "  </s:form>\n"
             + "</body></html>";
 
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Property lastModified returns the last modification date of the document.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "string", "Fri, 16 Oct 2009 13:59:47 GMT" })
+    public void lastModified() throws Exception {
+        final List<NameValuePair> responseHeaders = new ArrayList<NameValuePair>();
+        responseHeaders.add(new NameValuePair("Last-Modified", "Fri, 16 Oct 2009 13:59:47 GMT"));
+        testLastModified(responseHeaders);
+
+        // Last-Modified header has priority compared to Date header
+        responseHeaders.add(new NameValuePair("Date", "Fri, 17 Oct 2009 13:59:47 GMT"));
+        testLastModified(responseHeaders);
+
+        // but Date is taken, if no Last-Modified header is present
+        responseHeaders.clear();
+        responseHeaders.add(new NameValuePair("Date", "Fri, 16 Oct 2009 13:59:47 GMT"));
+        testLastModified(responseHeaders);
+    }
+
+    private void testLastModified(final List<NameValuePair> responseHeaders) throws Exception {
+        final String html = "<html><head><title>foo</title><script>\n"
+            + "function doTest(){\n"
+            + "  alert(typeof document.lastModified);\n"
+            + "  var d = new Date(document.lastModified);\n"
+            + "  alert(d.toGMTString());\n" // to have results not depending on the user's time zone
+            + "}\n"
+            + "</script></head>\n"
+            + "<body onload='doTest()'>\n"
+            + "</body></html>";
+
+        getMockWebConnection().setResponse(getDefaultUrl(), html, 200, "OK", "text/html", responseHeaders);
+
+        loadPageWithAlerts2(getDefaultUrl());
+    }
+
+    /**
+     * If neither Date header nor Last-Modified header is present, current time is taken.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "true", "true" })
+    public void lastModified_noDateHeader() throws Exception {
+        final String html = "<html><head><title>foo</title><script>\n"
+            + "function doTest(){\n"
+            + "  var justBeforeLoading = " + System.currentTimeMillis() + ";\n"
+            + "  var d = new Date(document.lastModified);\n"
+            + "  alert(d.valueOf() >= justBeforeLoading - 1000);\n" // date string format has no ms, take 1s marge
+            + "  alert(d.valueOf() <= new Date().valueOf());\n"
+            + "}\n"
+            + "</script></head>\n"
+            + "<body onload='doTest()'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Regression test for bug 2919853 (format of <tt>document.lastModified</tt> was incorrect).
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void lastModified_format() throws Exception {
+        final String html
+            = "<html><body onload='document.getElementById(\"i\").value = document.lastModified'>\n"
+            + "<input id='i'></input></body></html>";
+
+        final WebDriver driver = loadPageWithAlerts2(html);
+        final String lastModified = driver.findElement(By.id("i")).getAttribute("value");
+
+        try {
+            new SimpleDateFormat("MM/dd/yyyy HH:mm:ss").parse(lastModified);
+        }
+        catch (final ParseException e) {
+            fail(e.getMessage());
+        }
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(FF = { "1", "[object HTMLBodyElement]" }, IE = "exception")
+    public void designMode_selectionRange_empty() throws Exception {
+        designMode_selectionRange("");
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(FF = { "1", "[object Text]" }, IE = "exception")
+    public void designMode_selectionRange_text() throws Exception {
+        designMode_selectionRange("hello");
+    }
+
+    private void designMode_selectionRange(final String bodyContent) throws Exception {
+        final String html = "<html><head><title>foo</title><script>\n"
+            + "function doTest(){\n"
+            + "  try {\n"
+            + "    document.designMode = 'on';\n"
+            + "    var s = window.getSelection();\n"
+            + "    alert(s.rangeCount);\n"
+            + "    alert(s.getRangeAt(0).startContainer);\n"
+            + "  } catch(e) {alert('exception'); }\n"
+            + "}\n"
+            + "</script></head>\n"
+            + "<body onload='doTest()'>" // no \n here!
+            + bodyContent
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(FF = "not defined",
+            IE = { "true", "1", "about:blank", "about:blank" })
+    public void frames() throws Exception {
+        final String html = "<html><head><script>\n"
+            + "function test(){\n"
+            + "  if (document.frames)\n"
+            + "  {\n"
+            + "    alert(document.frames == window.frames);\n"
+            + "    alert(document.frames.length);\n"
+            + "    alert(document.frames(0).location);\n"
+            + "    alert(document.frames('foo').location);\n"
+            + "  }\n"
+            + "  else\n"
+            + "    alert('not defined');\n"
+            + "}\n"
+            + "</script></head><body onload='test();'>\n"
+            + "<iframe src='about:blank' name='foo'></iframe>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * IE allows document.frameName to access a frame window.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(FF = { "undefined", "false" },
+            IE = { "[object]", "true" })
+    public void frameAccessByName() throws Exception {
+        final String html = "<html><head><script>\n"
+            + "function test(){\n"
+            + "  alert(document.foo);\n"
+            + "  alert(window.frames[0] == document.foo);\n"
+            + "}\n"
+            + "</script></head><body onload='test()'>\n"
+            + "<iframe src='about:blank' name='foo'></iframe>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(FF = { "2", "2" }, IE = { "0", "0" })
+    public void getElementsByName() throws Exception {
+        final String html
+            = "<html><head><title>Test</title><script>\n"
+            + "function doTest() {\n"
+            + "    alert(document.getElementsByName('').length);\n"
+            + "    alert(document.getElementsByName(null).length);\n"
+            + "}\n"
+            + "</script></head><body onload='doTest()'>\n"
+            + "<div name=''></div>\n"
+            + "<div name=''></div>\n"
+            + "<div></div>\n"
+            + "<div></div>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Test having &lt; and &gt; in attribute values.
+     */
+    @Test
+    @Browsers(Browser.NONE)
+    public void canAlreadyBeParsed() {
+        assertTrue(HTMLDocument.canAlreadyBeParsed("<p>hallo</p>"));
+        assertTrue(HTMLDocument.canAlreadyBeParsed("<img src='foo' alt=\"<'>\"></img>"));
+
+        // double close is ok
+        assertTrue(HTMLDocument.canAlreadyBeParsed("<script></script></script>"));
+
+        // check for correct string quoting in script
+        assertTrue(HTMLDocument.canAlreadyBeParsed("<script>var test ='abc';</script>"));
+        assertTrue(HTMLDocument.canAlreadyBeParsed("<script>var test =\"abc\";</script>"));
+        assertFalse(HTMLDocument.canAlreadyBeParsed("<script>var test ='abc\";</script>"));
+        assertFalse(HTMLDocument.canAlreadyBeParsed("<script>var test ='abc;</script>"));
+        assertFalse(HTMLDocument.canAlreadyBeParsed("<script>var test =\"abc;</script>"));
+
+        // check quoting only inside script tags
+        assertTrue(HTMLDocument.canAlreadyBeParsed("<script>var test ='abc';</script><p>it's fun</p>"));
+    }
+
+    /**
+     * Regression test for a bug introduced by the document proxy and detected by the Dojo JavaScript library tests.
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts("true")
+    public void equalityViaDifferentPaths() throws Exception {
+        final String html
+            = "<html><body>\n"
+            + "<script>alert(document.body.parentNode.parentNode === document)</script>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(FF = { "[object BoxObject]", "true", "true", "true" }, IE = "exception")
+    public void getBoxObjectFor() throws Exception {
+        final String html = "<html><head><title>Test</title><script>\n"
+            + "function doTest() {\n"
+            + "  var e = document.getElementById('log');\n"
+            + "  try {\n"
+            + "    var a = document.getBoxObjectFor(e);\n"
+            + "    alert(a);\n"
+            + "    alert(a === document.getBoxObjectFor(e));\n"
+            + "    alert(a.screenX > 0);\n"
+            + "    alert(a.screenY > 0);\n"
+            + "  } catch (e) { alert('exception') }\n"
+            + "}\n"
+            + "</script></head><body onload='doTest()'>\n"
+            + "<div id='log'></div>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(FF = { "exception", "0 commands supported" },
+            IE = { "Not supported: foo", "Not supported: 123", "78 commands supported" })
+    public void queryCommandSupported() throws Exception {
+        final String html = "<html><head><title>Test</title><script>\n"
+            + "function doTest() {\n"
+            + "  var cmds = ['2D-Position', 'AbsolutePosition', 'BackColor', 'BlockDirLTR', 'BlockDirRTL', 'Bold', "
+            + "'BrowseMode', 'ClearAuthenticationCache', 'Copy', 'CreateBookmark', 'CreateLink', 'Cut', 'Delete', "
+            + "'DirLTR', 'DirRTL', 'EditMode', 'FontName', 'FontSize', 'ForeColor', 'FormatBlock', 'Indent', "
+            + "'InlineDirLTR', 'InlineDirRTL', 'InsertButton', 'InsertFieldset', 'InsertHorizontalRule', "
+            + "'InsertIFrame', 'InsertImage', 'InsertInputButton', 'InsertInputCheckbox', 'InsertInputFileUpload', "
+            + "'InsertInputHidden', 'InsertInputImage', 'InsertInputPassword', 'InsertInputRadio', "
+            + "'InsertInputReset', 'InsertInputSubmit', 'InsertInputText', 'InsertMarquee', 'InsertOrderedList', "
+            + "'InsertParagraph', 'InsertSelectDropdown', 'InsertSelectListbox', 'InsertTextArea', "
+            + "'InsertUnorderedList', 'Italic', 'JustifyCenter', 'JustifyFull', 'JustifyLeft', 'JustifyNone', "
+            + "'JustifyRight', 'LiveResize', 'MultipleSelection', 'Open', 'Outdent', 'OverWrite', 'Paste', "
+            + "'PlayImage', 'Print', 'Redo', 'Refresh', 'RemoveFormat', 'RemoveParaFormat', 'SaveAs', 'SelectAll', "
+            + "'SizeToControl', 'SizeToControlHeight', 'SizeToControlWidth', 'Stop', 'StopImage', 'StrikeThrough', "
+            + "'Subscript', 'Superscript', 'UnBookmark', 'Underline', 'Undo', 'Unlink', 'Unselect', 'foo', 123];\n"
+            + "  var nbSupported = 0;\n"
+            + "  try {\n"
+            + "    for (var i=0; i<cmds.length; ++i) {\n"
+            + "      var cmd = cmds[i];"
+            + "      var b = document.queryCommandSupported(cmd);"
+            + "      if (b)\n"
+            + "        nbSupported++;\n"
+            + "      else\n"
+            + "        alert('Not supported: ' + cmd);\n"
+            + "    }"
+            + "  } catch (e) { alert('exception'); }\n"
+            + "  alert(nbSupported + ' commands supported');\n"
+            + "}\n"
+            + "</script></head><body onload='doTest()'>\n"
+            + "<div id='log'></div>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(FF3 = "undefined", FF3_6 = { "3", "div1" },
+            IE = "undefined", IE8 = { "3", "div1" })
+    public void querySelectorAll() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_ + "<html><head><title>Test</title>\n"
+            + "<style>\n"
+            + "  .red   {color:#FF0000;}\n"
+            + "  .green {color:#00FF00;}\n"
+            + "  .blue  {color:#0000FF;}\n"
+            + "</style>\n"
+            + "<script>\n"
+            + "function test() {\n"
+            + "  if(document.querySelectorAll) {\n"
+            + "    var redTags = document.querySelectorAll('.green,.red');\n"
+            + "    alert(redTags.length);\n"
+            + "    alert(redTags.item(0).id);\n"
+            + "  }\n"
+            + "  else\n"
+            + "    alert('undefined');\n"
+            + "}\n"
+            + "</script></head><body onload='test()'>\n"
+            + "  <div id='div1' class='red'>First</div>\n"
+            + "  <div id='div2' class='red'>Second</div>\n"
+            + "  <div id='div3' class='green'>Third</div>\n"
+            + "  <div id='div4' class='blue'>Fourth</div>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(FF3 = "undefined", FF3_6 = { "3", "div1" },
+        IE = "undefined")
+    public void querySelectorAll_quirks() throws Exception {
+        final String html = "<html><head><title>Test</title>\n"
+            + "<style>\n"
+            + "  .red   {color:#FF0000;}\n"
+            + "  .green {color:#00FF00;}\n"
+            + "  .blue  {color:#0000FF;}\n"
+            + "</style>\n"
+            + "<script>\n"
+            + "function test() {\n"
+            + "  if(document.querySelectorAll) {\n"
+            + "    var redTags = document.querySelectorAll('.red,.green');\n"
+            + "    alert(redTags.length);\n"
+            + "    alert(redTags.item(0).id);\n"
+            + "  }\n"
+            + "  else\n"
+            + "    alert('undefined');\n"
+            + "}\n"
+            + "</script></head><body onload='test()'>\n"
+            + "  <div id='div1' class='red'>First</div>\n"
+            + "  <div id='div2' class='red'>Second</div>\n"
+            + "  <div id='div3' class='green'>Third</div>\n"
+            + "  <div id='div4' class='blue'>Fourth</div>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(FF3 = "undefined", FF3_6 = { "div1", "null" },
+            IE = "undefined", IE8 = { "div1", "null" })
+    public void querySelector() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_ + "<html><head><title>Test</title>\n"
+            + "<style>\n"
+            + "  .red   {color:#FF0000;}\n"
+            + "  .green {color:#00FF00;}\n"
+            + "  .blue  {color:#0000FF;}\n"
+            + "</style>\n"
+            + "<script>\n"
+            + "function test() {\n"
+            + "  if(document.querySelector) {\n"
+            + "    alert(document.querySelector('.green,.red').id);\n"
+            + "    alert(document.querySelector('.orange'));\n"
+            + "  }\n"
+            + "  else\n"
+            + "    alert('undefined');\n"
+            + "}\n"
+            + "</script></head><body onload='test()'>\n"
+            + "  <div id='div1' class='red'>First</div>\n"
+            + "  <div id='div2' class='red'>Second</div>\n"
+            + "  <div id='div3' class='green'>Third</div>\n"
+            + "  <div id='div4' class='blue'>Fourth</div>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(FF = { "1", "0" }, IE = { "0", "1" })
+    public void getElementsByTagName2() throws Exception {
+        final String html = "<html xmlns:ns1='http://example.com'>\n"
+            + "<head>\n"
+            + "  <script>\n"
+            + "    function test() {\n"
+            + "      alert(document.getElementsByTagName('ns1:ele').length);\n"
+            + "      alert(document.getElementsByTagName('ele').length);\n"
+            + "    }\n"
+            + "  </script>\n"
+            + "</head>\n"
+            + "<body onload='test()'>\n"
+            + "  <ns1:ele>&nbsp;</ns1:ele>\n"
+            + "</body>\n"
+            + "</html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "1", "0" })
+    @NotYetImplemented(Browser.IE)
+    public void getElementsByTagName3() throws Exception {
+        final String html = "<html>\n"
+            + "<head>\n"
+            + "  <script>\n"
+            + "    function test() {\n"
+            + "      alert(document.getElementsByTagName('ns1:ele').length);\n"
+            + "      alert(document.getElementsByTagName('ele').length);\n"
+            + "    }\n"
+            + "  </script>\n"
+            + "</head>\n"
+            + "<body onload='test()'>\n"
+            + "  <ns1:ele>&nbsp;</ns1:ele>\n"
+            + "</body>\n"
+            + "</html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Even if clear() does nothing, it was missing until HtmlUnit-2.8 and this test was failing.
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void clear() throws Exception {
+        final String html = "<html><head>\n"
+            + "<script>\n"
+            + "document.clear();\n"
+            + "</script>\n"
+            + "</head><body>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void cookie_read() throws Exception {
+        final WebClient webClient = getWebClientWithMockWebConnection();
+
+        final String html
+            = "<html><head><title>First</title><script>\n"
+            + "function doTest() {\n"
+            + "    var cookieSet = document.cookie.split('; ');\n"
+            + "    var setSize = cookieSet.length;\n"
+            + "    var crumbs;\n"
+            + "    var x=0;\n"
+            + "    for (x=0;((x<setSize)); x++) {\n"
+            + "        crumbs = cookieSet[x].split('=');\n"
+            + "        alert (crumbs[0]);\n"
+            + "        alert (crumbs[1]);\n"
+            + "    } \n"
+            + "}\n"
+            + "</script></head><body onload='doTest()'>\n"
+            + "</body></html>";
+
+        final URL url = getDefaultUrl();
+        getMockWebConnection().setResponse(url, html);
+
+        final CookieManager mgr = webClient.getCookieManager();
+        mgr.addCookie(new Cookie(url.getHost(), "one", "two", "/", null, false));
+        mgr.addCookie(new Cookie(url.getHost(), "three", "four", "/", null, false));
+
+        final List<String> collectedAlerts = new ArrayList<String>();
+        webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
+
+        final HtmlPage firstPage = webClient.getPage(url);
+        assertEquals("First", firstPage.getTitleText());
+
+        final String[] expectedAlerts = {"one", "two", "three", "four" };
+        assertEquals(expectedAlerts, collectedAlerts);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts({ "true", "", "foo=bar", "foo=hello world" })
+    public void cookie_write_cookiesEnabled() throws Exception {
+        loadPageWithAlerts2(getCookieWriteHtmlCode());
+    }
+
+    /**
+     * This one can't be tested with WebDriver.
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts({ "false", "", "", "" })
+    public void cookie_write_cookiesDisabled() throws Exception {
+        final String html = getCookieWriteHtmlCode();
+
+        final WebClient client = getWebClientWithMockWebConnection();
+        client.getCookieManager().setCookiesEnabled(false);
+
         loadPageWithAlerts(html);
     }
 
+    private String getCookieWriteHtmlCode() {
+        final String html =
+              "<html><head><script>\n"
+            + "  alert(navigator.cookieEnabled);\n"
+            + "  alert(document.cookie);\n"
+            + "  document.cookie = 'foo=bar';\n"
+            + "  alert(document.cookie);\n"
+            + "  document.cookie = 'foo=hello world';\n"
+            + "  alert(document.cookie);\n"
+            + "</script>\n"
+            + "</head>\n"
+            + "<body>abc</body>\n"
+            + "</html>";
+        return html;
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts({ "", "a", "", "b", "" })
+    public void cookie_write2() throws Exception {
+        final String html =
+              "<html>\n"
+            + "    <head>\n"
+            + "        <script>\n"
+            + "            alert(document.cookie);\n"
+            + "            document.cookie = 'a';\n"
+            + "            alert(document.cookie);\n"
+            + "            document.cookie = '';\n"
+            + "            alert(document.cookie);\n"
+            + "            document.cookie = 'b';\n"
+            + "            alert(document.cookie);\n"
+            + "            document.cookie = '';\n"
+            + "            alert(document.cookie);\n"
+            + "        </script>\n"
+            + "    </head>\n"
+            + "    <body>abc</body>\n"
+            + "</html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Verifies that cookies work when working with local files (not remote sites with real domains).
+     * Required for local testing of Dojo 1.1.1.
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts({ "", "", "blah=bleh" })
+    public void cookieInLocalFile() throws Exception {
+        final WebClient client = getWebClient();
+
+        final List<String> actual = new ArrayList<String>();
+        client.setAlertHandler(new CollectingAlertHandler(actual));
+
+        final URL url = getClass().getResource("HTMLDocumentTest_cookieInLocalFile.html");
+        client.getPage(url);
+
+        assertEquals(getExpectedAlerts(), actual);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Browsers(Browser.NONE)
+    public void buildCookie() throws Exception {
+        final String domain = URL_FIRST.getHost();
+        checkCookie(HTMLDocument.buildCookie("", URL_FIRST), EMPTY_COOKIE_NAME, "", "", domain, false, null);
+        checkCookie(HTMLDocument.buildCookie("toto", URL_FIRST), EMPTY_COOKIE_NAME, "toto", "", domain, false, null);
+        checkCookie(HTMLDocument.buildCookie("toto=", URL_FIRST), "toto", "", "", domain, false, null);
+        checkCookie(HTMLDocument.buildCookie("toto=foo", URL_FIRST), "toto", "foo", "", domain, false, null);
+        checkCookie(HTMLDocument.buildCookie("toto=foo;secure", URL_FIRST), "toto", "foo", "", domain, true, null);
+        checkCookie(HTMLDocument.buildCookie("toto=foo;path=/myPath;secure", URL_FIRST),
+                "toto", "foo", "/myPath", domain, true, null);
+
+        // Check that leading and trailing whitespaces are ignored
+        checkCookie(HTMLDocument.buildCookie("   toto=foo;  path=/myPath  ; secure  ", URL_FIRST),
+                "toto", "foo", "/myPath", domain, true, null);
+
+        // Check that we accept reserved attribute names (e.g expires, domain) in any case
+        checkCookie(HTMLDocument.buildCookie("toto=foo; PATH=/myPath; SeCURE", URL_FIRST),
+                "toto", "foo", "/myPath", domain, true, null);
+
+        // Check that we are able to parse and set the expiration date correctly
+        final String dateString = "Fri, 21 Jul 2006 20:47:11 UTC";
+        final Date date = parseHttpDate(dateString);
+        checkCookie(HTMLDocument.buildCookie("toto=foo; expires=" + dateString, URL_FIRST),
+                "toto", "foo", "", domain, false, date);
+    }
+
+    private void checkCookie(final Cookie cookie, final String name, final String value,
+            final String path, final String domain, final boolean secure, final Date date) {
+        assertEquals(name, cookie.getName());
+        assertEquals(value, cookie.getValue());
+        assertEquals(path, cookie.getPath());
+        assertEquals(domain, cookie.getDomain());
+        assertEquals(secure, cookie.isSecure());
+        assertEquals(date, cookie.getExpires());
+    }
+
+    /**
+     * Regression test for bug 3030247: expired cookie was saved.
+     * http://sourceforge.net/tracker/?func=detail&aid=3030247&group_id=47038&atid=448266
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "", "test2=1", "" })
+    public void writeCookieExpired() throws Exception {
+        final String html = "<html><body>\n"
+            + "<script>\n"
+            + "alert(document.cookie);\n"
+            + "document.cookie = 'test2=1';\n"
+            + "alert(document.cookie);\n"
+            + "document.cookie = 'test2=;expires=Fri, 02-Jan-1970 00:00:00 GMT';\n"
+            + "alert(document.cookie);\n"
+            + "</script></body></html>";
+
+        loadPageWithAlerts2(html);
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,14 +18,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 
 /**
  * Tests for {@link HTMLTableElement}.
  *
- * @version $Revision: 4900 $
+ * @version $Revision: 6204 $
  * @author David D. Kilzer
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Daniel Gredler
@@ -33,13 +33,14 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
  * @author Ahmed Ashour
  */
 @RunWith(BrowserRunner.class)
-public class HTMLTableElementTest extends WebTestCase {
+public class HTMLTableElementTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts({ "caption1", "caption2", "null", "caption3" })
+    @Alerts(FF = { "caption1", "caption2", "null", "caption3", "exception", "caption3", "caption4" },
+            IE = { "caption1", "caption2", "null", "caption3", "exception", "caption3", "exception", "caption3" })
     public void tableCaptions() throws Exception {
         final String html
             = "<html><head><title>foo</title></head><body>\n"
@@ -48,7 +49,6 @@ public class HTMLTableElementTest extends WebTestCase {
             + "    <tr><td colspan='2'>cell3</td></tr>\n"
             + "  </table>\n"
             + "  <script type='text/javascript' language='JavaScript'>\n"
-            + "  <!--\n"
             + "    var table = document.getElementById('table_1');\n"
             + "    alert(table.caption.innerHTML);\n"
             + "    table.deleteCaption();\n"
@@ -58,18 +58,24 @@ public class HTMLTableElementTest extends WebTestCase {
             + "    var newCaption = table.createCaption();\n"
             + "    newCaption.innerHTML = 'caption3';\n"
             + "    alert(table.caption.innerHTML);\n"
-            + "  // -->\n"
+            + "    try { table.caption = 123; } catch(e) { alert('exception') }\n"
+            + "    alert(table.caption.innerHTML);\n"
+            + "    var caption4 = document.createElement('caption');\n"
+            + "    caption4.innerHTML = 'caption4';\n"
+            + "    try { table.caption = caption4; } catch(e) { alert('exception') }\n"
+            + "    alert(table.caption.innerHTML);\n"
             + "  </script>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts({ "thead1", "thead2", "null", "thead3" })
+    @Alerts(FF = { "thead1", "thead2", "null", "thead3", "exception", "thead3", "thead4" },
+            IE = { "thead1", "thead2", "null", "thead3", "exception", "thead3", "exception", "thead3" })
     public void tableHeaders() throws Exception {
         final String html
             = "<html><head><title>foo</title></head><body>\n"
@@ -80,7 +86,6 @@ public class HTMLTableElementTest extends WebTestCase {
             + "    <tr><td colspan='2'>cell3</td></tr>\n"
             + "  </table>\n"
             + "  <script type='text/javascript' language='JavaScript'>\n"
-            + "  <!--\n"
             + "    var table = document.getElementById('table_1');\n"
             + "    alert(table.tHead.id);\n"
             + "    table.deleteTHead();\n"
@@ -90,11 +95,16 @@ public class HTMLTableElementTest extends WebTestCase {
             + "    var newTHead = table.createTHead();\n"
             + "    newTHead.id = 'thead3';\n"
             + "    alert(table.tHead.id);\n"
-            + "  // -->\n"
+            + "    try { table.tHead = 123; } catch(e) { alert('exception') }\n"
+            + "    alert(table.tHead.id);\n"
+            + "    var tHead4 = document.createElement('tHead');\n"
+            + "    tHead4.id = 'thead4';\n"
+            + "    try { table.tHead = tHead4; } catch(e) { alert('exception') }\n"
+            + "    alert(table.tHead.id);\n"
             + "  </script>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -129,7 +139,7 @@ public class HTMLTableElementTest extends WebTestCase {
             + "  </script>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -160,7 +170,7 @@ public class HTMLTableElementTest extends WebTestCase {
             + "  </script>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -188,7 +198,7 @@ public class HTMLTableElementTest extends WebTestCase {
             + "</body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -245,14 +255,15 @@ public class HTMLTableElementTest extends WebTestCase {
             + "  </script>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts({ "tfoot1", "tfoot2", "null", "tfoot3" })
+    @Alerts(FF = { "tfoot1", "tfoot2", "null", "tfoot3", "exception", "tfoot3", "tfoot4" },
+            IE = { "tfoot1", "tfoot2", "null", "tfoot3", "exception", "tfoot3", "exception", "tfoot3" })
     public void tableFooters() throws Exception {
         final String html
             = "<html><head><title>foo</title></head><body>\n"
@@ -262,8 +273,7 @@ public class HTMLTableElementTest extends WebTestCase {
             + "    <tfoot id='tfoot1'><tr><td>cell1</td><td>cell2</td><td>cell3</td></tr></tfoot>\n"
             + "    <tfoot id='tfoot2'><tr><td>cell7</td><td>cell8</td><td>cell9</td></tr></tfoot>\n"
             + "  </table>\n"
-            + "  <script type='text/javascript' language='JavaScript'>\n"
-            + "  <!--\n"
+            + "  <script>\n"
             + "    var table = document.getElementById('table_1');\n"
             + "    alert(table.tFoot.id);\n"
             + "    table.deleteTFoot();\n"
@@ -273,18 +283,23 @@ public class HTMLTableElementTest extends WebTestCase {
             + "    var newTFoot = table.createTFoot();\n"
             + "    newTFoot.id = 'tfoot3';\n"
             + "    alert(table.tFoot.id);\n"
-            + "  // -->\n"
+            + "    try { table.tFoot = 123; } catch(e) { alert('exception') }\n"
+            + "    alert(table.tFoot.id);\n"
+            + "    var tFoot4 = document.createElement('tFoot');\n"
+            + "    tFoot4.id = 'tfoot4';\n"
+            + "    try { table.tFoot = tFoot4; } catch(e) { alert('exception') }\n"
+            + "    alert(table.tFoot.id);\n"
             + "  </script>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts({ "0", "1", "0", "1" })
+    @Alerts({ "0", "1", "0", "1", "-1" })
     public void cellIndex() throws Exception {
         final String html
             = "<html><head><title>Test</title>\n"
@@ -294,6 +309,7 @@ public class HTMLTableElementTest extends WebTestCase {
             + "    alert(document.getElementById('th2').cellIndex);\n"
             + "    alert(document.getElementById('td1').cellIndex);\n"
             + "    alert(document.getElementById('td2').cellIndex);\n"
+            + "    alert(document.createElement('td').cellIndex);\n"
             + "  }\n"
             + "</script>\n"
             + "</head><body onload='test()'><table>\n"
@@ -301,7 +317,7 @@ public class HTMLTableElementTest extends WebTestCase {
             + "<tr><td id='td1'>c</td><td id='td2'>d</td></tr>\n"
             + "</table></body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -330,7 +346,7 @@ public class HTMLTableElementTest extends WebTestCase {
             + "  </script>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -361,7 +377,7 @@ public class HTMLTableElementTest extends WebTestCase {
             + "</body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -388,7 +404,7 @@ public class HTMLTableElementTest extends WebTestCase {
             + "</body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -415,7 +431,7 @@ public class HTMLTableElementTest extends WebTestCase {
             + "</body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -445,7 +461,7 @@ public class HTMLTableElementTest extends WebTestCase {
             + "</body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -479,7 +495,7 @@ public class HTMLTableElementTest extends WebTestCase {
             + "  </body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -515,7 +531,7 @@ public class HTMLTableElementTest extends WebTestCase {
                 + "    alert(table.cellSpacing);\n"
                 + "</script></body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -533,7 +549,7 @@ public class HTMLTableElementTest extends WebTestCase {
                 + "    alert(table.cellPadding);\n"
                 + "</script></body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -549,7 +565,7 @@ public class HTMLTableElementTest extends WebTestCase {
             + "</script></head><body onload='test()'>\n"
             + "<table id='myTable'></table>\n"
             + "</body></html>";
-        loadPage(getBrowserVersion(), html, null);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -592,7 +608,7 @@ public class HTMLTableElementTest extends WebTestCase {
             + "    </table>\n"
             + "  </body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -619,7 +635,7 @@ public class HTMLTableElementTest extends WebTestCase {
             + "  <table id='table'><tr><td>a</td></tr></table>\n"
             + "  </body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
 }

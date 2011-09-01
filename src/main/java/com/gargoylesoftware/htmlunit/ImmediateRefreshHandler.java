@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,15 +26,13 @@ import java.net.URL;
  * If you want a refresh handler that does not ignore the wait time,
  * see {@link ThreadedRefreshHandler}.
  *
- * @version $Revision: 4463 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Daniel Gredler
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
 public class ImmediateRefreshHandler implements RefreshHandler, Serializable  {
-
-    private static final long serialVersionUID = 529942009235309224L;
 
     /**
      * Immediately refreshes the specified page using the specified URL.
@@ -49,15 +47,15 @@ public class ImmediateRefreshHandler implements RefreshHandler, Serializable  {
             return;
         }
         final WebClient client = window.getWebClient();
-        if (page.getWebResponse().getRequestSettings().getUrl().toExternalForm().equals(url.toExternalForm())
-                && HttpMethod.GET == page.getWebResponse().getRequestSettings().getHttpMethod()) {
-            final String msg = "Refresh Aborted by HtmlUnit: "
+        if (page.getWebResponse().getWebRequest().getUrl().toExternalForm().equals(url.toExternalForm())
+                && HttpMethod.GET == page.getWebResponse().getWebRequest().getHttpMethod()) {
+            final String msg = "Refresh to " + url + " (" + seconds + "s) aborted by HtmlUnit: "
                 + "Attempted to refresh a page using an ImmediateRefreshHandler "
                 + "which could have caused an OutOfMemoryError "
                 + "Please use WaitingRefreshHandler or ThreadedRefreshHandler instead.";
             throw new RuntimeException(msg);
         }
-        client.getPage(window, new WebRequestSettings(url));
+        client.getPage(window, new WebRequest(url));
     }
 
 }

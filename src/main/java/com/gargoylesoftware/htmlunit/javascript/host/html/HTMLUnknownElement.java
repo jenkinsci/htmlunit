@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.xml.XmlPage;
@@ -21,12 +22,10 @@ import com.gargoylesoftware.htmlunit.xml.XmlPage;
 /**
  * The JavaScript object "HTMLUnknownElement".
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  */
 public class HTMLUnknownElement extends HTMLElement {
-
-    private static final long serialVersionUID = 2898724046094626048L;
 
     /**
      * Creates an instance.
@@ -42,7 +41,7 @@ public class HTMLUnknownElement extends HTMLElement {
     @Override
     public String jsxGet_nodeName() {
         final Page page = getDomNodeOrDie().getPage();
-        if (page instanceof XmlPage || (getBrowserVersion().isIE()
+        if (page instanceof XmlPage || (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_112)
             && ((HtmlPage) page).getNamespaces().containsKey(getDomNodeOrDie().getPrefix()))) {
             return getDomNodeOrDie().getLocalName();
         }

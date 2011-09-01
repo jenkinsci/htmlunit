@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,19 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.html.BaseFrame;
 import com.gargoylesoftware.htmlunit.javascript.host.Window;
 
 /**
  * A JavaScript object for {@link com.gargoylesoftware.htmlunit.html.HtmlInlineFrame}.
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6489 $
  * @author Marc Guillemot
  * @author Chris Erskine
  * @author Ahmed Ashour
  */
 public class HTMLIFrameElement extends HTMLElement {
-
-    private static final long serialVersionUID = -7005081332114203694L;
 
     /**
      * Creates an instance. A default constructor is required for all JavaScript objects.
@@ -47,7 +46,7 @@ public class HTMLIFrameElement extends HTMLElement {
      * @return <code>null</code> if no document is contained
      * @see <a href="http://www.mozilla.org/docs/dom/domref/dom_frame_ref4.html">Gecko DOM Reference</a>
      */
-    public HTMLDocument jsxGet_contentDocument() {
+    public DocumentProxy jsxGet_contentDocument() {
         return ((Window) getFrame().getEnclosedWindow().getScriptObject()).jsxGet_document();
     }
 
@@ -111,10 +110,7 @@ public class HTMLIFrameElement extends HTMLElement {
      * @return the "border" attribute
      */
     public String jsxGet_border() {
-        String border = getDomNodeOrDie().getAttribute("border");
-        if (border == NOT_FOUND) {
-            border = "";
-        }
+        final String border = getDomNodeOrDie().getAttribute("border");
         return border;
     }
 
@@ -147,8 +143,8 @@ public class HTMLIFrameElement extends HTMLElement {
      * @return the value of the "width" property
      */
     public String jsxGet_width() {
-        final boolean ie = getBrowserVersion().isIE();
-        final Boolean returnNegativeValues = ie ? true : null;
+        final boolean ie = getBrowserVersion().hasFeature(BrowserVersionFeatures.JS_IFRAME_GET_WIDTH_NEGATIVE_VALUES);
+        final Boolean returnNegativeValues = ie ? Boolean.TRUE : null;
         return getWidthOrHeight("width", returnNegativeValues);
     }
 
@@ -157,7 +153,7 @@ public class HTMLIFrameElement extends HTMLElement {
      * @param width the value of the "width" property
      */
     public void jsxSet_width(final String width) {
-        setWidthOrHeight("width", width, true);
+        setWidthOrHeight("width", width, Boolean.TRUE);
     }
 
     /**
@@ -165,8 +161,8 @@ public class HTMLIFrameElement extends HTMLElement {
      * @return the value of the "width" property
      */
     public String jsxGet_height() {
-        final boolean ie = getBrowserVersion().isIE();
-        final Boolean returnNegativeValues = ie ? true : null;
+        final boolean ie = getBrowserVersion().hasFeature(BrowserVersionFeatures.JS_IFRAME_GET_HEIGHT_NEGATIVE_VALUES);
+        final Boolean returnNegativeValues = ie ? Boolean.TRUE : null;
         return getWidthOrHeight("height", returnNegativeValues);
     }
 
@@ -175,7 +171,7 @@ public class HTMLIFrameElement extends HTMLElement {
      * @param width the value of the "width" property
      */
     public void jsxSet_height(final String width) {
-        setWidthOrHeight("height", width, true);
+        setWidthOrHeight("height", width, Boolean.TRUE);
     }
 
 }

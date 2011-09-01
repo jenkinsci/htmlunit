@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,11 +18,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang.StringUtils;
-
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.Function;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
+
+import org.apache.commons.lang.StringUtils;
 
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLDocument;
@@ -30,13 +30,10 @@ import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLDocument;
 /**
  * A collection of {@link Namespace}s.
  *
- * @version $Revision: 4678 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
  */
 public class NamespaceCollection extends SimpleScriptable implements Function {
-
-    /** Serial version UID. */
-    private static final long serialVersionUID = 3414897723813218653L;
 
     /** The HTML document to which this namespace collection belongs. */
     private final HTMLDocument doc_;
@@ -62,9 +59,10 @@ public class NamespaceCollection extends SimpleScriptable implements Function {
         setPrototype(getPrototype(getClass()));
 
         final Map<String, String> namespacesMap = doc_.getHtmlPage().getNamespaces();
-        for (final String key : namespacesMap.keySet()) {
+        for (final Map.Entry <String, String> entry : namespacesMap.entrySet()) {
+            final String key = entry.getKey();
             if (key.length() != 0) {
-                namespaces_.add(new Namespace(doc_, key, namespacesMap.get(key)));
+                namespaces_.add(new Namespace(doc_, key, entry.getValue()));
             }
         }
     }

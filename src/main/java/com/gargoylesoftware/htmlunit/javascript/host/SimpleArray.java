@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,13 +26,12 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 /**
  * A JavaScript object for simple array allowing access per key and index (like {@link MimeTypeArray}).
  *
- * @version $Revision: 4402 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  *
  * @see <a href="http://www.xulplanet.com/references/objref/MimeTypeArray.html">XUL Planet</a>
  */
 public class SimpleArray extends SimpleScriptable implements ScriptableWithFallbackGetter {
-    private static final long serialVersionUID = 8025124211062703153L;
     private final List<Object> elements_ = new ArrayList<Object>();
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,14 +21,14 @@ import static com.gargoylesoftware.htmlunit.util.EncodingSniffer.sniffEncodingFr
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 
-import org.apache.commons.httpclient.NameValuePair;
 import org.junit.Test;
 
 /**
  * Unit tests for {@link EncodingSniffer}.
  *
- * @version $Revision: 4577 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
+ * @author Ahmed Ashour
  */
 public class EncodingSnifferTest {
 
@@ -57,6 +57,7 @@ public class EncodingSnifferTest {
     public void testSniffEncodingFromMetaTag() throws Exception {
         testMeta(null, "");
         testMeta(null, "foo");
+        testMeta(null, "<!--");
         testMeta(null, " <!-- blah");
         testMeta(null, " <!-- blah --> ");
         testMeta(null, "<");

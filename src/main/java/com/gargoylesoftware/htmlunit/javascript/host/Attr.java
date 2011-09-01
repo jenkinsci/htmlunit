@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,17 +14,17 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
+import com.gargoylesoftware.htmlunit.html.DomAttr;
 import com.gargoylesoftware.htmlunit.html.DomElement;
-import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.html.DomText;
-import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 
 /**
  * A JavaScript object for an Attribute.
  *
  * @see <a href="http://www.w3.org/TR/2000/REC-DOM-Level-2-Core-20001113/core.html#ID-63764602">W3C DOM Level 2</a>
  * @see <a href="http://msdn.microsoft.com/en-us/library/ms535187.aspx">MSDN documentation</a>
- * @version $Revision: 4557 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
  * @author Chris Erskine
  * @author Ahmed Ashour
@@ -32,68 +32,21 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
  */
 public class Attr extends Node {
 
-    private static final long serialVersionUID = 3256441425892750900L;
-
-    /**
-     * The name of this attribute.
-     */
-    private String name_;
-
-    /**
-     * The value of this attribute, used only when this attribute is detached from
-     * a parent HTML element (<tt>parent_</tt> is <tt>null</tt>).
-     */
-    private String value_;
-
-    /**
-     * The element to which this attribute belongs. May be <tt>null</tt> if
-     * document.createAttribute() has been called but element.setAttributeNode()
-     * has not been called yet, or if document.setAttributeNode() has been called
-     * and this is the replaced attribute returned by said method.
-     */
-    private DomElement parent_;
-
     /**
      * Creates an instance. JavaScript objects must have a default constructor.
      */
     public Attr() { }
 
     /**
-     * Initializes this attribute.
-     * @param name the name of the attribute
-     * @param parent the parent HTML element
-     */
-    public void init(final String name, final DomElement parent) {
-        name_ = name;
-        parent_ = parent;
-        if (parent_ == null) {
-            value_ = "";
-        }
-    }
-
-    /**
-     * Ensures that all attributes are initialized correctly via
-     * {@link #init(String, com.gargoylesoftware.htmlunit.html.HtmlElement)}.
-     *
-     * {@inheritDoc}
-     */
-    @Override
-    protected void setDomNode(final DomNode domNode, final boolean assignScriptObject) {
-        super.setDomNode(domNode, assignScriptObject);
-
-        final String name = domNode.getNodeName();
-        final DomElement parent = (DomElement) domNode.getParentNode();
-        this.init(name, parent);
-    }
-
-    /**
      * Detaches this attribute from the parent HTML element after caching the attribute value.
      */
     public void detachFromParent() {
-        if (parent_ != null) {
-            value_ = parent_.getAttribute(name_);
+        final DomAttr domNode = getDomNodeOrDie();
+        final DomElement parent = (DomElement) domNode.getParentNode();
+        if (parent != null) {
+            domNode.setValue(parent.getAttribute(jsxGet_name()));
         }
-        parent_ = null;
+        domNode.remove();
     }
 
     /**
@@ -101,7 +54,7 @@ public class Attr extends Node {
      * @return <tt>true</tt> if this attribute is an ID
      */
     public boolean jsxGet_isId() {
-        return "id".equals(name_);
+        return getDomNodeOrDie().isId();
     }
 
     /**
@@ -117,16 +70,7 @@ public class Attr extends Node {
      * @return the name of the attribute
      */
     public String jsxGet_name() {
-        return name_;
-    }
-
-    /**
-     * Returns the type of DOM node this attribute represents.
-     * @return the type of DOM node this attribute represents
-     */
-    @Override
-    public short jsxGet_nodeType() {
-        return org.w3c.dom.Node.ATTRIBUTE_NODE;
+        return getDomNodeOrDie().getName();
     }
 
     /**
@@ -142,9 +86,10 @@ public class Attr extends Node {
      * Returns the owner element.
      * @return the owner element
      */
-    public SimpleScriptable jsxGet_ownerElement() {
-        if (parent_ != null) {
-            return getScriptableFor(parent_);
+    public Object jsxGet_ownerElement() {
+        final DomElement parent = getDomNodeOrDie().getOwnerElement();
+        if (parent != null) {
+            return parent.getScriptObject();
         }
         return null;
     }
@@ -163,10 +108,7 @@ public class Attr extends Node {
      * @return <tt>true</tt> if this attribute has been specified
      */
     public boolean jsxGet_specified() {
-        if (parent_ != null) {
-            return parent_.hasAttribute(name_);
-        }
-        return true;
+        return getDomNodeOrDie().getSpecified();
     }
 
     /**
@@ -174,10 +116,7 @@ public class Attr extends Node {
      * @return the value of this attribute
      */
     public String jsxGet_value() {
-        if (parent_ != null) {
-            return parent_.getAttribute(name_);
-        }
-        return value_;
+        return getDomNodeOrDie().getValue();
     }
 
     /**
@@ -185,12 +124,7 @@ public class Attr extends Node {
      * @param value the new value of this attribute
      */
     public void jsxSet_value(final String value) {
-        if (parent_ != null) {
-            parent_.setAttribute(name_, value);
-        }
-        else {
-            value_ = value;
-        }
+        getDomNodeOrDie().setValue(value);
     }
 
     /**
@@ -206,10 +140,19 @@ public class Attr extends Node {
      */
     @Override
     public Node jsxGet_lastChild() {
-        if (getBrowserVersion().isFirefox()) {
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_151)) {
             final DomText text = new DomText(getDomNodeOrDie().getPage(), jsxGet_nodeValue());
             return (Node) text.getScriptObject();
         }
         return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @SuppressWarnings("unchecked")
+    public DomAttr getDomNodeOrDie() throws IllegalStateException {
+        return super.getDomNodeOrDie();
     }
 }

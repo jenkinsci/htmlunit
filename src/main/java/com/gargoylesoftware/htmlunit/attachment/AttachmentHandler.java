@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ import com.gargoylesoftware.htmlunit.Page;
  * are not registered with new <tt>WebClient</tt> instances, in order to maintain backwards
  * compatibility with HtmlUnit 2.1 and earlier. This will likely change in the future.</p>
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author Bruce Chapman
  * @author Sudhan Moghe
  * @author Daniel Gredler

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
+import net.sourceforge.htmlunit.corejs.javascript.Context;
+
 import org.w3c.dom.DOMException;
 
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
@@ -23,16 +25,15 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
  *
  * @see <a href="http://www.w3.org/TR/DOM-Level-2-Traversal-Range/traversal.html">
  * DOM-Level-2-Traversal-Range</a>
- * @version $Revision: 4506 $
+ * @version $Revision: 6392 $
  * @author <a href="mailto:mike@10gen.com">Mike Dirolf</a>
  */
 public class TreeWalker extends SimpleScriptable {
 
-    private static final long serialVersionUID = 9110192216193735497L;
     private Node root_, currentNode_;
     private int whatToShow_;
     private NodeFilter filter_;
-    private Boolean expandEntityReferences_;
+    private boolean expandEntityReferences_;
 
     /**
      * Creates an instance.
@@ -60,13 +61,13 @@ public class TreeWalker extends SimpleScriptable {
                       final NodeFilter filter,
                       final Boolean expandEntityReferences) throws DOMException {
         if (root == null) {
-            throw new DOMException(DOMException.NOT_SUPPORTED_ERR,
-                                   "root must not be null");
+            Context.throwAsScriptRuntimeEx(new DOMException(DOMException.NOT_SUPPORTED_ERR,
+                                   "root must not be null"));
         }
         root_ = root;
         whatToShow_ = whatToShow;
         filter_ = filter;
-        expandEntityReferences_ = expandEntityReferences;
+        expandEntityReferences_ = expandEntityReferences.booleanValue();
         currentNode_ = root_;
     }
 
@@ -86,8 +87,9 @@ public class TreeWalker extends SimpleScriptable {
      *
      * @return the value of the whatToShow attribute of the TreeWalker
      */
-    public int jsxGet_whatToShow() {
-        return whatToShow_;
+    public long jsxGet_whatToShow() {
+        // strange, SHOW_ALL is returned as long here whereas is is not the case for NodeFilter.SHOW_ALL
+        return whatToShow_ == NodeFilter.SHOW_ALL ? 0xFFFFFFFFL : whatToShow_;
     }
 
     /**
@@ -195,8 +197,7 @@ public class TreeWalker extends SimpleScriptable {
         if (acceptNode(n) == NodeFilter.FILTER_ACCEPT) {
             if (filter_ == null || filter_.acceptNode(n) == NodeFilter.FILTER_ACCEPT) {
                 if (!expandEntityReferences_) {
-                    if (n.jsxGet_parentNode() != null
-                            && n.jsxGet_parentNode().jsxGet_nodeType() == Node.ENTITY_REFERENCE_NODE) {
+                    if (n.getParent() != null && n.getParent().jsxGet_nodeType() == Node.ENTITY_REFERENCE_NODE) {
                         return false;
                     }
                 }
@@ -215,8 +216,7 @@ public class TreeWalker extends SimpleScriptable {
             return true;
         }
         if (!expandEntityReferences_) {
-            if (n.jsxGet_parentNode() != null
-                    && n.jsxGet_parentNode().jsxGet_nodeType() == Node.ENTITY_REFERENCE_NODE) {
+            if (n.getParent() != null && n.getParent().jsxGet_nodeType() == Node.ENTITY_REFERENCE_NODE) {
                 return true;
             }
         }
@@ -245,7 +245,7 @@ public class TreeWalker extends SimpleScriptable {
         Node newNode = currentNode_;
 
         do {
-            newNode = newNode.jsxGet_parentNode();
+            newNode = newNode.getParent();
         } while (newNode != null && !isNodeVisible(newNode) && newNode != root_);
 
         if (newNode == null || !isNodeVisible(newNode)) {
@@ -317,7 +317,7 @@ public class TreeWalker extends SimpleScriptable {
             if (n == root_) {
                 return null;
             }
-            return getSibling(n.jsxGet_parentNode(), lookLeft);
+            return getSibling(n.getParent(), lookLeft);
 
         }
         return getEquivalentLogical(sibling, lookLeft);
@@ -433,7 +433,7 @@ public class TreeWalker extends SimpleScriptable {
         }
         final Node left = getEquivalentLogical(n.jsxGet_previousSibling(), true);
         if (left == null) {
-            final Node parent = n.jsxGet_parentNode();
+            final Node parent = n.getParent();
             if (parent == null) {
                 return null;
             }
@@ -493,7 +493,7 @@ public class TreeWalker extends SimpleScriptable {
             return null;
         }
 
-        final Node parent = n.jsxGet_parentNode();
+        final Node parent = n.getParent();
         if (parent == null) {
             return null;
         }

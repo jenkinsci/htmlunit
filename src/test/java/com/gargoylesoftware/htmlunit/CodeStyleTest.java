@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.junit.After;
 import org.junit.Test;
@@ -31,7 +32,7 @@ import org.junit.Test;
 /**
  * Test of coding style for things that cannot be detected by Checkstyle.
  *
- * @version $Revision: 4864 $
+ * @version $Revision: 6264 $
  * @author Ahmed Ashour
  */
 public class CodeStyleTest {
@@ -74,7 +75,7 @@ public class CodeStyleTest {
 
     private void process(final File dir) throws IOException {
         for (final File file : dir.listFiles()) {
-            if (file.isDirectory() && !file.getName().equals(".svn")) {
+            if (file.isDirectory() && !".svn".equals(file.getName())) {
                 process(file);
             }
             else if (file.getName().endsWith(".java")) {
@@ -95,6 +96,9 @@ public class CodeStyleTest {
                 staticJSMethod(lines, relativePath);
                 singleAlert(lines, relativePath);
                 staticLoggers(lines, relativePath);
+                loggingEnabled(lines, relativePath);
+                //webDriverWebClient(lines, relativePath);
+                browserVersion_isIE(lines, relativePath);
             }
         }
     }
@@ -105,7 +109,7 @@ public class CodeStyleTest {
     private void openingCurlyBracket(final List<String> lines, final String path) {
         int index = 1;
         for (final String line : lines) {
-            if (line.trim().equals("{")) {
+            if ("{".equals(line.trim())) {
                 addFailure("Opening curly bracket is alone at " + path + ", line: " + index);
             }
             index++;
@@ -129,8 +133,8 @@ public class CodeStyleTest {
         for (int index = 1; index < lines.size(); index++) {
             final String previousLine = lines.get(index - 1);
             final String currentLine = lines.get(index);
-            if (previousLine.trim().equals("/**")) {
-                if (currentLine.trim().equals("*") || currentLine.contains("*/")) {
+            if ("/**".equals(previousLine.trim())) {
+                if ("*".equals(currentLine.trim()) || currentLine.contains("*/")) {
                     addFailure("Empty line in " + relativePath + ", line: " + (index + 1));
                 }
                 if (currentLine.trim().startsWith("*")) {
@@ -149,7 +153,7 @@ public class CodeStyleTest {
     private void methodFirstLine(final List<String> lines, final String relativePath) {
         for (int index = 0; index < lines.size() - 1; index++) {
             final String line = lines.get(index);
-            if (lines.get(index + 1).trim().length() == 0
+            if (StringUtils.isBlank(lines.get(index + 1))
                 && line.length() > 4
                 && Character.isWhitespace(line.charAt(0)) && line.endsWith("{")
                 && !line.contains(" class ") && !line.contains(" interface ") && !line.contains(" @interface ")
@@ -168,7 +172,7 @@ public class CodeStyleTest {
         for (int index = 0; index < lines.size() - 1; index++) {
             final String line = lines.get(index);
             final String nextLine = lines.get(index + 1);
-            if (line.trim().length() == 0 && nextLine.equals("    }")) {
+            if (StringUtils.isBlank(line) && "    }".equals(nextLine)) {
                 addFailure("Empty line in " + relativePath + ", line: " + (index + 1));
             }
         }
@@ -181,7 +185,7 @@ public class CodeStyleTest {
         for (int index = 0; index < lines.size() - 1; index++) {
             final String line = lines.get(index);
             final String nextLine = lines.get(index + 1);
-            if (line.equals("    }") && nextLine.length() != 0 && !nextLine.equals("}")) {
+            if ("    }".equals(line) && nextLine.length() != 0 && !"}".equals(nextLine)) {
                 addFailure("Non-empty line in " + relativePath + ", line: " + (index + 1));
             }
         }
@@ -206,10 +210,10 @@ public class CodeStyleTest {
             for (int i = 0; i + 2 < lines.size(); i++) {
                 final String line = lines.get(i);
                 final String nextLine = lines.get(i + 2);
-                if (line.equals("svn:eol-style") && nextLine.equals("native")) {
+                if ("svn:eol-style".equals(line) && "native".equals(nextLine)) {
                     eolStyleDefined = true;
                 }
-                else if (line.equals("svn:keywords") && nextLine.equals("Author Date Id Revision")) {
+                else if ("svn:keywords".equals(line) && "Author Date Id Revision".equals(nextLine)) {
                     keywordsDefined = true;
                 }
             }
@@ -251,7 +255,7 @@ public class CodeStyleTest {
 
     private void processXML(final File dir, final boolean recursive) throws Exception {
         for (final File file : dir.listFiles()) {
-            if (file.isDirectory() && !file.getName().equals(".svn")) {
+            if (file.isDirectory() && !".svn".equals(file.getName())) {
                 if (recursive) {
                     processXML(file, true);
                 }
@@ -301,10 +305,7 @@ public class CodeStyleTest {
      */
     private void badIndentationLevels(final List<String> lines, final String relativePath) {
         for (int i = 0; i < lines.size(); i++) {
-            final String line = lines.get(i);
-            final int length1 = line.length();
-            final int length2 = line.trim().length();
-            final int indentation = length1 - length2;
+            final int indentation = getIndentation(lines.get(i));
             if (indentation % 4 != 0) {
                 addFailure("Bad indentation level (" + indentation + ") in " + relativePath + ", line: " + (i + 1));
             }
@@ -340,13 +341,20 @@ public class CodeStyleTest {
     private void runWith(final List<String> lines, final String relativePath) {
         if (relativePath.replace('\\', '/').contains("src/test/java") && !relativePath.contains("CodeStyleTest")) {
             boolean runWith = false;
+            boolean browserNone = true;
             int index = 1;
             for (final String line : lines) {
                 if (line.contains("@RunWith(BrowserRunner.class)")) {
                     runWith = true;
                 }
+                if (line.contains("@Browsers(Browser.NONE)")) {
+                    browserNone = true;
+                }
+                if (line.contains("@Test")) {
+                    browserNone = false;
+                }
                 if (runWith) {
-                    if (line.contains("new WebClient(")) {
+                    if (!browserNone && line.contains("new WebClient(") && !line.contains("getBrowserVersion()")) {
                         addFailure("Test " + relativePath + " line " + index
                             + " should never directly instantiate WebClient, please use getWebClient() instead.");
                     }
@@ -367,7 +375,7 @@ public class CodeStyleTest {
         for (int i = 1; i < lines.size(); i++) {
             final String previousLine = lines.get(i - 1);
             final String line = lines.get(i);
-            if (previousLine.trim().length() == 0 && line.trim().length() == 0) {
+            if (StringUtils.isBlank(previousLine) && StringUtils.isBlank(line)) {
                 addFailure("Two empty contiguous lines at " + relativePath + ", line: " + (i + 1));
             }
         }
@@ -433,7 +441,8 @@ public class CodeStyleTest {
         for (final String line : lines) {
             if (line.contains(" static ")
                     && (line.contains(" jsxFunction_") || line.contains(" jsxGet_") || line.contains(" jsxSet_"))
-                    && !line.contains(" jsxFunction_write") && !line.contains(" jsxFunction_insertBefore")) {
+                    && !line.contains(" jsxFunction_write") && !line.contains(" jsxFunction_insertBefore")
+                    && !line.contains(" jsxFunction_drawImage")) {
                 addFailure("Use of static JavaScript function in " + relativePath + ", line: " + (i + 1));
             }
             i++;
@@ -473,4 +482,95 @@ public class CodeStyleTest {
         }
     }
 
+    /**
+     * Verifies that there is code to check log enablement.
+     * <p> For example,
+     * <code><pre>
+     *    if (log.isDebugEnabled()) {
+     *        ... do something expensive ...
+     *        log.debug(theResult);
+     *    }
+     * </pre></code>
+     * </p>
+     */
+    private void loggingEnabled(final List<String> lines, final String relativePath) {
+        if (relativePath.contains("CodeStyleTest")) {
+            return;
+        }
+        int i = 0;
+        for (String line : lines) {
+            if (line.contains("LOG.trace(")) {
+                loggingEnabled(lines, i, "Trace", relativePath);
+            }
+            else if (line.contains("LOG.debug(")) {
+                loggingEnabled(lines, i, "Debug", relativePath);
+            }
+            i++;
+        }
+    }
+
+    private void loggingEnabled(final List<String> lines, final int index, final String method,
+            final String relativePath) {
+        final int indentation = getIndentation(lines.get(index));
+        for (int i = index - 1; i >= 0; i--) {
+            final String line = lines.get(i);
+            if (getIndentation(line) < indentation && line.contains("LOG.is" + method + "Enabled()")) {
+                return;
+            }
+            if (getIndentation(line) == 4) { // a method
+                addFailure("You must check \"if (LOG.is" + method + "Enabled())\" around " + relativePath
+                        + ", line: " + (index + 1));
+                return;
+            }
+        }
+    }
+
+    private int getIndentation(final String line) {
+        return line.length() - line.trim().length();
+    }
+
+    /**
+     * Verifies that WebClient is not used in any WebDriverTestCase.
+     */
+    private void webDriverWebClient(final List<String> lines, final String relativePath) {
+        if (relativePath.replace('\\', '/').contains("src/test/java") && !relativePath.contains("CodeStyleTest")) {
+            boolean webDriver = false;
+            int index = 1;
+            for (final String line : lines) {
+                if (line.contains("extends WebDriverTestCase")) {
+                    webDriver = true;
+                }
+                if (webDriver && (line.contains("getWebClient()") || line.contains("new WebClient("))) {
+                    addFailure("getWebClient() can not be used for WebDriverTestCase: "
+                            + relativePath + ", line: " + index);
+                }
+                index++;
+            }
+        }
+    }
+
+    /**
+     * Verifies that not invocation of browserVersion.isIE(), .isFirefox() or .getBrowserVersionNumeric().
+     */
+    private void browserVersion_isIE(final List<String> lines, final String relativePath) {
+        if (relativePath.replace('\\', '/').contains("src/main/java")
+                && !relativePath.contains("JavaScriptConfiguration")
+                && !relativePath.contains("BrowserVersionFeatures")) {
+            int index = 1;
+            for (final String line : lines) {
+                if ((line.contains(".isIE()") || line.contains(".isFirefox()"))) {
+                    addFailure(".isIE() and .isFirefox() should not be used, please use .hasFeature(): "
+                            + relativePath + ", line: " + index);
+                }
+                if (line.contains(".getBrowserVersionNumeric()")
+                        && !relativePath.contains("IEConditionalCommentExpressionEvaluator")
+                        && !relativePath.contains("IEConditionalCompilationScriptPreProcessor")
+                        && !relativePath.contains("Window.java")) {
+                    addFailure(".getBrowserVersionNumeric() should not be used, please use .hasFeature(): "
+                            + relativePath + ", line: " + index);
+                }
+                index++;
+            }
+        }
+    }
 }

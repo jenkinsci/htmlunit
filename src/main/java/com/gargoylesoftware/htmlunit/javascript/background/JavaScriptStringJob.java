@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 /**
  * A {@link JavaScriptExecutionJob} created from a string of code.
  * @author Brad Clarke
- * @version $Revision: 4320 $
+ * @version $Revision: 6204 $
  */
 public class JavaScriptStringJob extends JavaScriptExecutionJob {
 

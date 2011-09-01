@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,13 +19,11 @@ import com.gargoylesoftware.htmlunit.html.HtmlFrameSet;
 /**
  * Wrapper for the HTML element "frameset".
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6220 $
  * @author Bruce Chapman
  * @author Ahmed Ashour
  */
 public class HTMLFrameSetElement extends HTMLElement {
-
-    private static final long serialVersionUID = 5630843390548382869L;
 
     /**
      * Creates a new frameset instance.
@@ -84,10 +82,7 @@ public class HTMLFrameSetElement extends HTMLElement {
      * @return the "border" attribute
      */
     public String jsxGet_border() {
-        String border = getDomNodeOrDie().getAttribute("border");
-        if (border == NOT_FOUND) {
-            border = "";
-        }
+        final String border = getDomNodeOrDie().getAttribute("border");
         return border;
     }
 

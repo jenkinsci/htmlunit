@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,108 +23,17 @@ import org.openqa.selenium.WebElement;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
-import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
 
 /**
  * Proof of concept for using WebDriver to run (some) HtmlUnit tests and have the possibility
  * to check in "real" browsers if our expectations are correct.
  *
- * @version $Revision: 4741 $
+ * @version $Revision: 6479 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
 @RunWith(BrowserRunner.class)
 public class SimpleWebDriverTest extends WebDriverTestCase {
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void arrayProperties() throws Exception {
-        final String html = "<html>\n"
-            + "<head>\n"
-            + "  <script>\n"
-            + "    function log(text) {\n"
-            + "      var textarea = document.getElementById('myTextarea');\n"
-            + "      textarea.value += text + ',';\n"
-            + "    }\n"
-            + "    function test() {\n"
-            + "      var properties = ['concat', 'every', 'filter', 'forEach', 'indexOf',\n"
-            + "        'join', 'lastIndexOf', 'map', 'pop', 'push',\n"
-            + "        'reverse', 'shift', 'slice', 'some', 'sort',\n"
-            + "        'splice', 'toLocaleString', 'toSource', 'toString', 'unshift'];\n"
-            + "      for (var i = 0; i < properties.length; i++) {\n"
-            + "        var p = properties[i];\n"
-            + "        var v = [][p];\n"
-            + "        log(p + ': ' + typeof(v));\n"
-            + "      }\n"
-            + "    }\n"
-            + "  </script>\n"
-            + "</head><body onload='test()'>\n"
-            + "  <textarea id='myTextarea' cols='80' rows='10'></textarea>\n"
-            + "</body></html>";
-
-        final WebDriver driver = loadPageWithAlerts2(html);
-        final String expected;
-        if (getBrowserVersion().isFirefox()) {
-            expected = "concat: function,every: function,filter: function,forEach: function,indexOf: function,"
-                + "join: function,lastIndexOf: function,map: function,pop: function,push: function,reverse: function,"
-                + "shift: function,slice: function,some: function,sort: function,splice: function,"
-                + "toLocaleString: function,toSource: function,toString: function,unshift: function,";
-        }
-        else {
-            expected = "concat: function,every: undefined,filter: undefined,forEach: undefined,indexOf: undefined,"
-                + "join: function,lastIndexOf: undefined,map: undefined,pop: function,push: function,"
-                + "reverse: function,shift: function,slice: function,some: undefined,sort: function,splice: function,"
-                + "toLocaleString: function,toSource: undefined,toString: function,unshift: function,";
-        }
-
-        assertEquals(expected, driver.findElement(By.id("myTextarea")).getValue());
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void objectProperties() throws Exception {
-        final String html = "<html>\n"
-            + "<head>\n"
-            + "  <script>\n"
-            + "    function log(text) {\n"
-            + "      var textarea = document.getElementById('myTextarea');\n"
-            + "      textarea.value += text + ',';\n"
-            + "    }\n"
-            + "    function test() {\n"
-            + "      var properties = ['__defineGetter__', '__defineSetter__', '__lookupGetter__',\n"
-            + "        '__lookupSetter__', 'hasOwnProperty', 'isPrototypeOf', 'propertyIsEnumerable',\n"
-            + "        'toLocaleString', 'toSource', 'toString', 'valueOf'];\n"
-            + "      for (var i = 0; i < properties.length; i++) {\n"
-            + "        var p = properties[i];\n"
-            + "        var v = [][p];\n"
-            + "        log(p + ': ' + typeof(v));\n"
-            + "      }\n"
-            + "    }\n"
-            + "  </script>\n"
-            + "</head><body onload='test()'>\n"
-            + "  <textarea id='myTextarea' cols='80' rows='10'></textarea>\n"
-            + "</body></html>";
-
-        final WebDriver driver = loadPageWithAlerts2(html);
-        final String expected;
-        if (getBrowserVersion().isFirefox()) {
-            expected = "__defineGetter__: function,__defineSetter__: function,__lookupGetter__: function,"
-                + "__lookupSetter__: function,hasOwnProperty: function,isPrototypeOf: function,"
-                + "propertyIsEnumerable: function,toLocaleString: function,toSource: function,toString: function,"
-                + "valueOf: function,";
-        }
-        else {
-            expected = "__defineGetter__: undefined,__defineSetter__: undefined,__lookupGetter__: undefined,"
-                + "__lookupSetter__: undefined,hasOwnProperty: function,isPrototypeOf: function,"
-                + "propertyIsEnumerable: function,toLocaleString: function,toSource: undefined,toString: function,"
-                + "valueOf: function,";
-        }
-
-        assertEquals(expected, driver.findElement(By.id("myTextarea")).getValue());
-    }
 
     /**
      * @throws Exception if the test fails
@@ -234,14 +143,16 @@ public class SimpleWebDriverTest extends WebDriverTestCase {
         final String expected = "mousedown span,mouseup span,click span,mousedown text,focus text,mouseup text,"
             + "click text,mousedown image,focus image,mouseup image,click image,mousedown textarea,focus textarea,"
             + "mouseup textarea,click textarea,";
-        assertEquals(expected, driver.findElement(By.id("myTextarea")).getValue());
+        assertEquals(expected, driver.findElement(By.id("myTextarea")).getText());
     }
 
     /**
+     * Firefox should not run scripts with "event" and "for" attributes.
+     *
      * @throws Exception if the test fails
      */
     @Test
-    @NotYetImplemented(Browser.FF)
+    @Alerts(IE = "onload for window,onclick for div1,", FF = "onload for window,")
     public void scriptEventFor() throws Exception {
         final String html = "<html>\n"
             + "<head>\n"
@@ -252,6 +163,7 @@ public class SimpleWebDriverTest extends WebDriverTestCase {
             + "    }\n"
             + "  </script>\n"
             + "</head><body>\n"
+            + "  <textarea id='myTextarea' cols='80' rows='10'></textarea>\n"
             + "  <script event='onload' for='window'>\n"
             + "    log('onload for window')\n"
             + "  </script>\n"
@@ -263,20 +175,12 @@ public class SimpleWebDriverTest extends WebDriverTestCase {
             + "  <script event='onclick' for='document.all.div2'>\n"
             + "    log('onclick for div2')\n"
             + "  </script>\n"
-            + "  <textarea id='myTextarea' cols='80' rows='10'></textarea>\n"
             + "</body></html>";
 
-        final WebDriver webDriver = loadPageWithAlerts2(html);
+        final WebDriver webDriver = loadPage2(html);
         webDriver.findElement(By.id("div1")).click();
         webDriver.findElement(By.id("div2")).click();
-        final String expected;
-        if (getBrowserVersion().isIE()) {
-            expected = "onload for window,onclick for div1,";
-        }
-        else {
-            expected = "";
-        }
-        assertEquals(expected, webDriver.findElement(By.id("myTextarea")).getValue());
+        assertEquals(getExpectedAlerts()[0], webDriver.findElement(By.id("myTextarea")).getText());
     }
 
     /**
@@ -317,6 +221,6 @@ public class SimpleWebDriverTest extends WebDriverTestCase {
             expected = "focus,keydown,keypress,keyup,change,blur,";
         }
 
-        assertEquals(expected, webDriver.findElement(By.id("myTextarea")).getValue());
+        assertEquals(expected, webDriver.findElement(By.id("myTextarea")).getText());
     }
 }

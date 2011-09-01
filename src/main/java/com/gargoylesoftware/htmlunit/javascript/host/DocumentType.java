@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,26 +14,37 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.html.DomDocumentType;
 
 /**
  * A JavaScript object for a DocumentType.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  * @see <a href="http://msdn.microsoft.com/en-us/library/ms762752.aspx">MSDN documentation</a>
  * @see <a href="http://www.xulplanet.com/references/objref/DocumentType.html">XUL Planet</a>
  */
 public class DocumentType extends Node {
 
-    private static final long serialVersionUID = -927596204137079990L;
-
     /**
      * Returns the name.
      * @return the name
      */
     public String jsxGet_name() {
-        return ((DomDocumentType) getDomNodeOrDie()).getName();
+        final String name = ((DomDocumentType) getDomNodeOrDie()).getName();
+        if ("html".equals(name) && "FF3".equals(getBrowserVersion().getNickname())) {
+            return "HTML";
+        }
+        return name;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String jsxGet_nodeName() {
+        return jsxGet_name();
     }
 
     /**
@@ -65,7 +76,7 @@ public class DocumentType extends Node {
      * @return entities
      */
     public String jsxGet_entities() {
-        if (getBrowserVersion().isIE()) {
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_33)) {
             return "";
         }
         return null;
@@ -76,7 +87,7 @@ public class DocumentType extends Node {
      * @return notations
      */
     public String jsxGet_notations() {
-        if (getBrowserVersion().isIE()) {
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_34)) {
             return "";
         }
         return null;

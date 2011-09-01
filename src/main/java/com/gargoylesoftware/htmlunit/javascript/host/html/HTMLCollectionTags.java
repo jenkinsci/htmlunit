@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,18 +14,16 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
-import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.html.DomNode;
 
 /**
  * An array of elements. It is very similar to {@link HTMLCollection}, but with 'tags' property for Firefox.
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  * @author Daniel Gredler
  */
 public class HTMLCollectionTags extends HTMLCollection {
-
-    private static final long serialVersionUID = -1772897974886997756L;
 
     /**
      * Creates an instance. JavaScript objects must have a default constructor.
@@ -39,9 +37,10 @@ public class HTMLCollectionTags extends HTMLCollection {
     /**
      * Creates an instance.
      * @param parentScope parent scope
+     * @param description a text useful for debugging
      */
-    public HTMLCollectionTags(final SimpleScriptable parentScope) {
-        super(parentScope);
+    public HTMLCollectionTags(final DomNode parentScope, final String description) {
+        super(parentScope, false, description);
     }
 
     /**

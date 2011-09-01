@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import java.util.HashMap;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.w3c.dom.Attr;
@@ -47,14 +48,13 @@ import com.gargoylesoftware.htmlunit.html.DomProcessingInstruction;
 /**
  * A page that will be returned for response with content type "text/xml".
  *
- * @version $Revision: 4794 $
+ * @version $Revision: 6400 $
  * @author Marc Guillemot
  * @author David K. Taylor
  * @author Ahmed Ashour
  */
 public class XmlPage extends SgmlPage {
 
-    private static final long serialVersionUID = -1430136241030261308L;
     private static final Log LOG = LogFactory.getLog(XmlPage.class);
 
     private Node node_;
@@ -103,31 +103,34 @@ public class XmlPage extends SgmlPage {
         super(webResponse, enclosingWindow);
 
         try {
-            if (webResponse == null || webResponse.getContentAsString() == null
-                    || webResponse.getContentAsString().trim().length() == 0) {
+            if (webResponse == null || StringUtils.isBlank(webResponse.getContentAsString())) {
                 node_ = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument().getDocumentElement();
             }
             else {
-                node_ = XmlUtil.buildDocument(webResponse).getDocumentElement();
-            }
-            if (node_ != null) {
-                XmlUtil.appendChild(this, this, node_);
-            }
-        }
-        catch (final SAXException e) {
-            if (LOG.isWarnEnabled()) {
-                LOG.warn("Failed parsing XML document " + webResponse.getRequestSettings().getUrl()
-                        + ": " + e.getMessage());
-            }
-            if (!ignoreSAXException) {
-                throw new IOException(e.getMessage());
+                try {
+                    node_ = XmlUtil.buildDocument(webResponse).getDocumentElement();
+                }
+                catch (final SAXException e) {
+                    LOG.warn("Failed parsing XML document " + webResponse.getWebRequest().getUrl()
+                            + ": " + e.getMessage());
+                    if (!ignoreSAXException) {
+                        throw new IOException(e.getMessage());
+                    }
+                }
             }
         }
         catch (final ParserConfigurationException e) {
-            if (LOG.isWarnEnabled()) {
-                LOG.warn("Failed parsing XML document " + webResponse.getRequestSettings().getUrl()
-                        + ": " + e.getMessage());
+            if (null == webResponse) {
+                LOG.warn("Failed parsing XML empty document: " + e.getMessage());
             }
+            else {
+                LOG.warn("Failed parsing XML empty document " + webResponse.getWebRequest().getUrl()
+                    + ": " + e.getMessage());
+            }
+        }
+
+        if (node_ != null) {
+            XmlUtil.appendChild(this, this, node_);
         }
     }
 
@@ -185,14 +188,6 @@ public class XmlPage extends SgmlPage {
      */
     public Node adoptNode(final Node source) {
         throw new UnsupportedOperationException("XmlPage.adoptNode is not yet implemented.");
-    }
-
-    /**
-     * {@inheritDoc}
-     * Not yet implemented.
-     */
-    public Attr createAttribute(final String name) {
-        throw new UnsupportedOperationException("XmlPage.createAttribute is not yet implemented.");
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,13 +17,14 @@ package com.gargoylesoftware.htmlunit.html;
 import java.io.IOException;
 import java.util.Map;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.SgmlPage;
 
 /**
  * Wrapper for the HTML element "input".
  *
- * @version $Revision: 4854 $
+ * @version $Revision: 6359 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:chen_jun@users.sourceforge.net">Jun Chen</a>
@@ -35,9 +36,8 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
  */
 public class HtmlCheckBoxInput extends HtmlInput {
 
-    private static final long serialVersionUID = 3567976425357413976L;
-
     private boolean defaultCheckedState_;
+    private boolean valueAtFocus_;
 
     /**
      * Creates an instance.
@@ -84,6 +84,11 @@ public class HtmlCheckBoxInput extends HtmlInput {
         else {
             removeAttribute("checked");
         }
+
+        if (getPage().getWebClient().getBrowserVersion()
+                .hasFeature(BrowserVersionFeatures.EVENT_ONCHANGE_LOSING_FOCUS)) {
+            return getPage();
+        }
         return executeOnChangeHandlerIfAppropriate(this);
     }
 
@@ -95,10 +100,7 @@ public class HtmlCheckBoxInput extends HtmlInput {
     // we need to preserve this method as it is there since many versions with the above documentation.
     @Override
     public String asText() {
-        if (isChecked()) {
-            return "checked";
-        }
-        return "unchecked";
+        return super.asText();
     }
 
     /**
@@ -108,9 +110,9 @@ public class HtmlCheckBoxInput extends HtmlInput {
      * {@inheritDoc}
      */
     @Override
-    protected Page doClickAction(final Page defaultPage) throws IOException {
+    protected void doClickAction() throws IOException {
         setChecked(!isChecked());
-        return super.doClickAction(defaultPage);
+        super.doClickAction();
     }
 
     /**
@@ -148,7 +150,8 @@ public class HtmlCheckBoxInput extends HtmlInput {
     @Override
     public void setDefaultChecked(final boolean defaultChecked) {
         defaultCheckedState_ = defaultChecked;
-        if (getPage().getWebClient().getBrowserVersion().isFirefox()) {
+        if (getPage().getWebClient().getBrowserVersion()
+                .hasFeature(BrowserVersionFeatures.HTMLINPUT_DEFAULT_IS_CHECKED)) {
             setChecked(defaultChecked);
         }
     }
@@ -162,4 +165,27 @@ public class HtmlCheckBoxInput extends HtmlInput {
         return defaultCheckedState_;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void focus() {
+        super.focus();
+        valueAtFocus_ = isChecked();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    void removeFocus() {
+        super.removeFocus();
+
+        final boolean fireOnChange = getPage().getWebClient().getBrowserVersion()
+            .hasFeature(BrowserVersionFeatures.EVENT_ONCHANGE_LOSING_FOCUS);
+        if (fireOnChange && valueAtFocus_ != isChecked()) {
+            executeOnChangeHandlerIfAppropriate(this);
+        }
+        valueAtFocus_ = isChecked();
+    }
 }
