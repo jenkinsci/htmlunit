@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,11 +21,10 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
  *
  * @see <a href="http://www.w3.org/TR/DOM-Level-2-Traversal-Range/traversal.html">
  * DOM-Level-2-Traversal-Range</a>
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mike@10gen.com">Mike Dirolf</a>
  */
 public class NodeFilter extends SimpleScriptable {
-    private static final long serialVersionUID = 4450195578297327871L;
     // Constants returned by acceptNode
     /**
      * Accept the node. TreeWalker navigation will return this node.

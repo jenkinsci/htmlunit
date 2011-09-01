@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,22 +18,20 @@ import java.util.LinkedList;
 
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
 
 /**
  * JavaScript object representing a Mouse Event.
- * For general information on which properties and functions
- * should be supported, see
+ * For general information on which properties and functions should be supported, see
  * <a href="http://www.w3.org/TR/DOM-Level-2-Events/events.html#Events-MouseEvent">DOM Level 2 Events</a>.
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6392 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
 public class MouseEvent extends UIEvent {
-
-    private static final long serialVersionUID = 1990705559211878370L;
 
     /** The click event type, triggered by "onclick" event handlers. */
     public static final String TYPE_CLICK = "click";
@@ -71,21 +69,21 @@ public class MouseEvent extends UIEvent {
     /** The button code for IE (1: left button, 4: middle button, 2: right button). */
     private static final int[] buttonCodeToIE = {1, 4, 2};
 
-    /** The mouse event's coordinates; initially <tt>null</tt> and lazily initialized for performance reasons. */
+    /** The event's screen coordinates; initially <tt>null</tt> and lazily initialized for performance reasons. */
     private Integer screenX_, screenY_;
+
+    /** The event's client coordinates; initially <tt>null</tt> and lazily initialized for performance reasons. */
+    private Integer clientX_, clientY_;
 
     /** The button code according to W3C (0: left button, 1: middle button, 2: right button). */
     private int button_;
-
-    /** Whether or not the "meta" key was pressed during the firing of the event. */
-    private boolean metaKey_;
 
     /**
      * Used to build the prototype.
      */
     public MouseEvent() {
-        screenX_ = 0;
-        screenY_ = 0;
+        screenX_ = Integer.valueOf(0);
+        screenY_ = Integer.valueOf(0);
         setDetail(1);
     }
 
@@ -101,13 +99,16 @@ public class MouseEvent extends UIEvent {
     public MouseEvent(final DomNode domNode, final String type, final boolean shiftKey,
         final boolean ctrlKey, final boolean altKey, final int button) {
 
-        super(domNode, type, shiftKey, ctrlKey, altKey);
+        super(domNode, type);
+        setShiftKey(shiftKey);
+        setCtrlKey(ctrlKey);
+        setAltKey(altKey);
+        setMetaKey(false);
 
         if (button != BUTTON_LEFT && button != BUTTON_MIDDLE && button != BUTTON_RIGHT) {
             throw new IllegalArgumentException("Invalid button code: " + button);
         }
         button_ = button;
-        metaKey_ = false;
 
         if (TYPE_DBL_CLICK.equals(type)) {
             setDetail(2);
@@ -119,10 +120,13 @@ public class MouseEvent extends UIEvent {
 
     /**
      * The horizontal coordinate at which the event occurred relative to the DOM implementation's client area.
-     * @return the horizontal coordinate (currently the same as {@link #jsxGet_screenX()})
+     * @return the horizontal coordinate
      */
     public int jsxGet_clientX() {
-        return jsxGet_screenX();
+        if (clientX_ == null) {
+            clientX_ = Integer.valueOf(jsxGet_screenX());
+        }
+        return clientX_.intValue();
     }
 
     /**
@@ -135,9 +139,9 @@ public class MouseEvent extends UIEvent {
     public int jsxGet_screenX() {
         if (screenX_ == null) {
             final HTMLElement target = (HTMLElement) jsxGet_target();
-            screenX_ = target.getPosX() + 10;
+            screenX_ = Integer.valueOf(target.getPosX() + 10);
         }
-        return screenX_;
+        return screenX_.intValue();
     }
 
     /**
@@ -151,10 +155,13 @@ public class MouseEvent extends UIEvent {
 
     /**
      * The vertical coordinate at which the event occurred relative to the DOM implementation's client area.
-     * @return the horizontal coordinate (currently the same as {@link #jsxGet_screenY()})
+     * @return the horizontal coordinate
      */
     public int jsxGet_clientY() {
-        return jsxGet_screenY();
+        if (clientY_ == null) {
+            clientY_ = Integer.valueOf(jsxGet_screenY());
+        }
+        return clientY_.intValue();
     }
 
     /**
@@ -167,9 +174,9 @@ public class MouseEvent extends UIEvent {
     public int jsxGet_screenY() {
         if (screenY_ == null) {
             final HTMLElement target = (HTMLElement) jsxGet_target();
-            screenY_ = target.getPosY() + 10;
+            screenY_ = Integer.valueOf(target.getPosY() + 10);
         }
-        return screenY_;
+        return screenY_.intValue();
     }
 
     /**
@@ -186,22 +193,17 @@ public class MouseEvent extends UIEvent {
      * @return the button code
      */
     public int jsxGet_button() {
-        if (getBrowserVersion().isIE()) {
-            //In IE7: oncontextmenu event.button is 0
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_116)) {
+            // In IE7: oncontextmenu event.button is 0
             if (jsxGet_type().equals(TYPE_CONTEXT_MENU)) {
                 return 0;
+            }
+            else if (jsxGet_type().equals(TYPE_CLICK)) {
+                return button_;
             }
             return buttonCodeToIE[button_];
         }
         return button_;
-    }
-
-    /**
-     * Returns whether or not the "meta" key was pressed during the event firing.
-     * @return whether or not the "meta" key was pressed during the event firing
-     */
-    public boolean jsxGet_metaKey() {
-        return metaKey_;
     }
 
     /**
@@ -249,14 +251,14 @@ public class MouseEvent extends UIEvent {
             final int button,
             final Object relatedTarget) {
         jsxFunction_initUIEvent(type, bubbles, cancelable, view, detail);
-        screenX_ = screenX;
-        screenY_ = screenY;
-        // Ignore the clientX parameter; we always use screenX.
-        // Ignore the clientY parameter; we always use screenY.
+        screenX_ = Integer.valueOf(screenX);
+        screenY_ = Integer.valueOf(screenY);
+        clientX_ = Integer.valueOf(clientX);
+        clientY_ = Integer.valueOf(clientY);
         setCtrlKey(ctrlKey);
         setAltKey(altKey);
         setShiftKey(shiftKey);
-        // Ignore the metaKey parameter; we don't support it yet.
+        setMetaKey(metaKey);
         button_ = button;
         // Ignore the relatedTarget parameter; we don't support it yet.
     }

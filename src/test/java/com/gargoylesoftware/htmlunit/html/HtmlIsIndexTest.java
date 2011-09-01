@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,24 +19,27 @@ import static org.junit.Assert.assertSame;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.httpclient.NameValuePair;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.HttpMethod;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Tests for {@link HtmlIsIndex}.
  *
- * @version $Revision: 4463 $
+ * @version $Revision: 6207 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
+@RunWith(BrowserRunner.class)
 public class HtmlIsIndexTest extends WebTestCase {
 
     /**
@@ -47,7 +50,8 @@ public class HtmlIsIndexTest extends WebTestCase {
         final String html
             = "<html><head><title>foo</title></head><body>\n"
             + "<form id='form1' method='post'>\n"
-            + "<isindex prompt='enterSomeText'></isindex>\n"
+            + "  <isindex prompt='enterSomeText'></isindex>\n"
+            + "  <input type='submit' id='clickMe'>\n"
             + "</form></body></html>";
         final HtmlPage page = loadPage(html);
         final MockWebConnection webConnection = getMockConnection(page);
@@ -57,12 +61,12 @@ public class HtmlIsIndexTest extends WebTestCase {
         final HtmlIsIndex isInput = form.<HtmlIsIndex>getElementsByAttribute(
                 "isindex", "prompt", "enterSomeText").get(0);
         isInput.setValue("Flintstone");
-        final Page secondPage = form.submit((SubmittableElement) null);
+        final Page secondPage = form.<HtmlElement>getElementById("clickMe").click();
 
         final List<NameValuePair> expectedParameters = new ArrayList<NameValuePair>();
         expectedParameters.add(new NameValuePair("enterSomeText", "Flintstone"));
 
-        assertEquals("url", URL_GARGOYLE, secondPage.getWebResponse().getRequestSettings().getUrl());
+        assertEquals("url", getDefaultUrl(), secondPage.getWebResponse().getWebRequest().getUrl());
         assertSame("method", HttpMethod.POST, webConnection.getLastMethod());
         Assert.assertEquals("parameters", expectedParameters, webConnection.getLastParameters());
     }
@@ -71,7 +75,8 @@ public class HtmlIsIndexTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testSimpleScriptable() throws Exception {
+    @Alerts(FF = "[object HTMLIsIndexElement]", IE = "[object]")
+    public void simpleScriptable() throws Exception {
         final String html = "<html><head>\n"
             + "<script>\n"
             + "  function test() {\n"
@@ -83,10 +88,7 @@ public class HtmlIsIndexTest extends WebTestCase {
             + "<isindex id='myId' prompt='enterSomeText'></isindex>\n"
             + "</form></body></html>";
 
-        final String[] expectedAlerts = {"[object HTMLIsIndexElement]"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(BrowserVersion.FIREFOX_2, html, collectedAlerts);
+        final HtmlPage page = loadPageWithAlerts(html);
         assertTrue(HtmlIsIndex.class.isInstance(page.getHtmlElementById("myId")));
-        assertEquals(expectedAlerts, collectedAlerts);
     }
 }

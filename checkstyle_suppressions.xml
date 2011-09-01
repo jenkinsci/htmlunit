@@ -15,17 +15,23 @@
     <suppress checks="FileLength" files="HtmlPageTest.java"/>
     <suppress checks="FileLength" files="JQuery126Test.java"/>
     <suppress checks="FileLength" files="WebClientTest.java"/>
-    <suppress checks="LineLength" files="JavaScriptEngine.java" lines="65"/>
+    <suppress checks="Header" files=".+.properties"/>
+    <suppress checks="LineLength" files="JavaScriptEngine.java"/>
     <suppress checks="LineLength" files="EncodingSniffer.java"/>
     <suppress checks="LineLength" files="HTMLScriptElementTest.java"/>
     <suppress checks="LineLength" files="Dojo102Test.java"/>
     <suppress checks="LineLength" files="BoxObjectTest.java"/>
     <suppress checks="LineLength" files="HTMLBodyElementTest.java"/>
-    <suppress checks="LineLength" files="GWTSourceTest.java" lines="41, 103, 165, 200, 240"/>
+    <suppress checks="LineLength" files="GWTSourceTest.java"/>
+    <suppress checks="LineLength" files="HtmlUnitRegExpProxyTest.java"/>
     <suppress checks="MethodLength" files="DefaultElementFactory.java"/>
     <suppress checks="MethodLength" files="Dojo102Test.java"/>
     <suppress checks="MethodLength" files="CSSStyleDeclarationTest.java"/>
     <suppress checks="ParameterNumber" files="HtmlUnitRegExpProxy.java"/>
     <suppress checks="ParameterNumber" files="KeyboardEvent.java"/>
     <suppress checks="ParameterNumber" files="MouseEvent.java"/>
+
+    <!-- JUnit Rules require the rules field to have public visibility. -->
+    <!-- See http://checkstyle.sourceforge.net/config_design.html#VisibilityModifier -->
+    <suppress files=".*(?:Test|TestBase)\.java$" checks="VisibilityModifier"/>
 </suppressions>

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import java.net.URL;
 
 import org.apache.commons.lang.StringUtils;
 
+import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.HtmlAnchor;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
@@ -27,7 +28,7 @@ import com.gargoylesoftware.htmlunit.util.UrlUtils;
 /**
  * The JavaScript object that represents an anchor.
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6357 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:gousseff@netscape.net">Alexei Goussev</a>
  * @author David D. Kilzer
@@ -39,20 +40,10 @@ import com.gargoylesoftware.htmlunit.util.UrlUtils;
  */
 public class HTMLAnchorElement extends HTMLElement {
 
-    private static final long serialVersionUID = -816365374422492967L;
-
     /**
      * Creates an instance.
      */
     public HTMLAnchorElement() {
-        // Empty.
-    }
-
-    /**
-     * JavaScript constructor. This must be declared in every JavaScript file because
-     * the rhino engine won't walk up the hierarchy looking for constructors.
-     */
-    public void jsConstructor() {
         // Empty.
     }
 
@@ -72,7 +63,7 @@ public class HTMLAnchorElement extends HTMLElement {
         final HtmlAnchor anchor = (HtmlAnchor) getDomNodeOrDie();
         final String hrefAttr = anchor.getHrefAttribute();
 
-        if (hrefAttr == HtmlAnchor.ATTRIBUTE_NOT_DEFINED) {
+        if (hrefAttr == DomElement.ATTRIBUTE_NOT_DEFINED) {
             return "";
         }
 
@@ -132,6 +123,40 @@ public class HTMLAnchorElement extends HTMLElement {
      */
     private void setUrl(final URL url) {
         getDomNodeOrDie().setAttribute("href", url.toString());
+    }
+
+    /**
+     * Sets the rel property.
+     * @param rel rel attribute value
+     */
+    public void jsxSet_rel(final String rel) {
+        getDomNodeOrDie().setAttribute("rel", rel);
+    }
+
+    /**
+     * Returns the value of the rel property.
+     * @return the rel property
+     * @throws Exception if an error occurs
+     */
+    public String jsxGet_rel() throws Exception {
+        return ((HtmlAnchor) getDomNodeOrDie()).getRelAttribute();
+    }
+
+    /**
+     * Sets the rev property.
+     * @param rel rev attribute value
+     */
+    public void jsxSet_rev(final String rel) {
+        getDomNodeOrDie().setAttribute("rev", rel);
+    }
+
+    /**
+     * Returns the value of the rev property.
+     * @return the rev property
+     * @throws Exception if an error occurs
+     */
+    public String jsxGet_rev() throws Exception {
+        return ((HtmlAnchor) getDomNodeOrDie()).getRevAttribute();
     }
 
     /**
@@ -286,7 +311,7 @@ public class HTMLAnchorElement extends HTMLElement {
         if (port == -1) {
             return "";
         }
-        return String.valueOf(port);
+        return Integer.toString(port);
     }
 
     /**
@@ -336,34 +361,32 @@ public class HTMLAnchorElement extends HTMLElement {
     }
 
     static String getDefaultValue(final HtmlElement element) {
-        final String href = element.getAttribute("href").trim();
+        String href = element.getAttribute("href");
 
-        final String response;
-        if (href == HtmlElement.ATTRIBUTE_NOT_DEFINED) {
-            response = ""; // for example for named anchors
+        if (DomElement.ATTRIBUTE_NOT_DEFINED == href) {
+            return ""; // for example for named anchors
+        }
+
+        href = href.trim();
+        final int indexAnchor = href.indexOf('#');
+        final String beforeAnchor;
+        final String anchorPart;
+        if (indexAnchor == -1) {
+            beforeAnchor = href;
+            anchorPart = "";
         }
         else {
-            final int indexAnchor = href.indexOf('#');
-            final String beforeAnchor;
-            final String anchorPart;
-            if (indexAnchor == -1) {
-                beforeAnchor = href;
-                anchorPart = "";
-            }
-            else {
-                beforeAnchor = href.substring(0, indexAnchor);
-                anchorPart = href.substring(indexAnchor);
-            }
-
-            try {
-                response =
-                    ((HtmlPage) element.getPage()).getFullyQualifiedUrl(beforeAnchor).toExternalForm() + anchorPart;
-            }
-            catch (final MalformedURLException e) {
-                return href;
-            }
+            beforeAnchor = href.substring(0, indexAnchor);
+            anchorPart = href.substring(indexAnchor);
         }
 
-        return response;
+        try {
+            final String response =
+                ((HtmlPage) element.getPage()).getFullyQualifiedUrl(beforeAnchor).toExternalForm() + anchorPart;
+            return response;
+        }
+        catch (final MalformedURLException e) {
+            return href;
+        }
     }
 }

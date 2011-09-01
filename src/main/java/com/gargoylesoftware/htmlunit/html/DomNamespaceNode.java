@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,19 +17,16 @@ package com.gargoylesoftware.htmlunit.html;
 import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.WebAssert;
 import com.gargoylesoftware.htmlunit.html.xpath.XPathUtils;
-import com.gargoylesoftware.htmlunit.xml.XmlPage;
 
 /**
- * Intermediate base class for DOM Nodes that have namespaces. That includes HtmlElement
- * and HtmlAttr.
+ * Intermediate base class for DOM Nodes that have namespaces. That includes HtmlElement and HtmlAttr.
  *
- * @version $Revision: 4563 $
+ * @version $Revision: 6204 $
  * @author David K. Taylor
  * @author Ahmed Ashour
  */
 public abstract class DomNamespaceNode extends DomNode {
 
-    private static final long serialVersionUID = 4121331154432606647L;
     private final String namespaceURI_;
     private String qualifiedName_;
     private final String localName_;
@@ -46,6 +43,7 @@ public abstract class DomNamespaceNode extends DomNode {
         super(page);
         WebAssert.notNull("qualifiedName", qualifiedName);
         qualifiedName_ = qualifiedName;
+
         if (qualifiedName.indexOf(':') != -1) {
             namespaceURI_ = namespaceURI;
             final int colonPosition = qualifiedName_.indexOf(':');
@@ -53,12 +51,7 @@ public abstract class DomNamespaceNode extends DomNode {
             prefix_ = qualifiedName_.substring(0, colonPosition);
         }
         else {
-            if (page instanceof XmlPage || page instanceof XHtmlPage) {
-                namespaceURI_ = namespaceURI;
-            }
-            else {
-                namespaceURI_ = null;
-            }
+            namespaceURI_ = namespaceURI;
             localName_ = qualifiedName_;
             prefix_ = null;
         }

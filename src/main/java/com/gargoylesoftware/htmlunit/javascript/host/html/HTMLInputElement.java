@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,15 +17,17 @@ package com.gargoylesoftware.htmlunit.javascript.host.html;
 import org.apache.commons.lang.math.NumberUtils;
 import org.xml.sax.helpers.AttributesImpl;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.html.HtmlInput;
 import com.gargoylesoftware.htmlunit.html.HtmlTextInput;
 import com.gargoylesoftware.htmlunit.html.InputElementFactory;
+import com.gargoylesoftware.htmlunit.html.impl.SelectableTextInput;
 import com.gargoylesoftware.htmlunit.javascript.host.FormField;
 
 /**
  * The JavaScript object for form input elements (html tag &lt;input ...&gt;).
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6220 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Marc Guillemot
@@ -34,8 +36,6 @@ import com.gargoylesoftware.htmlunit.javascript.host.FormField;
  * @author Daniel Gredler
  */
 public class HTMLInputElement extends FormField {
-
-    private static final long serialVersionUID = 3712016051364495710L;
 
     /**
      * Creates an instance.
@@ -190,7 +190,7 @@ public class HTMLInputElement extends FormField {
      * @return the selection start
      */
     public int jsxGet_selectionStart() {
-        return ((HtmlTextInput) getDomNodeOrDie()).getSelectionStart();
+        return ((SelectableTextInput) getDomNodeOrDie()).getSelectionStart();
     }
 
     /**
@@ -198,7 +198,7 @@ public class HTMLInputElement extends FormField {
      * @param start selection start
      */
     public void jsxSet_selectionStart(final int start) {
-        ((HtmlTextInput) getDomNodeOrDie()).setSelectionStart(start);
+        ((SelectableTextInput) getDomNodeOrDie()).setSelectionStart(start);
     }
 
     /**
@@ -206,7 +206,7 @@ public class HTMLInputElement extends FormField {
      * @return the selection end
      */
     public int jsxGet_selectionEnd() {
-        return ((HtmlTextInput) getDomNodeOrDie()).getSelectionEnd();
+        return ((SelectableTextInput) getDomNodeOrDie()).getSelectionEnd();
     }
 
     /**
@@ -214,7 +214,7 @@ public class HTMLInputElement extends FormField {
      * @param end selection end
      */
     public void jsxSet_selectionEnd(final int end) {
-        ((HtmlTextInput) getDomNodeOrDie()).setSelectionEnd(end);
+        ((SelectableTextInput) getDomNodeOrDie()).setSelectionEnd(end);
     }
 
     /**
@@ -246,7 +246,7 @@ public class HTMLInputElement extends FormField {
      * @param length the new value
      */
     public void jsxSet_maxLength(final int length) {
-        getDomNodeOrDie().setAttribute("maxLength", String.valueOf(length));
+        getDomNodeOrDie().setAttribute("maxLength", Integer.toString(length));
     }
 
     /**
@@ -280,10 +280,7 @@ public class HTMLInputElement extends FormField {
      * @return the value of the "alt" property
      */
     public String jsxGet_alt() {
-        String alt = getDomNodeOrDie().getAttribute("alt");
-        if (alt == NOT_FOUND) {
-            alt = "";
-        }
+        final String alt = getDomNodeOrDie().getAttribute("alt");
         return alt;
     }
 
@@ -300,10 +297,7 @@ public class HTMLInputElement extends FormField {
      * @return the "border" attribute
      */
     public String jsxGet_border() {
-        String border = getDomNodeOrDie().getAttribute("border");
-        if (border == NOT_FOUND) {
-            border = "";
-        }
+        final String border = getDomNodeOrDie().getAttribute("border");
         return border;
     }
 
@@ -328,7 +322,7 @@ public class HTMLInputElement extends FormField {
      * @param align the value of the "align" property
      */
     public void jsxSet_align(final String align) {
-        final boolean ignoreIfNoError = getBrowserVersion().isIE();
+        final boolean ignoreIfNoError = getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_84);
         setAlign(align, ignoreIfNoError);
     }
 

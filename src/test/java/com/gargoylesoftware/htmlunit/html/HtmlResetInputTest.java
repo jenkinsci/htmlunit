@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
 /**
  * Tests for {@link HtmlResetInput}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Ahmed Ashour
  */
@@ -36,7 +36,7 @@ public class HtmlResetInputTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testReset() throws Exception {
+    public void reset() throws Exception {
         final String htmlContent
             = "<html><head><title>foo</title></head><body>\n"
             + "<form id='form1'>\n"
@@ -100,7 +100,7 @@ public class HtmlResetInputTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testOutsideForm() throws Exception {
+    public void outsideForm() throws Exception {
         final String html =
             "<html><head></head>\n"
             + "<body>\n"

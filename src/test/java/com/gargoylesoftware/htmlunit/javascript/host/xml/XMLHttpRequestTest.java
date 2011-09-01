@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.httpclient.NameValuePair;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -37,8 +36,9 @@ import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
 import com.gargoylesoftware.htmlunit.HttpMethod;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
+import com.gargoylesoftware.htmlunit.NicelyResynchronizingAjaxController;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebRequestSettings;
+import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.WebServerTestCase;
 import com.gargoylesoftware.htmlunit.WebWindow;
@@ -46,15 +46,17 @@ import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
 import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Tries;
 import com.gargoylesoftware.htmlunit.html.DomChangeEvent;
 import com.gargoylesoftware.htmlunit.html.DomChangeListener;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Tests for {@link XMLHttpRequest}.
  *
- * @version $Revision: 4900 $
+ * @version $Revision: 6215 $
  * @author Daniel Gredler
  * @author Marc Guillemot
  * @author Ahmed Ashour
@@ -78,6 +80,7 @@ public class XMLHttpRequestTest extends WebServerTestCase {
      * @throws Exception if the test fails
      */
     @Test
+    @Tries(3)
     public void testSyncUse() throws Exception {
         final String html =
               "<html>\n"
@@ -127,7 +130,7 @@ public class XMLHttpRequestTest extends WebServerTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE6 = "activeX created", IE7 = "[object]",  FF = "[object XMLHttpRequest]")
+    @Alerts(IE = "[object]", IE6 = "activeX created", FF = "[object XMLHttpRequest]")
     public void creation() throws Exception {
         final String html =
             "<html>\n"
@@ -340,52 +343,6 @@ public class XMLHttpRequestTest extends WebServerTestCase {
     }
 
     /**
-     * Test access to the XML DOM.
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testResponseXML() throws Exception {
-        final String html = "<html><head>\n"
-            + "<script>\n"
-            + "function test() {\n"
-            + "  var request;\n"
-            + "  if (window.XMLHttpRequest)\n"
-            + "    request = new XMLHttpRequest();\n"
-            + "  else if (window.ActiveXObject)\n"
-            + "    request = new ActiveXObject('Microsoft.XMLHTTP');\n"
-            + "  request.open('GET', 'foo.xml', false);\n"
-            + "  request.send('');\n"
-            + "  var childNodes = request.responseXML.childNodes;\n"
-            + "  alert(childNodes.length);\n"
-            + "  var rootNode = childNodes[0];\n"
-            + "  alert(rootNode.nodeName);\n"
-            + "  alert(rootNode.attributes[0].nodeName);\n"
-            + "  alert(rootNode.attributes[0].nodeValue);\n"
-            + "  alert(rootNode.attributes['someAttr'] == rootNode.attributes[0]);\n"
-            + "  alert(rootNode.firstChild.nodeName);\n"
-            + "  alert(rootNode.firstChild.childNodes.length);\n"
-            + "  alert(request.responseXML.getElementsByTagName('fi').item(0).attributes[0].nodeValue);\n"
-            + "}\n"
-            + "</script>\n"
-            + "</head>\n"
-            + "<body onload='test()'></body></html>";
-
-        final WebClient client = getWebClient();
-        final List<String> collectedAlerts = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        final URL urlPage2 = new URL(URL_FIRST + "foo.xml");
-        conn.setResponse(urlPage2, "<bla someAttr='someValue'><foo><fi id='fi1'/><fi/></foo></bla>\n",
-                "text/xml");
-        client.setWebConnection(conn);
-        client.getPage(URL_FIRST);
-
-        final String[] alerts = {"1", "bla", "someAttr", "someValue", "true", "foo", "2", "fi1" };
-        assertEquals(alerts, collectedAlerts);
-    }
-
-    /**
      * Regression test for IE specific properties attribute.text & attribute.xml.
      * @throws Exception if the test fails
      */
@@ -529,7 +486,7 @@ public class XMLHttpRequestTest extends WebServerTestCase {
         conn.setDefaultResponse("");
         client.setWebConnection(conn);
         final HtmlPage page = client.getPage(URL_FIRST);
-        assertEquals(URL_FIRST, page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(URL_FIRST, page.getWebResponse().getWebRequest().getUrl());
         assertEquals("foo", page.getTitleText());
     }
 
@@ -650,7 +607,7 @@ public class XMLHttpRequestTest extends WebServerTestCase {
             + "        else if (window.ActiveXObject)\n"
             + "          request = new ActiveXObject('Microsoft.XMLHTTP');\n"
             + "        request.onreadystatechange = onReadyStateChange;\n"
-            + "        request.open('GET', 'about:blank', true);\n"
+            + "        request.open('GET', 'foo.xml', true);\n"
             + "        request.send('');\n"
             + "      }\n"
             + "      function onReadyStateChange() {\n"
@@ -664,9 +621,10 @@ public class XMLHttpRequestTest extends WebServerTestCase {
             + "  </body>\n"
             + "</html>";
 
+        getMockWebConnection().setDefaultResponse("");
         final WebWindow window = loadPage(getBrowserVersion(), content, null).getEnclosingWindow();
         assertEquals(0, window.getWebClient().waitForBackgroundJavaScriptStartingBefore(1000));
-        assertEquals("about:blank", window.getEnclosedPage().getWebResponse().getRequestSettings().getUrl());
+        assertEquals("about:blank", window.getEnclosedPage().getWebResponse().getWebRequest().getUrl());
     }
 
     /**
@@ -707,9 +665,9 @@ public class XMLHttpRequestTest extends WebServerTestCase {
         client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
         final MockWebConnection conn = new MockWebConnection() {
             @Override
-            public WebResponse getResponse(final WebRequestSettings webRequestSettings) throws IOException {
-                collectedAlerts.add(webRequestSettings.getUrl().toExternalForm());
-                return super.getResponse(webRequestSettings);
+            public WebResponse getResponse(final WebRequest webRequest) throws IOException {
+                collectedAlerts.add(webRequest.getUrl().toExternalForm());
+                return super.getResponse(webRequest);
             }
         };
         conn.setResponse(URL_FIRST, content);
@@ -754,9 +712,9 @@ public class XMLHttpRequestTest extends WebServerTestCase {
         client.setWebConnection(conn);
         client.getPage(URL_FIRST);
 
-        final WebRequestSettings settings = conn.getLastWebRequestSettings();
-        assertEquals(urlPage2, settings.getUrl());
-        assertEquals(URL_FIRST.toExternalForm(), settings.getAdditionalHeaders().get("Referer"));
+        final WebRequest request = conn.getLastWebRequest();
+        assertEquals(urlPage2, request.getUrl());
+        assertEquals(URL_FIRST.toExternalForm(), request.getAdditionalHeaders().get("Referer"));
     }
 
     /**
@@ -820,9 +778,9 @@ public class XMLHttpRequestTest extends WebServerTestCase {
         client.setWebConnection(conn);
         client.getPage(URL_FIRST);
 
-        final WebRequestSettings settings = conn.getLastWebRequestSettings();
-        assertEquals(urlPage2, settings.getUrl());
-        assertSame(method, settings.getHttpMethod());
+        final WebRequest request = conn.getLastWebRequest();
+        assertEquals(urlPage2, request.getUrl());
+        assertSame(method, request.getHttpMethod());
     }
 
     /**
@@ -918,8 +876,8 @@ public class XMLHttpRequestTest extends WebServerTestCase {
             private boolean gotFoo1_ = false;
 
             @Override
-            public WebResponse getResponse(final WebRequestSettings webRequestSettings) throws IOException {
-                final String url = webRequestSettings.getUrl().toExternalForm();
+            public WebResponse getResponse(final WebRequest webRequest) throws IOException {
+                final String url = webRequest.getUrl().toExternalForm();
 
                 synchronized (this) {
                     while (!gotFoo1_ && url.endsWith("foo2.txt")) {
@@ -934,7 +892,7 @@ public class XMLHttpRequestTest extends WebServerTestCase {
                 if (url.endsWith("foo1.txt")) {
                     gotFoo1_ = true;
                 }
-                return super.getResponse(webRequestSettings);
+                return super.getResponse(webRequest);
             }
         };
         connection.setDefaultResponse("");
@@ -946,7 +904,6 @@ public class XMLHttpRequestTest extends WebServerTestCase {
 
         final HtmlPage page = webClient.getPage(URL_FIRST);
         final DomChangeListener listener = new DomChangeListener() {
-            private static final long serialVersionUID = 1978591653173770574L;
             public void nodeAdded(final DomChangeEvent event) {
                 // Empty.
             }
@@ -1188,11 +1145,11 @@ public class XMLHttpRequestTest extends WebServerTestCase {
     private static final class DisconnectedMockWebConnection extends MockWebConnection {
         /** {@inheritDoc} */
         @Override
-        public WebResponse getResponse(final WebRequestSettings settings) throws IOException {
-            if (settings.getUrl().equals(URL_SECOND)) {
+        public WebResponse getResponse(final WebRequest request) throws IOException {
+            if (URL_SECOND.equals(request.getUrl())) {
                 throw new IOException("Connection refused");
             }
-            return super.getResponse(settings);
+            return super.getResponse(request);
         }
     }
 
@@ -1200,7 +1157,6 @@ public class XMLHttpRequestTest extends WebServerTestCase {
      * Custom servlet which streams content to the client little by little.
      */
     public static final class StreamingServlet extends HttpServlet {
-        private static final long serialVersionUID = -5892710154241871545L;
         /** {@inheritDoc} */
         @Override
         protected void doGet(final HttpServletRequest req, final HttpServletResponse resp) throws IOException {
@@ -1336,7 +1292,7 @@ public class XMLHttpRequestTest extends WebServerTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    @Browsers({ Browser.IE7, Browser.FF })
+    @Browsers({ Browser.IE7, Browser.IE8, Browser.FF })
     @Alerts("undefined")
     public void caseSensitivity_XMLHttpRequest() throws Exception {
         final String html = "<html><head><script>\n"
@@ -1354,7 +1310,7 @@ public class XMLHttpRequestTest extends WebServerTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(FF2 = "this == handler", FF3 = "this == request", IE = "this == request")
+    @Alerts(FF = "this == request", IE = "this == request")
     public void thisValueInHandler() throws Exception {
         final String html =
               "<html>\n"
@@ -1397,5 +1353,69 @@ public class XMLHttpRequestTest extends WebServerTestCase {
 
         assertEquals(0, client.waitForBackgroundJavaScriptStartingBefore(1000));
         assertEquals(getExpectedAlerts(), collectedAlerts);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Browsers(Browser.FF)
+    @Alerts({ "orsc1", "orsc1", "orsc2", "orsc3", "orsc4", "4", "<a>b</a>", "[object XMLHttpRequest]" })
+    public void onload() throws Exception {
+        final String html =
+              "<html>\n"
+            + "  <head>\n"
+            + "    <script>\n"
+            + "      function test() {\n"
+            + "        var xhr;\n"
+            + "        if (window.XMLHttpRequest) xhr = new XMLHttpRequest();\n"
+            + "        else xhr = new ActiveXObject('Microsoft.XMLHTTP');\n"
+            + "        xhr.onreadystatechange = function() { alert('orsc' + xhr.readyState); };\n"
+            + "        xhr.onload = function() { alert(xhr.readyState); alert(xhr.responseText); alert(this); }\n"
+            + "        xhr.open('GET', '" + URL_SECOND + "', true);\n"
+            + "        xhr.send('');\n"
+            + "      }\n"
+            + "    </script>\n"
+            + "  </head>\n"
+            + "  <body onload='test()'></body>\n"
+            + "</html>";
+
+        final String xml = "<a>b</a>";
+
+        final WebClient client = getWebClient();
+        client.setAjaxController(new NicelyResynchronizingAjaxController());
+        final List<String> collectedAlerts = new ArrayList<String>();
+        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
+        final MockWebConnection conn = new MockWebConnection();
+        conn.setResponse(URL_FIRST, html);
+        conn.setResponse(URL_SECOND, xml, "text/xml");
+        client.setWebConnection(conn);
+        client.getPage(URL_FIRST);
+
+        assertEquals(getExpectedAlerts(), collectedAlerts);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Browsers(Browser.NONE)
+    public void isAuthorizedHeader() throws Exception {
+        assertTrue(XMLHttpRequest.isAuthorizedHeader("Foo"));
+        assertTrue(XMLHttpRequest.isAuthorizedHeader("Content-Type"));
+
+        final String[] headers = {"accept-charset", "accept-encoding",
+            "connection", "content-length", "cookie", "cookie2", "content-transfer-encoding", "date",
+            "expect", "host", "keep-alive", "referer", "te", "trailer", "transfer-encoding", "upgrade",
+            "user-agent", "via" };
+        for (final String header : headers) {
+            assertFalse(XMLHttpRequest.isAuthorizedHeader(header));
+            assertFalse(XMLHttpRequest.isAuthorizedHeader(header.toUpperCase()));
+        }
+        assertFalse(XMLHttpRequest.isAuthorizedHeader("Proxy-"));
+        assertFalse(XMLHttpRequest.isAuthorizedHeader("Proxy-Control"));
+        assertFalse(XMLHttpRequest.isAuthorizedHeader("Proxy-Hack"));
+        assertFalse(XMLHttpRequest.isAuthorizedHeader("Sec-"));
+        assertFalse(XMLHttpRequest.isAuthorizedHeader("Sec-Hack"));
     }
 }

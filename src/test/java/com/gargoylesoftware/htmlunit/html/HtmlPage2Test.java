@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,34 +16,43 @@ package com.gargoylesoftware.htmlunit.html;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.net.URI;
+import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebServerTestCase;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Tests for {@link HtmlPage}.
  *
- * @version $Revision: 4832 $
+ * @version $Revision: 6436 $
  * @author Ahmed Ashour
+ * @author Marc Guillemot
  */
 @RunWith(BrowserRunner.class)
 public class HtmlPage2Test extends WebServerTestCase {
+    /**
+     * Utility for temporary folders.
+     * Has to be public due to JUnit's constraints for @Rule.
+     */
+    @Rule
+    public final TemporaryFolder tmpFolderProvider_ = new TemporaryFolder();
 
     /**
      * @exception Exception If the test fails
@@ -99,7 +108,7 @@ public class HtmlPage2Test extends WebServerTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(FF = "25", IE6 = "25", IE7 = "error")
+    @Alerts(FF = "25", IE6 = "25", IE7 = "error", IE8 = "25")
     public void loadExternalJavaScript() throws Exception {
         final String html =
             "<html><head>\n"
@@ -258,13 +267,19 @@ public class HtmlPage2Test extends WebServerTestCase {
 
         final HtmlPage page = webClient.getPage(URL_FIRST);
         assertEquals(getExpectedAlerts(), collectedAlerts);
-        final File file = new File(System.getProperty("java.io.tmpdir"), "hu_HtmlPageTest_save.html");
+
+        final HtmlScript sript = page.getFirstByXPath("//script");
+        assertEquals(URL_SECOND.toString(), sript.getSrcAttribute());
+
+        final File tmpFolder = tmpFolderProvider_.newFolder("hu");
+        final File file = new File(tmpFolder, "hu_HtmlPageTest_save.html");
         page.save(file);
         assertTrue(file.exists());
         assertTrue(file.isFile());
         final String content = FileUtils.readFileToString(file);
         assertFalse(content.contains("<script"));
-        file.delete();
+
+        assertEquals(URL_SECOND.toString(), sript.getSrcAttribute());
     }
 
     /**
@@ -275,37 +290,162 @@ public class HtmlPage2Test extends WebServerTestCase {
         final String html = "<html><body><img src='" + URL_SECOND + "'></body></html>";
 
         final URL url = getClass().getClassLoader().getResource("testfiles/tiny-jpg.img");
-        final FileInputStream fis = new FileInputStream(new File(new URI(url.toString())));
+        final FileInputStream fis = new FileInputStream(new File(url.toURI()));
         final byte[] directBytes = IOUtils.toByteArray(fis);
         fis.close();
 
-        final WebClient webClient = getWebClient();
-        final MockWebConnection webConnection = new MockWebConnection();
+        final WebClient webClient = getWebClientWithMockWebConnection();
+        final MockWebConnection webConnection = getMockWebConnection();
 
         webConnection.setResponse(URL_FIRST, html);
         final List< ? extends NameValuePair> emptyList = Collections.emptyList();
         webConnection.setResponse(URL_SECOND, directBytes, 200, "ok", "image/jpg", emptyList);
-        webClient.setWebConnection(webConnection);
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-        webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
         final HtmlPage page = webClient.getPage(URL_FIRST);
-        final File file = new File(System.getProperty("java.io.tmpdir"), "hu_HtmlPageTest_save2.html");
-        final File imgFile = new File(System.getProperty("java.io.tmpdir"), "hu_HtmlPageTest_save2/second.JPEG");
-        try {
-            page.save(file);
-            assertTrue(file.exists());
-            assertTrue(file.isFile());
-            final FileInputStream fos = new FileInputStream(imgFile);
-            final byte[] loadedBytes = IOUtils.toByteArray(fos);
-            fos.close();
-            assertTrue(loadedBytes.length > 0);
+        final HtmlImage img = page.getFirstByXPath("//img");
+        assertEquals(URL_SECOND.toString(), img.getSrcAttribute());
+        final File tmpFolder = tmpFolderProvider_.newFolder("hu");
+        final File file = new File(tmpFolder, "hu_HtmlPageTest_save2.html");
+        final File imgFile = new File(tmpFolder, "hu_HtmlPageTest_save2/second.jpeg");
+        page.save(file);
+        assertTrue(file.exists());
+        assertTrue(file.isFile());
+        final byte[] loadedBytes = FileUtils.readFileToByteArray(imgFile);
+        assertTrue(loadedBytes.length > 0);
+        assertEquals(URL_SECOND.toString(), img.getSrcAttribute());
+    }
+
+    /**
+     * As of 24.05.2011 an IOException was occurring when saving a page where
+     * the response to the request for an image was not an image.
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void save_imageNotImage() throws Exception {
+        final String html = "<html><body><img src='foo.txt'></body></html>";
+
+        final MockWebConnection webConnection = getMockWebConnection();
+
+        webConnection.setDefaultResponse("hello", "text/plain");
+
+        final HtmlPage page = loadPageWithAlerts(html);
+
+        final File folder = tmpFolderProvider_.newFolder("hu");
+        final File file = new File(folder, "hu_save.html");
+        page.save(file);
+        assertTrue(file.exists());
+        assertTrue(file.isFile());
+
+        final File imgFile = new File(folder, "hu_save/foo.txt");
+        assertEquals("hello", FileUtils.readFileToString(imgFile, "UTF-8"));
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void save_image_without_src() throws Exception {
+        final String html = "<html><body><img></body></html>";
+
+        final WebClient webClient = getWebClientWithMockWebConnection();
+        final MockWebConnection webConnection = getMockWebConnection();
+
+        webConnection.setResponse(URL_FIRST, html);
+
+        final HtmlPage page = webClient.getPage(URL_FIRST);
+        final File tmpFolder = tmpFolderProvider_.newFolder("hu");
+        final File file = new File(tmpFolder, "hu_HtmlPageTest_save3.html");
+        page.save(file);
+        assertTrue(file.exists());
+        assertTrue(file.isFile());
+
+        final HtmlImage img = page.getFirstByXPath("//img");
+        assertEquals(DomElement.ATTRIBUTE_NOT_DEFINED, img.getSrcAttribute());
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void save_image_empty_src() throws Exception {
+        final String html = "<html><body><img src=''></body></html>";
+
+        final WebClient webClient = getWebClientWithMockWebConnection();
+        final MockWebConnection webConnection = getMockWebConnection();
+
+        webConnection.setResponse(URL_FIRST, html);
+
+        final HtmlPage page = webClient.getPage(URL_FIRST);
+        final File tmpFolder = tmpFolderProvider_.newFolder("hu");
+        final File file = new File(tmpFolder, "hu_HtmlPageTest_save3.html");
+        page.save(file);
+        assertTrue(file.exists());
+        assertTrue(file.isFile());
+
+        final HtmlImage img = page.getFirstByXPath("//img");
+        assertEquals(DomElement.ATTRIBUTE_NOT_DEFINED, img.getSrcAttribute());
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void save_frames() throws Exception {
+        final String mainContent
+            = "<html><head><title>First</title></head>\n"
+            + "<frameset cols='50%,*'>\n"
+            + "  <frame name='left' src='" + URL_SECOND + "' frameborder='1' />\n"
+            + "  <frame name='right' src='" + URL_THIRD + "' frameborder='1' />\n"
+            + "  <frame name='withoutsrc' />\n"
+            + "</frameset>\n"
+            + "</html>";
+        final String frameLeftContent = "<html><head><title>Second</title></head><body>\n"
+            + "<iframe src='iframe.html'></iframe>\n"
+            + "<img src='img.jpg'>\n"
+            + "</body></html>";
+        final String frameRightContent = "<html><head><title>Third</title></head><body>frame right</body></html>";
+        final String iframeContent  = "<html><head><title>Iframe</title></head><body>iframe</body></html>";
+
+        final InputStream is = getClass().getClassLoader().getResourceAsStream("testfiles/tiny-jpg.img");
+        final byte[] directBytes = IOUtils.toByteArray(is);
+        is.close();
+
+        final WebClient webClient = getWebClientWithMockWebConnection();
+        final MockWebConnection webConnection = getMockWebConnection();
+
+        webConnection.setResponse(URL_FIRST, mainContent);
+        webConnection.setResponse(URL_SECOND, frameLeftContent);
+        webConnection.setResponse(URL_THIRD, frameRightContent);
+        final URL urlIframe = new URL(URL_SECOND, "iframe.html");
+        webConnection.setResponse(urlIframe, iframeContent);
+
+        final List< ? extends NameValuePair> emptyList = Collections.emptyList();
+        final URL urlImage = new URL(URL_SECOND, "img.jpg");
+        webConnection.setResponse(urlImage, directBytes, 200, "ok", "image/jpg", emptyList);
+
+        final HtmlPage page = webClient.getPage(URL_FIRST);
+        final HtmlFrame leftFrame = page.getElementByName("left");
+        assertEquals(URL_SECOND.toString(), leftFrame.getSrcAttribute());
+        final File tmpFolder = tmpFolderProvider_.newFolder("hu");
+        final File file = new File(tmpFolder, "hu_HtmlPageTest_saveFrame.html");
+        final File expectedLeftFrameFile = new File(tmpFolder, "hu_HtmlPageTest_saveFrame/second.html");
+        final File expectedRightFrameFile = new File(tmpFolder, "hu_HtmlPageTest_saveFrame/third.html");
+        final File expectedIFrameFile = new File(tmpFolder, "hu_HtmlPageTest_saveFrame/second/iframe.html");
+        final File expectedImgFile = new File(tmpFolder, "hu_HtmlPageTest_saveFrame/second/img.jpg");
+        final File[] allFiles = {file, expectedLeftFrameFile, expectedImgFile, expectedIFrameFile,
+            expectedRightFrameFile};
+
+        page.save(file);
+        for (final File f : allFiles) {
+            assertTrue(f.toString(), f.exists());
+            assertTrue(f.toString(), f.isFile());
         }
-        finally {
-            file.delete();
-            FileUtils.deleteDirectory(imgFile.getParentFile());
-        }
+
+        final byte[] loadedBytes = FileUtils.readFileToByteArray(expectedImgFile);
+        assertTrue(loadedBytes.length > 0);
+
+        // ensure that saving the page hasn't changed the DOM
+        assertEquals(URL_SECOND.toString(), leftFrame.getSrcAttribute());
     }
 
     /**
@@ -318,29 +458,73 @@ public class HtmlPage2Test extends WebServerTestCase {
 
         final String css = "body {color: blue}";
 
-        final WebClient webClient = getWebClient();
-        final MockWebConnection webConnection = new MockWebConnection();
+        final WebClient webClient = getWebClientWithMockWebConnection();
+        final MockWebConnection webConnection = getMockWebConnection();
 
         webConnection.setResponse(URL_FIRST, html);
         webConnection.setResponse(URL_SECOND, css);
-        webClient.setWebConnection(webConnection);
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-        webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
         final HtmlPage page = webClient.getPage(URL_FIRST);
-        final File file = new File(System.getProperty("java.io.tmpdir"), "hu_HtmlPageTest_save3.html");
-        final File cssFile = new File(System.getProperty("java.io.tmpdir"), "hu_HtmlPageTest_save3/second.css");
-        try {
-            page.save(file);
-            assertTrue(file.exists());
-            assertTrue(file.isFile());
-            assertEquals(css, FileUtils.readFileToString(cssFile));
-        }
-        finally {
-            file.delete();
-            FileUtils.deleteDirectory(cssFile.getParentFile());
-        }
+        final HtmlLink cssLink = page.getFirstByXPath("//link");
+        assertEquals(URL_SECOND.toString(), cssLink.getHrefAttribute());
+
+        final File tmpFolder = tmpFolderProvider_.newFolder("hu");
+        final File file = new File(tmpFolder, "hu_HtmlPageTest_save4.html");
+        final File cssFile = new File(tmpFolder, "hu_HtmlPageTest_save4/second.css");
+        page.save(file);
+        assertTrue(file.exists());
+        assertTrue(file.isFile());
+        assertEquals(css, FileUtils.readFileToString(cssFile));
+
+        assertEquals(URL_SECOND.toString(), cssLink.getHrefAttribute());
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void save_css_without_href() throws Exception {
+        final String html = "<html><head>"
+            + "<link rel='stylesheet' type='text/css' /></head></html>";
+
+        final WebClient webClient = getWebClientWithMockWebConnection();
+        final MockWebConnection webConnection = getMockWebConnection();
+
+        webConnection.setResponse(URL_FIRST, html);
+
+        final HtmlPage page = webClient.getPage(URL_FIRST);
+        final File tmpFolder = tmpFolderProvider_.newFolder("hu");
+        final File file = new File(tmpFolder, "hu_HtmlPageTest_save5.html");
+        page.save(file);
+        assertTrue(file.exists());
+        assertTrue(file.isFile());
+
+        final HtmlLink cssLink = page.getFirstByXPath("//link");
+        assertEquals(DomElement.ATTRIBUTE_NOT_DEFINED, cssLink.getHrefAttribute());
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void save_css_empty_href() throws Exception {
+        final String html = "<html><head>"
+            + "<link rel='stylesheet' type='text/css' href='' /></head></html>";
+
+        final WebClient webClient = getWebClientWithMockWebConnection();
+        final MockWebConnection webConnection = getMockWebConnection();
+
+        webConnection.setResponse(URL_FIRST, html);
+
+        final HtmlPage page = webClient.getPage(URL_FIRST);
+        final File tmpFolder = tmpFolderProvider_.newFolder("hu");
+        final File file = new File(tmpFolder, "hu_HtmlPageTest_save5.html");
+        page.save(file);
+        assertTrue(file.exists());
+        assertTrue(file.isFile());
+
+        final HtmlLink cssLink = page.getFirstByXPath("//link");
+        assertEquals(DomElement.ATTRIBUTE_NOT_DEFINED, cssLink.getHrefAttribute());
     }
 
     /**
@@ -352,6 +536,22 @@ public class HtmlPage2Test extends WebServerTestCase {
         final String html = "<html>\n"
             + "<body>\n"
             + "  <script type='application/javascript'>\n"
+            + "    alert('Hello');\n"
+            + "  </script>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(FF = "Hello")
+    public void application_x_javascript_type() throws Exception {
+        final String html = "<html>\n"
+            + "<body>\n"
+            + "  <script type='application/x-javascript'>\n"
             + "    alert('Hello');\n"
             + "  </script>\n"
             + "</body></html>";
@@ -414,4 +614,30 @@ public class HtmlPage2Test extends WebServerTestCase {
         loadPageWithAlerts(html);
     }
 
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void save_emptyTextArea() throws Exception {
+        final String html = "<html>\n"
+            + "<head/>\n"
+            + "<body>\n"
+            + "<textarea></textarea>\n"
+            + "</body>\n"
+            + "</html>";
+
+        final HtmlPage page = loadPage(html);
+        final File tmpFolder = new File(System.getProperty("java.io.tmpdir"));
+        final File file = new File(tmpFolder, "hu_HtmlPage2Test_save_emptyTextArea.html");
+        try {
+            page.save(file);
+            assertTrue(file.exists());
+            assertTrue(file.isFile());
+            assertTrue(page.asXml().contains("</textarea>"));
+            assertTrue(FileUtils.readFileToString(file).contains("</textarea>"));
+        }
+        finally {
+            file.delete();
+        }
+    }
 }

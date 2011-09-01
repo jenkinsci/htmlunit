@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,21 +21,24 @@ import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
 import com.gargoylesoftware.htmlunit.FailingHttpStatusCodeException;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebRequestSettings;
+import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.WebTestCase;
 
 /**
  * Tests for {@link FalsifyingWebConnection}.
  *
- * @version $Revision: 4415 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  */
+@RunWith(BrowserRunner.class)
 public class FalsifyingWebConnectionTest extends WebTestCase {
 
     /**
@@ -43,7 +46,7 @@ public class FalsifyingWebConnectionTest extends WebTestCase {
      */
     @Test
     public void blockSomeRequests() throws Exception {
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
 
         final String html = "<html><head>\n"
             + "<script src='http://www.google-analytics.com/ga.js'></script>\n"
@@ -64,11 +67,11 @@ public class FalsifyingWebConnectionTest extends WebTestCase {
         // c'tor configures connection on the web client
         new FalsifyingWebConnection(webClient) {
             @Override
-            public WebResponse getResponse(final WebRequestSettings settings) throws IOException {
-                if ("www.google-analytics.com".equals(settings.getUrl().getHost())) {
-                    return createWebResponse(settings, "", "application/javascript"); // -> empty script
+            public WebResponse getResponse(final WebRequest request) throws IOException {
+                if ("www.google-analytics.com".equals(request.getUrl().getHost())) {
+                    return createWebResponse(request, "", "application/javascript"); // -> empty script
                 }
-                return super.getResponse(settings);
+                return super.getResponse(request);
             }
         };
 
@@ -84,7 +87,7 @@ public class FalsifyingWebConnectionTest extends WebTestCase {
      */
     @Test
     public void simulateHttpError() throws Exception {
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
 
         final String html = "<html><head>\n"
             + "<script src='myJs.js'></script>\n"
@@ -111,11 +114,11 @@ public class FalsifyingWebConnectionTest extends WebTestCase {
         // c'tor configures connection on the web client
         new FalsifyingWebConnection(webClient) {
             @Override
-            public WebResponse getResponse(final WebRequestSettings settings) throws IOException {
-                if (settings.getUrl().getPath().endsWith(".js")) {
-                    return createWebResponse(settings, "", "text/html", 500, "Application Error");
+            public WebResponse getResponse(final WebRequest request) throws IOException {
+                if (request.getUrl().getPath().endsWith(".js")) {
+                    return createWebResponse(request, "", "text/html", 500, "Application Error");
                 }
-                return super.getResponse(settings);
+                return super.getResponse(request);
             }
         };
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,15 +24,11 @@ import org.w3c.css.sac.ErrorHandler;
 /**
  * HtmlUnit's default implementation of {@link ErrorHandler}, which logs all CSS problems.
  *
- * @version $Revision: 4789 $
+ * @version $Revision: 6409 $
  * @author Daniel Gredler
  * @see SilentCssErrorHandler
  */
 public class DefaultCssErrorHandler implements ErrorHandler, Serializable {
-
-    /**Serial version UID. */
-    private static final long serialVersionUID = 4655126263007765782L;
-
     /** Logging support. */
     private static final Log LOG = LogFactory.getLog(DefaultCssErrorHandler.class);
 
@@ -66,8 +62,10 @@ public class DefaultCssErrorHandler implements ErrorHandler, Serializable {
         final String uri = exception.getURI();
         final int line = exception.getLineNumber();
         final int col = exception.getColumnNumber();
-        final String msg = exception.getMessage();
-        return uri + " [" + line + ":" + col + "] " + msg;
-    }
 
+        if (null == uri) {
+            return "[" + line + ":" + col + "] " + exception.getMessage();
+        }
+        return "'" + uri + "' [" + line + ":" + col + "] " + exception.getMessage();
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,9 @@ import java.util.List;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import com.gargoylesoftware.htmlunit.BrowserRunner.Tries;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.javascript.background.JavaScriptJobManager;
 
@@ -32,10 +34,13 @@ import com.gargoylesoftware.htmlunit.javascript.background.JavaScriptJobManager;
  * Tests for {@link WebClient#waitForBackgroundJavaScriptStartingBefore(long)} and
  * {@link WebClient#waitForBackgroundJavaScript(long)}.
  *
- * @version $Revision: 4806 $
+ * @version $Revision: 6245 $
  * @author Marc Guillemot
  */
+@RunWith(BrowserRunner.class)
 public class WebClientWaitForBackgroundJobsTest extends WebTestCase {
+    private static String XHRInstantiation_ = "(window.XMLHttpRequest ? "
+        + "new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP'))";
 
     private long startTime_;
 
@@ -92,6 +97,7 @@ public class WebClientWaitForBackgroundJobsTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
+    @Tries(3)
     public void dontWaitWhenUnnecessary_jobRemovesOtherJob() throws Exception {
         final String content = "<html>\n"
             + "<head>\n"
@@ -151,7 +157,7 @@ public class WebClientWaitForBackgroundJobsTest extends WebTestCase {
             + "    function doWork() {\n"
             + "      clearTimeout(intervalId);\n"
             + "      // waitForBackgroundJavaScriptStartingBefore should be called when JS execution is here\n"
-            + "      var request = new XMLHttpRequest();\n"
+            + "      var request = " + XHRInstantiation_ + ";\n"
             + "      request.open('GET', 'wait', false);\n"
             + "      request.send('');\n"
             + "      alert('end work');\n"
@@ -165,18 +171,18 @@ public class WebClientWaitForBackgroundJobsTest extends WebTestCase {
         final ThreadSynchronizer threadSynchronizer = new ThreadSynchronizer();
         final MockWebConnection webConnection = new MockWebConnection() {
             @Override
-            public WebResponse getResponse(final WebRequestSettings settings) throws IOException {
-                if (settings.getUrl().toExternalForm().endsWith("/wait")) {
+            public WebResponse getResponse(final WebRequest request) throws IOException {
+                if (request.getUrl().toExternalForm().endsWith("/wait")) {
                     threadSynchronizer.waitForState("just before waitForBackgroundJavaScriptStartingBefore");
                     threadSynchronizer.sleep(400); // main thread need to be able to process next instruction
                 }
-                return super.getResponse(settings);
+                return super.getResponse(request);
             }
         };
         webConnection.setResponse(URL_FIRST, html);
         webConnection.setDefaultResponse("");
 
-        final WebClient client = new WebClient(BrowserVersion.FIREFOX_3); // just to simplify test code using XHR
+        final WebClient client = getWebClient();
         client.setWebConnection(webConnection);
 
         final List<String> collectedAlerts = Collections.synchronizedList(new ArrayList<String>());
@@ -272,7 +278,7 @@ public class WebClientWaitForBackgroundJobsTest extends WebTestCase {
             + "</body>\n"
             + "</html>";
 
-        final WebClient client =  new WebClient(BrowserVersion.FIREFOX_2);
+        final WebClient client = getWebClient();
         final List<String> collectedAlerts = Collections.synchronizedList(new ArrayList<String>());
         client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
@@ -317,7 +323,7 @@ public class WebClientWaitForBackgroundJobsTest extends WebTestCase {
             + "      }\n"
             + "    }\n"
             + "    function test() {\n"
-            + "      request = new XMLHttpRequest();\n"
+            + "      request = " + XHRInstantiation_ + ";\n"
             + "      request.open('GET', 'wait', true);\n"
             + "      request.onreadystatechange = onReadyStateChange;\n"
             + "      // waitForBackgroundJavaScriptStartingBefore should be called when JS execution is in send()\n"
@@ -335,18 +341,18 @@ public class WebClientWaitForBackgroundJobsTest extends WebTestCase {
         final ThreadSynchronizer threadSynchronizer = new ThreadSynchronizer();
         final MockWebConnection webConnection = new MockWebConnection() {
             @Override
-            public WebResponse getResponse(final WebRequestSettings settings) throws IOException {
-                if (settings.getUrl().toExternalForm().endsWith("/wait")) {
+            public WebResponse getResponse(final WebRequest request) throws IOException {
+                if (request.getUrl().toExternalForm().endsWith("/wait")) {
                     threadSynchronizer.waitForState("just before waitForBackgroundJavaScriptStartingBefore");
                     threadSynchronizer.sleep(400); // main thread need to be able to process next instruction
                 }
-                return super.getResponse(settings);
+                return super.getResponse(request);
             }
         };
         webConnection.setResponse(URL_FIRST, html);
         webConnection.setDefaultResponse("");
 
-        final WebClient client = new WebClient(BrowserVersion.FIREFOX_3); // just to simplify test code using XHR
+        final WebClient client = getWebClient();
         client.setWebConnection(webConnection);
 
         final List<String> collectedAlerts = Collections.synchronizedList(new ArrayList<String>());
@@ -399,7 +405,7 @@ public class WebClientWaitForBackgroundJobsTest extends WebTestCase {
         webConnection.setResponse(URL_FIRST, html);
         webConnection.setDefaultResponse("");
 
-        final WebClient client = new WebClient(BrowserVersion.FIREFOX_3); // just to simplify test code using XHR
+        final WebClient client = getWebClient();
         client.setWebConnection(webConnection);
 
         final List<String> collectedAlerts = Collections.synchronizedList(new ArrayList<String>());
@@ -489,6 +495,54 @@ public class WebClientWaitForBackgroundJobsTest extends WebTestCase {
         assertEquals(expectedAlerts, collectedAlerts);
     }
 
+    /**
+     * HtmlUnit-2.7-SNAPSHOT (as of 29.10.09) had bug with
+     * WebClient.waitForBackgroundJavaScriptStartingBefore: it could be totally blocking
+     * under some circumstances. This test reproduces the problem but ensures
+     * that the test terminates (calling clearInterval when waitForBackgroundJavaScriptStartingBefore
+     * has not done its job correctly).
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Tries(3)
+    public void waitForBackgroundJavaScriptStartingBefore_hangs() throws Exception {
+        final String html = "<html>\n"
+            + "<head>\n"
+            + "  <title>test</title>\n"
+            + "  <script>\n"
+            + "    var start = new Date().getTime();\n"
+            + "    var id = setInterval(doWork1, 35);\n"
+            + "    function stopTimer() {\n"
+            + "      clearInterval(id);\n"
+            + "    }\n"
+            + "    function doWork1() {\n"
+            + "      if (start + 8000 < new Date().getTime()) {\n"
+            + "        document.title = 'failed';\n"
+            + "        clearInterval(id);\n"
+            + "      }\n"
+            + "    }\n"
+            + "  </script>\n"
+            + "</head>\n"
+            + "<body>\n"
+            + "<button onclick='stopTimer()'>stop</button>\n"
+            + "</body>\n"
+            + "</html>";
+
+        final WebClient client = getWebClient();
+
+        final MockWebConnection webConnection = new MockWebConnection();
+        webConnection.setDefaultResponse(html);
+        client.setWebConnection(webConnection);
+
+        final HtmlPage page = client.getPage(URL_FIRST);
+
+        int noOfJobs = client.waitForBackgroundJavaScriptStartingBefore(500);
+        assertTrue(noOfJobs == 1 || noOfJobs == 2); // maybe one is running
+
+        assertEquals("test", page.getTitleText());
+        noOfJobs = client.waitForBackgroundJavaScriptStartingBefore(500);
+        assertTrue(noOfJobs == 1 || noOfJobs == 2); // maybe one is running
+    }
 }
 
 /**
@@ -510,7 +564,9 @@ class ThreadSynchronizer {
      */
     public void sleep(final long millis) {
         try {
-            LOG.debug("Sleeping for " + millis + "ms");
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Sleeping for " + millis + "ms");
+            }
             Thread.sleep(millis);
         }
         catch (final InterruptedException e) {

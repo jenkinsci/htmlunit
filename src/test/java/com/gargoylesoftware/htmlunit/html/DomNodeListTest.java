@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,15 +18,18 @@ import java.util.Iterator;
 import java.util.ListIterator;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.WebTestCase;
 
 /**
  * Tests for {@link DomNodeList}.
  *
- * @version $Revision: 4545 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:tom.anderson@univ.oxon.org">Tom Anderson</a>
  */
+@RunWith(BrowserRunner.class)
 public class DomNodeListTest extends WebTestCase {
 
     /**

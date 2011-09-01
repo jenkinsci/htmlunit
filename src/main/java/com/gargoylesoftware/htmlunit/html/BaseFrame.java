@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import com.gargoylesoftware.htmlunit.FailingHttpStatusCodeException;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebRequestSettings;
+import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebWindow;
 import com.gargoylesoftware.htmlunit.javascript.JavaScriptEngine;
 import com.gargoylesoftware.htmlunit.javascript.PostponedAction;
@@ -34,7 +34,7 @@ import com.gargoylesoftware.htmlunit.javascript.PostponedAction;
 /**
  * Base class for frame and iframe.
  *
- * @version $Revision: 4789 $
+ * @version $Revision: 6489 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -45,11 +45,11 @@ import com.gargoylesoftware.htmlunit.javascript.PostponedAction;
  * @author Dmitri Zoubkov
  * @author Daniel Gredler
  */
-public abstract class BaseFrame extends StyledElement {
+public abstract class BaseFrame extends HtmlElement {
 
-    private static final long serialVersionUID = -7658106924909626296L;
     private static final Log LOG = LogFactory.getLog(BaseFrame.class);
-    private final WebWindow enclosedWindow_ = new FrameWindow(this);
+    private final WebWindow enclosedWindow_;
+    private boolean contentLoaded_ = false;
 
     /**
      * Creates an instance of BaseFrame.
@@ -63,13 +63,17 @@ public abstract class BaseFrame extends StyledElement {
             final Map<String, DomAttr> attributes) {
         super(namespaceURI, qualifiedName, page, attributes);
 
+        WebWindow enclosedWindow = null;
         try {
-            // put about:blank in the window to allow JS to run on this frame before the
-            // real content is loaded
-            final WebClient webClient = getPage().getEnclosingWindow().getWebClient();
-            final HtmlPage temporaryPage = webClient.getPage(enclosedWindow_,
-                new WebRequestSettings(WebClient.URL_ABOUT_BLANK));
-            temporaryPage.setReadyState(READY_STATE_LOADING);
+            if (getPage() instanceof HtmlPage) { // if loaded as part of XHR.responseXML, don't load content
+                enclosedWindow = new FrameWindow(this);
+                // put about:blank in the window to allow JS to run on this frame before the
+                // real content is loaded
+                final WebClient webClient = getPage().getEnclosingWindow().getWebClient();
+                final HtmlPage temporaryPage = webClient.getPage(enclosedWindow,
+                    new WebRequest(WebClient.URL_ABOUT_BLANK));
+                temporaryPage.setReadyState(READY_STATE_LOADING);
+            }
         }
         catch (final FailingHttpStatusCodeException e) {
             // should never occur
@@ -77,6 +81,7 @@ public abstract class BaseFrame extends StyledElement {
         catch (final IOException e) {
             // should never occur
         }
+        enclosedWindow_ = enclosedWindow;
     }
 
     /**
@@ -88,12 +93,11 @@ public abstract class BaseFrame extends StyledElement {
     void loadInnerPage() throws FailingHttpStatusCodeException {
         String source = getSrcAttribute();
         if (source.length() == 0) {
-            // Nothing to load
             source = "about:blank";
         }
-        else {
-            loadInnerPageIfPossible(source);
-        }
+
+        loadInnerPageIfPossible(source);
+
         final Page enclosedPage = getEnclosedPage();
         if (enclosedPage instanceof HtmlPage) {
             ((HtmlPage) enclosedPage).setReadyState(READY_STATE_COMPLETE);
@@ -101,10 +105,30 @@ public abstract class BaseFrame extends StyledElement {
     }
 
     /**
+     * Indicates if the content specified by the src attribute has been loaded or not.
+     * The initial state of a frame contains an "about:blank" that is not loaded like
+     * something specified in src attribute.
+     * @return <code>false</code> if the frame is still in its initial state.
+     */
+    boolean isContentLoaded() {
+        return contentLoaded_;
+    }
+
+    /**
+     * Changes the state of the contentLoaded_ attribute to true.
+     * This is needed, if the content is set from javascript to avoid
+     * later overwriting from method com.gargoylesoftware.htmlunit.html.HtmlPage.loadFrames().
+     */
+    protected void setContentLoaded() {
+        contentLoaded_ = true;
+    }
+
+    /**
      * @throws FailingHttpStatusCodeException if the server returns a failing status code AND the property
      *      {@link WebClient#setThrowExceptionOnFailingStatusCode(boolean)} is set to true
      */
     private void loadInnerPageIfPossible(final String src) throws FailingHttpStatusCodeException {
+        setContentLoaded();
         if (src.length() != 0) {
             final URL url;
             try {
@@ -119,16 +143,13 @@ public abstract class BaseFrame extends StyledElement {
                 return;
             }
             try {
-                final WebRequestSettings settings = new WebRequestSettings(url);
-                settings.setAdditionalHeader("Referer", getPage().getWebResponse().getRequestSettings().getUrl()
+                final WebRequest request = new WebRequest(url);
+                request.setAdditionalHeader("Referer", getPage().getWebResponse().getWebRequest().getUrl()
                         .toExternalForm());
-                getPage().getEnclosingWindow().getWebClient().getPage(enclosedWindow_, settings);
+                getPage().getEnclosingWindow().getWebClient().getPage(enclosedWindow_, request);
             }
             catch (final IOException e) {
-                if (LOG.isErrorEnabled()) {
-                    LOG.error("IOException when getting content for " + getTagName()
-                            + ": url=[" + url + "]", e);
-                }
+                LOG.error("IOException when getting content for " + getTagName() + ": url=[" + url + "]", e);
             }
         }
     }
@@ -141,7 +162,7 @@ public abstract class BaseFrame extends StyledElement {
     private boolean isAlreadyLoadedByAncestor(final URL url) {
         WebWindow window = getPage().getEnclosingWindow();
         while (window != null) {
-            if (url.sameFile(window.getEnclosedPage().getWebResponse().getRequestSettings().getUrl())) {
+            if (url.sameFile(window.getEnclosedPage().getWebResponse().getWebRequest().getUrl())) {
                 return true;
             }
             if (window == window.getParentWindow()) {
@@ -296,14 +317,14 @@ public abstract class BaseFrame extends StyledElement {
      * {@inheritDoc}
      */
     @Override
-    public void setAttributeNS(final String namespaceURI, final String qualifiedName,  String attributeValue) {
-        if (qualifiedName.equals("src")) {
+    public void setAttributeNS(final String namespaceURI, final String qualifiedName, String attributeValue) {
+        if ("src".equals(qualifiedName)) {
             attributeValue = attributeValue.trim();
         }
 
         super.setAttributeNS(namespaceURI, qualifiedName, attributeValue);
 
-        if (qualifiedName.equals("src")) {
+        if ("src".equals(qualifiedName)) {
             final JavaScriptEngine jsEngine = getPage().getWebClient().getJavaScriptEngine();
             // When src is set from a script, loading is postponed until script finishes
             // in fact this implementation is probably wrong: JavaScript URL should be
@@ -313,7 +334,8 @@ public abstract class BaseFrame extends StyledElement {
             }
             else {
                 final String src = attributeValue;
-                final PostponedAction action = new PostponedAction() {
+                final PostponedAction action = new PostponedAction(getPage()) {
+                    @Override
                     public void execute() throws Exception {
                         if (getSrcAttribute().equals(src)) {
                             loadInnerPage();

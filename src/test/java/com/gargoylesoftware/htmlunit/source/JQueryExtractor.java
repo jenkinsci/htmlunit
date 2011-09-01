@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ import com.gargoylesoftware.htmlunit.BrowserVersion;
  *   5- Call {@link JQueryExtractor#run(File, File)} with appropriate parameters
  *   6- Add the generated code to {@link JQueryExtractorSample}
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6205 $
  * @author Ahmed Ashour
  */
 public final class JQueryExtractor {
@@ -48,7 +48,6 @@ public final class JQueryExtractor {
     private final Writer writer_;
     private final List<String[]> ie6_;
     private final List<String[]> ie7_;
-    private final List<String[]> ff2_;
     private final List<String[]> ff3_;
 
     /**
@@ -69,7 +68,6 @@ public final class JQueryExtractor {
         writer_ = new BufferedWriter(new FileWriter(output));
         ie6_ = getExpected(dir, BrowserVersion.INTERNET_EXPLORER_6);
         ie7_ = getExpected(dir, BrowserVersion.INTERNET_EXPLORER_7);
-        ff2_ = getExpected(dir, BrowserVersion.FIREFOX_2);
         ff3_ = getExpected(dir, BrowserVersion.FIREFOX_3);
         for (int i = 0; i < ie6_.size(); i++) {
             process(i);
@@ -100,7 +98,6 @@ public final class JQueryExtractor {
         writer_.write("    }\n");
     }
 
-    @SuppressWarnings("unchecked")
     private static List<String[]> getExpected(final File dir, final BrowserVersion browserVersion) throws IOException {
         final List<String[]> list = new ArrayList<String[]>();
         final List<String> lines = FileUtils.readLines(

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +18,17 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 
 /**
  * Tests for {@link HTMLTableSectionElement}.
  *
- * @version $Revision: 4698 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
  */
 @RunWith(BrowserRunner.class)
-public class HTMLTableSectionElementTest extends WebTestCase {
+public class HTMLTableSectionElementTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if an error occurs
@@ -94,7 +94,7 @@ public class HTMLTableSectionElementTest extends WebTestCase {
             + "    </table>\n"
             + "  </body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -173,7 +173,7 @@ public class HTMLTableSectionElementTest extends WebTestCase {
             + "    </table>\n"
             + "  </body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -249,7 +249,7 @@ public class HTMLTableSectionElementTest extends WebTestCase {
             + "    </table>\n"
             + "  </body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -325,7 +325,7 @@ public class HTMLTableSectionElementTest extends WebTestCase {
             + "    </table>\n"
             + "  </body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -349,6 +349,6 @@ public class HTMLTableSectionElementTest extends WebTestCase {
             + "    <tbody id='myId'><tr><td>hello</td></tr></tbody>\n"
             + "  </table>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ import com.gargoylesoftware.htmlunit.util.MemoryLeakDetector;
  * eliminated. Once you have a fix, repeat the above steps in order to verify that the
  * fix works.</p>
  *
- * @version $Revision: 4023 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
  */
 public class MemoryLeakTest extends WebTestCase {

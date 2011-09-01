@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,37 +14,38 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.css;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.BrowserVersion;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
 import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
-import com.gargoylesoftware.htmlunit.html.HtmlElement;
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import com.gargoylesoftware.htmlunit.html.HtmlTextArea;
 
 /**
  * Tests for {@link CSSStyleDeclaration}.
  *
- * @version $Revision: 4772 $
+ * @version $Revision: 6479 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Marc Guillemot
  * @author Ahmed Ashour
  * @author Rodney Gitzel
  * @author Sudhan Moghe
+ * @author Ronald Brill
  */
 @RunWith(BrowserRunner.class)
-public class CSSStyleDeclarationTest extends WebTestCase {
+public class CSSStyleDeclarationTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if the test fails
@@ -64,8 +65,8 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "}\n</script></head>\n"
             + "<body onload='doTest()'><div id='div1' style='color: black'>foo</div></body></html>";
 
-        final HtmlPage page = loadPageWithAlerts(html);
-        assertEquals("color: pink;", page.<HtmlElement>getHtmlElementById("div1").getAttribute("style"));
+        final WebDriver driver = loadPageWithAlerts2(html);
+        assertEquals("color: pink;", driver.findElement(By.id("div1")).getAttribute("style"));
     }
 
     /**
@@ -85,11 +86,10 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "<body onload='doTest()'>\n"
             + "<div id='div1' style='color: black;background:blue;foo:bar'>foo</div></body></html>";
 
-        final HtmlPage page = loadPageWithAlerts(html);
-
+        final WebDriver driver = loadPageWithAlerts2(html);
         assertEquals(
             "color: pink; background: blue; foo: bar;",
-            page.<HtmlElement>getHtmlElementById("div1").getAttribute("style"));
+            driver.findElement(By.id("div1")).getAttribute("style"));
     }
 
     /**
@@ -109,8 +109,8 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "}\n</script></head>\n"
             + "<body onload='doTest()'><div id='div1'>foo</div></body></html>";
 
-        final HtmlPage page = loadPageWithAlerts(html);
-        assertEquals("color: pink;", page.<HtmlElement>getHtmlElementById("div1").getAttribute("style"));
+        final WebDriver driver = loadPageWithAlerts2(html);
+        assertEquals("color: pink;", driver.findElement(By.id("div1")).getAttribute("style"));
     }
 
     /**
@@ -133,7 +133,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "}\n</script></head>\n"
             + "<body onload='doTest()'>\n"
             + "<div id='div1'>foo</div></body></html>";
-        loadPageWithAlerts(content);
+        loadPageWithAlerts2(content);
     }
 
     /**
@@ -152,7 +152,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "<body onload='doTest()'>\n"
             + "<div id='div1'>foo</div></body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -161,7 +161,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
      */
     @Test
     public void onclickAccessStyle() throws Exception {
-        final String content = "<html><head><title>Color Change Page</title>\n"
+        final String html = "<html><head><title>Color Change Page</title>\n"
              + "<script>\n"
              + "function test(obj) {\n"
              + "   obj.style.backgroundColor = 'yellow';\n"
@@ -172,8 +172,8 @@ public class CSSStyleDeclarationTest extends WebTestCase {
              + "<span id='red' onclick='test(this)'>foo</span>\n"
              + "</body></html>";
 
-        final HtmlPage page = loadPage(getBrowserVersion(), content, null);
-        page.<HtmlElement>getHtmlElementById("red").click();
+        final WebDriver driver = loadPage2(html);
+        driver.findElement(By.id("red")).click();
     }
 
     /**
@@ -192,7 +192,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
                 + "}\n</script></head>\n"
                 + "<body onload='doTest()'>\n"
                 + "<div id='div1'>foo</div></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -210,7 +210,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
                 + "}\n</script></head>\n"
                 + "<body onload='doTest()'>\n"
                 + "<div id='div1'>foo</div></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -228,7 +228,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "</script></head>\n"
             + "<body onload='doTest()'>\n"
             + "<div id='div1' style='background: blue'>foo</div></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -254,7 +254,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "</script>\n"
             + "<span id='span'>x</span>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -274,7 +274,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "<div id='div1'>foo</div>\n"
             + "<div id='div2' style='filter:alpha(opacity=50)'>bar</div>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -315,7 +315,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "alert(s);\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -332,7 +332,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "</script></head><body onload='test()'>\n"
             + "  <div id='div1'/>\n"
             + "</body></html>";
-        loadPage(getBrowserVersion(), html, null);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -350,7 +350,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "</script></head><body onload='test()'>\n"
             + "  <div id='div1'/>\n"
             + "</body></html>";
-        loadPage(getBrowserVersion(), html, null);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -383,7 +383,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "</script></head>\n"
             + "<body onload='doTest()'>\n"
             + "<div id='div1'>foo</div></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -403,17 +403,45 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "}\n"
             + "</script></head>\n"
             + "<body onload='doTest()'>\n"
-            + "<div id='div1' style='border-width: 1px 2px 3px 4px';'>foo</div></body></html>";
-        loadPageWithAlerts(html);
+            + "<div id='div1' style='border-width: 1px 2px 3px 4px'>foo</div></body></html>";
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.NONE)
+    @Alerts({ "thin", "medium", "thick", "thick" })
+    public void borderXxxWidthConstants() throws Exception {
+        final String html
+            = "<html><head><title>First</title><script>\n"
+            + "function doTest() {\n"
+            + "    var oDiv = document.getElementById('div1');\n"
+            + "    alert(oDiv.style.borderRightWidth);\n"
+            + "    oDiv = document.getElementById('div2');\n"
+            + "    alert(oDiv.style.borderLeftWidth);\n"
+            + "    oDiv = document.getElementById('div3');\n"
+            + "    alert(oDiv.style.borderBottomWidth);\n"
+            + "    alert(oDiv.style.borderTopWidth);\n"
+            + "}\n"
+            + "</script></head>\n"
+            + "<body onload='doTest()'>\n"
+            + "<div id='div1' style='border: thin'>foo</div>"
+            + "<div id='div2' style='border: medium'>foo</div>"
+            + "<div id='div3' style='border: thick'>foo</div>"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Expected values are missing for FF3, IE7 and IE8.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @NotYetImplemented({ Browser.FF, Browser.IE7, Browser.IE8 })
     public void properties() throws Exception {
-        properties(BrowserVersion.INTERNET_EXPLORER_6, new String[]{
+        final Map<BrowserVersion, String[]> properties = new HashMap<BrowserVersion, String[]>();
+        properties.put(BrowserVersion.INTERNET_EXPLORER_6, new String[]{
             "background",
             "backgroundAttachment",
             "backgroundColor",
@@ -550,184 +578,12 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             "zIndex",
             "zoom"
         });
-        properties(BrowserVersion.FIREFOX_2, new String[]{
-            "azimuth",
-            "background",
-            "backgroundAttachment",
-            "backgroundColor",
-            "backgroundImage",
-            "backgroundPosition",
-            "backgroundRepeat",
-            "border",
-            "borderBottom",
-            "borderBottomColor",
-            "borderBottomStyle",
-            "borderBottomWidth",
-            "borderCollapse",
-            "borderColor",
-            "borderLeft",
-            "borderLeftColor",
-            "borderLeftStyle",
-            "borderLeftWidth",
-            "borderRight",
-            "borderRightColor",
-            "borderRightStyle",
-            "borderRightWidth",
-            "borderSpacing",
-            "borderStyle",
-            "borderTop",
-            "borderTopColor",
-            "borderTopStyle",
-            "borderTopWidth",
-            "borderWidth",
-            "bottom",
-            "captionSide",
-            "clear",
-            "clip",
-            "color",
-            "content",
-            "counterIncrement",
-            "counterReset",
-            "cssFloat",
-            "cssText",
-            "cue",
-            "cueAfter",
-            "cueBefore",
-            "cursor",
-            "direction",
-            "display",
-            "elevation",
-            "emptyCells",
-            "font",
-            "fontFamily",
-            "fontSize",
-            "fontSizeAdjust",
-            "fontStretch",
-            "fontStyle",
-            "fontVariant",
-            "fontWeight",
-            "height",
-            "left",
-            "length",
-            "letterSpacing",
-            "lineHeight",
-            "listStyle",
-            "listStyleImage",
-            "listStylePosition",
-            "listStyleType",
-            "margin",
-            "marginBottom",
-            "marginLeft",
-            "marginRight",
-            "marginTop",
-            "markerOffset",
-            "marks",
-            "maxHeight",
-            "maxWidth",
-            "minHeight",
-            "minWidth",
-            "MozAppearance",
-            "MozBackgroundClip",
-            "MozBackgroundInlinePolicy",
-            "MozBackgroundOrigin",
-            "MozBinding",
-            "MozBorderBottomColors",
-            "MozBorderLeftColors",
-            "MozBorderRadius",
-            "MozBorderRadiusBottomleft",
-            "MozBorderRadiusBottomright",
-            "MozBorderRadiusTopleft",
-            "MozBorderRadiusTopright",
-            "MozBorderRightColors",
-            "MozBorderTopColors",
-            "MozBoxAlign",
-            "MozBoxDirection",
-            "MozBoxFlex",
-            "MozBoxOrdinalGroup",
-            "MozBoxOrient",
-            "MozBoxPack",
-            "MozBoxSizing",
-            "MozColumnCount",
-            "MozColumnGap",
-            "MozColumnWidth",
-            "MozFloatEdge",
-            "MozForceBrokenImageIcon",
-            "MozImageRegion",
-            "MozMarginEnd",
-            "MozMarginStart",
-            "MozOpacity",
-            "MozOutline",
-            "MozOutlineColor",
-            "MozOutlineOffset",
-            "MozOutlineRadius",
-            "MozOutlineRadiusBottomleft",
-            "MozOutlineRadiusBottomright",
-            "MozOutlineRadiusTopleft",
-            "MozOutlineRadiusTopright",
-            "MozOutlineStyle",
-            "MozOutlineWidth",
-            "MozPaddingEnd",
-            "MozPaddingStart",
-            "MozUserFocus",
-            "MozUserInput",
-            "MozUserModify",
-            "MozUserSelect",
-            "opacity",
-            "orphans",
-            "outline",
-            "outlineColor",
-            "outlineOffset",
-            "outlineStyle",
-            "outlineWidth",
-            "overflow",
-            "overflowX",
-            "overflowY",
-            "padding",
-            "paddingBottom",
-            "paddingLeft",
-            "paddingRight",
-            "paddingTop",
-            "page",
-            "pageBreakAfter",
-            "pageBreakBefore",
-            "pageBreakInside",
-            "pause",
-            "pauseAfter",
-            "pauseBefore",
-            "pitch",
-            "pitchRange",
-            "position",
-            "quotes",
-            "richness",
-            "right",
-            "size",
-            "speak",
-            "speakHeader",
-            "speakNumeral",
-            "speakPunctuation",
-            "speechRate",
-            "stress",
-            "tableLayout",
-            "textAlign",
-            "textDecoration",
-            "textIndent",
-            "textShadow",
-            "textTransform",
-            "top",
-            "unicodeBidi",
-            "verticalAlign",
-            "visibility",
-            "voiceFamily",
-            "volume",
-            "whiteSpace",
-            "widows",
-            "width",
-            "wordSpacing",
-            "zIndex"
-        });
+
+        final String[] expectedProperties = properties.get(getBrowserVersion());
+        properties(expectedProperties);
     }
 
-    private void properties(final BrowserVersion browserVersion, final String[] expectedProperties) throws Exception {
+    private void properties(final String[] expectedProperties) throws Exception {
         final String html
             = "<html><head><title>First</title><script>\n"
             + "function test() {\n"
@@ -745,23 +601,27 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "  <textarea id='myTextarea' cols='120' rows='20'></textarea>\n"
             + "</body></html>";
 
-        final HtmlPage page = loadPage(browserVersion, html, null);
+        final WebDriver driver = loadPage2(html);
         final List<String> expectedStyles = Arrays.asList(expectedProperties);
         Collections.sort(expectedStyles);
+
         final List<String> collectedStyles =
-            Arrays.asList(((HtmlTextArea) page.getHtmlElementById("myTextarea")).getText().split(" "));
+            Arrays.asList(driver.findElement(By.id("myTextarea")).getText().split(" "));
         Collections.sort(collectedStyles);
-        assertEquals(expectedStyles.toString(), collectedStyles.toString());
+
+        assertEquals(expectedStyles, collectedStyles);
     }
 
     /**
      * Test types of properties.
+     * Expected values are missing for FF3, IE7 and IE8.
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.NONE)
+    @NotYetImplemented({ Browser.FF, Browser.IE7, Browser.IE8 })
     public void properties2() throws Exception {
-        properties2(BrowserVersion.INTERNET_EXPLORER_6, new String[]{
+        final Map<BrowserVersion, String[]> properties = new HashMap<BrowserVersion, String[]>();
+        properties.put(BrowserVersion.INTERNET_EXPLORER_6, new String[]{
             "background",
             "backgroundAttachment",
             "backgroundColor",
@@ -882,183 +742,12 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             "writingMode",
             "zoom"
         });
-        properties2(BrowserVersion.FIREFOX_2, new String[]{
-            "azimuth",
-            "background",
-            "backgroundAttachment",
-            "backgroundColor",
-            "backgroundImage",
-            "backgroundPosition",
-            "backgroundRepeat",
-            "border",
-            "borderBottom",
-            "borderBottomColor",
-            "borderBottomStyle",
-            "borderBottomWidth",
-            "borderCollapse",
-            "borderColor",
-            "borderLeft",
-            "borderLeftColor",
-            "borderLeftStyle",
-            "borderLeftWidth",
-            "borderRight",
-            "borderRightColor",
-            "borderRightStyle",
-            "borderRightWidth",
-            "borderSpacing",
-            "borderStyle",
-            "borderTop",
-            "borderTopColor",
-            "borderTopStyle",
-            "borderTopWidth",
-            "borderWidth",
-            "bottom",
-            "captionSide",
-            "clear",
-            "clip",
-            "color",
-            "content",
-            "counterIncrement",
-            "counterReset",
-            "cssFloat",
-            "cssText",
-            "cue",
-            "cueAfter",
-            "cueBefore",
-            "cursor",
-            "direction",
-            "display",
-            "elevation",
-            "emptyCells",
-            "font",
-            "fontFamily",
-            "fontSize",
-            "fontSizeAdjust",
-            "fontStretch",
-            "fontStyle",
-            "fontVariant",
-            "fontWeight",
-            "height",
-            "left",
-            "letterSpacing",
-            "lineHeight",
-            "listStyle",
-            "listStyleImage",
-            "listStylePosition",
-            "listStyleType",
-            "margin",
-            "marginBottom",
-            "marginLeft",
-            "marginRight",
-            "marginTop",
-            "markerOffset",
-            "marks",
-            "maxHeight",
-            "maxWidth",
-            "minHeight",
-            "minWidth",
-            "MozAppearance",
-            "MozBackgroundClip",
-            "MozBackgroundInlinePolicy",
-            "MozBackgroundOrigin",
-            "MozBinding",
-            "MozBorderBottomColors",
-            "MozBorderLeftColors",
-            "MozBorderRadius",
-            "MozBorderRadiusBottomleft",
-            "MozBorderRadiusBottomright",
-            "MozBorderRadiusTopleft",
-            "MozBorderRadiusTopright",
-            "MozBorderRightColors",
-            "MozBorderTopColors",
-            "MozBoxAlign",
-            "MozBoxDirection",
-            "MozBoxFlex",
-            "MozBoxOrdinalGroup",
-            "MozBoxOrient",
-            "MozBoxPack",
-            "MozBoxSizing",
-            "MozColumnCount",
-            "MozColumnGap",
-            "MozColumnWidth",
-            "MozFloatEdge",
-            "MozForceBrokenImageIcon",
-            "MozImageRegion",
-            "MozMarginEnd",
-            "MozMarginStart",
-            "MozOpacity",
-            "MozOutline",
-            "MozOutlineColor",
-            "MozOutlineOffset",
-            "MozOutlineRadius",
-            "MozOutlineRadiusBottomleft",
-            "MozOutlineRadiusBottomright",
-            "MozOutlineRadiusTopleft",
-            "MozOutlineRadiusTopright",
-            "MozOutlineStyle",
-            "MozOutlineWidth",
-            "MozPaddingEnd",
-            "MozPaddingStart",
-            "MozUserFocus",
-            "MozUserInput",
-            "MozUserModify",
-            "MozUserSelect",
-            "opacity",
-            "orphans",
-            "outline",
-            "outlineColor",
-            "outlineOffset",
-            "outlineStyle",
-            "outlineWidth",
-            "overflow",
-            "overflowX",
-            "overflowY",
-            "padding",
-            "paddingBottom",
-            "paddingLeft",
-            "paddingRight",
-            "paddingTop",
-            "page",
-            "pageBreakAfter",
-            "pageBreakBefore",
-            "pageBreakInside",
-            "pause",
-            "pauseAfter",
-            "pauseBefore",
-            "pitch",
-            "pitchRange",
-            "position",
-            "quotes",
-            "richness",
-            "right",
-            "size",
-            "speak",
-            "speakHeader",
-            "speakNumeral",
-            "speakPunctuation",
-            "speechRate",
-            "stress",
-            "tableLayout",
-            "textAlign",
-            "textDecoration",
-            "textIndent",
-            "textShadow",
-            "textTransform",
-            "top",
-            "unicodeBidi",
-            "verticalAlign",
-            "visibility",
-            "voiceFamily",
-            "volume",
-            "whiteSpace",
-            "widows",
-            "width",
-            "wordSpacing",
-            "zIndex"
-        });
+
+        final String[] expectedProperties = properties.get(getBrowserVersion());
+        properties2(expectedProperties);
     }
 
-    private void properties2(final BrowserVersion browserVersion, final String[] expectedProperties) throws Exception {
+    private void properties2(final String[] expectedProperties) throws Exception {
         final String html
             = "<html><head><title>First</title><script>\n"
             + "function test() {\n"
@@ -1076,12 +765,14 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "  <textarea id='myTextarea' cols='120' rows='20'></textarea>\n"
             + "</body></html>";
 
-        final HtmlPage page = loadPage(browserVersion, html, null);
+        final WebDriver driver = loadPage2(html);
         final List<String> expectedStyles = Arrays.asList(expectedProperties);
         Collections.sort(expectedStyles);
+
         final List<String> collectedStyles =
-            Arrays.asList(page.<HtmlTextArea>getHtmlElementById("myTextarea").getText().split(" "));
+            Arrays.asList(driver.findElement(By.id("myTextarea")).getText().split(" "));
         Collections.sort(collectedStyles);
+
         assertEquals(expectedStyles, collectedStyles);
     }
 
@@ -1089,8 +780,10 @@ public class CSSStyleDeclarationTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = {"number", "0", "1", "2", "3", "5", "5", "6", "7", "9" },
-            FF = {"string", "", "1", "2", "2", "2", "5", "5", "5", "5" })
+    @Alerts(IE6 = {"number", "0", "1", "2", "3", "4", "5", "5", "6", "7", "9" },
+            IE7 = {"number", "0", "1", "2", "3", "4", "5", "5", "6", "7", "9" },
+            IE8 = {"number", "0", "1", "2", "3", "4", "4", "5", "6", "7", "8" },
+            FF = {"string", "", "1", "2", "2", "2", "2", "5", "5", "5", "5" })
     public void zIndex() throws Exception {
         final String html
             = "<html><head><title>First</title><script>\n"
@@ -1103,6 +796,8 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "  style.zIndex = 2.0;\n"
             + "  alert(style.zIndex);\n"
             + "  style.zIndex = 3.1;\n"
+            + "  alert(style.zIndex);\n"
+            + "  style.zIndex = 4.5;\n"
             + "  alert(style.zIndex);\n"
             + "  style.zIndex = 4.6;\n"
             + "  alert(style.zIndex);\n"
@@ -1120,7 +815,209 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "  <div id='myDiv'/>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(IE = {"number", "0", "number", "0", "number", "4", "number", "4", "number", "4", "number", "0" },
+            FF = {"string", "", "string", "", "string", "4", "string", "", "string", "" , "string", "" })
+    public void zIndexDefault() throws Exception {
+        final String html
+            = "<html><head><title>First</title><script>\n"
+            + "function test() {\n"
+            + "  var style = document.getElementById('divUndefined').style;\n"
+            + "  alert(typeof style.zIndex);\n"
+            + "  alert(style.zIndex);\n"
+
+            + "  style = document.getElementById('divBlank').style;\n"
+            + "  alert(typeof style.zIndex);\n"
+            + "  alert(style.zIndex);\n"
+
+            + "  style = document.getElementById('divInteger').style;\n"
+            + "  alert(typeof style.zIndex);\n"
+            + "  alert(style.zIndex);\n"
+
+            + "  style = document.getElementById('divFloat').style;\n"
+            + "  alert(typeof style.zIndex);\n"
+            + "  alert(style.zIndex);\n"
+
+            + "  style = document.getElementById('divFloat2').style;\n"
+            + "  alert(typeof style.zIndex);\n"
+            + "  alert(style.zIndex);\n"
+
+            + "  style = document.getElementById('invalidDiv').style;\n"
+            + "  alert(typeof style.zIndex);\n"
+            + "  alert(style.zIndex);\n"
+
+            + "}\n"
+            + "</script></head>\n"
+            + "<body onload='test()'>\n"
+            + "  <div id='divUndefined'/>\n"
+            + "  <div id='divBlank' style='z-index: '/>\n"
+            + "  <div id='divInteger' style='z-index: 4'/>\n"
+            + "  <div id='divFloat' style='z-index: 4.2'/>\n"
+            + "  <div id='divFloat2' style='z-index: 4.7'/>\n"
+            + "  <div id='invalidDiv' style='z-index: unfug'/>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(IE6 = { "0", "0", "1", "0" },
+            IE7 = { "0", "0", "1", "0" },
+            IE8 = { "0", "error", "0", "1", "error", "1" },
+            FF = { "", "", "1", "1" })
+    public void zIndexSetUndefined() throws Exception {
+        final String html
+            = "<html><head><title>First</title><script>\n"
+            + "function test() {\n"
+            + "  var style = document.getElementById('myDiv').style;\n"
+            + "  var un_defined;\n"
+            + "  alert(style.zIndex);\n"
+
+            + "  try {\n"
+            + "    style.zIndex = un_defined;\n"
+            + "  } catch (e) { alert('error'); }\n"
+            + "  alert(style.zIndex);\n"
+
+            + "  style.zIndex = 1;\n"
+            + "  alert(style.zIndex);\n"
+
+            + "  try {\n"
+            + "    style.zIndex = un_defined;\n"
+            + "  } catch (e) { alert('error'); }\n"
+            + "  alert(style.zIndex);\n"
+
+            + "}\n"
+            + "</script></head>\n"
+            + "<body onload='test()'>\n"
+            + "  <div id='myDiv'/>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(IE6 = { "0", "0", "1", "0" },
+            IE7 = { "0", "0", "1", "0" },
+            IE8 = { "0", "error", "0", "1", "error", "1" },
+            FF = { "", "", "1", "" })
+    public void zIndexSetNull() throws Exception {
+        final String html
+            = "<html><head><title>First</title><script>\n"
+            + "function test() {\n"
+            + "  var style = document.getElementById('myDiv').style;\n"
+            + "  alert(style.zIndex);\n"
+
+            + "  try {\n"
+            + "    style.zIndex = null;\n"
+            + "  } catch (e) { alert('error'); }\n"
+            + "  alert(style.zIndex);\n"
+
+            + "  style.zIndex = 1;\n"
+            + "  alert(style.zIndex);\n"
+
+            + "  try {\n"
+            + "    style.zIndex = null;\n"
+            + "  } catch (e) { alert('error'); }\n"
+            + "  alert(style.zIndex);\n"
+
+            + "}\n"
+            + "</script></head>\n"
+            + "<body onload='test()'>\n"
+            + "  <div id='myDiv'/>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(IE = {"0", "7", "8", "0", "error", "4", "error", "1" },
+            IE7 = {"0", "7", "8", "0", "error", "4", "error", "1" },
+            IE8 = {"0", "7", "7", "0", "error", "4", "error", "1" },
+            FF = {"", "7", "7", "", "4", "1" })
+    public void zIndexSetString() throws Exception {
+        final String html
+            = "<html><head><title>First</title><script>\n"
+            + "function test() {\n"
+            + "  var style = document.getElementById('myDiv').style;\n"
+            + "  var unknown;\n"
+            + "  alert(style.zIndex);\n"
+
+            + "  style.zIndex = '7';\n"
+            + "  alert(style.zIndex);\n"
+
+            + "  style.zIndex = '7.6';\n"
+            + "  alert(style.zIndex);\n"
+
+            + "  style.zIndex = '';\n"
+            + "  alert(style.zIndex);\n"
+
+            + "  style.zIndex = '4';\n"
+            + "  try {\n"
+            + "    style.zIndex = '   ';\n"
+            + "  } catch (e) { alert('error'); }\n"
+            + "  alert(style.zIndex);\n"
+
+            + "  style.zIndex = '1';\n"
+            + "  try {\n"
+            + "    style.zIndex = 'NAN';\n"
+            + "  } catch (e) { alert('error'); }\n"
+            + "  alert(style.zIndex);\n"
+
+            + "}\n"
+            + "</script></head>\n"
+            + "<body onload='test()'>\n"
+            + "  <div id='myDiv'/>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(IE = {"0", "error", "0", "1", "error", "1" },
+            FF = {"", "", "1", "1" })
+    public void zIndexSetInvalid() throws Exception {
+        final String html
+            = "<html><head><title>First</title><script>\n"
+            + "function test() {\n"
+            + "  var style = document.getElementById('myDiv').style;\n"
+            + "  alert(style.zIndex);\n"
+            + "  try {\n"
+            + "    style.zIndex = 'hallo';\n"
+            + "  } catch (e) { alert('error'); }\n"
+            + "  alert(style.zIndex);\n"
+
+            + "  style.zIndex = 1;\n"
+            + "  alert(style.zIndex);\n"
+            + "  try {\n"
+            + "    style.zIndex = 'hallo';\n"
+            + "  } catch (e) { alert('error'); }\n"
+            + "  alert(style.zIndex);\n"
+            + "}\n"
+
+            + "</script></head>\n"
+            + "<body onload='test()'>\n"
+            + "  <div id='myDiv'/>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1144,7 +1041,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "</script></head><body onload='test()'>\n"
             + "  <div id='myDiv'/>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1164,7 +1061,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "</script></head><body onload='test()'>\n"
             + "  <div id='myDiv' style='border: red 1px solid'/>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1184,7 +1081,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "</script></head><body onload='test()'>\n"
             + "  <div id='myDiv'/>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1205,7 +1102,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "  <div id='myDiv'/>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1227,7 +1124,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "  <div id='myDiv'/>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1281,7 +1178,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "    <div id='m6' style='margin: 2px; margin-left: 7px;'>m6</div>\n"
             + "  </body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1335,7 +1232,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "    <div id='m6' style='padding: 2px; padding-left: 7px;'>m6</div>\n"
             + "  </body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1393,10 +1290,9 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "    alert(style." + attribute + ");\n"
             + "}\n</script></head>\n"
             + "<body onload='test()'><div id='d' style='" + style + "'>foo</div></body></html>";
-        final String[] expected = {expectedValue};
-        final List<String> actual = new ArrayList<String>();
-        loadPage(getBrowserVersion(), html, actual);
-        assertEquals(expected, actual);
+
+        setExpectedAlerts(expectedValue);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1420,9 +1316,9 @@ public class CSSStyleDeclarationTest extends WebTestCase {
         final String html =
               "<html><body onload='alert(document.all[\"a\"].style.getAttribute(" + params + "))'>\n"
             + "<a id='a' href='#' style='color:green'>go</a></body></html>";
-        final List<String> actual = new ArrayList<String>();
-        loadPage(getBrowserVersion(), html, actual);
-        assertEquals(expected, actual);
+
+        setExpectedAlerts(expected);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1454,9 +1350,9 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "  }\n"
             + "</script>\n"
             + "</body></html>";
-        final List<String> actual = new ArrayList<String>();
-        loadPage(getBrowserVersion(), html, actual);
-        assertEquals(expected, actual);
+
+        setExpectedAlerts(expected);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1488,9 +1384,9 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "  }\n"
             + "</script>\n"
             + "</body></html>";
-        final List<String> actual = new ArrayList<String>();
-        loadPage(getBrowserVersion(), html, actual);
-        assertEquals(expected, actual);
+
+        setExpectedAlerts(expected);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1511,8 +1407,8 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "}\n</script></head>\n"
             + "<body onload='doTest()'><div id='div1' style='COLOR: BLACK'>foo</div></body></html>";
 
-        final HtmlPage page = loadPageWithAlerts(html);
-        assertEquals("color: pink;", page.<HtmlElement>getHtmlElementById("div1").getAttribute("style"));
+        final WebDriver driver = loadPageWithAlerts2(html);
+        assertEquals("color: pink;", driver.findElement(By.id("div1")).getAttribute("style"));
     }
 
     /**
@@ -1539,7 +1435,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "  }\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1566,7 +1462,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "  }\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1593,7 +1489,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "  }\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1620,7 +1516,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "  }\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1647,7 +1543,7 @@ public class CSSStyleDeclarationTest extends WebTestCase {
             + "alert(div.style.display);\n"
             + "\n"
             + "</script></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
 }

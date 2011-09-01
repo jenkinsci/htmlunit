@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import org.junit.runners.model.Statement;
 /**
  * The Browser Statement.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  */
 class BrowserStatement extends Statement {
@@ -31,18 +31,39 @@ class BrowserStatement extends Statement {
     private final boolean notYetImplemented_;
     private final Method method_;
     private final String browserVersionString_;
+    private final int tries_;
 
     BrowserStatement(final Statement next, final Method method, final boolean shouldFail,
-            final boolean notYetImplemented, final String browserVersionString) {
+            final boolean notYetImplemented, final int tries, final String browserVersionString) {
         next_ = next;
         method_ = method;
         shouldFail_ = shouldFail;
         notYetImplemented_ = notYetImplemented;
+        tries_ = tries;
         browserVersionString_ = browserVersionString;
     }
 
     @Override
     public void evaluate() throws Throwable {
+        for (int i = 0; i < tries_; i++) {
+            try {
+                evaluateSolo();
+                break;
+            }
+            catch (final Throwable t) {
+                if (shouldFail_ || notYetImplemented_) {
+                    throw t;
+                }
+                System.out.println("Failed test "
+                        + method_.getDeclaringClass().getName() + '.' + method_.getName() + " #" + (i + 1));
+                if (i == tries_ - 1) {
+                    throw t;
+                }
+            }
+        }
+    }
+
+    public void evaluateSolo() throws Throwable {
         Exception toBeThrown = null;
         try {
             next_.evaluate();

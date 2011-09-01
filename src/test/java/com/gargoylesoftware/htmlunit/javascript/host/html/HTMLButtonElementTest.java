@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +18,18 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 
 /**
  * Tests for {@link HTMLButtonElement}.
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
+ * @author Ahmed Ashour
  */
 @RunWith(BrowserRunner.class)
-public class HTMLButtonElementTest extends WebTestCase {
+public class HTMLButtonElementTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if an error occurs
@@ -54,7 +55,30 @@ public class HTMLButtonElementTest extends WebTestCase {
             + "alert(a1.accessKey);\n"
             + "alert(a2.accessKey);\n"
             + "</script></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Tests setting the <tt>type</tt> property.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(IE = { "button", "exception", "button", "button" }, FF = { "submit", "button", "submit" })
+    public void type() throws Exception {
+        final String html = "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            + "    var b = document.createElement('button');\n"
+            + "    alert(b.type);\n"
+            + "    try {\n"
+            + "      b.type = 'button';\n"
+            + "    } catch(e) {alert('exception')}\n"
+            + "    alert(b.type);\n"
+            + "    b.removeAttribute('type');\n"
+            + "    alert(b.type);\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
     }
 
 }

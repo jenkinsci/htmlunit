@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,8 +24,10 @@ import java.util.List;
 
 import org.apache.commons.lang.mutable.MutableInt;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.base.testing.EventCatcher;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.javascript.background.JavaScriptJob;
 import com.gargoylesoftware.htmlunit.javascript.background.JavaScriptJobManager;
@@ -33,11 +35,12 @@ import com.gargoylesoftware.htmlunit.javascript.background.JavaScriptJobManager;
 /**
  * Tests for {@link TopLevelWindow}.
  *
- * @version $Revision: 4756 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Ahmed Ashour
  * @author Daniel Gredler
  */
+@RunWith(BrowserRunner.class)
 public class TopLevelWindowTest extends WebTestCase {
 
     /**
@@ -46,7 +49,7 @@ public class TopLevelWindowTest extends WebTestCase {
      */
     @Test
     public void closeTheOnlyWindow() throws Exception {
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
         final EventCatcher eventCatcher = new EventCatcher();
         eventCatcher.listenTo(webClient);
 
@@ -74,8 +77,6 @@ public class TopLevelWindowTest extends WebTestCase {
     public void useCustomJobManager() throws Exception {
         final MutableInt jobCount = new MutableInt(0);
         final JavaScriptJobManager mgr = new JavaScriptJobManager() {
-            /** Serial version UID. */
-            private static final long serialVersionUID = 4189494067589390155L;
             /** {@inheritDoc} */
             public int waitForJobsStartingBefore(final long delayMillis) {
                 return jobCount.intValue();
@@ -109,6 +110,15 @@ public class TopLevelWindowTest extends WebTestCase {
                 jobCount.increment();
                 return jobCount.intValue();
             }
+            /** {@inheritDoc} */
+            public JavaScriptJob getEarliestJob() {
+                return null;
+            }
+            /** {@inheritDoc} */
+            public boolean runSingleJob(final JavaScriptJob job) {
+                // Empty
+                return false;
+            }
         };
 
         final WebWindowListener listener = new WebWindowListener() {
@@ -126,15 +136,14 @@ public class TopLevelWindowTest extends WebTestCase {
             }
         };
 
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClientWithMockWebConnection();
         client.addWebWindowListener(listener);
 
         final TopLevelWindow window = (TopLevelWindow) client.getCurrentWindow();
         window.setJobManager(mgr);
 
-        final MockWebConnection conn = new MockWebConnection();
+        final MockWebConnection conn = getMockWebConnection();
         conn.setDefaultResponse("<html><body><script>window.setTimeout('', 500);</script></body></html>");
-        client.setWebConnection(conn);
 
         client.getPage(URL_FIRST);
         assertEquals(1, jobCount.intValue());
@@ -148,16 +157,15 @@ public class TopLevelWindowTest extends WebTestCase {
      */
     @Test
     public void history() throws Exception {
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClientWithMockWebConnection();
         final TopLevelWindow window = (TopLevelWindow) client.getCurrentWindow();
         final History history = window.getHistory();
 
-        final MockWebConnection conn = new MockWebConnection();
+        final MockWebConnection conn = getMockWebConnection();
         conn.setResponse(URL_FIRST, "<html><body><a name='a' href='" + URL_SECOND + "'>foo</a>"
             + "<a name='b' href='#b'>bar</a></body></html>");
         conn.setResponse(URL_SECOND, "<html><body><a name='a' href='" + URL_THIRD + "'>foo</a></body></html>");
         conn.setResponse(URL_THIRD, "<html><body><a name='a' href='" + URL_FIRST + "'>foo</a></body></html>");
-        client.setWebConnection(conn);
 
         assertEquals(0, history.getLength());
         assertEquals(-1, history.getIndex());
@@ -168,7 +176,7 @@ public class TopLevelWindowTest extends WebTestCase {
         assertEquals(0, history.getIndex());
         assertNull(history.getUrl(-1));
         assertEquals(URL_FIRST, history.getUrl(0));
-        assertEquals(URL_FIRST, window.getEnclosedPage().getWebResponse().getRequestSettings().getUrl());
+        assertEquals(URL_FIRST, window.getEnclosedPage().getWebResponse().getWebRequest().getUrl());
         assertNull(history.getUrl(1));
 
         // Go to the second page.
@@ -178,7 +186,7 @@ public class TopLevelWindowTest extends WebTestCase {
         assertNull(history.getUrl(-1));
         assertEquals(URL_FIRST, history.getUrl(0));
         assertEquals(URL_SECOND, history.getUrl(1));
-        assertEquals(URL_SECOND, window.getEnclosedPage().getWebResponse().getRequestSettings().getUrl());
+        assertEquals(URL_SECOND, window.getEnclosedPage().getWebResponse().getWebRequest().getUrl());
         assertNull(history.getUrl(2));
 
         // Go to the third page.
@@ -189,7 +197,7 @@ public class TopLevelWindowTest extends WebTestCase {
         assertEquals(URL_FIRST, history.getUrl(0));
         assertEquals(URL_SECOND, history.getUrl(1));
         assertEquals(URL_THIRD, history.getUrl(2));
-        assertEquals(URL_THIRD, window.getEnclosedPage().getWebResponse().getRequestSettings().getUrl());
+        assertEquals(URL_THIRD, window.getEnclosedPage().getWebResponse().getWebRequest().getUrl());
         assertNull(history.getUrl(3));
 
         // Cycle around back to the first page.
@@ -201,7 +209,7 @@ public class TopLevelWindowTest extends WebTestCase {
         assertEquals(URL_SECOND, history.getUrl(1));
         assertEquals(URL_THIRD, history.getUrl(2));
         assertEquals(URL_FIRST, history.getUrl(3));
-        assertEquals(URL_FIRST, window.getEnclosedPage().getWebResponse().getRequestSettings().getUrl());
+        assertEquals(URL_FIRST, window.getEnclosedPage().getWebResponse().getWebRequest().getUrl());
         assertNull(history.getUrl(4));
 
         // Go to a hash on the current page.
@@ -215,7 +223,7 @@ public class TopLevelWindowTest extends WebTestCase {
         assertEquals(URL_THIRD, history.getUrl(2));
         assertEquals(URL_FIRST, history.getUrl(3));
         assertEquals(firstUrlWithHash, history.getUrl(4));
-        assertEquals(firstUrlWithHash, window.getEnclosedPage().getWebResponse().getRequestSettings().getUrl());
+        assertEquals(firstUrlWithHash, window.getEnclosedPage().getWebResponse().getWebRequest().getUrl());
         assertNull(history.getUrl(5));
 
         history.back().back();
@@ -227,7 +235,7 @@ public class TopLevelWindowTest extends WebTestCase {
         assertEquals(URL_THIRD, history.getUrl(2));
         assertEquals(URL_FIRST, history.getUrl(3));
         assertEquals(firstUrlWithHash, history.getUrl(4));
-        assertEquals(URL_THIRD, window.getEnclosedPage().getWebResponse().getRequestSettings().getUrl());
+        assertEquals(URL_THIRD, window.getEnclosedPage().getWebResponse().getWebRequest().getUrl());
         assertNull(history.getUrl(5));
 
         history.forward();
@@ -239,7 +247,7 @@ public class TopLevelWindowTest extends WebTestCase {
         assertEquals(URL_THIRD, history.getUrl(2));
         assertEquals(URL_FIRST, history.getUrl(3));
         assertEquals(firstUrlWithHash, history.getUrl(4));
-        assertEquals(URL_FIRST, window.getEnclosedPage().getWebResponse().getRequestSettings().getUrl());
+        assertEquals(URL_FIRST, window.getEnclosedPage().getWebResponse().getWebRequest().getUrl());
         assertNull(history.getUrl(5));
     }
 
@@ -256,6 +264,36 @@ public class TopLevelWindowTest extends WebTestCase {
         final TopLevelWindow w = (TopLevelWindow) page.getEnclosingWindow();
         w.close();
         assertEquals(Arrays.asList("7"), alerts);
+    }
+
+    /**
+     * Test that no JavaScript error is thrown when using the setTimeout() JS function
+     * while the page is unloading.
+     * Regression test for bug 2956550.
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts("closing")
+    public void setTimeoutDuringOnUnload() throws Exception {
+        final String html = "<html><head>"
+            + "<script>\n"
+            + "function f() {\n"
+            + "  alert('closing');\n"
+            + "  setTimeout(function(){ alert('started in onunload'); }, 0);\n"
+            + "}\n"
+            + "if (window.addEventListener)\n"
+            + "  window.addEventListener('unload', f, true);\n"
+            + "else\n"
+            + "  attachEvent('onunload', f);\n"
+            + "</script></head>\n"
+            + "<body></body></html>";
+        final List<String> alerts = new ArrayList<String>();
+        final HtmlPage page = loadPage(html, alerts);
+        assertTrue(alerts.isEmpty());
+        final TopLevelWindow w = (TopLevelWindow) page.getEnclosingWindow();
+        w.close();
+        getWebClient().waitForBackgroundJavaScript(1000);
+        assertEquals(getExpectedAlerts(), alerts);
     }
 
 }

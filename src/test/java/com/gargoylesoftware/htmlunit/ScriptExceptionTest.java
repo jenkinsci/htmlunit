@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 /**
  * Tests for {@link ScriptException}.
  *
- * @version $Revision: 4731 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
@@ -65,7 +65,7 @@ public final class ScriptExceptionTest extends WebTestCase {
             loadPage(getBrowserVersion(), html, null);
         }
         catch (final ScriptException e) {
-            assertEquals(getDefaultUrl(), e.getPage().getWebResponse().getRequestSettings().getUrl());
+            assertEquals(getDefaultUrl(), e.getPage().getWebResponse().getWebRequest().getUrl());
         }
     }
 
@@ -89,7 +89,8 @@ public final class ScriptExceptionTest extends WebTestCase {
             // Set the default locale to US because Rhino messages are localized
             Locale.setDefault(Locale.US);
 
-            loadPage(getBrowserVersion(), getFileContent(baseFileName + ".html"), null);
+            loadPage(getBrowserVersion(), getFileContent(baseFileName + ".html"), null,
+                new URL("http://www.gargoylesoftware.com/"));
 
             Locale.setDefault(locale);
         }

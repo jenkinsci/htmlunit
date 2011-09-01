@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.html.HtmlAbbreviated;
 import com.gargoylesoftware.htmlunit.html.HtmlAcronym;
@@ -50,13 +51,11 @@ import com.gargoylesoftware.htmlunit.javascript.host.ActiveXObject;
 /**
  * The JavaScript object "HTMLSpanElement".
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6220 $
  * @author Ahmed Ashour
  * @author Daniel Gredler
  */
 public class HTMLSpanElement extends HTMLElement {
-
-    private static final long serialVersionUID = -1837052392526933150L;
 
     /**
      * Creates an instance.
@@ -73,9 +72,9 @@ public class HTMLSpanElement extends HTMLElement {
     public void setDomNode(final DomNode domNode) {
         super.setDomNode(domNode);
         final HtmlElement element = (HtmlElement) domNode;
-        final BrowserVersion browserVersion = getBrowserVersion();
-        if (browserVersion.isIE()) {
-            if ((element instanceof HtmlAbbreviated && browserVersion.getBrowserVersionNumeric() > 6)
+        final BrowserVersion browser = getBrowserVersion();
+        if (browser.hasFeature(BrowserVersionFeatures.GENERATED_90)) {
+            if ((element instanceof HtmlAbbreviated && browser.hasFeature(BrowserVersionFeatures.HTMLABBREVIATED))
                 || element instanceof HtmlAcronym
                 || element instanceof HtmlAddress
                 || element instanceof HtmlBidirectionalOverride
@@ -105,7 +104,7 @@ public class HTMLSpanElement extends HTMLElement {
                 || element instanceof HtmlVariable) {
                 ActiveXObject.addProperty(this, "cite", true, true);
             }
-            if ((element instanceof HtmlAbbreviated && browserVersion.getBrowserVersionNumeric() > 6)
+            if ((element instanceof HtmlAbbreviated && browser.hasFeature(BrowserVersionFeatures.HTMLABBREVIATED))
                     || element instanceof HtmlAcronym
                     || element instanceof HtmlBold
                     || element instanceof HtmlBidirectionalOverride
@@ -138,10 +137,7 @@ public class HTMLSpanElement extends HTMLElement {
      * @return the value of the "cite" property
      */
     public String jsxGet_cite() {
-        String cite = getDomNodeOrDie().getAttribute("cite");
-        if (cite == NOT_FOUND) {
-            cite = "";
-        }
+        final String cite = getDomNodeOrDie().getAttribute("cite");
         return cite;
     }
 
@@ -158,10 +154,7 @@ public class HTMLSpanElement extends HTMLElement {
      * @return the value of the "dateTime" property
      */
     public String jsxGet_dateTime() {
-        String dateTime = getDomNodeOrDie().getAttribute("datetime");
-        if (dateTime == NOT_FOUND) {
-            dateTime = "";
-        }
+        final String dateTime = getDomNodeOrDie().getAttribute("datetime");
         return dateTime;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,8 +26,10 @@ import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
 import com.gargoylesoftware.htmlunit.DialogWindow;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
+import com.gargoylesoftware.htmlunit.OnbeforeunloadHandler;
+import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
@@ -41,12 +43,12 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
  * Tests for {@link Window}. The only difference with {@link WindowTest} is that these
  * tests already run with BrowserRunner.
  *
- * @version $Revision: 4900 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
 @RunWith(BrowserRunner.class)
-public class Window2Test extends WebTestCase {
+public class Window2Test extends WebDriverTestCase {
 
     /**
      * "window.controllers" is used by some JavaScript libraries to determine if the
@@ -55,9 +57,8 @@ public class Window2Test extends WebTestCase {
      */
     @Test
     @Alerts(IE = { "not found", "true" },
-            FF2 = { "found", "true" },
-            FF3 = { "found", "exception", "false" })
-    @NotYetImplemented(Browser.FF3)
+            FF = { "found", "exception", "false" })
+    @NotYetImplemented(Browser.FF)
     public void FF_controllers() throws Exception {
         final String html
             = "<html><head></head><body>\n"
@@ -73,7 +74,7 @@ public class Window2Test extends WebTestCase {
             + "alert(window.controllers == 'hello');\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -94,7 +95,7 @@ public class Window2Test extends WebTestCase {
             + "alert(window.controllers == 'hello');\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -102,7 +103,6 @@ public class Window2Test extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    @Browsers({ Browser.IE, Browser.FF3 })
     public void showModalDialog() throws Exception {
         final String html1
             = "<html><head><script>\n"
@@ -218,7 +218,7 @@ public class Window2Test extends WebTestCase {
             = "<html><body onload='alert(1)'>\n"
             + "<script>Function.prototype.x='a'; alert(window.onload.x);</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -236,7 +236,7 @@ public class Window2Test extends WebTestCase {
             + "  alert(atob(data));\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -258,11 +258,12 @@ public class Window2Test extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(FF = { "java: object", "getClass: function" },
+    @NotYetImplemented(Browser.FF)
+    @Alerts(FF3 = { "java: object", "getClass: undefined" },
+            FF3_6 = { "java: undefined", "getClass: undefined" },
             IE = { "java: undefined", "getClass: undefined" })
     public void rhino_lazilyNames2() throws Exception {
-        final String[] properties = {"java", "getClass"};
-        doTestRhinoLazilyNames(properties);
+        doTestRhinoLazilyNames("java", "getClass");
     }
 
     /**
@@ -276,11 +277,10 @@ public class Window2Test extends WebTestCase {
             IE = { "Packages: undefined", "XML: undefined", "XMLList: undefined",
             "Namespace: undefined", "QName: undefined" })
     public void rhino_lazilyNames3() throws Exception {
-        final String[] properties = {"Packages", "XML", "XMLList", "Namespace", "QName"};
-        doTestRhinoLazilyNames(properties);
+        doTestRhinoLazilyNames("Packages", "XML", "XMLList", "Namespace", "QName");
     }
 
-    private void doTestRhinoLazilyNames(final String[] properties) throws Exception {
+    private void doTestRhinoLazilyNames(final String... properties) throws Exception {
         final String html = "<html><head></head><body>\n"
             + "<script>\n"
             + "  var props = ['" + StringUtils.join(properties, "', '") + "'];\n"
@@ -288,7 +288,7 @@ public class Window2Test extends WebTestCase {
             + "    alert(props[i] + ': ' + typeof(window[props[i]]));\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -307,18 +307,8 @@ public class Window2Test extends WebTestCase {
             + "alert(undef);\n"
             + "</script>";
 
-        final WebClient client = getWebClient();
-        client.setThrowExceptionOnScriptError(false);
-
-        final List<String> actual = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(actual));
-
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_GARGOYLE, html);
-        client.setWebConnection(conn);
-
-        client.getPage(URL_GARGOYLE);
-        assertEquals(getExpectedAlerts(), actual);
+        getWebClientWithMockWebConnection().setThrowExceptionOnScriptError(false);
+        loadPageWithAlerts(html);
     }
 
     /**
@@ -337,29 +327,24 @@ public class Window2Test extends WebTestCase {
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    public void open_FF() throws Exception {
+    @Alerts(FF = "exception", IE = "true")
+    public void execScript_returnValue() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
-            + "  function performAction() {\n"
-            + "    actionwindow = window.open('', '1205399746518', "
-            + "'location=no,scrollbars=no,resizable=no,width=200,height=275');\n"
-            + "    actionwindow.document.writeln('Please wait while connecting to server...');\n"
-            + "    actionwindow.focus();\n"
-            + "    actionwindow.close();\n"
-            + "  }\n"
+            + "try {\n"
+            + "  alert(window.execScript('1') === undefined);\n"
+            + "}\n"
+            + "catch(e) { alert('exception') }\n"
             + "</script></head><body>\n"
-            + "    <input value='Click Me' type=button onclick='performAction()'>\n"
             + "</body></html>";
 
-        final HtmlPage page = loadPage(getBrowserVersion(), html, null);
-        final HtmlButtonInput input = page.getFirstByXPath("//input");
-        input.click();
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -375,7 +360,7 @@ public class Window2Test extends WebTestCase {
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -397,7 +382,7 @@ public class Window2Test extends WebTestCase {
             + "  </form>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -406,8 +391,8 @@ public class Window2Test extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = { "undefined", "undefined" }, FF2 = { "[Node]", "[Element]" },
-            FF3 = { "[object Node]", "[object Element]" })
+    @Alerts(IE = { "undefined", "undefined" },
+            FF = { "[object Node]", "[object Element]" })
     public void windowProperties() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
@@ -418,7 +403,7 @@ public class Window2Test extends WebTestCase {
             + "<form name='myForm'></form>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -434,7 +419,7 @@ public class Window2Test extends WebTestCase {
             + "alert(window.frames.length);\n"
             + "</script></head><body>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -460,7 +445,7 @@ public class Window2Test extends WebTestCase {
             + "</frameset>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -488,7 +473,7 @@ public class Window2Test extends WebTestCase {
             + "</frameset>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -515,7 +500,7 @@ public class Window2Test extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(FF2 = "hello", FF3 = "exception", IE = "hello")
+    @Alerts(FF = "exception", IE = "hello")
     public void overwriteFunctions_navigator() throws Exception {
         final String html = "<html><head><script language='JavaScript'>\n"
             + "try {\n"
@@ -527,6 +512,24 @@ public class Window2Test extends WebTestCase {
             + "} catch(e) { alert('exception'); }\n"
             + "</script></head><body></body></html>";
 
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts({ "true", "123", "123" })
+    public void overwriteProperty_top() throws Exception {
+        final String html
+            = "<html><body><script>\n"
+            + "  alert(window.top == this);\n"
+            + "  var top = 123;\n"
+            + "  alert(top);\n"
+            + "  alert(window.top);\n"
+            + "</script></body></html>";
+        // this can't be tested using WebDriver currently (i.e. using loadPageWithAlerts2)
+        // because the hack currently used to capture alerts needs reference to property "top".
         loadPageWithAlerts(html);
     }
 
@@ -546,11 +549,40 @@ public class Window2Test extends WebTestCase {
     }
 
     /**
+     * Download of next page is done first after onbeforeunload is done.
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts("x")
+    public void onbeforeunload_calledBeforeDownload() throws Exception {
+        final String html
+            = "<html><body><script>\n"
+            + "  window.onbeforeunload = function() { alert('x'); return 'hello'; };\n"
+            + "  window.location = 'foo.html';\n"
+            + "</script></body></html>";
+
+        final WebClient webClient = getWebClientWithMockWebConnection();
+        getMockWebConnection().setDefaultResponse("");
+
+        final OnbeforeunloadHandler handler = new OnbeforeunloadHandler() {
+            public boolean handleEvent(final Page page, final String returnValue) {
+                final String[] expectedRequests = {""};
+                assertEquals(expectedRequests, getMockWebConnection().getRequestedUrls(getDefaultUrl()));
+                return true;
+            }
+        };
+        webClient.setOnbeforeunloadHandler(handler);
+        loadPageWithAlerts(html);
+
+        final String[] expectedRequests = {"", "foo.html"};
+        assertEquals(expectedRequests, getMockWebConnection().getRequestedUrls(getDefaultUrl()));
+    }
+
+    /**
      * Regression test for bug 2808901.
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts
     public void onbeforeunload_setToString() throws Exception {
         final String html
             = "<html><body><script>\n"
@@ -643,7 +675,194 @@ public class Window2Test extends WebTestCase {
             + "alert(window.self == window.frames.self);\n"
             + "alert(window.self == window.frames.frames.self);\n"
             + "</script></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
+    /**
+     * For FF, window's opener can't be set unless to its current value.
+     * Note: this test causes problems to WebDriver + FF2
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(FF = { "[object Window]", "[object Window] (true)", "exception", "null (true)", "null (false)",
+                "null (false)", "null (false)", "null (false)" },
+            IE = { "[object]", "[object] (true)", "1234 (true)", "null (true)", "undefined (true)", "[object] (true)",
+                "[object] (true)", "[object] (true)" })
+    public void set_opener() throws Exception {
+        final String html = "<html><head><script>\n"
+            + "var otherWindow = window.open('about:blank');\n"
+            + "function trySetOpener1(_win, value) {\n"
+            + "    try {\n"
+            + "        _win.opener = value;\n"
+            + "        alert(_win.opener + ' (' + (_win.opener === value) + ')');\n"
+            + "    }\n"
+            + "    catch(e) { alert('exception') }\n"
+            + "}\n"
+            + "function trySetOpener(_win) {\n"
+            + "    var originalValue = _win.opener;\n"
+            + "    alert(originalValue);\n"
+            + "    trySetOpener1(_win, _win.opener);\n"
+            + "    trySetOpener1(_win, 1234);\n"
+            + "    trySetOpener1(_win, null);\n"
+            + "    trySetOpener1(_win, undefined);\n"
+            + "    trySetOpener1(_win, _win);\n"
+            + "    trySetOpener1(_win, otherWindow);\n"
+            + "    trySetOpener1(_win, originalValue);\n"
+            + "}\n"
+            + "function doTest() {\n"
+            + "    trySetOpener(window.open('about:blank'));\n"
+            + "}\n"
+            + "</script></head>\n"
+            + "<body onload='doTest()'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(FF = { "exception", "exception", "exception", "exception" },
+            IE6 = { "JScript", "5", "6", "number" },
+            IE7 = { "JScript", "5", "7", "number" },
+            IE8 = { "JScript", "5", "8", "number" })
+    public void IEScriptEngineXxx() throws Exception {
+        final String html = "<html><head><script>\n"
+            + "try { alert(ScriptEngine()); } catch(e) { alert('exception') }\n"
+            + "try { alert(ScriptEngineMajorVersion()); } catch(e) { alert('exception') }\n"
+            + "try { alert(ScriptEngineMinorVersion()); } catch(e) { alert('exception') }\n"
+            + "try { alert(typeof ScriptEngineBuildVersion()); } catch(e) { alert('exception') }\n"
+            + "</script></head>\n"
+            + "<body>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Regression test for bug 2897473.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Browsers(Browser.FF)
+    @Alerts(FF = { "true", "true", "true", "true", "true", "true" })
+    public void heightsAndWidths() throws Exception {
+        final String html
+            = "<html><body onload='test()'><script>\n"
+            + "function test() {\n"
+            + "  alert(window.innerHeight > 0);\n"
+            + "  alert(window.innerHeight == document.body.clientHeight);\n"
+            + "  alert(window.outerHeight == window.innerHeight + 150);\n"
+            + "  alert(window.innerWidth > 0);\n"
+            + "  alert(window.innerWidth == document.body.clientWidth);\n"
+            + "  alert(window.outerWidth == window.innerWidth + 8);\n"
+            + "}\n"
+            + "</script>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Regression test for bug 2897457.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(FF = { "0,0", "100,200", "110,230", "0,0", "0,95", "0,0", "0,1210" },
+            IE = { "0,0", "100,200", "110,230", "0,0", "no scrollByLines()", "0,0", "no scrollByPages()" })
+    public void scrolling1() throws Exception {
+        scrolling(true);
+    }
+
+    /**
+     * Regression test for bug 2897457.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(FF = { "0,0", "0,0", "0,0", "0,0", "0,0", "0,0", "0,0" },
+            IE = { "0,0", "0,0", "0,0", "0,0", "no scrollByLines()", "0,0", "no scrollByPages()" })
+    public void scrolling2() throws Exception {
+        scrolling(false);
+    }
+
+    private void scrolling(final boolean addHugeDiv) throws Exception {
+        final String html
+            = "<html><body onload='test()'>\n"
+            + (addHugeDiv ? "<div id='d' style='width:10000px;height:10000px;background-color:blue;'></div>\n" : "")
+            + "<script>\n"
+            + "function test() {\n"
+            + "  var b = document.body;\n"
+            + "  alert(b.scrollLeft + ',' + b.scrollTop);\n"
+            + "  if(window.scrollTo) {\n"
+            + "    window.scrollTo(100, 200);\n"
+            + "    alert(b.scrollLeft + ',' + b.scrollTop);\n"
+            + "  } else {\n"
+            + "    alert('no scrollTo()');\n"
+            + "  }\n"
+            + "  if(window.scrollBy) {\n"
+            + "    window.scrollBy(10, 30);\n"
+            + "    alert(b.scrollLeft + ',' + b.scrollTop);\n"
+            + "  } else {\n"
+            + "    alert('no scrollBy()');\n"
+            + "  }\n"
+            + "  if(window.scrollTo) {\n"
+            + "    window.scrollTo(-5, -20);\n"
+            + "    alert(b.scrollLeft + ',' + b.scrollTop);\n"
+            + "  } else {\n"
+            + "    alert('no scrollTo()');\n"
+            + "  }\n"
+            + "  if(window.scrollByLines) {\n"
+            + "    window.scrollByLines(5);\n"
+            + "    alert(b.scrollLeft + ',' + b.scrollTop);\n"
+            + "  } else {\n"
+            + "    alert('no scrollByLines()');\n"
+            + "  }\n"
+            + "  if(window.scroll) {\n"
+            + "    window.scroll(0, 0);\n"
+            + "    alert(b.scrollLeft + ',' + b.scrollTop);\n"
+            + "  } else {\n"
+            + "    alert('no scroll()');\n"
+            + "  }\n"
+            + "  if(window.scrollByPages) {\n"
+            + "    window.scrollByPages(2);\n"
+            + "    alert(b.scrollLeft + ',' + b.scrollTop);\n"
+            + "  } else {\n"
+            + "    alert('no scrollByPages()');\n"
+            + "  }\n"
+            + "}\n"
+            + "</script></body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(FF = { "0", "0", "0", "0" }, IE = { "undefined", "undefined", "undefined", "undefined" })
+    public void pageXOffset() throws Exception {
+        final String html
+            = "<html><body onload='test()'><script>\n"
+            + "function test() {\n"
+            + "  window.scrollBy(5, 10);\n"
+            + "  alert(window.pageXOffset);\n"
+            + "  alert(window.pageYOffset);\n"
+            + "  alert(window.scrollX);\n"
+            + "  alert(window.scrollY);\n"
+            + "}\n"
+            + "</script>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts("object")
+    public void typeof() throws Exception {
+        final String html
+            = "<html><body><script>\n"
+            + "  alert(typeof window);\n"
+            + "</script></body></html>";
+        loadPageWithAlerts2(html);
+    }
 }

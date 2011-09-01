@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,14 +21,11 @@ import org.apache.commons.lang.StringUtils;
  *
  * Basically contains any event-related features that both elements and the document support.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
  * @author Ahmed Ashour
  */
 public class EventNode extends Node {
-
-    /** Serial version UID. */
-    private static final long serialVersionUID = 4894810197917509182L;
 
     /**
      * Sets the <tt>onclick</tt> event handler for this element.
@@ -300,6 +297,22 @@ public class EventNode extends Node {
      */
     public Object jsxGet_onpropertychange() {
         return getEventHandlerProp("onpropertychange");
+    }
+
+    /**
+     * Sets the <tt>onerror</tt> event handler for this element.
+     * @param handler the <tt>onerror</tt> event handler for this element
+     */
+    public void jsxSet_onerror(final Object handler) {
+        setEventHandlerProp("onerror", handler);
+    }
+
+    /**
+     * Returns the <tt>onerror</tt> event handler for this element.
+     * @return the <tt>onerror</tt> event handler for this element
+     */
+    public Object jsxGet_onerror() {
+        return getEventHandlerProp("onerror");
     }
 
     /**

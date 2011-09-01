@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,9 +20,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.TopLevelWindow;
 import com.gargoylesoftware.htmlunit.WebClient;
@@ -35,11 +39,13 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
  * Tests for {@link JavaScriptJobManagerImpl} using the full HtmlUnit stack. Minimal unit tests
  * which do not use the full HtmlUnit stack go in {@link JavaScriptJobManagerMinimalTest}.
  *
- * @version $Revision: 4343 $
+ * @version $Revision: 6429 $
  * @author Brad Clarke
  * @author Ahmed Ashour
  */
+@RunWith(BrowserRunner.class)
 public class JavaScriptJobManagerTest extends WebTestCase {
+    private static final Log LOG = LogFactory.getLog(JavaScriptJobManagerTest.class);
 
     private long startTime_;
 
@@ -140,18 +146,18 @@ public class JavaScriptJobManagerTest extends WebTestCase {
         final String firstContent = "<html><head><title>First</title></head><body>\n"
             + "<iframe id='iframe1' src='"
             + URL_SECOND
-            + "'>\n"
+            + "'></iframe>\n"
             + "<a href='"
             + URL_THIRD.toExternalForm()
             + "' id='clickme'>click me</a>\n"
             + "</body></html>";
         final String secondContent = "<html><head><title>Second</title></head><body>\n"
             + "<script>\n"
-            + "setInterval('', 10000);\n"
+            + "setInterval('', 30000);\n"
             + "</script>\n"
             + "</body></html>";
         final String thirdContent = "<html><head><title>Third</title></head><body></body></html>";
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
@@ -166,13 +172,19 @@ public class JavaScriptJobManagerTest extends WebTestCase {
         Assert.assertEquals("inner frame should show child thread", 1, mgr.getJobCount());
 
         final HtmlAnchor anchor = page.getHtmlElementById("clickme");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("before click");
+        }
         final HtmlPage newPage = anchor.click();
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("after click");
+        }
 
         Assert.assertEquals("new page should load", "Third", newPage.getTitleText());
         Assert.assertEquals("frame should be gone", 0, newPage.getFrames().size());
 
-        mgr.waitForJobs(1000);
-        Assert.assertEquals("thread should stop", 0, mgr.getJobCount());
+        mgr.waitForJobs(10000);
+        Assert.assertEquals("job manager should have no jobs left", 0, mgr.getJobCount());
     }
 
     /**

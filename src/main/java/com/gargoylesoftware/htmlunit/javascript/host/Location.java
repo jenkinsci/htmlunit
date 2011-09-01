@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,31 +14,30 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
-import static com.gargoylesoftware.htmlunit.protocol.javascript.JavaScriptURLConnection.JAVASCRIPT_PREFIX;
-
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import org.apache.commons.httpclient.URIException;
-import org.apache.commons.httpclient.util.URIUtil;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebRequestSettings;
+import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebWindow;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import com.gargoylesoftware.htmlunit.javascript.PostponedAction;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.protocol.javascript.JavaScriptURLConnection;
 import com.gargoylesoftware.htmlunit.util.UrlUtils;
 
 /**
  * A JavaScript object for a Location.
  *
- * @version $Revision: 4789 $
+ * @version $Revision: 6470 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Michael Ottati
  * @author Marc Guillemot
@@ -46,11 +45,14 @@ import com.gargoylesoftware.htmlunit.util.UrlUtils;
  * @author Daniel Gredler
  * @author David K. Taylor
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ *
  * @see <a href="http://msdn.microsoft.com/en-us/library/ms535866.aspx">MSDN Documentation</a>
  */
 public class Location extends SimpleScriptable {
 
-    private static final long serialVersionUID = -2907220432378132233L;
+    private static final Pattern DECODE_HASH_PATTERN = Pattern.compile("%([\\dA-F]{2})");
+
     private static final Log LOG = LogFactory.getLog(Location.class);
     private static final String UNKNOWN = "null";
 
@@ -80,7 +82,7 @@ public class Location extends SimpleScriptable {
     public void initialize(final Window window) {
         window_ = window;
         if (window_ != null && window_.getWebWindow().getEnclosedPage() != null) {
-            hash_ = window_.getWebWindow().getEnclosedPage().getWebResponse().getRequestSettings().getUrl().getRef();
+            jsxSet_hash(window_.getWebWindow().getEnclosedPage().getWebResponse().getWebRequest().getUrl().getRef());
         }
     }
 
@@ -141,6 +143,7 @@ public class Location extends SimpleScriptable {
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms536712.aspx">MSDN Documentation</a>
      */
     public void jsxFunction_replace(final String url) throws IOException {
+        window_.getWebWindow().getHistory().removeCurrent();
         jsxSet_href(url);
     }
 
@@ -163,17 +166,24 @@ public class Location extends SimpleScriptable {
             return UNKNOWN;
         }
         try {
-            URL url = page.getWebResponse().getRequestSettings().getUrl();
-            final boolean encodeHash = !getBrowserVersion().isIE();
+            URL url = page.getWebResponse().getWebRequest().getUrl();
+            final boolean encodeHash = getBrowserVersion().
+                    hasFeature(BrowserVersionFeatures.JS_LOCATION_HASH_IS_DECODED);
             final String hash = getHash(encodeHash);
             if (hash != null) {
                 url = UrlUtils.getUrlWithNewRef(url, hash);
             }
-            return url.toExternalForm();
+            String s = url.toExternalForm();
+            if (s.startsWith("file:/") && !s.startsWith("file:///")) {
+                // Java (sometimes?) returns file URLs with a single slash; however, browsers return
+                // three slashes. See http://www.cyanwerks.com/file-url-formats.html for more info.
+                s = "file:///" + s.substring("file:/".length());
+            }
+            return s;
         }
         catch (final MalformedURLException e) {
             LOG.error(e.getMessage(), e);
-            return page.getWebResponse().getRequestSettings().getUrl().toExternalForm();
+            return page.getWebResponse().getWebRequest().getUrl().toExternalForm();
         }
     }
 
@@ -185,37 +195,36 @@ public class Location extends SimpleScriptable {
      */
     public void jsxSet_href(final String newLocation) throws IOException {
         final HtmlPage page = (HtmlPage) getWindow(getStartingScope()).getWebWindow().getEnclosedPage();
-        final PostponedAction action = new PostponedAction() {
-
-            public void execute() throws Exception {
-                if (newLocation.startsWith(JAVASCRIPT_PREFIX)) {
-                    final String script = newLocation.substring(11);
-                    page.executeJavaScriptIfPossible(script, "new location value", 1);
-                    return;
+        if (newLocation.startsWith(JavaScriptURLConnection.JAVASCRIPT_PREFIX)) {
+            final String script = newLocation.substring(11);
+            page.executeJavaScriptIfPossible(script, "new location value", 1);
+            return;
+        }
+        try {
+            URL url = page.getFullyQualifiedUrl(newLocation);
+            // fix for empty url
+            if (StringUtils.isEmpty(newLocation)) {
+                final boolean dropFilename = page.getWebClient().getBrowserVersion().
+                        hasFeature(BrowserVersionFeatures.ANCHOR_EMPTY_HREF_NO_FILENAME);
+                if (dropFilename) {
+                    String path = url.getPath();
+                    path = path.substring(0, path.lastIndexOf('/') + 1);
+                    url = UrlUtils.getUrlWithNewPath(url, path);
+                    url = UrlUtils.getUrlWithNewRef(url, null);
                 }
-
-                try {
-                    final URL url = page.getFullyQualifiedUrl(newLocation);
-                    final URL oldUrl = page.getWebResponse().getRequestSettings().getUrl();
-                    if (url.sameFile(oldUrl) && !StringUtils.equals(url.getRef(), oldUrl.getRef())) {
-                        // If we're just setting or modifying the hash, avoid a server hit.
-                        jsxSet_hash(newLocation);
-                        return;
-                    }
-                    final WebWindow webWindow = getWindow().getWebWindow();
-                    webWindow.getWebClient().getPage(webWindow, new WebRequestSettings(url));
-                }
-                catch (final MalformedURLException e) {
-                    LOG.error("jsxSet_location('" + newLocation + "') Got MalformedURLException", e);
-                    throw e;
-                }
-                catch (final IOException e) {
-                    LOG.error("jsxSet_location('" + newLocation + "') Got IOException", e);
-                    throw e;
+                else {
+                    url = UrlUtils.getUrlWithNewRef(url, null);
                 }
             }
-        };
-        page.getWebClient().getJavaScriptEngine().addPostponedAction(action);
+
+            final WebWindow webWindow = getWindow().getWebWindow();
+            webWindow.getWebClient().download(webWindow, "", new WebRequest(url),
+                    newLocation.endsWith("#"), "JS set location");
+        }
+        catch (final MalformedURLException e) {
+            LOG.error("jsxSet_location('" + newLocation + "') Got MalformedURLException", e);
+            throw e;
+        }
     }
 
     /**
@@ -247,10 +256,16 @@ public class Location extends SimpleScriptable {
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms533775.aspx">MSDN Documentation</a>
      */
     public String jsxGet_hash() {
-        final String hash = getHash(false);
-        if (hash != null) {
+        final boolean decodeHash = getBrowserVersion().hasFeature(BrowserVersionFeatures.JS_LOCATION_HASH_IS_DECODED);
+        String hash = hash_;
+        if (decodeHash && hash_ != null) {
+            hash = decodeHash(hash);
+        }
+
+        if (!StringUtils.isEmpty(hash)) {
             return "#" + hash;
         }
+
         return "";
     }
 
@@ -258,14 +273,8 @@ public class Location extends SimpleScriptable {
         if (hash_ == null || hash_.length() == 0) {
             return null;
         }
-
         if (encoded) {
-            try {
-                return URIUtil.encodeQuery(hash_);
-            }
-            catch (final URIException e) {
-                LOG.error(e.getMessage(), e);
-            }
+            return UrlUtils.encodeAnchor(hash_);
         }
         return hash_;
     }
@@ -279,24 +288,31 @@ public class Location extends SimpleScriptable {
     public void jsxSet_hash(String hash) {
         // IMPORTANT: This method must not call setUrl(), because
         // we must not hit the server just to change the hash!
-        try {
-            if (hash != null) {
-                if (hash.startsWith("#")) {
-                    hash = hash.substring(1);
-                }
-                final boolean decodeHash = !getBrowserVersion().isIE();
-                if (decodeHash) {
-                    hash = URIUtil.decode(hash);
-                }
-                hash_ = hash;
-            }
-            else {
-                hash_ = null;
+        if (hash != null) {
+            if (hash.length() > 0 && ('#' == hash.charAt(0))) {
+                hash = hash.substring(1);
             }
         }
-        catch (final URIException e) {
-            LOG.error(e.getMessage(), e);
+        hash_ = hash;
+    }
+
+    private String decodeHash(final String hash) {
+        if (hash.indexOf('%') == -1) {
+            return hash;
         }
+        final StringBuffer sb = new StringBuffer();
+        final Matcher m = DECODE_HASH_PATTERN.matcher(hash);
+        while (m.find()) {
+            final String code = m.group(1);
+            final int u = (char) Character.digit(code.charAt(0), 16);
+            final int l = (char) Character.digit(code.charAt(1), 16);
+            final char replacement = (char) ((u << 4) + l);
+            m.appendReplacement(sb, "");
+            sb.append(replacement);
+        }
+        m.appendTail(sb);
+
+        return sb.toString();
     }
 
     /**
@@ -364,7 +380,7 @@ public class Location extends SimpleScriptable {
      */
     public String jsxGet_pathname() {
         if (WebClient.URL_ABOUT_BLANK == getUrl()) {
-            if (getBrowserVersion().isFirefox()) {
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.URL_ABOUT_BLANK_HAS_EMPTY_PATH)) {
                 return "";
             }
             return "/blank";
@@ -392,7 +408,7 @@ public class Location extends SimpleScriptable {
         if (port == -1) {
             return "";
         }
-        return String.valueOf(port);
+        return Integer.toString(port);
     }
 
     /**
@@ -429,7 +445,7 @@ public class Location extends SimpleScriptable {
      * @return this location's current URL
      */
     private URL getUrl() {
-        return window_.getWebWindow().getEnclosedPage().getWebResponse().getRequestSettings().getUrl();
+        return window_.getWebWindow().getEnclosedPage().getWebResponse().getWebRequest().getUrl();
     }
 
     /**
@@ -439,6 +455,6 @@ public class Location extends SimpleScriptable {
      * @throws IOException if there is a problem loading the new location
      */
     private void setUrl(final URL url) throws IOException {
-        window_.getWebWindow().getWebClient().getPage(window_.getWebWindow(), new WebRequestSettings(url));
+        window_.getWebWindow().getWebClient().getPage(window_.getWebWindow(), new WebRequest(url));
     }
 }

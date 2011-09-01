@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,23 +14,23 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 
 /**
  * Tests for {@link HtmlOption}.
  *
- * @version $Revision: 4380 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Marc Guillemot
  * @author Ahmed Ashour
  * @author Daniel Gredler
  */
+@RunWith(BrowserRunner.class)
 public class HtmlOptionTest extends WebTestCase {
 
     /**
@@ -149,7 +149,7 @@ public class HtmlOptionTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testAsText() throws Exception {
+    public void asText() throws Exception {
         final String htmlContent = "<html><head><title>foo</title></head><body>\n"
             + "<form><select>\n"
             + "<option id='option1'>option1</option>\n"
@@ -176,7 +176,8 @@ public class HtmlOptionTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testSimpleScriptable() throws Exception {
+    @Alerts(FF = "[object HTMLOptionElement]", IE = "[object]")
+    public void simpleScriptable() throws Exception {
         final String html = "<html><head>\n"
             + "<script>\n"
             + "  function test() {\n"
@@ -190,24 +191,16 @@ public class HtmlOptionTest extends WebTestCase {
             + "</select>\n"
             + "</body></html>";
 
-        final String[] expectedAlerts = {"[object HTMLOptionElement]"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(BrowserVersion.FIREFOX_2, html, collectedAlerts);
+        final HtmlPage page = loadPageWithAlerts(html);
         assertTrue(HtmlOption.class.isInstance(page.getHtmlElementById("myId")));
-        assertEquals(expectedAlerts, collectedAlerts);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
+    @Alerts({ "false", "false", "true", "true", "false" })
     public void testDisabled() throws Exception {
-        testDisabled(BrowserVersion.FIREFOX_2, true, false);
-        testDisabled(BrowserVersion.INTERNET_EXPLORER_6, false, false);
-        testDisabled(BrowserVersion.INTERNET_EXPLORER_7, false, false);
-    }
-
-    private void testDisabled(final BrowserVersion version, final boolean d1, final boolean d2) throws Exception {
         final String html = "<html><body onload='test()'><form name='f'>\n"
             + "  <select name='s' id='s'>\n"
             + "    <option value='o1' id='o1'>One</option>\n"
@@ -228,12 +221,11 @@ public class HtmlOptionTest extends WebTestCase {
             + "    }\n"
             + "  </script>\n"
             + "</form></body></html>";
-        final String[] expected = {"false", "false", "true", "true", "false"};
-        final List<String> actual = new ArrayList<String>();
-        final HtmlPage page = loadPage(version, html, actual);
-        assertEquals(expected, actual);
-        assertEquals(d1, ((HtmlOption) page.getElementById("o1")).isDisabled());
-        assertEquals(d2, ((HtmlOption) page.getElementById("o2")).isDisabled());
+
+        final HtmlPage page = loadPageWithAlerts(html);
+        final boolean disabled = getBrowserVersion().isFirefox();
+        assertEquals(disabled, ((HtmlOption) page.getElementById("o1")).isDisabled());
+        assertFalse(((HtmlOption) page.getElementById("o2")).isDisabled());
     }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,14 +23,13 @@ import org.mortbay.jetty.Handler;
 import org.mortbay.jetty.Server;
 import org.mortbay.jetty.handler.HandlerList;
 import org.mortbay.jetty.handler.ResourceHandler;
-import org.mortbay.jetty.servlet.Context;
 import org.mortbay.jetty.webapp.WebAppClassLoader;
 import org.mortbay.jetty.webapp.WebAppContext;
 
 /**
  * Base class for cases that need real web server.
  *
- * @version $Revision: 4738 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
  */
@@ -52,12 +51,13 @@ public abstract class WebServerTestCase extends WebTestCase {
         }
         server_ = new Server(PORT);
 
-        final Context context = new Context();
+        final WebAppContext context = new WebAppContext();
         context.setContextPath("/");
         context.setResourceBase(resourceBase);
 
         final ResourceHandler resourceHandler = new ResourceHandler();
         resourceHandler.setResourceBase(resourceBase);
+        resourceHandler.getMimeTypes().addMimeMapping("js", "application/javascript");
 
         final HandlerList handlers = new HandlerList();
         handlers.setHandlers(new Handler[]{resourceHandler, context});
@@ -116,8 +116,9 @@ public abstract class WebServerTestCase extends WebTestCase {
         context.setContextPath("/");
         context.setResourceBase(resourceBase);
 
-        for (final String pathSpec : servlets.keySet()) {
-            final Class< ? extends Servlet> servlet = servlets.get(pathSpec);
+        for (final Map.Entry<String, Class< ? extends Servlet>> entry : servlets.entrySet()) {
+            final String pathSpec = entry.getKey();
+            final Class< ? extends Servlet> servlet = entry.getValue();
             context.addServlet(servlet, pathSpec);
         }
         final WebAppClassLoader loader = new WebAppClassLoader(context);

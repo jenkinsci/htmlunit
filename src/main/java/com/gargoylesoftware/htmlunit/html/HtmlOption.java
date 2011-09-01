@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "option".
  *
- * @version $Revision: 4854 $
+ * @version $Revision: 6359 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -34,9 +34,7 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
  * @author Ahmed Ashour
  * @author Daniel Gredler
  */
-public class HtmlOption extends ClickableElement implements DisabledElement {
-
-    private static final long serialVersionUID = 8995198439134305753L;
+public class HtmlOption extends HtmlElement implements DisabledElement {
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "option";
@@ -221,11 +219,11 @@ public class HtmlOption extends ClickableElement implements DisabledElement {
      * {@inheritDoc}
      */
     @Override
-    protected Page doClickAction(final Page defaultPage) throws IOException {
+    protected void doClickAction() throws IOException {
         if (!isSelected()) {
-            return setSelected(true);
+            setSelected(true);
         }
-        return defaultPage;
+        super.doClickAction();
     }
 
     /**
@@ -267,7 +265,9 @@ public class HtmlOption extends ClickableElement implements DisabledElement {
      * @param text the text
      */
     public void setText(final String text) {
-        if (getPage().getWebClient().getBrowserVersion().isIE() && (text == null || text.length() == 0)) {
+        if ((text == null || text.length() == 0)
+                && getPage().getWebClient().getBrowserVersion()
+                .hasFeature(BrowserVersionFeatures.HTMLOPTION_EMPTY_TEXT_IS_NO_CHILDREN)) {
             removeAllChildren();
         }
         else {
@@ -289,5 +289,16 @@ public class HtmlOption extends ClickableElement implements DisabledElement {
         final HtmlSerializer ser = new HtmlSerializer();
         ser.setIgnoreMaskedElements(false);
         return ser.asText(this);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    protected DomNode getEventTargetElement() {
+        final HtmlSelect select = getEnclosingSelect();
+        if (select != null) {
+            return select;
+        }
+        return super.getEventTargetElement();
     }
 }

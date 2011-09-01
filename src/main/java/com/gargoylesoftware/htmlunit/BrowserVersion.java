@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
  */
 package com.gargoylesoftware.htmlunit;
 
+import java.io.InputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 
@@ -35,7 +37,7 @@ import org.apache.commons.lang.builder.HashCodeBuilder;
  * http://htmlunit.sourceforge.net/cgi-bin/browserVersion</a>
  * and the code will be generated for you.
  *
- * @version $Revision: 4489 $
+ * @version $Revision: 6439 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Daniel Gredler
  * @author Marc Guillemot
@@ -43,8 +45,6 @@ import org.apache.commons.lang.builder.HashCodeBuilder;
  * @author Ahmed Ashour
  */
 public class BrowserVersion implements Serializable {
-
-    private static final long serialVersionUID = 594005988985654117L;
 
     private String applicationCodeName_ = APP_CODE_NAME;
     private String applicationMinorVersion_ = "0";
@@ -57,52 +57,84 @@ public class BrowserVersion implements Serializable {
     private String systemLanguage_ = LANGUAGE_ENGLISH_US;
     private String userAgent_;
     private String userLanguage_ = LANGUAGE_ENGLISH_US;
-    private String javaScriptVersion_;
-    private float javaScriptVersionNumeric_;
     private float browserVersionNumeric_;
     private Set<PluginConfiguration> plugins_ = new HashSet<PluginConfiguration>();
     private final List<BrowserVersionFeatures> features_ = new ArrayList<BrowserVersionFeatures>();
     private final String nickname_;
 
-    /** Application code name for both Internet Explorer and Netscape series. */
+    /**
+     * Application code name for both Internet Explorer and Netscape series.
+     * @deprecated as of 2.8, without replacement
+     */
+    @Deprecated
     public static final String APP_CODE_NAME = "Mozilla";
 
-    /** Application name for the Internet Explorer series of browsers. */
+    /**
+     * Application name for the Internet Explorer series of browsers.
+     * @deprecated as of 2.8, without replacement
+     */
+    @Deprecated
     public static final String INTERNET_EXPLORER = "Microsoft Internet Explorer";
 
-    /** Application name the Netscape navigator series of browsers. */
+    /**
+     * Application name the Netscape navigator series of browsers.
+     * @deprecated as of 2.8, without replacement
+     */
+    @Deprecated
     public static final String NETSCAPE = "Netscape";
 
-    /** United States English language identifier. */
+    /**
+     * United States English language identifier.
+     * @deprecated as of 2.8, without replacement
+     */
+    @Deprecated
     public static final String LANGUAGE_ENGLISH_US = "en-us";
 
-    /** The X86 CPU class. */
+    /**
+     * The X86 CPU class.
+     * @deprecated as of 2.8, without replacement
+     */
+    @Deprecated
     public static final String CPU_CLASS_X86 = "x86";
 
-    /** The WIN32 platform. */
+    /**
+     * The WIN32 platform.
+     * @deprecated as of 2.8, without replacement
+     */
+    @Deprecated
     public static final String PLATFORM_WIN32 = "Win32";
 
-    /** Firefox 2. */
-    public static final BrowserVersion FIREFOX_2 = new BrowserVersion(
-        NETSCAPE, "5.0 (Windows; en-US)",
-        "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.4) Gecko/20070515 Firefox/2.0.0.4",
-        "1.2", 2, "FF2", null);
-
-    /** Firefox 3. */
+    /**
+     * Firefox 3.0.
+     * @deprecated since HtmlUnit-2.9. This means that no effort will be made to improve
+     * simulation for this browser version until it is definitely removed.
+     */
+    @Deprecated
     public static final BrowserVersion FIREFOX_3 = new BrowserVersion(
         NETSCAPE, "5.0 (Windows; en-US)",
-        "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.0.1) Gecko/2008070208 Firefox/3.0.1",
-        "1.2", 3, "FF3", null);
+        "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.0.19) Gecko/2010031422 Firefox/3.0.19",
+        3, "FF3", null);
+
+    /** Firefox 3.6. */
+    public static final BrowserVersion FIREFOX_3_6 = new BrowserVersion(
+        NETSCAPE, "5.0 (Windows; en-US)",
+        "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.2.8) Gecko/20100722 Firefox/3.6.8",
+        (float) 3.6, "FF3.6", null);
 
     /** Internet Explorer 6. */
     public static final BrowserVersion INTERNET_EXPLORER_6 = new BrowserVersion(
         INTERNET_EXPLORER, "4.0 (compatible; MSIE 6.0b; Windows 98)",
-        "Mozilla/4.0 (compatible; MSIE 6.0; Windows 98)", "1.2", 6, "IE6", null);
+        "Mozilla/4.0 (compatible; MSIE 6.0; Windows 98)", 6, "IE6", null);
 
     /** Internet Explorer 7. */
     public static final BrowserVersion INTERNET_EXPLORER_7 = new BrowserVersion(
-        INTERNET_EXPLORER, "4.0 (compatible; MSIE 7.0; Windows NT 5.1; .NET CLR 1.1.4322)",
-        "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; .NET CLR 1.1.4322)", "1.2", 7, "IE7", null);
+        INTERNET_EXPLORER, "4.0 (compatible; MSIE 7.0; Windows NT 5.1)",
+        "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)", 7, "IE7", null);
+
+    /** Internet Explorer 8. */
+    public static final BrowserVersion INTERNET_EXPLORER_8 = new BrowserVersion(
+        INTERNET_EXPLORER, "4.0 (compatible; MSIE 8.0; Windows NT 6.0)",
+        "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.0)", 8, "IE8", null);
 
     /** The default browser version. */
     private static BrowserVersion DefaultBrowserVersion_ = INTERNET_EXPLORER_7;
@@ -111,32 +143,15 @@ public class BrowserVersion implements Serializable {
     static {
         INTERNET_EXPLORER_6.initDefaultFeatures();
         INTERNET_EXPLORER_7.initDefaultFeatures();
-        FIREFOX_2.initDefaultFeatures();
+        INTERNET_EXPLORER_8.initDefaultFeatures();
         FIREFOX_3.initDefaultFeatures();
+        FIREFOX_3_6.initDefaultFeatures();
         final PluginConfiguration flash = new PluginConfiguration("Shockwave Flash",
             "Shockwave Flash 9.0 r31", "libflashplayer.so");
         flash.getMimeTypes().add(new PluginConfiguration.MimeType("application/x-shockwave-flash",
             "Shockwave Flash", "swf"));
-        FIREFOX_2.getPlugins().add(flash);
         FIREFOX_3.getPlugins().add(flash);
-    }
-
-    /**
-     * Instantiates one.
-     *
-     * @param applicationName the name of the application
-     * @param applicationVersion the version string of the application
-     * @param userAgent the user agent string that will be sent to the server
-     * @param javaScriptVersion the version of JavaScript
-     * @param browserVersionNumeric the floating number version of the browser
-     * @deprecated as of 2.5, use {@link #BrowserVersion(String, String, String, float)}
-     */
-    @Deprecated
-    public BrowserVersion(final String applicationName, final String applicationVersion,
-        final String userAgent, final String javaScriptVersion, final float browserVersionNumeric) {
-
-        this(applicationName, applicationVersion, userAgent, javaScriptVersion,
-                browserVersionNumeric, applicationName + browserVersionNumeric, null);
+        FIREFOX_3_6.getPlugins().add(flash);
     }
 
     /**
@@ -150,28 +165,8 @@ public class BrowserVersion implements Serializable {
     public BrowserVersion(final String applicationName, final String applicationVersion,
         final String userAgent, final float browserVersionNumeric) {
 
-        this(applicationName, applicationVersion, userAgent, null,
+        this(applicationName, applicationVersion, userAgent,
                 browserVersionNumeric, applicationName + browserVersionNumeric, null);
-    }
-
-    /**
-     * Instantiates one.
-     *
-     * @param applicationName the name of the application
-     * @param applicationVersion the version string of the application
-     * @param userAgent the user agent string that will be sent to the server
-     * @param javaScriptVersion the version of JavaScript
-     * @param browserVersionNumeric the floating number version of the browser
-     * @param features the browser features
-     * @deprecated as of 2.5, use {@link #BrowserVersion(String, String, String, float, BrowserVersionFeatures[])}
-     */
-    @Deprecated
-    public BrowserVersion(final String applicationName, final String applicationVersion,
-        final String userAgent, final String javaScriptVersion, final float browserVersionNumeric,
-        final BrowserVersionFeatures[] features) {
-
-        this(applicationName, applicationVersion, userAgent, javaScriptVersion,
-                browserVersionNumeric, applicationName + browserVersionNumeric, features);
     }
 
     /**
@@ -187,7 +182,7 @@ public class BrowserVersion implements Serializable {
         final String userAgent, final float browserVersionNumeric,
         final BrowserVersionFeatures[] features) {
 
-        this(applicationName, applicationVersion, userAgent, null,
+        this(applicationName, applicationVersion, userAgent,
                 browserVersionNumeric, applicationName + browserVersionNumeric, features);
     }
 
@@ -199,17 +194,16 @@ public class BrowserVersion implements Serializable {
      * @param userAgent the user agent string that will be sent to the server
      * @param javaScriptVersion the version of JavaScript
      * @param browserVersionNumeric the floating number version of the browser
-     * @param nickname the short name of the browser (like "FF2", "FF3", "IE6", ...)
+     * @param nickname the short name of the browser (like "FF3", "IE6", ...)
      * @param features the browser features
      */
     private BrowserVersion(final String applicationName, final String applicationVersion,
-        final String userAgent, final String javaScriptVersion, final float browserVersionNumeric,
+        final String userAgent, final float browserVersionNumeric,
         final String nickname, final BrowserVersionFeatures[] features) {
 
         applicationName_ = applicationName;
         setApplicationVersion(applicationVersion);
         userAgent_ = userAgent;
-        setJavaScriptVersion(javaScriptVersion);
         browserVersionNumeric_ = browserVersionNumeric;
         nickname_ = nickname;
         if (features != null) {
@@ -218,19 +212,27 @@ public class BrowserVersion implements Serializable {
     }
 
     private void initDefaultFeatures() {
+        InputStream stream = null;
         try {
             final Properties props = new Properties();
-            props.load(getClass().getResourceAsStream("/com/gargoylesoftware/htmlunit/javascript/configuration/"
-                    + nickname_ + ".properties"));
+            stream = getClass().getResourceAsStream("/com/gargoylesoftware/htmlunit/javascript/configuration/"
+                + nickname_ + ".properties");
+            props.load(stream);
             for (final Object key : props.keySet()) {
-                features_.add(BrowserVersionFeatures.valueOf(key.toString()));
+                try {
+                    features_.add(BrowserVersionFeatures.valueOf(key.toString()));
+                }
+                catch (final IllegalArgumentException iae) {
+                    throw new RuntimeException("Invalid entry '"
+                        + key + "' found in configuration file for BrowserVersion: " + nickname_);
+                }
             }
-        }
-        catch (final IllegalArgumentException iae) {
-            throw new RuntimeException("Invalid entry found in configuration file for BrowserVersion: " + nickname_);
         }
         catch (final Exception e) {
             throw new RuntimeException("Configuration file not found for BrowserVersion: " + nickname_);
+        }
+        finally {
+            IOUtils.closeQuietly(stream);
         }
     }
 
@@ -263,7 +265,7 @@ public class BrowserVersion implements Serializable {
 
     /**
      * Returns <tt>true</tt> if this <tt>BrowserVersion</tt> instance represents some
-     * version of Firefox like {@link #FIREFOX_2} or {@link #FIREFOX_3}.
+     * version of Firefox like {@link #FIREFOX_3} or {@link #FIREFOX_3_6}.
      * @return whether or not this version is a version of a Firefox browser
      */
     public final boolean isFirefox() {
@@ -377,16 +379,6 @@ public class BrowserVersion implements Serializable {
     }
 
     /**
-     * Returns the version of JavaScript used by the browser, for example "1.2".
-     * @return the version of JavaScript used by the browser
-     * @deprecated As of 2.5, with no replacement
-     */
-    @Deprecated
-    public String getJavaScriptVersion() {
-        return javaScriptVersion_;
-    }
-
-    /**
      * @param applicationCodeName the applicationCodeName to set
      */
     public void setApplicationCodeName(final String applicationCodeName) {
@@ -426,21 +418,6 @@ public class BrowserVersion implements Serializable {
      */
     public void setCpuClass(final String cpuClass) {
         cpuClass_ = cpuClass;
-    }
-
-    /**
-     * @param javaScriptVersion the javaScriptVersion to set
-     * @deprecated As of 2.5, with no replacement
-     */
-    @Deprecated
-    public void setJavaScriptVersion(final String javaScriptVersion) {
-        javaScriptVersion_ = javaScriptVersion;
-        if (javaScriptVersion != null) {
-            javaScriptVersionNumeric_ = Float.parseFloat(javaScriptVersion);
-        }
-        else {
-            javaScriptVersionNumeric_ = 0;
-        }
     }
 
     /**
@@ -490,15 +467,6 @@ public class BrowserVersion implements Serializable {
      */
     public float getBrowserVersionNumeric() {
         return browserVersionNumeric_;
-    }
-
-    /**
-     * @return the javaScriptVersionNumeric
-     * @deprecated As of 2.5, with no replacement
-     */
-    @Deprecated
-    public float getJavaScriptVersionNumeric() {
-        return javaScriptVersionNumeric_;
     }
 
     /**

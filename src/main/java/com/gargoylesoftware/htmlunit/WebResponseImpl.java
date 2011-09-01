@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,34 +14,21 @@
  */
 package com.gargoylesoftware.htmlunit;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
 import java.net.URL;
-import java.util.List;
-
-import org.apache.commons.httpclient.NameValuePair;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import com.gargoylesoftware.htmlunit.util.EncodingSniffer;
 
 /**
- * Simple base class for {@link WebResponse}.
+ * A response from a web server.
  *
- * @version $Revision: 4872 $
+ * @version $Revision: 6204 $
+ * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Brad Clarke
+ * @author Noboru Sinohara
+ * @author Marc Guillemot
  * @author Ahmed Ashour
+ * @deprecated as of 2.8, use {@link WebResponse} instead
  */
-public class WebResponseImpl implements WebResponse {
-
-    private static final long serialVersionUID = 2842434739251092348L;
-    private static final Log LOG = LogFactory.getLog(WebResponseImpl.class);
-
-    private long loadTime_;
-    private WebResponseData responseData_;
-    private WebRequestSettings requestSettings_;
+@Deprecated
+public class WebResponseImpl extends WebResponse {
 
     /**
      * Constructs with all data.
@@ -53,201 +40,19 @@ public class WebResponseImpl implements WebResponse {
      */
     public WebResponseImpl(final WebResponseData responseData, final URL url,
             final HttpMethod requestMethod, final long loadTime) {
-        this(responseData, new WebRequestSettings(url, requestMethod), loadTime);
+        this(responseData, new WebRequest(url, requestMethod), loadTime);
     }
 
     /**
      * Constructs with all data.
      *
      * @param responseData      Data that was send back
-     * @param charset           Charset used if not returned in the response
-     * @param requestSettings   the request settings used to get this response
-     * @param loadTime          How long the response took to be sent
-     * @deprecated As of 2.6, please use @link {@link #WebResponseImpl(WebResponseData, WebRequestSettings, long)}
-     */
-    @Deprecated
-    public WebResponseImpl(final WebResponseData responseData, final String charset,
-            final WebRequestSettings requestSettings, final long loadTime) {
-        this(responseData, requestSettings, loadTime);
-    }
-
-    /**
-     * Constructs with all data.
-     *
-     * @param responseData      Data that was send back
-     * @param requestSettings   the request settings used to get this response
+     * @param request           the request used to get this response
      * @param loadTime          How long the response took to be sent
      */
     public WebResponseImpl(final WebResponseData responseData,
-            final WebRequestSettings requestSettings, final long loadTime) {
-        responseData_ = responseData;
-        requestSettings_ = requestSettings;
-        loadTime_ = loadTime;
+            final WebRequest request, final long loadTime) {
+        super(responseData, request, loadTime);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public WebRequestSettings getRequestSettings() {
-        return requestSettings_;
-    }
-
-    /**
-     * {@inheritDoc}
-     * @deprecated As of 2.6, please use {@link #getRequestSettings()}.getHttpMethod()
-     */
-    @Deprecated
-    public HttpMethod getRequestMethod() {
-        return getRequestSettings().getHttpMethod();
-    }
-
-    /**
-     * {@inheritDoc}
-     * @deprecated As of 2.6, please use {@link #getRequestSettings()}.getUrl()
-     */
-    @Deprecated
-    public URL getRequestUrl() {
-        return getRequestSettings().getUrl();
-    }
-
-    public URL getUrl() {
-        return getRequestUrl();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public List<NameValuePair> getResponseHeaders() {
-        return responseData_.getResponseHeaders();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public String getResponseHeaderValue(final String headerName) {
-        for (final NameValuePair pair : responseData_.getResponseHeaders()) {
-            if (pair.getName().equalsIgnoreCase(headerName)) {
-                return pair.getValue();
-            }
-        }
-        return null;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public int getStatusCode() {
-        return responseData_.getStatusCode();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public String getStatusMessage() {
-        return responseData_.getStatusMessage();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public String getContentType() {
-        final String contentTypeHeader = getResponseHeaderValue("content-type");
-        if (contentTypeHeader == null) {
-            // Not technically legal but some servers don't return a content-type
-            return "";
-        }
-        final int index = contentTypeHeader.indexOf(';');
-        if (index == -1) {
-            return contentTypeHeader;
-        }
-        return contentTypeHeader.substring(0, index);
-    }
-
-    /**
-     * {@inheritDoc}
-     * If no charset is specified in headers, then try to guess it from the content.
-     * @see <a href="http://en.wikipedia.org/wiki/Byte_Order_Mark">Wikipedia - Byte Order Mark</a>
-     * @return the charset, {@link TextUtil#DEFAULT_CHARSET} if it can't be determined
-     * @deprecated As of 2.6, please use @link {@link #getContentCharset()}
-     */
-    @Deprecated
-    public String getContentCharSet() {
-        return getContentCharset();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public String getContentCharsetOrNull() {
-        try {
-            return EncodingSniffer.sniffEncoding(getResponseHeaders(), getContentAsStream());
-        }
-        catch (final IOException e) {
-            LOG.warn("Error trying to sniff encoding.", e);
-            return null;
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public String getContentCharset() {
-        String charset = getContentCharsetOrNull();
-        if (charset == null) {
-            charset = getRequestSettings().getCharset();
-        }
-        if (charset == null) {
-            charset = TextUtil.DEFAULT_CHARSET;
-        }
-        return charset;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public String getContentAsString() {
-        return getContentAsString(getContentCharset());
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public String getContentAsString(final String encoding) {
-        final byte[] body = responseData_.getBody();
-        if (body != null) {
-            try {
-                return new String(body, encoding);
-            }
-            catch (final UnsupportedEncodingException e) {
-                LOG.warn("Attempted to use unsupported encoding '" + encoding + "'; using default system encoding.");
-                return new String(body);
-            }
-        }
-        return null;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public InputStream getContentAsStream() throws IOException {
-        final byte[] body = responseData_.getBody();
-        if (body != null) {
-            return new ByteArrayInputStream(body);
-        }
-        return null;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public byte[] getContentAsBytes() {
-        return responseData_.getBody();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public long getLoadTime() {
-        return loadTime_;
-    }
 }

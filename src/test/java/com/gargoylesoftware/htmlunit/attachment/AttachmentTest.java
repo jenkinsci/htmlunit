@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,9 +19,10 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.httpclient.NameValuePair;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.HttpWebConnectionTest;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.Page;
@@ -31,15 +32,17 @@ import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.html.HtmlAnchor;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Tests for {@link Attachment}.
  *
- * @version $Revision: 4463 $
+ * @version $Revision: 6204 $
  * @author Bruce Chapman
  * @author Sudhan Moghe
  * @author Daniel Gredler
  */
+@RunWith(BrowserRunner.class)
 public class AttachmentTest extends WebTestCase {
 
     /**
@@ -56,7 +59,7 @@ public class AttachmentTest extends WebTestCase {
             + "</body></html>";
         final String content2 = "download file contents";
 
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
         final List<Attachment> attachments = new ArrayList<Attachment>();
         client.setAttachmentHandler(new CollectingAttachmentHandler(attachments));
 
@@ -83,7 +86,7 @@ public class AttachmentTest extends WebTestCase {
         HttpWebConnectionTest.assertEquals(new ByteArrayInputStream(content2.getBytes()), attachmentStream);
         assertEquals("text/html", attachmentResponse.getContentType());
         assertEquals(200, attachmentResponse.getStatusCode());
-        assertEquals(URL_SECOND, attachmentResponse.getRequestSettings().getUrl());
+        assertEquals(URL_SECOND, attachmentResponse.getWebRequest().getUrl());
     }
 
     /**
@@ -94,7 +97,7 @@ public class AttachmentTest extends WebTestCase {
     public void filename() throws Exception {
         final String content = "<html>But is it really?</html>";
 
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
         final MockWebConnection conn = new MockWebConnection();
         client.setWebConnection(conn);
         final List<Attachment> attachments = new ArrayList<Attachment>();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,10 @@ package com.gargoylesoftware.htmlunit.javascript.host.html;
 /**
  * The JavaScript object "HTMLMenuElement".
  *
- * @version $Revision: 4774 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  */
 public class HTMLMenuElement extends HTMLListElement {
-
-    private static final long serialVersionUID = 9187243697518454234L;
 
     /**
      * Creates an instance.

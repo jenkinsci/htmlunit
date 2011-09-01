@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,23 +18,24 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 
 /**
  * Unit tests for {@link HTMLCanvasElement}.
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  */
 @RunWith(BrowserRunner.class)
-public class HTMLCanvasElementTest extends WebTestCase {
+public class HTMLCanvasElementTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = { "300", "150", "[object CanvasRenderingContext2D]" }, IE = { "undefined", "undefined" })
+    @Alerts(FF = { "300", "number", "150", "number", "[object CanvasRenderingContext2D]" },
+            IE = { "undefined", "undefined", "undefined", "undefined" })
     public void test() throws Exception {
         final String html =
             "<html>\n"
@@ -43,7 +44,9 @@ public class HTMLCanvasElementTest extends WebTestCase {
             + "      function test() {\n"
             + "        var canvas = document.getElementById('myCanvas');\n"
             + "        alert(canvas.width);\n"
+            + "        alert(typeof canvas.width);\n"
             + "        alert(canvas.height);\n"
+            + "        alert(typeof canvas.height);\n"
             + "        if (canvas.getContext){\n"
             + "          var ctx = canvas.getContext('2d');\n"
             + "          alert(ctx);\n"
@@ -53,7 +56,36 @@ public class HTMLCanvasElementTest extends WebTestCase {
             + "  </head>\n"
             + "  <body onload='test()'><canvas id='myCanvas'></canvas></body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(FF = { "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASwAAACWCAYAAABkW7XSAAAAxUlEQVR4nO3BMQEAAADCoPVPbQhf"
+            + "oAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            + "AAAAAAAAAAAAAAAAAAAAAAAAAAAOA1v9QAATX68/0AAAAASUVORK5CYII=",
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASwAAACWCAYAAABkW7XSAAAAxUlEQVR4nO3BMQEAAADCoPVPbQhf"
+            + "oAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            + "AAAAAAAAAAAAAAAAAAAAAAAAAAAOA1v9QAATX68/0AAAAASUVORK5CYII=" },
+            IE = "exception")
+    public void toDataUrl() throws Exception {
+        final String html =
+            "<html>\n"
+            + "<body><canvas id='myCanvas'></canvas>\n"
+            + "<script>\n"
+            + "try {\n"
+            + "  var canvas = document.getElementById('myCanvas');\n"
+            + "  alert(canvas.toDataURL());\n"
+            + "  alert(canvas.toDataURL('image/png'));\n"
+            + "}\n"
+            + "catch (e) { alert('exception'); }\n"
+            + "</script>\n"
+            + "</body>\n"
+            + "</html>";
+        loadPageWithAlerts2(html);
+    }
 }

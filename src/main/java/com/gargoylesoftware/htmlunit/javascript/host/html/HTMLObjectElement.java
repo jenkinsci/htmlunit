@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.gargoylesoftware.htmlunit.javascript.host.html;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 import com.gargoylesoftware.htmlunit.javascript.host.ActiveXObjectImpl;
 import com.gargoylesoftware.htmlunit.javascript.host.FormChild;
@@ -24,12 +25,10 @@ import com.gargoylesoftware.htmlunit.javascript.host.FormChild;
 /**
  * The JavaScript object "HTMLObjectElement".
  *
- * @version $Revision: 4649 $
+ * @version $Revision: 6220 $
  * @author Ahmed Ashour
  */
 public class HTMLObjectElement extends FormChild {
-
-    private static final long serialVersionUID = -916091257587937486L;
 
     private SimpleScriptable wrappedActiveX_;
 
@@ -45,10 +44,7 @@ public class HTMLObjectElement extends FormChild {
      * @return the value of the "alt" property
      */
     public String jsxGet_alt() {
-        String alt = getDomNodeOrDie().getAttribute("alt");
-        if (alt == NOT_FOUND) {
-            alt = "";
-        }
+        final String alt = getDomNodeOrDie().getAttribute("alt");
         return alt;
     }
 
@@ -65,10 +61,7 @@ public class HTMLObjectElement extends FormChild {
      * @return the "border" attribute
      */
     public String jsxGet_border() {
-        String border = getDomNodeOrDie().getAttribute("border");
-        if (border == NOT_FOUND) {
-            border = "";
-        }
+        final String border = getDomNodeOrDie().getAttribute("border");
         return border;
     }
 
@@ -85,10 +78,7 @@ public class HTMLObjectElement extends FormChild {
      * @return the "classid" attribute
      */
     public String jsxGet_classid() {
-        String classid = getDomNodeOrDie().getAttribute("classid");
-        if (classid == NOT_FOUND) {
-            classid = "";
-        }
+        final String classid = getDomNodeOrDie().getAttribute("classid");
         return classid;
     }
 
@@ -98,7 +88,7 @@ public class HTMLObjectElement extends FormChild {
      */
     public void jsxSet_classid(final String classid) {
         getDomNodeOrDie().setAttribute("classid", classid);
-        if (classid.indexOf(':') != -1 && getBrowserVersion().isIE()
+        if (classid.indexOf(':') != -1 && getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_86)
                 && getWindow().getWebWindow().getWebClient().isActiveXNative()
                 && System.getProperty("os.name").contains("Windows")) {
             try {

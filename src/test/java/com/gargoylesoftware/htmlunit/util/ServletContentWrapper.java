@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,12 +24,11 @@ import javax.servlet.http.HttpServletResponse;
 /**
  * A servlet that wraps static content.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  */
 public abstract class ServletContentWrapper extends HttpServlet {
 
-    private static final long serialVersionUID = 3748434763930101158L;
     private final String content_;
 
     /**
@@ -38,7 +37,7 @@ public abstract class ServletContentWrapper extends HttpServlet {
      * @param content the HTML content of this servlet
      */
     public ServletContentWrapper(final String content) {
-        this.content_ = content;
+        content_ = content;
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,14 +19,12 @@ import com.gargoylesoftware.htmlunit.html.DomText;
 /**
  * A JavaScript object for Text.
  *
- * @version $Revision: 4769 $
+ * @version $Revision: 6204 $
  * @author David K. Taylor
  * @author Chris Erskine
  * @author Ahmed Ashour
  */
 public class Text extends CharacterDataImpl {
-
-    private static final long serialVersionUID = 3548915177419561974L;
 
     /**
      * Creates an instance. JavaScript objects must have a default constructor.

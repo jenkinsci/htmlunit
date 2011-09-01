@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,21 +16,20 @@ package com.gargoylesoftware.htmlunit.javascript.host.xml;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 
-import org.apache.commons.httpclient.HttpStatus;
-import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.w3c.dom.Node;
 
-import com.gargoylesoftware.htmlunit.HttpMethod;
-import com.gargoylesoftware.htmlunit.WebRequestSettings;
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
+import com.gargoylesoftware.htmlunit.SgmlPage;
+import com.gargoylesoftware.htmlunit.StringWebResponse;
+import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebResponse;
-import com.gargoylesoftware.htmlunit.WebResponseData;
-import com.gargoylesoftware.htmlunit.WebResponseImpl;
 import com.gargoylesoftware.htmlunit.WebWindow;
 import com.gargoylesoftware.htmlunit.html.DomAttr;
 import com.gargoylesoftware.htmlunit.html.DomCDataSection;
@@ -39,6 +38,7 @@ import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.javascript.host.Attr;
 import com.gargoylesoftware.htmlunit.javascript.host.Document;
 import com.gargoylesoftware.htmlunit.javascript.host.Element;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLCollection;
@@ -47,14 +47,14 @@ import com.gargoylesoftware.htmlunit.xml.XmlPage;
 /**
  * A JavaScript object for XMLDocument.
  *
- * @version $Revision: 4849 $
+ * @version $Revision: 6358 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
  * @author Sudhan Moghe
+ * @author Ronald Brill
  */
 public class XMLDocument extends Document {
 
-    private static final long serialVersionUID = 1225601711396578064L;
     private static final Log LOG = LogFactory.getLog(XMLDocument.class);
 
     private boolean async_ = true;
@@ -89,7 +89,7 @@ public class XMLDocument extends Document {
      * @param async Whether or not to send the request to the server asynchronously
      */
     public void jsxSet_async(final boolean async) {
-        this.async_ = async;
+        async_ = async;
     }
 
     /**
@@ -108,12 +108,14 @@ public class XMLDocument extends Document {
      */
     public boolean jsxFunction_load(final String xmlSource) {
         if (async_) {
-            LOG.debug("XMLDocument.load(): 'async' is true, currently treated as false.");
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("XMLDocument.load(): 'async' is true, currently treated as false.");
+            }
         }
         try {
             final HtmlPage htmlPage = (HtmlPage) getWindow().getWebWindow().getEnclosedPage();
-            final WebRequestSettings settings = new WebRequestSettings(htmlPage.getFullyQualifiedUrl(xmlSource));
-            final WebResponse webResponse = getWindow().getWebWindow().getWebClient().loadWebResponse(settings);
+            final WebRequest request = new WebRequest(htmlPage.getFullyQualifiedUrl(xmlSource));
+            final WebResponse webResponse = getWindow().getWebWindow().getWebClient().loadWebResponse(request);
             final XmlPage page = new XmlPage(webResponse, getWindow().getWebWindow(), false);
             setDomNode(page);
             return true;
@@ -127,7 +129,9 @@ public class XMLDocument extends Document {
             parseError.setReason(e.getMessage());
             parseError.setSrcText("xml");
             parseError.setUrl(xmlSource);
-            LOG.debug("Error parsing XML from '" + xmlSource + "'", e);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Error parsing XML from '" + xmlSource + "'", e);
+            }
             return false;
         }
     }
@@ -141,15 +145,20 @@ public class XMLDocument extends Document {
      */
     public boolean jsxFunction_loadXML(final String strXML) {
         try {
-            final List<NameValuePair> emptyList = Collections.emptyList();
-            final WebResponseData data = new WebResponseData(strXML.getBytes(), HttpStatus.SC_OK, null, emptyList);
-            final WebResponse webResponse = new WebResponseImpl(data, (URL) null, (HttpMethod) null, 0);
-            final XmlPage page = new XmlPage(webResponse, getWindow().getWebWindow());
+            final WebWindow webWindow = getWindow().getWebWindow();
+
+            // build a dummy WebResponse
+            final URL hackUrl = new URL("http://-htmlunit-internal/XMLDocument.loadXML"); // hack! better solution?
+            final WebResponse webResponse = new StringWebResponse(strXML, hackUrl);
+
+            final XmlPage page = new XmlPage(webResponse, webWindow);
             setDomNode(page);
             return true;
         }
         catch (final IOException e) {
-            LOG.debug("Error parsing XML\n" + strXML, e);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Error parsing XML\n" + strXML, e);
+            }
             return false;
         }
     }
@@ -166,12 +175,17 @@ public class XMLDocument extends Document {
             scriptable = new Element();
         }
         else if (domNode instanceof DomAttr) {
-            final XMLAttr attribute = new XMLAttr();
-            attribute.init(domNode.getNodeName(), (DomElement) domNode.getParentNode());
+            final Attr attribute;
+            if (getPage().getWebClient().getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_134)) {
+                attribute = new XMLAttr();
+            }
+            else {
+                attribute = new Attr();
+            }
             scriptable = attribute;
         }
         else {
-            scriptable = super.makeScriptableFor(domNode);
+            return super.makeScriptableFor(domNode);
         }
 
         scriptable.setPrototype(getPrototype(scriptable.getClass()));
@@ -226,7 +240,7 @@ public class XMLDocument extends Document {
      * @param preserveWhiteSpace white space handling
      */
     public void jsxSet_preserveWhiteSpace(final boolean preserveWhiteSpace) {
-        this.preserveWhiteSpace_ = preserveWhiteSpace;
+        preserveWhiteSpace_ = preserveWhiteSpace;
     }
 
     /**
@@ -247,8 +261,16 @@ public class XMLDocument extends Document {
      * @return list of the found elements
      */
     public HTMLCollection jsxFunction_selectNodes(final String expression) {
-        final HTMLCollection collection = new HTMLCollection(this);
-        collection.init(getDomNodeOrDie(), expression);
+        final boolean attributeChangeSensitive = expression.contains("@");
+        final String description = "XMLDocument.selectNodes('" + expression + "')";
+        final SgmlPage page = getPage();
+        final HTMLCollection collection = new HTMLCollection(page.getDocumentElement(),
+                attributeChangeSensitive, description) {
+            protected List<Object> computeElements() {
+                final List<Object> list = new ArrayList<Object>(page.getByXPath(expression));
+                return list;
+            }
+        };
         return collection;
     }
 
@@ -271,8 +293,18 @@ public class XMLDocument extends Document {
      */
     @Override
     public HTMLCollection jsxFunction_getElementsByTagName(final String tagName) {
-        final HTMLCollection collection = new HTMLCollection(this);
-        collection.init(getDomNodeOrDie().getFirstChild(), "//*[local-name()='" + tagName + "']");
+        final DomNode firstChild = this.<DomNode>getDomNodeOrDie().getFirstChild();
+        if (firstChild == null) {
+            return HTMLCollection.emptyCollection(getWindow());
+        }
+
+        final HTMLCollection collection = new HTMLCollection(getDomNodeOrDie(), false,
+                "XMLDocument.getElementsByTagName") {
+            protected boolean isMatching(final DomNode node) {
+                return node.getLocalName().equals(tagName);
+            }
+        };
+
         return collection;
     }
 
@@ -291,7 +323,9 @@ public class XMLDocument extends Document {
         if (domElement instanceof HtmlElement) {
             return ((HtmlElement) domElement).getScriptObject();
         }
-        LOG.debug("getElementById(" + id + "): no HTML DOM node found with this ID");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("getElementById(" + id + "): no HTML DOM node found with this ID");
+        }
         return null;
     }
 
@@ -323,5 +357,28 @@ public class XMLDocument extends Document {
     public Object jsxFunction_createCDATASection(final String data) {
         final DomCDataSection node = ((XmlPage) getPage()).createCDATASection(data);
         return getScriptableFor(node);
+    }
+
+    /**
+     * Creates a node using the supplied type, name, and namespace.
+     * @param type a value that uniquely identifies the node type
+     * @param name the value for the new node's nodeName property
+     * @param namespaceURI A string defining the namespace URI.
+     *        If specified, the node is created in the context of the namespaceURI parameter
+     *        with the prefix specified on the node name.
+     *        If the name parameter does not have a prefix, this is treated as the default namespace.
+     * @return the newly created node
+     */
+    public Object jsxFunction_createNode(final Object type, final String name, final Object namespaceURI) {
+        switch((short) Context.toNumber(type)) {
+            case Node.ELEMENT_NODE:
+                return jsxFunction_createElementNS((String) namespaceURI, name);
+            case Node.ATTRIBUTE_NODE:
+                return jsxFunction_createAttribute(name);
+
+            default:
+                throw Context.reportRuntimeError("xmlDoc.createNode(): Unsupported type "
+                        + (short) Context.toNumber(type));
+        }
     }
 }

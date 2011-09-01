@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import java.util.Map;
 
 import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebRequestSettings;
+import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.html.applets.AppletClassLoader;
 import com.gargoylesoftware.htmlunit.html.applets.AppletStubImpl;
@@ -29,16 +29,14 @@ import com.gargoylesoftware.htmlunit.html.applets.AppletStubImpl;
 /**
  * Wrapper for the HTML element "applet".
  *
- * @version $Revision: 4794 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
  * @author Marc Guillemot
  */
-public class HtmlApplet extends StyledElement {
-
-    private static final long serialVersionUID = -2868018454095564791L;
+public class HtmlApplet extends HtmlElement {
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "applet";
@@ -205,7 +203,7 @@ public class HtmlApplet extends StyledElement {
 
             final String src = getArchiveAttribute();
             final URL url = page.getFullyQualifiedUrl(src);
-            appletWebResponse_ = webclient.loadWebResponse(new WebRequestSettings(url));
+            appletWebResponse_ = webclient.loadWebResponse(new WebRequest(url));
 
             downloaded_ = true;
         }

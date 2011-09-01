@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,37 +15,38 @@
 package com.gargoylesoftware.htmlunit.html;
 
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
 
 /**
  * Tests for {@link HtmlImage}.
  *
- * @version $Revision: 4463 $
+ * @version $Revision: 6392 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
+@RunWith(BrowserRunner.class)
 public class HtmlImageTest extends WebTestCase {
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    public void testIsMapClick() throws Exception {
-        testIsMapClick("img1", false, "?0,0", "?25,30");
-        testIsMapClick("img2", false, "", "");
-        testIsMapClick("img3", true, "", "");
-        testIsMapClick("img3", true, "", "");
+    public void isMapClick() throws Exception {
+        isMapClick("img1", Boolean.FALSE, "?0,0", "?25,30");
+        isMapClick("img2", Boolean.FALSE, "", "");
+        isMapClick("img3", Boolean.TRUE, "", "");
+        isMapClick("img3", Boolean.TRUE, "", "");
     }
 
-    private void testIsMapClick(final String imgId, final boolean samePage,
+    private void isMapClick(final String imgId, final Boolean samePage,
             final String urlSuffixClick, final String urlSuffixClickXY) throws Exception {
 
         final String htmlContent
@@ -62,15 +63,15 @@ public class HtmlImageTest extends WebTestCase {
         final HtmlImage img = page.getHtmlElementById(imgId);
 
         final Page page2 = img.click();
-        Assert.assertEquals("same page after click", samePage, (page == page2));
-        if (!samePage) {
-            assertEquals("http://server/foo" + urlSuffixClick, page2.getWebResponse().getRequestSettings().getUrl());
+        Assert.assertEquals("same page after click", samePage, Boolean.valueOf(page == page2));
+        if (!samePage.booleanValue()) {
+            assertEquals("http://server/foo" + urlSuffixClick, page2.getWebResponse().getWebRequest().getUrl());
         }
 
         final Page page3 = img.click(25, 30);
-        Assert.assertEquals("same page after click(25, 30)", samePage, (page == page3));
-        if (!samePage) {
-            assertEquals("http://server/foo" + urlSuffixClickXY, page3.getWebResponse().getRequestSettings().getUrl());
+        Assert.assertEquals("same page after click(25, 30)", samePage, Boolean.valueOf(page == page3));
+        if (!samePage.booleanValue()) {
+            assertEquals("http://server/foo" + urlSuffixClickXY, page3.getWebResponse().getWebRequest().getUrl());
         }
     }
 
@@ -78,18 +79,18 @@ public class HtmlImageTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testUseMapClick() throws Exception {
-        testUseMapClick(0, 0, "/");
-        testUseMapClick(10, 10, "a.html");
-        testUseMapClick(20, 10, "a.html");
-        testUseMapClick(29, 10, "b.html");
-        testUseMapClick(50, 50, "/");
+    public void useMapClick() throws Exception {
+        useMapClick(0, 0, "/");
+        useMapClick(10, 10, "a.html");
+        useMapClick(20, 10, "a.html");
+        useMapClick(29, 10, "b.html");
+        useMapClick(50, 50, "/");
     }
 
     /**
      * @throws Exception if the test fails
      */
-    private void testUseMapClick(final int x, final int y, final String urlSuffix) throws Exception {
+    private void useMapClick(final int x, final int y, final String urlSuffix) throws Exception {
         final String htmlContent
             = "<html><head><title>foo</title></head><body>\n"
             + "<img id='myImg' src='foo.png' usemap='#map1'>\n"
@@ -103,7 +104,7 @@ public class HtmlImageTest extends WebTestCase {
         final HtmlImage img = page.getHtmlElementById("myImg");
 
         final Page page2 = img.click(x, y);
-        final URL url = page2.getWebResponse().getRequestSettings().getUrl();
+        final URL url = page2.getWebResponse().getWebRequest().getUrl();
         assertTrue(url.toExternalForm(), url.toExternalForm().endsWith(urlSuffix));
     }
 
@@ -112,11 +113,8 @@ public class HtmlImageTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testUseMapClick_CircleRadiusPercentage() throws Exception {
-        if (notYetImplemented()) {
-            return;
-        }
-
+    @NotYetImplemented
+    public void useMapClick_CircleRadiusPercentage() throws Exception {
         final String htmlContent
             = "<html><head><title>foo</title></head><body>\n"
             + "<img id='myImg' src='foo.png' usemap='#map1'>\n"
@@ -134,21 +132,30 @@ public class HtmlImageTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testSimpleScriptable() throws Exception {
-        final String html = "<html><head>\n"
-            + "<script>\n"
-            + "  function test() {\n"
-            + "    alert(document.getElementById('myId'));\n"
-            + "  }\n"
-            + "</script>\n"
-            + "</head><body onload='test()'>\n"
-            + "  <img id='myId'>\n"
+    public void asXml() throws Exception {
+        final String content
+            = "<html><head><title>foo</title></head><body>\n"
+            + "<img id='img1' src='foo.png'>"
+            + "<img id='img2' name='testName' src='foo.png' alt='young'>"
+            + "<img id='img3' src='foo.png' width='11' height='17px' >"
+            + "<img id='img4' src='foo.png' width='11em' height='17%' >"
             + "</body></html>";
+        final HtmlPage page = loadPage(content);
 
-        final String[] expectedAlerts = {"[object HTMLImageElement]"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(BrowserVersion.FIREFOX_2, html, collectedAlerts);
-        assertTrue(HtmlImage.class.isInstance(page.getHtmlElementById("myId")));
-        assertEquals(expectedAlerts, collectedAlerts);
+        HtmlImage img = page.getHtmlElementById("img1");
+        String expected = "<img id=\"img1\" src=\"foo.png\"/>";
+        assertEquals(expected, img.asXml().trim());
+
+        img = page.getHtmlElementById("img2");
+        expected = "<img id=\"img2\" name=\"testName\" src=\"foo.png\" alt=\"young\"/>";
+        assertEquals(expected, img.asXml().trim());
+
+        img = page.getHtmlElementById("img3");
+        expected = "<img id=\"img3\" src=\"foo.png\" width=\"11\" height=\"17px\"/>";
+        assertEquals(expected, img.asXml().trim());
+
+        img = page.getHtmlElementById("img4");
+        expected = "<img id=\"img4\" src=\"foo.png\" width=\"11em\" height=\"17%\"/>";
+        assertEquals(expected, img.asXml().trim());
     }
 }

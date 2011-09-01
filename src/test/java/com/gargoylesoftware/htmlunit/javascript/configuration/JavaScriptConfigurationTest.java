@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,16 +23,19 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.HashMap;
+import java.text.MessageFormat;
+import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
+import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
+import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.xml.sax.EntityResolver;
@@ -47,11 +50,12 @@ import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.javascript.StrictErrorHandler;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLDocument;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
 
 /**
  * Tests for {@link JavaScriptConfiguration}.
  *
- * @version $Revision: 4792 $
+ * @version $Revision: 6392 $
  * @author Chris Erskine
  * @author Ahmed Ashour
  */
@@ -134,10 +138,10 @@ public class JavaScriptConfigurationTest extends WebTestCase {
         JavaScriptConfiguration.loadConfiguration(reader);
         final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6;
         final JavaScriptConfiguration configuration = JavaScriptConfiguration.getInstance(browser);
-        final ClassConfiguration expectedConfig = new ClassConfiguration("HTMLDocument",
+        final ClassConfiguration expectedConfig = new ClassConfiguration(
             HTMLDocument.class.getName(), null, null, null, true);
         expectedConfig.addProperty("readyState", true, false);
-        assertTrue("Document property did not match", configuration.classConfigEquals("HTMLDocument", expectedConfig));
+        assertTrue("Document property did not match", classConfigEquals(configuration, "HTMLDocument", expectedConfig));
     }
 
     /**
@@ -166,11 +170,24 @@ public class JavaScriptConfigurationTest extends WebTestCase {
             + "</configuration>\n";
         final Reader reader = new StringReader(configurationString);
         JavaScriptConfiguration.loadConfiguration(reader);
-        final BrowserVersion browser = BrowserVersion.FIREFOX_2;
+        final BrowserVersion browser = BrowserVersion.FIREFOX_3_6;
         final JavaScriptConfiguration configuration = JavaScriptConfiguration.getInstance(browser);
-        final ClassConfiguration expectedConfig = new ClassConfiguration("Document",
+        final ClassConfiguration expectedConfig = new ClassConfiguration(
             HTMLDocument.class.getName(), null, null, null, true);
-        assertTrue("Document property did not match", configuration.classConfigEquals("Document", expectedConfig));
+        assertTrue("Document property did not match", classConfigEquals(configuration, "Document", expectedConfig));
+    }
+
+    /**
+     * Test to see if the supplied configuration matches for the parsed configuration for the named class
+     * This is a method for testing.
+     * @param classname - the parsed classname to test
+     * @param config - the expected configuration
+     * @return true if they match
+     */
+    private boolean classConfigEquals(final JavaScriptConfiguration configuration,
+            final String classname, final ClassConfiguration config) {
+        final ClassConfiguration myConfig = configuration.getClassConfiguration(classname);
+        return config.equals(myConfig);
     }
 
     /**
@@ -223,10 +240,10 @@ public class JavaScriptConfigurationTest extends WebTestCase {
         final Reader reader = new StringReader(configurationString);
         JavaScriptConfiguration.loadConfiguration(reader);
         final JavaScriptConfiguration configuration = JavaScriptConfiguration.getAllEntries();
-        final ClassConfiguration expectedConfig = new ClassConfiguration("HTMLDocument",
+        final ClassConfiguration expectedConfig = new ClassConfiguration(
             HTMLDocument.class.getName(), null, null, null, true);
         expectedConfig.addProperty("readyState", true, false);
-        assertTrue("Document property did not match", configuration.classConfigEquals("HTMLDocument", expectedConfig));
+        assertTrue("Document property did not match", classConfigEquals(configuration, "HTMLDocument", expectedConfig));
     }
 
     /**
@@ -293,10 +310,10 @@ public class JavaScriptConfigurationTest extends WebTestCase {
         JavaScriptConfiguration.loadConfiguration(reader);
         final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6;
         final JavaScriptConfiguration configuration = JavaScriptConfiguration.getInstance(browser);
-        final ClassConfiguration expectedConfig = new ClassConfiguration("Document",
+        final ClassConfiguration expectedConfig = new ClassConfiguration(
             HTMLDocument.class.getName(), null, null, null, true);
         assertTrue("Document should not property did not match",
-            configuration.classConfigEquals("Document", expectedConfig));
+            classConfigEquals(configuration, "Document", expectedConfig));
     }
 
     /**
@@ -328,10 +345,10 @@ public class JavaScriptConfigurationTest extends WebTestCase {
         JavaScriptConfiguration.loadConfiguration(reader);
         final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6;
         final JavaScriptConfiguration configuration = JavaScriptConfiguration.getInstance(browser);
-        final ClassConfiguration expectedConfig = new ClassConfiguration("Document",
+        final ClassConfiguration expectedConfig = new ClassConfiguration(
             HTMLDocument.class.getName(), null, null, null, true);
         assertTrue("Document should not property did not match",
-            configuration.classConfigEquals("Document", expectedConfig));
+            classConfigEquals(configuration, "Document", expectedConfig));
     }
 
     /**
@@ -355,10 +372,10 @@ public class JavaScriptConfigurationTest extends WebTestCase {
         JavaScriptConfiguration.loadConfiguration(reader);
         final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6;
         final JavaScriptConfiguration configuration = JavaScriptConfiguration.getInstance(browser);
-        final ClassConfiguration expectedConfig = new ClassConfiguration("Document",
+        final ClassConfiguration expectedConfig = new ClassConfiguration(
             HTMLDocument.class.getName(), null, null, null, true);
         expectedConfig.addFunction("createAttribute");
-        assertTrue("Document function did not match", configuration.classConfigEquals("Document", expectedConfig));
+        assertTrue("Document function did not match", classConfigEquals(configuration, "Document", expectedConfig));
     }
 
     /**
@@ -384,9 +401,9 @@ public class JavaScriptConfigurationTest extends WebTestCase {
         JavaScriptConfiguration.loadConfiguration(reader);
         final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6;
         final JavaScriptConfiguration configuration = JavaScriptConfiguration.getInstance(browser);
-        final ClassConfiguration expectedConfig = new ClassConfiguration("Document",
+        final ClassConfiguration expectedConfig = new ClassConfiguration(
             HTMLDocument.class.getName(), null, null, null, true);
-        assertTrue("Document function did not match", configuration.classConfigEquals("Document", expectedConfig));
+        assertTrue("Document function did not match", classConfigEquals(configuration, "Document", expectedConfig));
     }
 
     /**
@@ -438,32 +455,36 @@ public class JavaScriptConfigurationTest extends WebTestCase {
     public void configurationFile() throws Exception {
         final JavaScriptConfiguration configuration = JavaScriptConfiguration.getAllEntries();
 
-        for (final String classname : configuration.keySet()) {
-            LOG.debug("Now testing for class " + classname);
-            final Class< ? > clazz = configuration.getClassObject(classname);
+        for (final ClassConfiguration classConfig : configuration.getAll()) {
+            final String classname = classConfig.getHostClass().getSimpleName();
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Now testing for class " + classname);
+            }
+            if (classConfig.getHostClass() == HTMLElement.class) {
+                continue; // hack! In fact this test prohibits defining a method in a base class but using
+                // it only in subclasses when the base class is a JS object too. This is not good :-(
+            }
+            final Class< ? > clazz = classConfig.getHostClass();
             final Method[] methods = clazz.getMethods();
-            String elementName;
-            Method theMethod;
+
             for (final Method method : methods) {
                 final String name = method.getName();
                 if (checkForIgnore(name, classname)) {
                     continue;
                 }
+                final String elementName = name.substring(name.indexOf('_') + 1);
                 if (name.startsWith("jsxGet_")) {
-                    elementName = name.substring(7);
-                    theMethod = configuration.getPropertyReadMethod(classname, elementName);
+                    final Method theMethod = getPropertyReadMethod(configuration, classname, elementName);
                     assertNotNull("No definition found for " + name + " defined in " + clazz.getName()
                         + " for object " + classname, theMethod);
                 }
                 else if (name.startsWith("jsxSet_")) {
-                    elementName = name.substring(7);
-                    theMethod = configuration.getPropertyWriteMethod(classname, elementName);
+                    final Method theMethod = getPropertyWriteMethod(configuration, classname, elementName);
                     assertNotNull("No definition found for " + name + " defined in " + clazz.getName()
                         + " for object " + classname, theMethod);
                 }
                 else if (name.startsWith("jsxFunction_")) {
-                    elementName = name.substring(12);
-                    theMethod = configuration.getFunctionMethod(classname, elementName);
+                    final Method theMethod = getFunctionMethod(configuration, classname, elementName);
                     assertNotNull("No definition found for " + name + " defined in " + clazz.getName()
                         + " for object " + classname, theMethod);
                 }
@@ -471,6 +492,73 @@ public class JavaScriptConfigurationTest extends WebTestCase {
         }
 //        Now test the config for each class and test for methods being defined in the config file
 //        This is the place
+    }
+
+    /**
+     * Returns the method that implements the set function in the class for the given class.
+     *
+     * @param classname the name of the class to work with
+     * @param propertyName the property to find the setter for
+     * @return the method that implements the set function in the class for the given class
+     */
+    private Method getPropertyWriteMethod(final JavaScriptConfiguration configuration, String classname,
+            final String propertyName) {
+
+        while (classname.length() > 0) {
+            final ClassConfiguration config = configuration.getClassConfiguration(classname);
+            final Method theMethod = config.getPropertyWriteMethod(propertyName);
+            if (theMethod != null) {
+                return theMethod;
+            }
+            classname = config.getExtendedClassName();
+        }
+        return null;
+    }
+
+    /**
+     * Returns the method that implements the given function in the class for the given class.
+     *
+     * @param classname the name of the class to work with
+     * @param functionName the function to find the method for
+     * @return the method that implements the given function in the class for the given class
+     */
+    private Method getFunctionMethod(final JavaScriptConfiguration configuration, String classname,
+            final String functionName) {
+
+        while (classname.length() > 0) {
+            final ClassConfiguration config = configuration.getClassConfiguration(classname);
+            final Method theMethod = config.getFunctionMethod(functionName);
+            if (theMethod != null) {
+                return theMethod;
+            }
+            classname = config.getExtendedClassName();
+        }
+        return null;
+    }
+
+    /**
+     * Returns the method that implements the get function for in the class for the given class.
+     *
+     * @param classname the name of the class to work with
+     * @param propertyName the property to find the getter for
+     * @return the method that implements the get function for in the class for the given class
+     */
+    private Method getPropertyReadMethod(final JavaScriptConfiguration configuration, String classname,
+            final String propertyName) {
+        ClassConfiguration config;
+        Method theMethod;
+        while (classname.length() > 0) {
+            config = configuration.getClassConfiguration(classname);
+            if (config == null) {
+                return null;
+            }
+            theMethod = config.getPropertyReadMethod(propertyName);
+            if (theMethod != null) {
+                return theMethod;
+            }
+            classname = config.getExtendedClassName();
+        }
+        return null;
     }
 
     private boolean checkForIgnore(final String methodName, final String classname) {
@@ -486,6 +574,8 @@ public class JavaScriptConfigurationTest extends WebTestCase {
             "Textarea|jsxGet_form",
             "Input|jsxGet_form",
             "Password|jsxGet_form",
+            "HTMLDocument|jsxFunction_querySelector",
+            "HTMLDocument|jsxFunction_querySelectorAll",
             "HTMLSpanElement|jsxGet_cite",
             "HTMLSpanElement|jsxSet_cite",
             "HTMLSpanElement|jsxGet_dateTime",
@@ -528,7 +618,51 @@ public class JavaScriptConfigurationTest extends WebTestCase {
         final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6;
         final JavaScriptConfiguration configuration = JavaScriptConfiguration.getInstance(browser);
         assertTrue("Requested property should have existed",
-            configuration.propertyExists(HTMLDocument.class, "readyState"));
+            propertyExists(configuration, HTMLDocument.class, "readyState"));
+    }
+
+    /**
+     * Checks to see if there is an entry for the given property.
+     *
+     * @param clazz the class the property is for
+     * @param propertyName the name of the property
+     * @return boolean <tt>true</tt> if the property exists
+     */
+    private boolean propertyExists(final JavaScriptConfiguration configuration, final Class< ? > clazz,
+            final String propertyName) {
+        final String classname = configuration.getClassnameForClass(clazz);
+        return propertyExists(configuration, classname, propertyName);
+    }
+
+    /**
+     * Checks to see if there is an entry for the given property.
+     *
+     * @param classname the class the property is for
+     * @param propertyName the name of the property
+     * @return boolean <tt>true</tt> if the property exists
+     */
+    private boolean propertyExists(final JavaScriptConfiguration configuration, final String classname,
+            final String propertyName) {
+        final ClassConfiguration.PropertyInfo info = findPropertyInChain(configuration, classname, propertyName);
+        if (info == null) {
+            return false;
+        }
+        return true;
+    }
+
+    ClassConfiguration.PropertyInfo findPropertyInChain(final JavaScriptConfiguration configuration,
+            final String classname, final String propertyName) {
+        String workname = classname;
+
+        while (workname.length() > 0) {
+            final ClassConfiguration config = configuration.getClassConfiguration(workname);
+            final ClassConfiguration.PropertyInfo info = config.getPropertyInfo(propertyName);
+            if (info != null) {
+                return info;
+            }
+            workname = config.getExtendedClassName();
+        }
+        return null;
     }
 
     /**
@@ -559,7 +693,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
         final BrowserVersion browser = BrowserVersion.INTERNET_EXPLORER_6;
         final JavaScriptConfiguration configuration = JavaScriptConfiguration.getInstance(browser);
         Assert.assertFalse("Requested property should not exist",
-            configuration.propertyExists(HTMLDocument.class, "noreadyState"));
+            propertyExists(configuration, HTMLDocument.class, "noreadyState"));
     }
 
     /**
@@ -572,7 +706,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
         // get a reference to the leaky map
         final Field field = JavaScriptConfiguration.class.getDeclaredField("ConfigurationMap_");
         field.setAccessible(true);
-        final HashMap< ? , ? > leakyMap = (HashMap< ? , ? >) field.get(null);
+        final Map< ? , ? > leakyMap = (Map< ? , ? >) field.get(null);
         for (int i = 0; i < 3; i++) {
             final BrowserVersion browserVersion = new BrowserVersion("App", "Version", "User agent", 1);
             JavaScriptConfiguration.getInstance(browserVersion);
@@ -581,12 +715,42 @@ public class JavaScriptConfigurationTest extends WebTestCase {
     }
 
     /**
+     * Regression test for bug 2854240.
+     * This test was throwing an OutOfMemoryError when the bug existed.
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void memoryLeak() throws Exception {
+        long count = 0;
+        while (count++ < 3000) {
+            final BrowserVersion browserVersion = new BrowserVersion(
+                "App" + RandomStringUtils.randomAlphanumeric(20),
+                "Version" + RandomStringUtils.randomAlphanumeric(20),
+                "User Agent" + RandomStringUtils.randomAlphanumeric(20),
+                1);
+            JavaScriptConfiguration.getInstance(browserVersion);
+            LOG.info("count: " + count + "; memory stats: " + getMemoryStats());
+        }
+    }
+
+    private String getMemoryStats() {
+        final Runtime rt = Runtime.getRuntime();
+        final long free = rt.freeMemory() / 1024;
+        final long total = rt.totalMemory() / 1024;
+        final long max = rt.maxMemory() / 1024;
+        final long used = total - free;
+        final String format = "used: {0,number,0}K, free: {1,number,0}K, total: {2,number,0}K, max: {3,number,0}K";
+        return MessageFormat.format(format,
+                Long.valueOf(used), Long.valueOf(free), Long.valueOf(total), Long.valueOf(max));
+    }
+
+    /**
      * Test if the <tt>class name</tt> entries are lexicographically sorted.
      *
      * @throws Exception if the test fails
      */
-    @Test
-    public void lexicographicOrder() throws Exception {
+    //@Test // do we really want to check it? It is easier to have definitions ordered by usage.
+    protected void lexicographicOrder() throws Exception {
         final String directory = "src/main/resources/com/gargoylesoftware/htmlunit/javascript/configuration/";
 
         final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -596,7 +760,7 @@ public class JavaScriptConfigurationTest extends WebTestCase {
         final DocumentBuilder documentBuilder = factory.newDocumentBuilder();
         documentBuilder.setErrorHandler(new StrictErrorHandler());
 
-        final org.w3c.dom.Document doc =
+        final Document doc =
             documentBuilder.parse(createInputSourceForFile(directory + "JavaScriptConfiguration.xml"));
 
         String lastClassName = null;
@@ -604,8 +768,9 @@ public class JavaScriptConfigurationTest extends WebTestCase {
         while (node != null) {
             if (node instanceof Element) {
                 final Element element = (Element) node;
-                if (element.getTagName().equals("class")) {
-                    final String className = element.getAttribute("name");
+                if ("class".equals(element.getTagName())) {
+                    String className = element.getAttribute("classname");
+                    className = className.substring(className.lastIndexOf('.') + 1);
                     if (lastClassName != null && className.compareToIgnoreCase(lastClassName) < 1) {
                         fail("JavaScriptConfiguration.xml: \""
                                 + className + "\" should be before \"" + lastClassName + '"');
@@ -644,13 +809,13 @@ public class JavaScriptConfigurationTest extends WebTestCase {
     }
 
     private static int getType(final String tagName) {
-        if (tagName.equals("constant")) {
+        if ("constant".equals(tagName)) {
             return 0;
         }
-        if (tagName.equals("property")) {
+        if ("property".equals(tagName)) {
             return 1;
         }
-        if (tagName.equals("function")) {
+        if ("function".equals(tagName)) {
             return 2;
         }
         return -1;

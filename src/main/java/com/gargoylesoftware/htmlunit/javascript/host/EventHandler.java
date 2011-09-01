@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,18 +20,17 @@ import net.sourceforge.htmlunit.corejs.javascript.Function;
 import net.sourceforge.htmlunit.corejs.javascript.JavaScriptException;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 
 /**
  * Allows to wrap event handler code as Function object.
  *
- * @version $Revision: 4789 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  */
 public class EventHandler extends BaseFunction {
-    private static final long serialVersionUID = 3257850965406068787L;
-
     private final DomNode node_;
     private final String eventName_;
     private final String jsSnippet_;
@@ -48,7 +47,8 @@ public class EventHandler extends BaseFunction {
         eventName_ = eventName;
 
         final String functionSignature;
-        if (node.getPage().getEnclosingWindow().getWebClient().getBrowserVersion().isIE()) {
+        if (node.getPage().getEnclosingWindow().getWebClient()
+                .getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_39)) {
             functionSignature = "function()";
         }
         else {
@@ -75,7 +75,7 @@ public class EventHandler extends BaseFunction {
         // compile "just in time"
         if (realFunction_ == null) {
             realFunction_ = cx.compileFunction(jsObj, jsSnippet_, eventName_ + " event for " + node_
-                + " in " + node_.getPage().getWebResponse().getRequestSettings().getUrl(), 0, null);
+                + " in " + node_.getPage().getWebResponse().getWebRequest().getUrl(), 0, null);
         }
 
         final Object result = realFunction_.call(cx, scope, thisObj, args);
@@ -101,8 +101,6 @@ public class EventHandler extends BaseFunction {
         // quick and dirty
         if ("toString".equals(name)) {
             return new BaseFunction() {
-                private static final long serialVersionUID = 3761409724511435061L;
-
                 @Override
                 public Object call(final Context cx, final Scriptable scope,
                         final Scriptable thisObj, final Object[] args) {

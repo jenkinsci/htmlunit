@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,13 +23,11 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the DOM node Comment.
  *
- * @version $Revision: 4794 $
+ * @version $Revision: 6204 $
  * @author Karel Kolman
  * @author Ahmed Ashour
  */
 public class DomComment extends DomCharacterData implements Comment {
-
-    private static final long serialVersionUID = -7728247579175928593L;
 
     /** The symbolic node name. */
     public static final String NODE_NAME = "#comment";

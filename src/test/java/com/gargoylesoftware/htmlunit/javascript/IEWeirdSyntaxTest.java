@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,10 @@
  */
 package com.gargoylesoftware.htmlunit.javascript;
 
+import net.sourceforge.htmlunit.corejs.javascript.EvaluatorException;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import net.sourceforge.htmlunit.corejs.javascript.EvaluatorException;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.ScriptException;
@@ -28,7 +29,7 @@ import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
 /**
  * Test for IE weird JavaScript syntax.
  *
- * @version $Revision: 4402 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  */
 @RunWith(BrowserRunner.class)
@@ -81,6 +82,10 @@ public class IEWeirdSyntaxTest extends WebTestCase {
             +  "alert('2');\n"
             +  "}\n"
             +  "</script></html>";
+        doTestWithEvaluatorExceptionExceptForIE(html);
+    }
+
+    private void doTestWithEvaluatorExceptionExceptForIE(final String html) throws Exception {
         try {
             loadPageWithAlerts(html);
         }
@@ -92,5 +97,20 @@ public class IEWeirdSyntaxTest extends WebTestCase {
                 throw e;
             }
         }
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @NotYetImplemented(Browser.IE)
+    public void windowDotHandlerFunction() throws Exception {
+        final String html = "<html><head><script>\n"
+            + "function window.onload() {\n"
+            + "  alert(1);\n"
+            + "}\n"
+            + "</script></head>"
+            + "<body></body></html>";
+        doTestWithEvaluatorExceptionExceptForIE(html);
     }
 }

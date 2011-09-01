@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,13 +22,11 @@ import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.WebTestCase;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
 
 /**
  * Tests for elements with onblur and onfocus attributes.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author David D. Kilzer
  * @author Marc Guillemot
  * @author Ahmed Ashour
@@ -93,7 +91,7 @@ public class FocusableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testAnchor_onblur_onfocus() throws Exception {
+    public void anchor_onblur_onfocus() throws Exception {
         onClickSimpleTest("a", "href=\".\"");
     }
 
@@ -103,7 +101,7 @@ public class FocusableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testArea_onblur_onfocus() throws Exception {
+    public void area_onblur_onfocus() throws Exception {
         onClickBodyTest("<map><area " + COMMON_ATTRIBUTES
                 + " shape=\"rect\" coords=\"0,0,1,1\" href=\".\">\n"
                 + "</area></map>");
@@ -195,7 +193,6 @@ public class FocusableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.NONE)
     public void testOnAllElements() throws Exception {
         testHTMLFile("FocusableElementTest_onAllElements.html");
     }

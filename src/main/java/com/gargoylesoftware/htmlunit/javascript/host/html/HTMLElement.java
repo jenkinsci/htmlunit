@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,17 +21,18 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import net.sourceforge.htmlunit.corejs.javascript.BaseFunction;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.ContextAction;
 import net.sourceforge.htmlunit.corejs.javascript.ContextFactory;
 import net.sourceforge.htmlunit.corejs.javascript.Function;
+import net.sourceforge.htmlunit.corejs.javascript.FunctionObject;
 import net.sourceforge.htmlunit.corejs.javascript.NativeArray;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
@@ -43,10 +44,11 @@ import org.apache.commons.logging.LogFactory;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.AttributesImpl;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.ScriptResult;
 import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebRequestSettings;
+import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.html.DomAttr;
 import com.gargoylesoftware.htmlunit.html.DomCharacterData;
@@ -74,6 +76,7 @@ import com.gargoylesoftware.htmlunit.javascript.host.Event;
 import com.gargoylesoftware.htmlunit.javascript.host.EventHandler;
 import com.gargoylesoftware.htmlunit.javascript.host.MouseEvent;
 import com.gargoylesoftware.htmlunit.javascript.host.Node;
+import com.gargoylesoftware.htmlunit.javascript.host.StaticNodeList;
 import com.gargoylesoftware.htmlunit.javascript.host.TextRange;
 import com.gargoylesoftware.htmlunit.javascript.host.TextRectangle;
 import com.gargoylesoftware.htmlunit.javascript.host.Window;
@@ -84,7 +87,7 @@ import com.gargoylesoftware.htmlunit.javascript.host.css.ComputedCSSStyleDeclara
  * The JavaScript object "HTMLElement" which is the base class for all HTML
  * objects. This will typically wrap an instance of {@link HtmlElement}.
  *
- * @version $Revision: 4895 $
+ * @version $Revision: 6489 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author Barnaby Court
@@ -97,10 +100,12 @@ import com.gargoylesoftware.htmlunit.javascript.host.css.ComputedCSSStyleDeclara
  * @author Bruce Faulkner
  * @author Ahmed Ashour
  * @author Sudhan Moghe
+ * @author Ronald Brill
  */
 public class HTMLElement extends Element implements ScriptableWithFallbackGetter {
 
-    private static final long serialVersionUID = -6864034414262085851L;
+    private static final Pattern PERCENT_VALUE = Pattern.compile("\\d+%");
+
     private static final Log LOG = LogFactory.getLog(HTMLElement.class);
 
     private static final int BEHAVIOR_ID_UNKNOWN = -1;
@@ -114,6 +119,10 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
     private static final String BEHAVIOR_CLIENT_CAPS = "#default#clientCaps";
     private static final String BEHAVIOR_HOMEPAGE = "#default#homePage";
     private static final String BEHAVIOR_DOWNLOAD = "#default#download";
+
+    private static final Pattern CLASS_NAMES_SPLIT_PATTERN = Pattern.compile("\\s");
+    private static final Pattern PRINT_NODE_PATTERN = Pattern.compile("  ");
+    private static final Pattern PRINT_NODE_QUOTE_PATTERN = Pattern.compile("\"");
 
     static final String POSITION_BEFORE_BEGIN = "beforeBegin";
     static final String POSITION_AFTER_BEGIN = "afterBegin";
@@ -131,7 +140,6 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
     private int scrollLeft_;
     private int scrollTop_;
     private String uniqueID_;
-    private Map<String, HTMLCollection> elementsByTagName_; // for performance and for equality (==)
     private CSSStyleDeclaration style_;
 
     /**
@@ -169,20 +177,17 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
             "tbody", "td", "tfoot", "th", "thead", "tr"});
 
     /**
-     * Creates an instance.
-     */
-    public HTMLElement() {
-        elementsByTagName_ = new HashMap<String, HTMLCollection>();
-    }
-
-    /**
      * Returns the value of the "all" property.
      * @return the value of the "all" property
      */
     public HTMLCollection jsxGet_all() {
         if (all_ == null) {
-            all_ = new HTMLCollection(this);
-            all_.init(getDomNodeOrDie(), ".//*");
+            all_ = new HTMLCollection(getDomNodeOrDie(), false, "HTMLElement.all") {
+                @Override
+                protected boolean isMatching(final DomNode node) {
+                    return true;
+                }
+            };
         }
         return all_;
     }
@@ -306,7 +311,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      * Returns the document.
      * @return the document
      */
-    public HTMLDocument jsxGet_document() {
+    public DocumentProxy jsxGet_document() {
         return getWindow().jsxGet_document();
     }
 
@@ -329,7 +334,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      */
     @Override
     public String jsxGet_namespaceURI() {
-        if (getBrowserVersion().isIE()) {
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_65)) {
             return getDomNodeOrDie().getNamespaceURI();
         }
         if (getDomNodeOrDie().getPage() instanceof HtmlPage) {
@@ -344,14 +349,17 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
     @Override
     public String jsxGet_localName() {
         final DomNode domNode = getDomNodeOrDie();
-        String localName = domNode.getLocalName();
         if (domNode.getPage() instanceof HtmlPage) {
-            if (domNode.getPrefix() != null) {
-                localName = domNode.getPrefix() + ':' + localName;
+            final StringBuilder localName = new StringBuilder();
+            final String prefix = domNode.getPrefix();
+            if (prefix != null) {
+                localName.append(prefix);
+                localName.append(':');
             }
-            return localName.toUpperCase();
+            localName.append(domNode.getLocalName());
+            return localName.toString().toUpperCase();
         }
-        return localName;
+        return domNode.getLocalName();
     }
 
     /**
@@ -359,13 +367,15 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      * {@inheritDoc}
      */
     public Object getWithFallback(final String name) {
-        if (!name.equals("class")) {
+        if (!"class".equals(name)) {
             final HtmlElement htmlElement = getDomNodeOrNull();
             if (htmlElement != null && isAttributeName(name)) {
                 final String value = htmlElement.getAttribute(name);
-                if (HtmlElement.ATTRIBUTE_NOT_DEFINED != value) {
-                    LOG.debug("Found attribute for evaluation of property \"" + name
+                if (DomElement.ATTRIBUTE_NOT_DEFINED != value) {
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("Found attribute for evaluation of property \"" + name
                             + "\" for of " + this);
+                    }
                     return value;
                 }
             }
@@ -394,7 +404,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      */
     @Override
     protected String fixAttributeName(final String attributeName) {
-        if (getBrowserVersion().isIE()) {
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_66)) {
             if ("className".equals(attributeName)) {
                 return "class";
             }
@@ -428,7 +438,8 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
         // Remove custom attributes defined at runtime via JavaScript.
         for (final Object id : this.getAllIds()) {
             if (id instanceof Integer) {
-                delete((Integer) id);
+                final int i = ((Integer) id).intValue();
+                delete(i);
             }
             else if (id instanceof String) {
                 delete((String) id);
@@ -460,7 +471,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
         // Merge custom attributes defined at runtime via JavaScript.
         for (final Object id : source.getAllIds()) {
             if (id instanceof Integer) {
-                final Integer i = (Integer) id;
+                final int i = ((Integer) id).intValue();
                 put(i, this, source.get(i, source));
             }
             else if (id instanceof String) {
@@ -470,10 +481,20 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
         }
 
         // Merge ID and name if we aren't preserving identity.
-        if (preserveIdentity instanceof Boolean && ((Boolean) preserveIdentity) == false) {
+        if (preserveIdentity instanceof Boolean && !((Boolean) preserveIdentity).booleanValue()) {
             target.setId(src.getId());
             target.setAttribute("name", src.getAttribute("name"));
         }
+    }
+
+    /**
+     * Returns the specified attribute.
+     * @param namespaceURI the namespace URI
+     * @param localName the local name of the attribute to look for
+     * @return the specified attribute, <code>null</code> if the attribute is not defined
+     */
+    public Object jsxFunction_getAttributeNodeNS(final String namespaceURI, final String localName) {
+        return getDomNodeOrDie().getAttributeNodeNS(namespaceURI, localName).getScriptObject();
     }
 
     /**
@@ -513,7 +534,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
         getDomNodeOrDie().setAttribute(name, value);
 
         //FF: call corresponding event handler jsxSet_onxxx if found
-        if (getBrowserVersion().isFirefox()) {
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_167)) {
             try {
                 final Method method = getClass().getMethod("jsxSet_" + name, new Class[] {Object.class});
                 final String source = "function(){" + value + "}";
@@ -552,6 +573,16 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
     }
 
     /**
+     * Removes the specified attribute.
+     * @param attribute the attribute to remove
+     */
+    public void jsxFunction_removeAttributeNode(final Attr attribute) {
+        final String name = attribute.jsxGet_name();
+        final String namespaceUri = attribute.jsxGet_namespaceURI();
+        jsxFunction_removeAttributeNS(namespaceUri, name);
+    }
+
+    /**
      * Removes this object from the document hierarchy.
      * @param removeChildren whether to remove children or no
      * @return a reference to the object that is removed
@@ -564,7 +595,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
                 final HTMLCollection collection = jsxGet_childNodes();
                 final int length = collection.jsxGet_length();
                 for (int i = 0; i < length; i++) {
-                    final Node object = (Node) collection.jsxFunction_item(0);
+                    final Node object = (Node) collection.jsxFunction_item(Integer.valueOf(0));
                     parent.jsxFunction_appendChild(object);
                 }
             }
@@ -591,39 +622,11 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
         final String name = newAtt.jsxGet_name();
         final String value = newAtt.jsxGet_value();
         final Attr replacedAtt = (Attr) jsxFunction_getAttributeNode(name);
-        replacedAtt.detachFromParent();
+        if (replacedAtt != null) {
+            replacedAtt.detachFromParent();
+        }
         getDomNodeOrDie().setAttribute(name, value);
         return replacedAtt;
-    }
-
-    /**
-     * Returns all the descendant elements with the specified tag name.
-     * @param tagName the name to search for
-     * @return all the descendant elements with the specified tag name
-     */
-    @Override
-    public Object jsxFunction_getElementsByTagName(String tagName) {
-        tagName = tagName.toLowerCase();
-
-        HTMLCollection collection = elementsByTagName_.get(tagName);
-        if (collection != null) {
-            return collection;
-        }
-
-        final DomNode node = getDomNodeOrDie();
-        collection = new HTMLCollection(this);
-        final String xpath;
-        if ("*".equals(tagName)) {
-            xpath = ".//*";
-        }
-        else {
-            xpath = ".//*[local-name() = '" + tagName + "']";
-        }
-        collection.init(node, xpath);
-
-        elementsByTagName_.put(tagName, collection);
-
-        return collection;
     }
 
     /**
@@ -632,20 +635,31 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      * @return all the descendant elements with the specified class name
      */
     public HTMLCollection jsxFunction_getElementsByClassName(final String className) {
-        final HTMLCollection collection = new HTMLCollection(this);
-        final String[] classNames = className.split("\\s");
-        final StringBuilder exp = new StringBuilder();
-        for (final String name : classNames) {
-            if (exp.length() != 0) {
-                exp.append(" and ");
+        final HtmlElement elt = getDomNodeOrDie();
+        final String description = "HTMLElement.getElementsByClassName('" + className + "')";
+        final String[] classNames = CLASS_NAMES_SPLIT_PATTERN.split(className, 0);
+
+        final HTMLCollection collection = new HTMLCollection(elt, true, description) {
+            protected boolean isMatching(final DomNode node) {
+                if (!(node instanceof HtmlElement)) {
+                    return false;
+                }
+                final HtmlElement elt = (HtmlElement) node;
+                String classAttribute = elt.getAttribute("class");
+                if (classAttribute == DomElement.ATTRIBUTE_NOT_DEFINED) {
+                    return false; // probably better performance as most of elements won't have a class attribute
+                }
+
+                classAttribute = " " + classAttribute + " ";
+                for (final String aClassName : classNames) {
+                    if (!classAttribute.contains(" " + aClassName + " ")) {
+                        return false;
+                    }
+                }
+                return true;
             }
-            exp.append("contains(concat(' ', @class, ' '), ' ");
-            exp.append(name);
-            exp.append(" ')");
-        }
-        exp.insert(0, ".//*[");
-        exp.append("]");
-        collection.init(getDomNodeOrDie(), exp.toString());
+        };
+
         return collection;
     }
 
@@ -659,27 +673,27 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
 
     /**
      * Returns "clientHeight" attribute.
-     * @return the clientHeight attribute
+     * @return the "clientHeight" attribute
      */
     public int jsxGet_clientHeight() {
-        final boolean includePadding = !getBrowserVersion().isIE();
+        final boolean includePadding = !getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_67);
         final ComputedCSSStyleDeclaration style = getWindow().jsxFunction_getComputedStyle(this, null);
         return style.getCalculatedHeight(false, includePadding);
     }
 
     /**
      * Returns "clientWidth" attribute.
-     * @return the clientWidth attribute
+     * @return the "clientWidth" attribute
      */
     public int jsxGet_clientWidth() {
-        final boolean includePadding = !getBrowserVersion().isIE();
+        final boolean includePadding = !getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_68);
         final ComputedCSSStyleDeclaration style = getWindow().jsxFunction_getComputedStyle(this, null);
         return style.getCalculatedWidth(false, includePadding);
     }
 
     /**
      * Returns "clientLeft" attribute.
-     * @return the clientTop attribute
+     * @return the "clientLeft" attribute
      */
     public int jsxGet_clientLeft() {
         return 2; // TODO!!!
@@ -687,7 +701,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
 
     /**
      * Returns "clientTop" attribute.
-     * @return the clientTop attribute
+     * @return the "clientTop" attribute
      */
     public int jsxGet_clientTop() {
         return 2; // TODO!!!
@@ -695,7 +709,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
 
     /**
      * Sets the class attribute for this element.
-     * @param className - the new class name
+     * @param className the new class name
      */
     public void jsxSet_className(final String className) {
         getDomNodeOrDie().setAttribute("class", className);
@@ -724,14 +738,6 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
     }
 
     /**
-     * Gets the textContent attribute.
-     * @return the contents of this node as text
-     */
-    public String jsxGet_textContent() {
-        return jsxGet_innerText();
-    }
-
-    /**
      * Gets the outerHTML of the node.
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms534310.aspx">MSDN documentation</a>
      * @return the contents of this node as HTML
@@ -751,13 +757,18 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
 
     private void printNode(final StringBuilder buffer, final DomNode node, final boolean html) {
         if (node instanceof DomComment) {
-            // Remove whitespace sequences.
-            final String s = node.getNodeValue().replaceAll("  ", " ");
-            buffer.append("<!--").append(s).append("-->");
+            if (html) {
+                // Remove whitespace sequences.
+                final String s = PRINT_NODE_PATTERN.matcher(node.getNodeValue()).replaceAll(" ");
+                buffer.append("<!--").append(s).append("-->");
+            }
         }
         else if (node instanceof DomCharacterData) {
             // Remove whitespace sequences, possibly escape XML characters.
-            String s = node.getNodeValue().replaceAll("  ", " ");
+            String s = node.getNodeValue();
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.JS_INNER_HTML_REDUCE_WHITESPACES)) {
+                s = PRINT_NODE_PATTERN.matcher(s).replaceAll(" ");
+            }
             if (html) {
                 s = com.gargoylesoftware.htmlunit.util.StringUtils.escapeXmlChars(s);
             }
@@ -766,7 +777,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
         else if (html) {
             // Start the tag name. IE does it in uppercase, FF in lowercase.
             final HtmlElement element = (HtmlElement) node;
-            final boolean ie = getBrowserVersion().isIE();
+            final boolean ie = getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_69);
             String tag = element.getTagName();
             if (ie) {
                 tag = tag.toUpperCase();
@@ -775,7 +786,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
             // Add the attributes. IE does not use quotes, FF does.
             for (final DomAttr attr : element.getAttributesMap().values()) {
                 final String name = attr.getName();
-                final String value = attr.getValue().replaceAll("\"", "&quot;");
+                final String value = PRINT_NODE_QUOTE_PATTERN.matcher(attr.getValue()).replaceAll("&quot;");
                 final boolean quote = !ie
                     || com.gargoylesoftware.htmlunit.util.StringUtils.containsWhitespace(value)
                     || value.length() == 0
@@ -797,10 +808,10 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
         }
         else {
             final HtmlElement element = (HtmlElement) node;
-            if (element.getTagName().equals("p")) {
+            if ("p".equals(element.getTagName())) {
                 buffer.append("\r\n"); // \r\n because it's to implement something IE specific
             }
-            if (!element.getTagName().equals("script")) {
+            if (!"script".equals(element.getTagName())) {
                 printChildren(buffer, node, html);
             }
         }
@@ -808,11 +819,11 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
 
     /**
      * Replace all children elements of this element with the supplied value.
-     * @param value - the new value for the contents of this node
+     * @param value the new value for the contents of this node
      */
     public void jsxSet_innerHTML(final Object value) {
         final DomNode domNode = getDomNodeOrDie();
-        final boolean ie = getBrowserVersion().isIE();
+        final boolean ie = getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_70);
 
         if (ie && INNER_HTML_READONLY_IN_IE.contains(domNode.getNodeName())) {
             throw Context.reportRuntimeError("innerHTML is read-only for tag " + domNode.getNodeName());
@@ -839,9 +850,13 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
 
     /**
      * Replace all children elements of this element with the supplied value.
-     * @param value - the new value for the contents of this node
+     * @param value the new value for the contents of this node
      */
     public void jsxSet_innerText(final String value) {
+        setInnerText(Context.toString(value));
+    }
+
+    private void setInnerText(final String value) {
         final DomNode domNode = getDomNodeOrDie();
 
         if (INNER_TEXT_READONLY.contains(domNode.getNodeName())) {
@@ -850,12 +865,13 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
 
         domNode.removeAllChildren();
 
-        final DomNode node = new DomText(getDomNodeOrDie().getPage(), value);
-        domNode.appendChild(node);
+        if (value != null && value.length() != 0) {
+            domNode.appendChild(new DomText(domNode.getPage(), Context.toString(value)));
+        }
 
         //if the parentNode has null parentNode in IE,
         //create a DocumentFragment to be the parentNode's parentNode.
-        if (domNode.getParentNode() == null && getBrowserVersion().isIE()) {
+        if (domNode.getParentNode() == null && getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_71)) {
             final DomDocumentFragment fragment = ((HtmlPage) domNode.getPage()).createDomDocumentFragment();
             fragment.appendChild(domNode);
         }
@@ -863,17 +879,18 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
 
     /**
      * Replace all children elements of this element with the supplied value.
-     * @param value - the new value for the contents of this node
+     * @param value the new value for the contents of this node
      */
-    public void jsxSet_textContent(final String value) {
-        jsxSet_innerText(value);
+    @Override
+    public void jsxSet_textContent(final Object value) {
+        setInnerText(value == null ? null : Context.toString(value));
     }
 
     /**
      * Replace all children elements of this element with the supplied value.
      * Sets the outerHTML of the node.
+     * @param value the new value for replacing this node
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms534310.aspx">MSDN documentation</a>
-     * @param value - the new value for replacing this node
      */
     public void jsxSet_outerHTML(final String value) {
         final DomNode domNode = getDomNodeOrDie();
@@ -915,7 +932,6 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      */
     public static class ProxyDomNode extends HtmlDivision {
 
-        private static final long serialVersionUID = -7816775277187498538L;
         private final DomNode target_;
         private boolean append_;
 
@@ -1326,7 +1342,9 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      * @param minVersion the minimum version of the component to install
      */
     public void addComponentRequest(final String id, final String idType, final String minVersion) {
-        LOG.debug("Call to addComponentRequest(" + id + ", " + idType + ", " + minVersion + ") ignored.");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Call to addComponentRequest(" + id + ", " + idType + ", " + minVersion + ") ignored.");
+        }
     }
 
     /**
@@ -1335,7 +1353,9 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      * default IE behavior implementation.
      */
     public void clearComponentRequest() {
-        LOG.debug("Call to clearComponentRequest() ignored.");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Call to clearComponentRequest() ignored.");
+        }
     }
 
     /**
@@ -1399,7 +1419,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
     public void startDownload(final String uri, final Function callback) throws MalformedURLException {
         final HtmlPage page = (HtmlPage) getWindow().getWebWindow().getEnclosedPage();
         final URL url = page.getFullyQualifiedUrl(uri);
-        if (!page.getWebResponse().getRequestSettings().getUrl().getHost().equals(url.getHost())) {
+        if (!page.getWebResponse().getWebRequest().getUrl().getHost().equals(url.getHost())) {
             throw Context.reportRuntimeError("Not authorized url: " + url);
         }
         final JavaScriptJob job = new DownloadBehaviorJob(url, callback);
@@ -1434,11 +1454,13 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
         public void run() {
             final WebClient client = getWindow().getWebWindow().getWebClient();
             final Scriptable scope = callback_.getParentScope();
-            final WebRequestSettings settings = new WebRequestSettings(url_);
+            final WebRequest request = new WebRequest(url_);
             try {
-                final WebResponse webResponse = client.loadWebResponse(settings);
+                final WebResponse webResponse = client.loadWebResponse(request);
                 final String content = webResponse.getContentAsString();
-                LOG.debug("Downloaded content: " + StringUtils.abbreviate(content, 512));
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Downloaded content: " + StringUtils.abbreviate(content, 512));
+                }
                 final Object[] args = new Object[] {content};
                 final ContextAction action = new ContextAction() {
                     public Object run(final Context cx) {
@@ -1470,7 +1492,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
     public boolean isHomePage(final String url) {
         try {
             final URL newUrl = new URL(url);
-            final URL currentUrl = getDomNodeOrDie().getPage().getWebResponse().getRequestSettings().getUrl();
+            final URL currentUrl = getDomNodeOrDie().getPage().getWebResponse().getWebRequest().getUrl();
             final String home = getDomNodeOrDie().getPage().getEnclosingWindow().getWebClient().getHomePage();
             final boolean sameDomains = newUrl.getHost().equalsIgnoreCase(currentUrl.getHost());
             final boolean isHomePage = (home != null && home.equals(url));
@@ -1508,9 +1530,13 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      * @return the child at the given position
      */
     public HTMLCollection jsxGet_children() {
-        final HTMLCollection children = new HTMLCollection(this);
-        children.init(getDomNodeOrDie(), "./*");
-        return children;
+        final HtmlElement node = getDomNodeOrDie();
+        final HTMLCollection collection = new HTMLCollection(node, false, "HTMLElement.children") {
+            protected List<Object> computeElements() {
+                return new ArrayList<Object>(node.getChildNodes());
+            }
+        };
+        return collection;
     }
 
     /**
@@ -1632,7 +1658,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
         left += element.jsxGet_currentStyle().getLeft(true, false, false);
 
         // If this node is absolutely positioned, we're done.
-        final String position = element.jsxGet_currentStyle().jsxGet_position();
+        final String position = element.jsxGet_currentStyle().getPositionWithInheritance();
         if ("absolute".equals(position)) {
             return left;
         }
@@ -1678,7 +1704,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
         top += element.jsxGet_currentStyle().getTop(true, false, false);
 
         // If this node is absolutely positioned, we're done.
-        final String position = element.jsxGet_currentStyle().jsxGet_position();
+        final String position = element.jsxGet_currentStyle().getPositionWithInheritance();
         if ("absolute".equals(position)) {
             return top;
         }
@@ -1694,6 +1720,11 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
         }
 
         if (offsetParent != null) {
+            final HTMLElement thiz = (HTMLElement) getDomNodeOrDie().getScriptObject();
+            final boolean thisElementHasTopMargin = (thiz.jsxGet_currentStyle().getMarginTop() != 0);
+            if (!thisElementHasTopMargin) {
+                top += offsetParent.jsxGet_currentStyle().getMarginTop();
+            }
             top += offsetParent.jsxGet_currentStyle().getPaddingTop();
         }
 
@@ -1713,13 +1744,20 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      * @see <a href="http://dump.testsuite.org/2006/dom/style/offset/spec">Reverse Engineering by Anne van Kesteren</a>
      */
     public Object jsxGet_offsetParent() {
-        Object offsetParent = Context.getUndefinedValue();
         DomNode currentElement = getDomNodeOrDie();
 
+        if (currentElement.getParentNode() == null) {
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.JS_OFFSET_PARENT_THROWS_NOT_ATTACHED)) {
+                throw Context.reportRuntimeError("Unspecified error");
+            }
+            return null;
+        }
+
+        Object offsetParent = null;
         final HTMLElement htmlElement = (HTMLElement) currentElement.getScriptObject();
         final ComputedCSSStyleDeclaration style = htmlElement.jsxGet_currentStyle();
-        final String position = style.jsxGet_position();
-        final boolean ie = getBrowserVersion().isIE();
+        final String position = style.getPositionWithInheritance();
+        final boolean ie = getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_72);
         final boolean staticPos = "static".equals(position);
         final boolean fixedPos = "fixed".equals(position);
         final boolean useTables = ((ie && (staticPos || fixedPos)) || (!ie && staticPos));
@@ -1737,7 +1775,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
             if (parentNode != null && parentNode.getScriptObject() instanceof HTMLElement) {
                 final HTMLElement parentElement = (HTMLElement) parentNode.getScriptObject();
                 final ComputedCSSStyleDeclaration parentStyle = parentElement.jsxGet_currentStyle();
-                final String parentPosition = parentStyle.jsxGet_position();
+                final String parentPosition = parentStyle.getPositionWithInheritance();
                 final boolean parentIsStatic = "static".equals(parentPosition);
                 final boolean parentIsFixed = "fixed".equals(parentPosition);
                 if ((ie && !parentIsStatic && !parentIsFixed) || (!ie && !parentIsStatic)) {
@@ -1761,34 +1799,54 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
     }
 
     /**
-     * Gets the scrollTop for this element.
-     * @return a dummy value (default is 0)
+     * Gets the scrollTop value for this element.
+     * @return the scrollTop value for this element
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms534618.aspx">MSDN documentation</a>
      */
     public int jsxGet_scrollTop() {
+        // It's easier to perform these checks and adjustments in the getter, rather than in the setter,
+        // because modifying the CSS style of the element is supposed to affect the attribute value.
+        if (scrollTop_ < 0) {
+            scrollTop_ = 0;
+        }
+        else if (scrollTop_ > 0) {
+            if (!jsxGet_currentStyle().isScrollable(false)) {
+                scrollTop_ = 0;
+            }
+        }
         return scrollTop_;
     }
 
     /**
-     * Sets the scrollTop for this element.
-     * @param scroll the new value
+     * Sets the scrollTop value for this element.
+     * @param scroll the scrollTop value for this element
      */
     public void jsxSet_scrollTop(final int scroll) {
         scrollTop_ = scroll;
     }
 
     /**
-     * Gets the scrollLeft for this element.
-     * @return a dummy value (default is 0)
+     * Gets the scrollLeft value for this element.
+     * @return the scrollLeft value for this element
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms534617.aspx">MSDN documentation</a>
      */
     public int jsxGet_scrollLeft() {
+        // It's easier to perform these checks and adjustments in the getter, rather than in the setter,
+        // because modifying the CSS style of the element is supposed to affect the attribute value.
+        if (scrollLeft_ < 0) {
+            scrollLeft_ = 0;
+        }
+        else if (scrollLeft_ > 0) {
+            if (!jsxGet_currentStyle().isScrollable(true)) {
+                scrollLeft_ = 0;
+            }
+        }
         return scrollLeft_;
     }
 
     /**
-     * Sets the scrollLeft for this element.
-     * @param scroll the new value
+     * Sets the scrollLeft value for this element.
+     * @param scroll the scrollLeft value for this element
      */
     public void jsxSet_scrollLeft(final int scroll) {
         scrollLeft_ = scroll;
@@ -1818,8 +1876,8 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms534388.aspx">MSDN documentation</a>
      */
     public String jsxGet_scopeName() {
-        //TODO: implement other behavior
-        return "HTML";
+        final String prefix = getDomNodeOrDie().getPrefix();
+        return prefix != null ? prefix : "HTML";
     }
 
     /**
@@ -1828,8 +1886,8 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms534658.aspx">MSDN documentation</a>
      */
     public String jsxGet_tagUrn() {
-        //TODO: implement other behavior
-        return "";
+        final String urn = getDomNodeOrDie().getNamespaceURI();
+        return urn != null ? urn : "";
     }
 
     /**
@@ -1838,7 +1896,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms534658.aspx">MSDN documentation</a>
      */
     public void jsxSet_tagUrn(final String tagUrn) {
-        //TODO: implement other behavior
+        throw Context.reportRuntimeError("Error trying to set tagUrn to '" + tagUrn + "'.");
     }
 
     /**
@@ -1847,7 +1905,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      * @see #jsxGet_parentNode()
      */
     public HTMLElement jsxGet_parentElement() {
-        final Node parent = jsxGet_parentNode();
+        final Node parent = getParent();
         if (!(parent instanceof HTMLElement)) {
             return null;
         }
@@ -1856,14 +1914,14 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
 
     /**
      * Gets the first ancestor instance of {@link HTMLElement}. It is mostly identical
-     * to {@link #jsxGet_parentNode()} except that it skips XML nodes.
+     * to {@link #getParent()} except that it skips XML nodes.
      * @return the parent HTML element
-     * @see #jsxGet_parentNode()
+     * @see #getParent()
      */
     public HTMLElement getParentHTMLElement() {
-        Node parent = jsxGet_parentNode();
+        Node parent = getParent();
         while (parent != null && !(parent instanceof HTMLElement)) {
-            parent = parent.jsxGet_parentNode();
+            parent = parent.getParent();
         }
         return (HTMLElement) parent;
     }
@@ -1945,25 +2003,12 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
         event.setTarget(this);
         final HtmlElement element = getDomNodeOrDie();
         ScriptResult result = null;
-        if (event instanceof MouseEvent) {
-            if (event.jsxGet_type().equals(MouseEvent.TYPE_CLICK)) {
-                try {
-                    element.click(event);
-                }
-                catch (final IOException e) {
-                    throw Context.reportRuntimeError("Error calling click(): " + e.getMessage());
-                }
+        if (event.jsxGet_type().equals(MouseEvent.TYPE_CLICK)) {
+            try {
+                element.click(event);
             }
-            else if (event.jsxGet_type().equals(MouseEvent.TYPE_DBL_CLICK)) {
-                try {
-                    element.dblClick(event.jsxGet_shiftKey(), event.jsxGet_ctrlKey(), event.jsxGet_altKey());
-                }
-                catch (final IOException e) {
-                    throw Context.reportRuntimeError("Error calling dblClick(): " + e.getMessage());
-                }
-            }
-            else {
-                result = fireEvent(event);
+            catch (final IOException e) {
+                throw Context.reportRuntimeError("Error calling click(): " + e.getMessage());
             }
         }
         else {
@@ -1984,6 +2029,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      * {@inheritDoc}
      */
     @Override
+    @SuppressWarnings("unchecked")
     public HtmlElement getDomNodeOrNull() {
         return (HtmlElement) super.getDomNodeOrNull();
     }
@@ -1996,8 +2042,8 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
     }
 
     /**
-     * Creates a TextRange object for the element.
-     * @return TextRange object if successful, or null otherwise.
+     * Creates a new TextRange object for this element.
+     * @return a new TextRange object for this element
      */
     public Object jsxFunction_createTextRange() {
         final TextRange range = new TextRange(this);
@@ -2033,12 +2079,66 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      */
     public void jsxFunction_setActive() {
         final Window window = getWindow();
-        final HTMLDocument document = window.jsxGet_document();
+        final HTMLDocument document = (HTMLDocument) window.getDocument();
         document.setActiveElement(this);
         if (window.getWebWindow() == window.getWebWindow().getWebClient().getCurrentWindow()) {
             final HtmlElement element = getDomNodeOrDie();
             ((HtmlPage) element.getPage()).setFocusedElement(element);
         }
+    }
+
+    /**
+     * Retrieves all element nodes from descendants of the starting element node that match any selector
+     * within the supplied selector strings.
+     * The NodeList object returned by the querySelectorAll() method must be static, not live.
+     * @param selectors the selectors
+     * @return the static node list
+     */
+    public StaticNodeList jsxFunction_querySelectorAll(final String selectors) {
+        final List<Node> nodes = new ArrayList<Node>();
+        for (final DomNode domNode : getDomNodeOrDie().querySelectorAll(selectors)) {
+            nodes.add((Node) domNode.getScriptObject());
+        }
+        return new StaticNodeList(nodes, this);
+    }
+
+    /**
+     * Returns the first element within the document that matches the specified group of selectors.
+     * @param selectors the selectors
+     * @return null if no matches are found; otherwise, it returns the first matching element
+     */
+    public Node jsxFunction_querySelector(final String selectors) {
+        final DomNode node = getDomNodeOrDie().querySelector(selectors);
+        if (node != null) {
+            return (Node) node.getScriptObject();
+        }
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Object get(final String name, final Scriptable start) {
+        final Object response = super.get(name, start);
+
+        // IE8 support .querySelector(All) but not in quirks mode
+        // => TODO: find a better way to handle this!
+        if (response instanceof FunctionObject
+            && ("querySelectorAll".equals(name) || "querySelector".equals(name))
+            && getBrowserVersion().hasFeature(BrowserVersionFeatures.QUERYSELECTORALL_NOT_IN_QUIRKS)) {
+
+            final DomNode domNode = getDomNodeOrNull();
+            if (null == domNode) {
+                return response;
+            }
+            final SgmlPage sgmlPage = domNode.getPage();
+            if ((sgmlPage instanceof HtmlPage) && ((HtmlPage) sgmlPage).isQuirksMode()) {
+                return NOT_FOUND;
+            }
+        }
+
+        return response;
     }
 
     /**
@@ -2059,7 +2159,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      */
     @Override
     public String jsxGet_prefix() {
-        if (getBrowserVersion().isIE()) {
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_73)) {
             return "";
         }
         return null;
@@ -2168,8 +2268,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      */
     public void jsxFunction_doScroll(final String scrollAction) {
         if (((HtmlPage) getDomNodeOrDie().getPage()).isBeingParsed()) {
-            Context.throwAsScriptRuntimeEx(
-                new Exception("The data necessary to complete this operation is not yet available."));
+            throw Context.reportRuntimeError("The data necessary to complete this operation is not yet available.");
         }
         // Ignore because we aren't displaying anything!
     }
@@ -2200,27 +2299,27 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      */
     protected String getWidthOrHeight(final String attributeName, final Boolean returnNegativeValues) {
         String s = getDomNodeOrDie().getAttribute(attributeName);
-        if (!s.matches("\\d+%")) {
+        if (!PERCENT_VALUE.matcher(s).matches()) {
             try {
-                final Float f = Float.parseFloat(s);
-                final Integer i = f.intValue();
+                final Float f = Float.valueOf(s);
+                final int i = f.intValue();
                 if (i < 0) {
                     if (returnNegativeValues == null) {
                         s = "0";
                     }
-                    else if (!returnNegativeValues) {
+                    else if (!returnNegativeValues.booleanValue()) {
                         s = "";
                     }
                     else {
-                        s = String.valueOf(i);
+                        s = Integer.toString(i);
                     }
                 }
                 else {
-                    s = String.valueOf(i);
+                    s = Integer.toString(i);
                 }
             }
             catch (final NumberFormatException e) {
-                if (getBrowserVersion().isIE()) {
+                if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_74)) {
                     s = "";
                 }
             }
@@ -2231,23 +2330,26 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
     /**
      * Sets the value of the specified attribute (width or height).
      * @param attributeName the name of the attribute to set (<tt>"width"</tt> or <tt>"height"</tt>)
-     * @param s the value of the specified attribute (width or height)
+     * @param value the value of the specified attribute (width or height)
      * @param allowNegativeValues if <tt>true</tt>, negative values will be stored;
      *        if <tt>false</tt>, negative values cause an exception to be thrown;
      *        if <tt>null</tt>, negative values set the value to <tt>0</tt>
      */
-    protected void setWidthOrHeight(final String attributeName, String s, final Boolean allowNegativeValues) {
-        if (getBrowserVersion().isIE()) {
+    protected void setWidthOrHeight(final String attributeName, String value, final Boolean allowNegativeValues) {
+        if (value.endsWith("px")) {
+            value = value.substring(0, value.length() - 2);
+        }
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_75) && value.length() > 0) {
             boolean error = false;
-            if (!s.matches("\\d+%")) {
+            if (!PERCENT_VALUE.matcher(value).matches()) {
                 try {
-                    final Float f = Float.parseFloat(s);
-                    final Integer i = f.intValue();
+                    final Float f = Float.valueOf(value);
+                    final int i = f.intValue();
                     if (i < 0) {
                         if (allowNegativeValues == null) {
-                            s = "0";
+                            value = "0";
                         }
-                        else if (!allowNegativeValues) {
+                        else if (!allowNegativeValues.booleanValue()) {
                             error = true;
                         }
                     }
@@ -2257,11 +2359,11 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
                 }
             }
             if (error) {
-                final Exception e = new Exception("Cannot set the width property to invalid value: " + s);
+                final Exception e = new Exception("Cannot set the width property to invalid value: " + value);
                 Context.throwAsScriptRuntimeEx(e);
             }
         }
-        getDomNodeOrDie().setAttribute(attributeName, s);
+        getDomNodeOrDie().setAttribute(attributeName, value);
     }
 
     /**
@@ -2271,22 +2373,13 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      */
     protected void setColorAttribute(final String name, final String value) {
         final String s;
-        if (isHexadecimalColor(value)) {
+        if (com.gargoylesoftware.htmlunit.util.StringUtils.isColorHexadecimal(value)) {
             s = value;
         }
         else {
             s = "#000000";
         }
-        this.getDomNodeOrDie().setAttribute(name, s);
-    }
-
-    /**
-     * Returns <tt>true</tt> if the specified string is an RGB color in hexadecimal notation.
-     * @param s the string to check
-     * @return <tt>true</tt> if the specified string is an RGB color in hexadecimal notation
-     */
-    private static boolean isHexadecimalColor(final String s) {
-        return s.toLowerCase().matches("#([0-9a-f]{6})");
+        getDomNodeOrDie().setAttribute(name, s);
     }
 
     /**
@@ -2297,10 +2390,10 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      */
     protected String getAlign(final boolean returnInvalidValues) {
         final String align = getDomNodeOrDie().getAttribute("align");
-        if (align.equals("center")
-            || align.equals("justify")
-            || align.equals("left")
-            || align.equals("right")
+        if ("center".equals(align)
+            || "justify".equals(align)
+            || "left".equals(align)
+            || "right".equals(align)
             || returnInvalidValues) {
             return align;
         }
@@ -2315,14 +2408,18 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      */
     protected void setAlign(String align, final boolean ignoreIfNoError) {
         align = align.toLowerCase();
-        final boolean ff = getBrowserVersion().isFirefox();
-        if (ff || align.equals("center") || align.equals("justify") || align.equals("left") || align.equals("right")) {
+        final boolean ff = getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_168);
+        if (ff
+                || "center".equals(align)
+                || "justify".equals(align)
+                || "left".equals(align)
+                || "right".equals(align)) {
             if (!ignoreIfNoError) {
                 getDomNodeOrDie().setAttribute("align", align);
             }
         }
         else {
-            Context.throwAsScriptRuntimeEx(new Exception("Cannot set the align property to invalid value: " + align));
+            throw Context.reportRuntimeError("Cannot set the align property to invalid value: " + align);
         }
     }
 
@@ -2351,7 +2448,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
             getDomNodeOrDie().setAttribute("valign", s);
         }
         else {
-            Context.throwAsScriptRuntimeEx(new Exception("Cannot set the vAlign property to invalid value: " + vAlign));
+            throw Context.reportRuntimeError("Cannot set the vAlign property to invalid value: " + vAlign);
         }
     }
 
@@ -2360,7 +2457,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      * @return the value of the "ch" property
      */
     protected String getCh() {
-        final boolean ie = getBrowserVersion().isIE();
+        final boolean ie = getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_76);
         if (ie) {
             return ch_;
         }
@@ -2376,7 +2473,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      * @param ch the value of the "ch" property
      */
     protected void setCh(final String ch) {
-        final boolean ie = getBrowserVersion().isIE();
+        final boolean ie = getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_77);
         if (ie) {
             ch_ = ch;
         }
@@ -2390,7 +2487,7 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      * @return the value of the "chOff" property
      */
     protected String getChOff() {
-        final boolean ie = getBrowserVersion().isIE();
+        final boolean ie = getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_78);
         if (ie) {
             return chOff_;
         }
@@ -2402,17 +2499,17 @@ public class HTMLElement extends Element implements ScriptableWithFallbackGetter
      * @param chOff the value of the "chOff" property
      */
     protected void setChOff(String chOff) {
-        final boolean ie = getBrowserVersion().isIE();
+        final boolean ie = getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_79);
         if (ie) {
             chOff_ = chOff;
         }
         else {
             try {
-                Float f = new Float(chOff);
-                if (f < 0) {
-                    f = 0f;
+                Float f = Float.valueOf(chOff);
+                if (f.floatValue() < 0) {
+                    f = Float.valueOf(0f);
                 }
-                chOff = String.valueOf(f.intValue());
+                chOff = Integer.toString(f.intValue());
             }
             catch (final NumberFormatException e) {
                 // Ignore.

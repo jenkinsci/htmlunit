@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,8 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import net.sourceforge.htmlunit.corejs.javascript.Context;
+
+import org.apache.commons.lang.StringUtils;
 import org.w3c.dom.NodeList;
 
 import com.gargoylesoftware.htmlunit.SgmlPage;
@@ -43,12 +45,10 @@ import com.gargoylesoftware.htmlunit.xml.XmlUtil;
 /**
  * A JavaScript object for XSLTProcessor.
  *
- * @version $Revision: 4505 $
+ * @version $Revision: 6265 $
  * @author Ahmed Ashour
  */
 public class XSLTProcessor extends SimpleScriptable {
-
-    private static final long serialVersionUID = -5870183094839129375L;
 
     private Node style_;
     private Node input_;
@@ -117,8 +117,8 @@ public class XSLTProcessor extends SimpleScriptable {
             final DOMResult result = new DOMResult(containerElement);
 
             final Transformer transformer = TransformerFactory.newInstance().newTransformer(xsltSource);
-            for (final String qualifiedName : parameters_.keySet()) {
-                transformer.setParameter(qualifiedName, parameters_.get(qualifiedName));
+            for (final Map.Entry<String, Object> entry : parameters_.entrySet()) {
+                transformer.setParameter(entry.getKey(), entry.getValue());
             }
             transformer.transform(xmlSource, result);
 
@@ -147,7 +147,7 @@ public class XSLTProcessor extends SimpleScriptable {
      */
     public DocumentFragment jsxFunction_transformToFragment(
             final Node source, final Object output) {
-        final SgmlPage page = (SgmlPage) ((Document) output).getDomNodeOrDie();
+        final SgmlPage page = ((Document) output).getDomNodeOrDie();
 
         final DomDocumentFragment fragment = page.createDomDocumentFragment();
         final DocumentFragment rv = new DocumentFragment();
@@ -197,7 +197,7 @@ public class XSLTProcessor extends SimpleScriptable {
 
     private String getQualifiedName(final String namespaceURI, final String localName) {
         final String qualifiedName;
-        if (namespaceURI != null && namespaceURI.length() != 0 && !namespaceURI.equals("null")) {
+        if (namespaceURI != null && namespaceURI.length() != 0 && !"null".equals(namespaceURI)) {
             qualifiedName = '{' + namespaceURI + '}' + localName;
         }
         else {
@@ -262,7 +262,7 @@ public class XSLTProcessor extends SimpleScriptable {
      */
     public void jsxFunction_transform() {
         final Node input = input_;
-        final SgmlPage page = input.getDomNodeOrDie().getPage();
+        final SgmlPage page = input.<DomNode>getDomNodeOrDie().getPage();
 
         if (output_ == null || !(output_ instanceof Node)) {
             final DomDocumentFragment fragment = page.createDomDocumentFragment();
@@ -276,23 +276,23 @@ public class XSLTProcessor extends SimpleScriptable {
         transform(input_, ((Node) output_).getDomNodeOrDie());
         final XMLSerializer serializer = new XMLSerializer();
         serializer.setParentScope(getParentScope());
-        String output = "";
-        for (final DomNode child : ((Node) output_).getDomNodeOrDie().getChildren()) {
+        final StringBuilder output = new StringBuilder();
+        for (final DomNode child : ((Node) output_).<DomNode>getDomNodeOrDie().getChildren()) {
             if (child instanceof DomText) {
                 //IE: XmlPage ignores all empty text nodes (if 'xml:space' is 'default')
                 //Maybe this should be changed for 'xml:space' = preserve
                 //See XMLDocumentTest.testLoadXML_XMLSpaceAttribute()
-                if (((DomText) child).getData().trim().length() != 0) {
-                    output += ((DomText) child).getData();
+                if (StringUtils.isNotBlank(((DomText) child).getData())) {
+                    output.append(((DomText) child).getData());
                 }
             }
             else {
                 //remove trailing "\r\n"
                 final String serializedString =
                     serializer.jsxFunction_serializeToString((Node) child.getScriptObject());
-                output += serializedString.substring(0, serializedString.length() - 2);
+                output.append(serializedString.substring(0, serializedString.length() - 2));
             }
         }
-        output_ = output;
+        output_ = output.toString();
     }
 }

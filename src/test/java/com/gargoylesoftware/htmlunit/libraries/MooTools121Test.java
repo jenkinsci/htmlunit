@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,13 +30,14 @@ import org.junit.runner.RunWith;
 import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Tries;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 
 /**
  * Tests for compatibility with version 1.2.1 of the <a href="http://mootools.net/">MooTools JavaScript library</a>.
  *
- * @version $Revision: 4343 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
  */
 @RunWith(BrowserRunner.class)
@@ -48,9 +49,10 @@ public class MooTools121Test extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
+    @Tries(3)
     @SuppressWarnings("unchecked")
     public void mooTools() throws Exception {
-        final String resource = "mootools/1.2.1/Specs/index.html";
+        final String resource = "libraries/mootools/1.2.1/Specs/index.html";
         final URL url = getClass().getClassLoader().getResource(resource);
         assertNotNull(url);
 
@@ -58,7 +60,7 @@ public class MooTools121Test extends WebTestCase {
         final HtmlPage page = client_.getPage(url);
 
         final HtmlElement progress = page.getElementById("progress");
-        client_.waitForBackgroundJavaScriptStartingBefore(2000);
+        client_.waitForBackgroundJavaScriptStartingBefore(2000 * 100);
 
         final String prevProgress = progress.asText();
 

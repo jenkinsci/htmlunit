@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 /**
  * Tests for compatibility with version 1.2.6 of the <a href="http://jquery.com/">jQuery JavaScript library</a>.
  *
- * @version $Revision: 4789 $
+ * @version $Revision: 6205 $
  * @author Ahmed Ashour
  */
 @RunWith(BrowserRunner.class)
@@ -70,15 +70,13 @@ public class JQueryExtractorSample extends WebTestCase {
         itemIndex_ = 0;
     }
 
-    @SuppressWarnings("unchecked")
     private void assertResult(final String expectedTestResult) {
-        final String actual = ((HtmlElement) ((List) listItem_.getByXPath("./strong")).get(0)).asText();
+        final String actual = ((HtmlElement) ((List<?>) listItem_.getByXPath("./strong")).get(0)).asText();
         assertEquals(expectedTestResult, actual);
     }
 
-    @SuppressWarnings("unchecked")
     private void assertAssertion(final String expectedAssertion) {
-        final String actual = ((HtmlListItem) ((List) listItem_.getByXPath("./ol/li")).get(itemIndex_++)).asText();
+        final String actual = ((HtmlListItem) ((List<?>) listItem_.getByXPath("./ol/li")).get(itemIndex_++)).asText();
         assertEquals(expectedAssertion, actual);
     }
 
@@ -107,7 +105,8 @@ public class JQueryExtractorSample extends WebTestCase {
                 "jquery" + getVersion() + '_' + getBrowserVersion().getNickname() + "_result.html");
             FileUtils.writeStringToFile(f, page.asXml(), "UTF-8");
             LOG.info("Test result for "
-                + getVersion() + '_' + getBrowserVersion().getNickname() + " written to: " + f.getAbsolutePath());
+                    + getVersion() + '_' + getBrowserVersion().getNickname()
+                    + " written to: " + f.getAbsolutePath());
         }
 
         final HtmlElement doc = page.getDocumentElement();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,8 +26,8 @@ import net.sourceforge.htmlunit.corejs.javascript.ScriptRuntime;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 import net.sourceforge.htmlunit.corejs.javascript.regexp.NativeRegExp;
 import net.sourceforge.htmlunit.corejs.javascript.regexp.RegExpImpl;
+import net.sourceforge.htmlunit.corejs.javascript.regexp.SubString;
 
-import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -35,14 +35,16 @@ import org.apache.commons.logging.LogFactory;
 /**
  * Begins customization of JavaScript RegExp base on JDK regular expression support.
  *
- * @version $Revision: 4843 $
+ * @version $Revision: 6335 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
 public class HtmlUnitRegExpProxy extends RegExpImpl {
 
     private static final Log LOG = LogFactory.getLog(HtmlUnitRegExpProxy.class);
 
+    private static final Pattern REPLACE_PATTERN = Pattern.compile("\\$\\$");
     private final RegExpProxy wrapped_;
 
     /**
@@ -79,11 +81,11 @@ public class HtmlUnitRegExpProxy extends RegExpImpl {
             String replacement = (String) args[1];
             final Object arg0 = args[0];
             if (arg0 instanceof String) {
+                replacement = REPLACE_PATTERN.matcher(replacement).replaceAll("\\$");
                 // arg0 should *not* be interpreted as a RegExp
                 return StringUtils.replaceOnce(thisString, (String) arg0, replacement);
             }
             else if (arg0 instanceof NativeRegExp) {
-                replacement = replacement.replaceAll("\\\\", "\\\\\\\\");
                 try {
                     final NativeRegExp regexp = (NativeRegExp) arg0;
                     final RegExpData reData = new RegExpData(regexp);
@@ -91,18 +93,14 @@ public class HtmlUnitRegExpProxy extends RegExpImpl {
                     final int flags = reData.getJavaFlags();
                     final Pattern pattern = Pattern.compile(regex, flags);
                     final Matcher matcher = pattern.matcher(thisString);
-                    replacement = escapeInvalidBackReferences(regex, replacement);
-                    if (reData.hasFlag('g')) {
-                        return matcher.replaceAll(replacement);
-                    }
-                    return matcher.replaceFirst(replacement);
+                    return doReplacement(thisString, replacement, matcher, reData.hasFlag('g'));
                 }
                 catch (final PatternSyntaxException e) {
                     LOG.warn(e.getMessage(), e);
                 }
             }
         }
-        else if (RA_MATCH == actionType) {
+        else if (RA_MATCH == actionType || RA_SEARCH == actionType) {
             if (args.length == 0) {
                 return null;
             }
@@ -118,15 +116,28 @@ public class HtmlUnitRegExpProxy extends RegExpImpl {
 
             final Pattern pattern = Pattern.compile(reData.getJavaPattern(), reData.getJavaFlags());
             final Matcher matcher = pattern.matcher(thisString);
-            if (!matcher.find()) {
+
+            final boolean found = matcher.find();
+            if (RA_SEARCH == actionType) {
+                if (found) {
+                    setProperties(matcher, thisString, matcher.start(), matcher.end());
+                    return matcher.start();
+                }
+                return -1;
+            }
+
+            if (!found) {
                 return null;
             }
             final int index = matcher.start(0);
             final List<Object> groups = new ArrayList<Object>();
             if (reData.hasFlag('g')) { // has flag g
                 groups.add(matcher.group(0));
+                setProperties(matcher, thisString, matcher.start(0), matcher.end(0));
+
                 while (matcher.find()) {
                     groups.add(matcher.group(0));
+                    setProperties(matcher, thisString, matcher.start(0), matcher.end(0));
                 }
             }
             else {
@@ -137,10 +148,12 @@ public class HtmlUnitRegExpProxy extends RegExpImpl {
                     }
                     groups.add(group);
                 }
+
+                setProperties(matcher, thisString, matcher.start(), matcher.end());
             }
             final Scriptable response = cx.newArray(scope, groups.toArray());
             // the additional properties (cf ECMA script reference 15.10.6.2 13)
-            response.put("index", response, new Integer(index));
+            response.put("index", response, Integer.valueOf(index));
             response.put("input", response, thisString);
             return response;
         }
@@ -148,43 +161,94 @@ public class HtmlUnitRegExpProxy extends RegExpImpl {
         return wrappedAction(cx, scope, thisObj, args, actionType);
     }
 
-    /**
-     * Escapes all invalid back references (<tt>$n</tt>, where <tt>n</tt> is the index of the back reference),
-     * because invalid back references in JavaScript regex are treated as if they were escaped.
-     */
-    private String escapeInvalidBackReferences(final String regex, final String replacement) {
-        final StringBuilder ret = new StringBuilder();
+    private String doReplacement(final String originalString, final String replacement, final Matcher matcher,
+        final boolean replaceAll) {
 
-        final Matcher m = Pattern.compile(regex).matcher(replacement);
-        final int groups = m.groupCount();
+        final StringBuffer sb = new StringBuffer();
+        int previousIndex = 0;
+        while (matcher.find()) {
+            sb.append(originalString.substring(previousIndex, matcher.start()));
+            String localReplacement = replacement;
+            if (replacement.contains("$")) {
+                localReplacement = computeReplacementValue(replacement, originalString, matcher);
+            }
+            sb.append(localReplacement);
+            previousIndex = matcher.end();
 
-        int prevIndex = 0;
-        final char[] rep = replacement.toCharArray();
-        for (int i = ArrayUtils.indexOf(rep, '$'); i != -1; i = ArrayUtils.indexOf(rep, '$', i + 1)) {
-            ret.append(rep, prevIndex, i - prevIndex);
-            final boolean escaped = (i != 0 && rep[i - 1] == '\\');
-            if (!escaped) {
-                final StringBuilder sb = new StringBuilder(2);
-                for (int j = i + 1; j < rep.length && Character.isDigit(rep[j]); j++) {
-                    sb.append(rep[j]);
-                }
-                final boolean valid;
-                if (sb.length() > 0) {
-                    final int num = Integer.parseInt(sb.toString());
-                    valid = (num > 0 && num <= groups);
+            setProperties(matcher, originalString, matcher.start(), previousIndex);
+            if (!replaceAll) {
+                break;
+            }
+        }
+        sb.append(originalString.substring(previousIndex));
+        return sb.toString();
+    }
+
+    static String computeReplacementValue(final String replacement,
+            final String originalString, final Matcher matcher) {
+
+        int lastIndex = 0;
+        final StringBuilder result = new StringBuilder();
+        int i;
+        while ((i = replacement.indexOf('$', lastIndex)) > -1) {
+            if (i > 0) {
+                result.append(replacement.substring(lastIndex, i));
+            }
+            String ss = null;
+            if (i < replacement.length() - 1 && (i == lastIndex || replacement.charAt(i - 1) != '$')) {
+                final char next = replacement.charAt(i + 1);
+                // only valid back reference are "evaluated"
+                if (next >= '1' && next <= '9') {
+                    final int num1digit = next - '0';
+                    final char next2 = (i + 2 < replacement.length()) ? replacement.charAt(i + 2) : 'x';
+                    final int num2digits;
+                    // if there are 2 digits, the second one is considered as part of the group number
+                    // only if there is such a group
+                    if (next2 >= '1' && next2 <= '9') {
+                        num2digits = num1digit * 10 + (next2 - '0');
+                    }
+                    else {
+                        num2digits = Integer.MAX_VALUE;
+                    }
+                    if (num2digits <= matcher.groupCount()) {
+                        ss = matcher.group(num2digits);
+                        i++;
+                    }
+                    else if (num1digit <= matcher.groupCount()) {
+                        ss = StringUtils.defaultString(matcher.group(num1digit));
+                    }
                 }
                 else {
-                    valid = false;
-                }
-                if (!valid) {
-                    ret.append('\\');
+                    switch (next) {
+                        case '&':
+                            ss = matcher.group();
+                            break;
+                        case '`':
+                            ss = originalString.substring(0, matcher.start());
+                            break;
+                        case '\'':
+                            ss = originalString.substring(matcher.end());
+                            break;
+                        case '$':
+                            ss = "$";
+                            break;
+                        default:
+                    }
                 }
             }
-            prevIndex = i;
+            if (ss != null) {
+                result.append(ss);
+                lastIndex = i + 2;
+            }
+            else {
+                result.append('$');
+                lastIndex = i + 1;
+            }
         }
-        ret.append(rep, prevIndex, rep.length - prevIndex);
 
-        return ret.toString();
+        result.append(replacement.substring(lastIndex));
+
+        return result.toString();
     }
 
     /**
@@ -204,6 +268,62 @@ public class HtmlUnitRegExpProxy extends RegExpImpl {
         }
     }
 
+    private void setProperties(final Matcher matcher, final String thisString, final int startPos, final int endPos) {
+        // lastMatch
+        final String match = matcher.group();
+        if (match == null) {
+            lastMatch = new SubString();
+        }
+        else {
+            lastMatch = new FixedSubString(match);
+        }
+
+        // parens
+        final int count = Math.min(9, matcher.groupCount());
+        if (count == 0) {
+            parens = null;
+        }
+        else {
+            parens = new SubString[count];
+            for (int i = 0; i < count; i++) {
+                final String group = matcher.group(i + 1);
+                if (group == null) {
+                    parens[i] = SubString.emptySubString;
+                }
+                else {
+                    parens[i] = new FixedSubString(group);
+                }
+            }
+        }
+
+        // lastParen
+        if (matcher.groupCount() > 0) {
+            final String last = matcher.group(matcher.groupCount());
+            if (last == null) {
+                lastParen = new SubString();
+            }
+            else {
+                lastParen = new FixedSubString(last);
+            }
+        }
+
+        // leftContext
+        if (startPos > 0) {
+            leftContext = new FixedSubString(thisString.substring(0, startPos));
+        }
+        else {
+            leftContext = new SubString();
+        }
+
+        // rightContext
+        if (endPos < thisString.length()) {
+            rightContext = new FixedSubString(thisString.substring(endPos));
+        }
+        else {
+            rightContext = new SubString();
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -214,7 +334,7 @@ public class HtmlUnitRegExpProxy extends RegExpImpl {
         }
         catch (final Exception e) {
             LOG.warn("compileRegExp() threw for >" + source + "<, flags: >" + flags + "<. "
-                    + "Replacing with a '####shouldNotFindAnything###'");
+                + "Replacing with a '####shouldNotFindAnything###'");
             return wrapped_.compileRegExp(cx, "####shouldNotFindAnything###", "");
         }
     }
@@ -286,27 +406,35 @@ public class HtmlUnitRegExpProxy extends RegExpImpl {
      * @param re the JavaScript regular expression to transform
      * @return the transformed expression
      */
-    static String jsRegExpToJavaRegExp(String re) {
-        re = re.replaceAll("\\[\\^\\\\\\d\\]", ".");
-        re = re.replaceAll("\\[([^\\]]*)\\\\b([^\\]]*)\\]", "[$1\\\\cH$2]"); // [...\b...] -> [...\cH...]
-        re = re.replaceAll("(?<!\\\\)\\[([^((?<!\\\\)\\[)\\]]*)\\[", "[$1\\\\["); // [...[...] -> [...\[...]
-
-        // back reference in character classes are simply ignored by browsers
-        re = re.replaceAll("(?<!\\\\)\\[([^\\]]*)(?<!\\\\)\\\\\\d", "[$1"); // [...ab\5cd...] -> [...abcd...]
-
-        re = escapeJSCurly(re);
-        return re;
+    static String jsRegExpToJavaRegExp(final String re) {
+        final RegExpJsToJavaConverter regExpJsToJavaFSM = new RegExpJsToJavaConverter();
+        final String tmpNew = regExpJsToJavaFSM.convert(re);
+        return tmpNew;
     }
 
     /**
-     * Escape curly braces that are not used in an expression like "{n}", "{n,}" or "{n,m}"
-     * (where n and m are positive integers).
-     * @param re the regular expression to escape
-     * @return the escaped expression
+     *  Static version of a SubString that does not fill the
+     *  chars array. This helps in some situations to solve
+     *  performance issues.
+     *  Use this only if you sure, that the chars are no longer
+     *  needed.
      */
-    static String escapeJSCurly(String re) {
-        re = re.replaceAll("(?<!\\\\)\\{(?!\\d)", "\\\\{");
-        re = re.replaceAll("(?<!(\\d,?|\\\\))\\}", "\\\\}");
-        return re;
+    private static class FixedSubString extends SubString {
+
+        private String value_;
+
+        /**
+         * Constructor.
+         *
+         * @param str the value
+         */
+        public FixedSubString(final String str) {
+            value_ = str;
+        }
+
+        @Override
+        public String toString() {
+            return value_;
+        }
     }
 }

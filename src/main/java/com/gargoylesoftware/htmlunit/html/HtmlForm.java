@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,6 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
-import static com.gargoylesoftware.htmlunit.protocol.javascript.JavaScriptURLConnection.JAVASCRIPT_PREFIX;
-
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -24,28 +22,32 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
-import org.apache.commons.httpclient.NameValuePair;
-import org.apache.commons.httpclient.util.EncodingUtil;
 import org.apache.commons.lang.StringUtils;
+import org.apache.http.client.utils.URLEncodedUtils;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.ElementNotFoundException;
 import com.gargoylesoftware.htmlunit.FormEncodingType;
 import com.gargoylesoftware.htmlunit.HttpMethod;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.ScriptResult;
 import com.gargoylesoftware.htmlunit.SgmlPage;
-import com.gargoylesoftware.htmlunit.TextUtil;
 import com.gargoylesoftware.htmlunit.WebAssert;
-import com.gargoylesoftware.htmlunit.WebRequestSettings;
+import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebWindow;
 import com.gargoylesoftware.htmlunit.javascript.host.Event;
+import com.gargoylesoftware.htmlunit.protocol.javascript.JavaScriptURLConnection;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
+import com.gargoylesoftware.htmlunit.util.UrlUtils;
 
 /**
  * Wrapper for the HTML element "form".
  *
- * @version $Revision: 4638 $
+ * @version $Revision: 6335 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author Brad Clarke
@@ -55,16 +57,17 @@ import com.gargoylesoftware.htmlunit.javascript.host.Event;
  * @author Kent Tong
  * @author Ahmed Ashour
  * @author Philip Graf
+ * @author Ronald Brill
  */
-public class HtmlForm extends ClickableElement {
-
-    private static final long serialVersionUID = 5338964478788825866L;
+public class HtmlForm extends HtmlElement {
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "form";
 
     private static final Collection<String> SUBMITTABLE_ELEMENT_NAMES =
         Arrays.asList(new String[]{"input", "button", "select", "textarea", "isindex"});
+
+    private static final Pattern SUBMIT_CHARSET_PATTERN = Pattern.compile("[ ,].*");
 
     private final List<HtmlElement> lostChildren_ = new ArrayList<HtmlElement>();
 
@@ -107,9 +110,10 @@ public class HtmlForm extends ClickableElement {
      * @return a new page that reflects the results of this submission
      * @exception IOException if an IO error occurs
      */
-    public Page submit(final SubmittableElement submitElement) throws IOException {
+    Page submit(final SubmittableElement submitElement) throws IOException {
         final HtmlPage htmlPage = (HtmlPage) getPage();
-        if (htmlPage.getWebClient().isJavaScriptEnabled()) {
+        final WebClient webClient = htmlPage.getWebClient();
+        if (webClient.isJavaScriptEnabled()) {
             if (submitElement != null) {
                 isPreventDefault_ = false;
                 final ScriptResult scriptResult = fireEvent(Event.TYPE_SUBMIT);
@@ -118,19 +122,51 @@ public class HtmlForm extends ClickableElement {
                 }
             }
 
-            final String action = getActionAttribute();
-            if (TextUtil.startsWithIgnoreCase(action, JAVASCRIPT_PREFIX)) {
+            final String action = getActionAttribute().trim();
+            if (StringUtils.startsWithIgnoreCase(action, JavaScriptURLConnection.JAVASCRIPT_PREFIX)) {
                 return htmlPage.executeJavaScriptIfPossible(action, "Form action", getStartLineNumber()).getNewPage();
             }
         }
         else {
-            if (TextUtil.startsWithIgnoreCase(getActionAttribute(), JAVASCRIPT_PREFIX)) {
+            if (StringUtils.startsWithIgnoreCase(getActionAttribute(), JavaScriptURLConnection.JAVASCRIPT_PREFIX)) {
                 // The action is JavaScript but JavaScript isn't enabled.
                 // Return the current page.
                 return htmlPage;
             }
         }
 
+        final WebRequest request = getWebRequest(submitElement);
+        final String target = htmlPage.getResolvedTarget(getTargetAttribute());
+
+        final WebWindow webWindow = htmlPage.getEnclosingWindow();
+        final String action = getActionAttribute();
+        final boolean isHashJump = HttpMethod.GET.equals(request.getHttpMethod()) && action.endsWith("#");
+        webClient.download(webWindow, target, request, isHashJump, "JS form.submit()");
+        return htmlPage;
+    }
+
+    /**
+     * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
+     *
+     * Gets the settings for a submission of this form request settings necessary to submit this form.
+     * @param submitElement the element that caused the submit to occur
+     * @return the request settings
+     * @deprecated as of 2.8, please use {@link #getWebRequest(SubmittableElement)} instead
+     */
+    @Deprecated
+    public WebRequest getWebRequestSettings(final SubmittableElement submitElement) {
+        return getWebRequest(submitElement);
+    }
+
+    /**
+     * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
+     *
+     * Gets the request for a submission of this form with the specified SubmittableElement.
+     * @param submitElement the element that caused the submit to occur
+     * @return the request
+     */
+    public WebRequest getWebRequest(final SubmittableElement submitElement) {
+        final HtmlPage htmlPage = (HtmlPage) getPage();
         final List<NameValuePair> parameters = getParameterListForSubmit(submitElement);
         final HttpMethod method;
         final String methodAttribute = getMethodAttribute();
@@ -138,42 +174,49 @@ public class HtmlForm extends ClickableElement {
             method = HttpMethod.POST;
         }
         else {
-            if (!"get".equalsIgnoreCase(methodAttribute) && methodAttribute.trim().length() > 0) {
+            if (!"get".equalsIgnoreCase(methodAttribute) && StringUtils.isNotBlank(methodAttribute)) {
                 notifyIncorrectness("Incorrect submit method >" + getMethodAttribute() + "<. Using >GET<.");
             }
             method = HttpMethod.GET;
         }
 
+        final BrowserVersion browser = getPage().getWebClient().getBrowserVersion();
         String actionUrl = getActionAttribute();
         if (HttpMethod.GET == method) {
             final String anchor = StringUtils.substringAfter(actionUrl, "#");
-            actionUrl = StringUtils.substringBefore(actionUrl, "#");
-
-            final NameValuePair[] pairs = new NameValuePair[parameters.size()];
-            parameters.toArray(pairs);
-            final String queryFromFields = EncodingUtil.formUrlEncode(pairs, getPage().getPageEncoding());
+            final String enc = getPage().getPageEncoding();
+            final String queryFromFields =
+                URLEncodedUtils.format(Arrays.asList(NameValuePair.toHttpClient(parameters)), enc);
 
             // action may already contain some query parameters: they have to be removed
+            actionUrl = StringUtils.substringBefore(actionUrl, "#");
             actionUrl = StringUtils.substringBefore(actionUrl, "?");
-            final BrowserVersion browserVersion = getPage().getWebClient().getBrowserVersion();
-            if (!(browserVersion.isIE() && browserVersion.getBrowserVersionNumeric() >= 7)
+            if (browser.hasFeature(BrowserVersionFeatures.FORM_SUBMISSION_URL_END_WITH_QUESTIONMARK)
                     || queryFromFields.length() > 0) {
                 actionUrl += "?" + queryFromFields;
             }
-            if (anchor.length() > 0) {
+            if (anchor.length() > 0
+                    && !browser.hasFeature(BrowserVersionFeatures.FORM_SUBMISSION_URL_WITHOUT_HASH)) {
                 actionUrl += "#" + anchor;
             }
             parameters.clear(); // parameters have been added to query
         }
-        final URL url;
+        URL url;
         try {
             if (actionUrl.length() == 0) {
-                url = htmlPage.getWebResponse().getRequestSettings().getUrl();
+                url = htmlPage.getWebResponse().getWebRequest().getUrl();
+                if (browser.hasFeature(BrowserVersionFeatures.FORM_SUBMISSION_URL_WITHOUT_HASH)) {
+                    url = UrlUtils.getUrlWithNewRef(url, null);
+                }
             }
             else if (actionUrl.startsWith("?")) {
-                String urlString = htmlPage.getWebResponse().getRequestSettings().getUrl().toExternalForm();
+                String urlString = htmlPage.getWebResponse().getWebRequest().getUrl().toExternalForm();
                 if (urlString.indexOf('?') != -1) {
                     urlString = urlString.substring(0, urlString.indexOf('?'));
+                }
+                else if (urlString.indexOf('#') != -1
+                        && browser.hasFeature(BrowserVersionFeatures.FORM_SUBMISSION_URL_WITHOUT_HASH)) {
+                    urlString = urlString.substring(0, urlString.indexOf('#'));
                 }
                 url = new URL(urlString + actionUrl);
             }
@@ -185,18 +228,15 @@ public class HtmlForm extends ClickableElement {
             throw new IllegalArgumentException("Not a valid url: " + actionUrl);
         }
 
-        final WebRequestSettings settings = new WebRequestSettings(url, method);
-        settings.setRequestParameters(parameters);
-        settings.setEncodingType(FormEncodingType.getInstance(getEnctypeAttribute()));
-        settings.setCharset(getSubmitCharset());
-        settings.setAdditionalHeader("Referer", htmlPage.getWebResponse().getRequestSettings().getUrl()
+        final WebRequest request = new WebRequest(url, method);
+        request.setRequestParameters(parameters);
+        if (HttpMethod.POST == method) {
+            request.setEncodingType(FormEncodingType.getInstance(getEnctypeAttribute()));
+        }
+        request.setCharset(getSubmitCharset());
+        request.setAdditionalHeader("Referer", htmlPage.getWebResponse().getWebRequest().getUrl()
                 .toExternalForm());
-
-        final WebWindow webWindow = htmlPage.getEnclosingWindow();
-        return htmlPage.getWebClient().getPage(
-                webWindow,
-                htmlPage.getResolvedTarget(getTargetAttribute()),
-                settings);
+        return request;
     }
 
     /**
@@ -207,7 +247,7 @@ public class HtmlForm extends ClickableElement {
      */
     private String getSubmitCharset() {
         if (getAcceptCharsetAttribute().length() > 0) {
-            return getAcceptCharsetAttribute().trim().replaceAll("[ ,].*", "");
+            return SUBMIT_CHARSET_PATTERN.matcher(getAcceptCharsetAttribute().trim()).replaceAll("");
         }
         return getPage().getPageEncoding();
     }
@@ -227,7 +267,6 @@ public class HtmlForm extends ClickableElement {
 
         final List<NameValuePair> parameterList = new ArrayList<NameValuePair>(submittableElements.size());
         for (final SubmittableElement element : submittableElements) {
-
             for (final NameValuePair pair : element.getSubmitKeyValuePairs()) {
                 parameterList.add(pair);
             }
@@ -250,7 +289,7 @@ public class HtmlForm extends ClickableElement {
             return scriptResult.getNewPage();
         }
 
-        for (final HtmlElement next : getAllHtmlChildElements()) {
+        for (final HtmlElement next : getHtmlElementDescendants()) {
             if (next instanceof SubmittableElement) {
                 ((SubmittableElement) next).reset();
             }
@@ -270,7 +309,7 @@ public class HtmlForm extends ClickableElement {
     Collection<SubmittableElement> getSubmittableElements(final SubmittableElement submitElement) {
         final List<SubmittableElement> submittableElements = new ArrayList<SubmittableElement>();
 
-        for (final HtmlElement element : getAllHtmlChildElements()) {
+        for (final HtmlElement element : getHtmlElementDescendants()) {
             if (isSubmittable(element, submitElement)) {
                 submittableElements.add((SubmittableElement) element);
             }
@@ -298,21 +337,21 @@ public class HtmlForm extends ClickableElement {
             return true;
         }
 
-        if (!tagName.equals("isindex") && !element.hasAttribute("name")) {
+        if (!"isindex".equals(tagName) && !element.hasAttribute("name")) {
             return false;
         }
 
-        if (!tagName.equals("isindex") && element.getAttribute("name").equals("")) {
+        if (!"isindex".equals(tagName) && "".equals(element.getAttribute("name"))) {
             return false;
         }
 
         if (element instanceof HtmlInput) {
             final String type = element.getAttribute("type").toLowerCase();
-            if (type.equals("radio") || type.equals("checkbox")) {
+            if ("radio".equals(type) || "checkbox".equals(type)) {
                 return element.hasAttribute("checked");
             }
         }
-        if (tagName.equals("select")) {
+        if ("select".equals(tagName)) {
             return ((HtmlSelect) element).isValidForSubmission();
         }
         return true;
@@ -340,11 +379,11 @@ public class HtmlForm extends ClickableElement {
         if (element instanceof HtmlInput) {
             final HtmlInput input = (HtmlInput) element;
             final String type = input.getTypeAttribute().toLowerCase();
-            if (type.equals("submit") || type.equals("image") || type.equals("reset") || type.equals("button")) {
+            if ("submit".equals(type) || "image".equals(type) || "reset".equals(type) || "button".equals(type)) {
                 return false;
             }
         }
-        if (tagName.equals("button")) {
+        if ("button".equals(tagName)) {
             return false;
         }
 

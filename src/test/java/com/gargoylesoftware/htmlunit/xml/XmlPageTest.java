@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.httpclient.HttpStatus;
+import org.apache.http.HttpStatus;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -38,7 +38,7 @@ import com.gargoylesoftware.htmlunit.WebServerTestCase;
 /**
  * Tests for {@link XmlPage}.
  *
- * @version $Revision: 4815 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
@@ -97,7 +97,7 @@ public class XmlPageTest extends WebServerTestCase {
         webConnection.setDefaultResponse(content, 200, "OK", mimeType);
         client.setWebConnection(webConnection);
         final Page page = client.getPage(URL_FIRST);
-        assertEquals(URL_FIRST, page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(URL_FIRST, page.getWebResponse().getWebRequest().getUrl());
         assertEquals("OK", page.getWebResponse().getStatusMessage());
         assertEquals(HttpStatus.SC_OK, page.getWebResponse().getStatusCode());
         assertEquals(mimeType, page.getWebResponse().getContentType());
@@ -129,7 +129,7 @@ public class XmlPageTest extends WebServerTestCase {
         client.setWebConnection(webConnection);
 
         final Page page = client.getPage(URL_FIRST);
-        assertEquals(URL_FIRST, page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(URL_FIRST, page.getWebResponse().getWebRequest().getUrl());
         assertEquals("OK", page.getWebResponse().getStatusMessage());
         assertEquals(HttpStatus.SC_OK, page.getWebResponse().getStatusCode());
         assertEquals("text/xml", page.getWebResponse().getContentType());
@@ -193,8 +193,6 @@ public class XmlPageTest extends WebServerTestCase {
      * Servlet for {@link #noResponse()}.
      */
     public static class NoResponseServlet extends HttpServlet {
-
-        private static final long serialVersionUID = 714328190645334742L;
 
         /**
          * {@inheritDoc}

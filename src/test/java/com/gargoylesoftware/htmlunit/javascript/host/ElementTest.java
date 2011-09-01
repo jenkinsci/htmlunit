@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,16 +18,15 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
-import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
+import com.gargoylesoftware.htmlunit.WebTestCase;
 
 /**
  * Tests for {@link Element}.
  *
- * @version $Revision: 4731 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
  */
@@ -808,10 +807,8 @@ public class ElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @NotYetImplemented(Browser.FF2)
     @Alerts(IE = "exception occured",
-            FF2 = { "prototype found", "QueryInterface" },
-            FF3 = { "prototype found", "" })
+            FF = { "prototype found", "" })
     public void enumeratedProperties() throws Exception {
         final String html
             = "<html><head>\n"

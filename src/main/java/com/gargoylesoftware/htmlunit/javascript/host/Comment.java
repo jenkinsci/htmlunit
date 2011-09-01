@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,13 +17,11 @@ package com.gargoylesoftware.htmlunit.javascript.host;
 /**
  * A JavaScript object for a Comment.
  *
- * @version $Revision: 4589 $
+ * @version $Revision: 6204 $
  * @author Mirko Friedenhagen
  * @author Ahmed Ashour
  */
 public final class Comment extends CharacterDataImpl {
-    private static final long serialVersionUID = 4557674333919900046L;
-
     /**
      * Creates an instance. JavaScript objects must have a default constructor.
      */

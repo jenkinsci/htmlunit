@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,23 +18,21 @@ import java.net.MalformedURLException;
 
 import com.gargoylesoftware.htmlunit.html.HtmlLink;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import com.gargoylesoftware.htmlunit.javascript.host.Stylesheet;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSStyleSheet;
 
 /**
  * The JavaScript object "HTMLLinkElement".
  *
- * @version $Revision: 4873 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  */
 public class HTMLLinkElement extends HTMLElement {
-
-    private static final long serialVersionUID = -6381573516360300401L;
 
     /**
      * The associated style sheet (only valid for links of type
      * <tt>&lt;link rel="stylesheet" type="text/css" href="..." /&gt;</tt>).
      */
-    private Stylesheet sheet_;
+    private CSSStyleSheet sheet_;
 
     /**
      * Creates an instance.
@@ -88,6 +86,23 @@ public class HTMLLinkElement extends HTMLElement {
     }
 
     /**
+     * Sets the rev property.
+     * @param rel rev attribute value
+     */
+    public void jsxSet_rev(final String rel) {
+        getDomNodeOrDie().setAttribute("rev", rel);
+    }
+
+    /**
+     * Returns the value of the rev property.
+     * @return the rev property
+     * @throws Exception if an error occurs
+     */
+    public String jsxGet_rev() throws Exception {
+        return ((HtmlLink) getDomNodeOrDie()).getRevAttribute();
+    }
+
+    /**
      * Sets the type property.
      * @param type type attribute value
      */
@@ -109,9 +124,9 @@ public class HTMLLinkElement extends HTMLElement {
      * <tt>&lt;link rel="stylesheet" type="text/css" href="..." /&gt;</tt>).
      * @return the associated style sheet
      */
-    public Stylesheet getSheet() {
+    public CSSStyleSheet getSheet() {
         if (sheet_ == null) {
-            sheet_ = Stylesheet.loadStylesheet(getWindow(), this, (HtmlLink) getDomNodeOrDie(), null);
+            sheet_ = CSSStyleSheet.loadStylesheet(getWindow(), this, (HtmlLink) getDomNodeOrDie(), null);
         }
         return sheet_;
     }

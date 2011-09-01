@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,8 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
+import com.gargoylesoftware.htmlunit.MockWebConnection;
+import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebTestCase;
 
 /**
@@ -33,7 +35,7 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
  * <p>With the new custom DOM, this test has somewhat lost its significance.
  * We simply set and get the attributes and compare the results.</p>
  *
- * @version $Revision: 4060 $
+ * @version $Revision: 6362 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Christian Sell
  * @author Marc Guillemot
@@ -61,36 +63,54 @@ public class AttributesTest extends TestCase {
      * @throws Exception if the tests cannot be created
      */
     public static Test suite() throws Exception {
-        final HtmlPage page = WebTestCase.loadPage("<html><head><title>foo</title></head><body></body></html>");
+        final WebClient webClient = new WebClient();
+        final MockWebConnection connection = new MockWebConnection();
+        connection.setDefaultResponse("<html><head><title>foo</title></head><body></body></html>");
+        webClient.setWebConnection(connection);
+        final HtmlPage page = webClient.getPage(WebTestCase.URL_FIRST);
 
         final TestSuite suite = new TestSuite();
         final String[] classesToTest = {
+            "HtmlAbbreviated", "HtmlAcronym",
             "HtmlAddress", "HtmlAnchor", "HtmlApplet", "HtmlArea",
+            "HtmlAudio", "HtmlBackgroundSound",
             "HtmlBase", "HtmlBaseFont", "HtmlBidirectionalOverride",
-            "HtmlBlockQuote", "HtmlBody", "HtmlBreak", "HtmlButton",
-            "HtmlButtonInput", "HtmlCaption", "HtmlCenter",
-            "HtmlCheckBoxInput", "HtmlDefinitionDescription",
+            "HtmlBig", "HtmlBlink",
+            "HtmlBlockQuote", "HtmlBody", "HtmlBold", "HtmlBreak", "HtmlButton",
+            "HtmlButtonInput", "HtmlCanvas", "HtmlCaption", "HtmlCenter",
+            "HtmlCheckBoxInput", "HtmlCitation", "HtmlCode",
+            "HtmlDefinition", "HtmlDefinitionDescription",
             "HtmlDefinitionList", "HtmlDefinitionTerm",
-            "HtmlDeletedText", "HtmlDivision", /*"HtmlElement", */
+            "HtmlDeletedText", "HtmlDirectory", "HtmlDivision", /*"HtmlElement", */
+            "HtmlEmbed", "HtmlEmphasis", "HtmlExample",
             "HtmlFieldSet", "HtmlFileInput", "HtmlFont", "HtmlForm",
             "HtmlFrame", "HtmlFrameSet", "HtmlHead", "HtmlHeading1",
             "HtmlHeading2", "HtmlHeading3", "HtmlHeading4", "HtmlHeading5",
             "HtmlHeading6", "HtmlHiddenInput", "HtmlHorizontalRule",
-            "HtmlImage", "HtmlImageInput", "HtmlInlineFrame",
+            "HtmlHtml", "HtmlImage", "HtmlImageInput", "HtmlInlineFrame",
             "HtmlInlineQuotation",
-            "HtmlInsertedText", "HtmlIsIndex", "HtmlLabel",
-            "HtmlLegend", "HtmlLink", "HtmlListItem", "HtmlMap",
-            "HtmlMenu", "HtmlMeta", "HtmlNoFrames", "HtmlNoScript",
+            "HtmlInsertedText", "HtmlIsIndex", "HtmlItalic",
+            "HtmlKeyboard", "HtmlLabel",
+            "HtmlLegend", "HtmlLink", "HtmlListing", "HtmlListItem", "HtmlMap",
+            "HtmlMarquee",
+            "HtmlMenu", "HtmlMeta", "HtmlMultiColumn",
+            "HtmlNoBreak", "HtmlNoEmbed", "HtmlNoFrames", "HtmlNoScript",
             "HtmlObject", "HtmlOption", "HtmlOptionGroup", "HtmlOrderedList",
             /*"HtmlPage",*/ "HtmlParagraph", "HtmlParameter", "HtmlPasswordInput",
+            "HtmlPlainText",
             "HtmlPreformattedText", "HtmlRadioButtonInput", "HtmlResetInput",
-            "HtmlScript", "HtmlSelect", "HtmlSpan", "HtmlStyle", "HtmlSubmitInput",
+            "HtmlS", "HtmlSample", "HtmlScript", "HtmlSelect", "HtmlSmall",
+            "HtmlSpacer", "HtmlSpan", "HtmlSource", "HtmlStrike",
+            "HtmlStrong", "HtmlStyle", "HtmlSubmitInput",
+            "HtmlSubscript", "HtmlSuperscript",
             "HtmlTable", "HtmlTableBody", /*"HtmlTableCell",*/ "HtmlTableColumn",
             "HtmlTableColumnGroup", "HtmlTableDataCell",
             "HtmlTableFooter", "HtmlTableHeader", "HtmlTableHeaderCell",
-            "HtmlTableRow", "HtmlTextArea", "HtmlDirectory", "HtmlTextInput",
-            "HtmlTitle", "HtmlUnorderedList"
+            "HtmlTableRow", "HtmlTeletype", "HtmlTextArea", "HtmlTextInput",
+            "HtmlTitle", "HtmlUnderlined", "HtmlUnorderedList",
+            "HtmlVariable", "HtmlVideo", "HtmlWordBreak"
         };
+
         for (final String testClass : classesToTest) {
             final Class< ? > clazz = Class.forName("com.gargoylesoftware.htmlunit.html." + testClass);
             addTestsForClass(clazz, page, suite);
@@ -121,25 +141,25 @@ public class AttributesTest extends TestCase {
                 && !EXCLUDED_METHODS.contains(methodName)) {
 
                 String attributeName = methodName.substring(3, methodName.length() - 9).toLowerCase();
-                if (attributeName.equals("xmllang")) {
+                if ("xmllang".equals(attributeName)) {
                     attributeName = "xml:lang";
                 }
-                else if (attributeName.equals("columns")) {
+                else if ("columns".equals(attributeName)) {
                     attributeName = "cols";
                 }
-                else if (attributeName.equals("columnspan")) {
+                else if ("columnspan".equals(attributeName)) {
                     attributeName = "colspan";
                 }
-                else if (attributeName.equals("textdirection")) {
+                else if ("textdirection".equals(attributeName)) {
                     attributeName = "dir";
                 }
-                else if (attributeName.equals("httpequiv")) {
+                else if ("httpequiv".equals(attributeName)) {
                     attributeName = "http-equiv";
                 }
-                else if (attributeName.equals("acceptcharset")) {
+                else if ("acceptcharset".equals(attributeName)) {
                     attributeName = "accept-charset";
                 }
-                else if (attributeName.equals("htmlfor")) {
+                else if ("htmlfor".equals(attributeName)) {
                     attributeName = "for";
                 }
                 suite.addTest(new AttributesTest(attributeName, clazz, method, page));
@@ -188,7 +208,7 @@ public class AttributesTest extends TestCase {
      */
     @Override
     protected void runTest() throws Exception {
-        final String value = new String("value");
+        final String value = "value";
 
         final HtmlElement objectToTest = getNewInstanceForClassUnderTest();
         objectToTest.setAttribute(attributeName_, value);
@@ -219,7 +239,7 @@ public class AttributesTest extends TestCase {
         }
         else {
             final String tagName = (String) classUnderTest_.getField("TAG_NAME").get(null);
-            newInstance = new DefaultElementFactory().createElement(page_, tagName, null);
+            newInstance = HTMLParser.getFactory(tagName).createElement(page_, tagName, null);
         }
 
         return newInstance;

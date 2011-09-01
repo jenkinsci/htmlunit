@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,13 @@ package com.gargoylesoftware.htmlunit.html;
 
 import java.util.Map;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.SgmlPage;
 
 /**
  * Wrapper for the HTML element "optgroup".
  *
- * @version $Revision: 4097 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -29,9 +30,7 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
  * @author Ahmed Ashour
  * @author Daniel Gredler
  */
-public class HtmlOptionGroup extends ClickableElement implements DisabledElement {
-
-    private static final long serialVersionUID = 7854731553754432321L;
+public class HtmlOptionGroup extends HtmlElement implements DisabledElement {
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "optgroup";
@@ -58,7 +57,8 @@ public class HtmlOptionGroup extends ClickableElement implements DisabledElement
      *         when emulating IE)
      */
     public final boolean isDisabled() {
-        if (getPage().getWebClient().getBrowserVersion().isIE()) {
+        if (getPage().getWebClient().getBrowserVersion()
+                .hasFeature(BrowserVersionFeatures.HTMLOPTIONGROUP_NO_DISABLED)) {
             return false;
         }
         return hasAttribute("disabled");
@@ -81,4 +81,13 @@ public class HtmlOptionGroup extends ClickableElement implements DisabledElement
     public final String getLabelAttribute() {
         return getAttribute("label");
     }
+
+    /**
+     * Gets the enclosing select of this HtmlOptionGroup.
+     * @return <code>null</code> if no select is found (for instance malformed html)
+     */
+    public HtmlSelect getEnclosingSelect() {
+        return (HtmlSelect) getEnclosingElement("select");
+    }
+
 }

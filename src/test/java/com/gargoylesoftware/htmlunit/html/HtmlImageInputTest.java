@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,18 +20,18 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.apache.commons.httpclient.NameValuePair;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Tests for {@link HtmlImageInput}.
  *
- * @version $Revision: 4782 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Marc Guillemot
  * @author Ahmed Ashour
@@ -70,6 +70,26 @@ public class HtmlImageInputTest extends WebTestCase {
         assertEquals(
             expectedPairs,
             webConnection.getLastParameters());
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void testClick_NoPosition_NoValue() throws Exception {
+        final String htmlContent
+            = "<html><head><title>foo</title></head><body>\n"
+            + "<form id='form1'>\n"
+            + "<input type='image' name='button'>\n"
+            + "</form></body></html>";
+        final HtmlPage page = loadPageWithAlerts(htmlContent);
+        getMockConnection(page).setDefaultResponse(htmlContent);
+        final HtmlForm form = page.getHtmlElementById("form1");
+
+        final HtmlImageInput imageInput = form.getInputByName("button");
+        final HtmlPage secondPage = (HtmlPage) imageInput.click();
+        final String url = secondPage.getWebResponse().getWebRequest().getUrl().toExternalForm();
+        assertTrue(url.endsWith("?button.x=0&button.y=0"));
     }
 
     /**

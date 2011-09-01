@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.apache.commons.httpclient.NameValuePair;
 import org.junit.Test;
 
 import com.gargoylesoftware.htmlunit.WebTestCase;
@@ -26,7 +25,7 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
 /**
  * Tests for {@link DebuggingWebConnection}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  */
 public class DebuggingWebConnectionTest extends WebTestCase {
@@ -50,8 +49,34 @@ public class DebuggingWebConnectionTest extends WebTestCase {
         list.add(new NameValuePair("na me", "value1"));
         list.add(new NameValuePair("key", "value 2"));
         list.add(new NameValuePair("key 2", "value 3"));
-        final String expected = "{'na me': 'value1', 'key': 'value 2', 'key 2': 'value 3'}";
+        list.add(new NameValuePair("key 4", "with ' quote")); // can it really happen in header?
+        final String expected = "{'na me': 'value1', 'key': 'value 2', 'key 2': 'value 3', 'key 4': 'with \\' quote'}";
         assertEquals(expected, DebuggingWebConnection.nameValueListToJsMap(list));
     }
 
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void escapeJSString() throws Exception {
+        assertEquals("", DebuggingWebConnection.escapeJSString(""));
+        assertEquals("hello", DebuggingWebConnection.escapeJSString("hello"));
+        assertEquals("I\\'m here", DebuggingWebConnection.escapeJSString("I'm here"));
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void chooseExtension() throws Exception {
+        assertEquals(".html", DebuggingWebConnection.chooseExtension("text/html"));
+
+        assertEquals(".js", DebuggingWebConnection.chooseExtension("text/javascript"));
+
+        assertEquals(".css", DebuggingWebConnection.chooseExtension("text/css"));
+
+        assertEquals(".xml", DebuggingWebConnection.chooseExtension("text/xml"));
+
+        assertEquals(".txt", DebuggingWebConnection.chooseExtension("text/plain"));
+    }
 }

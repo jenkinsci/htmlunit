@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,11 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.internal.runners.model.ReflectiveCallable;
 import org.junit.internal.runners.statements.Fail;
+import org.junit.rules.MethodRule;
 import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.InitializationError;
@@ -33,7 +35,7 @@ import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
 /**
  * The runner for test methods that run without any browser ({@link BrowserRunner.Browser.NONE})
  *
- * @version $Revision: 4169 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  */
 class BrowserNoneClassRunner extends BlockJUnit4ClassRunner {
@@ -64,11 +66,12 @@ class BrowserNoneClassRunner extends BlockJUnit4ClassRunner {
         statement = withPotentialTimeout(method, test, statement);
         statement = withBefores(method, test, statement);
         statement = withAfters(method, test, statement);
+        statement = withRules(method, test, statement);
 
         final NotYetImplemented notYetImplementedBrowsers = method.getAnnotation(NotYetImplemented.class);
         final boolean notYetImplemented = notYetImplementedBrowsers != null;
         statement = new BrowserStatement(statement, method.getMethod(), false,
-                notYetImplemented, "");
+                notYetImplemented, 1, "");
         return statement;
     }
 
@@ -130,5 +133,13 @@ class BrowserNoneClassRunner extends BlockJUnit4ClassRunner {
         for (final Throwable error : collectederrors) {
             errors.add(error);
         }
+    }
+
+    private Statement withRules(final FrameworkMethod method, final Object target, final Statement statement) {
+        Statement result = statement;
+        for (final MethodRule each : getTestClass().getAnnotatedFieldValues(target, Rule.class, MethodRule.class)) {
+            result = each.apply(result, method, target);
+        }
+        return result;
     }
 }

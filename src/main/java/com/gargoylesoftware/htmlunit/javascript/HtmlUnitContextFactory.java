@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 package com.gargoylesoftware.htmlunit.javascript;
-
-import java.io.Serializable;
 
 import net.sourceforge.htmlunit.corejs.javascript.Callable;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
@@ -40,14 +38,12 @@ import com.gargoylesoftware.htmlunit.javascript.regexp.HtmlUnitRegExpProxy;
  * ContextFactory that supports termination of scripts if they exceed a timeout. Based on example from
  * <a href="http://www.mozilla.org/rhino/apidocs/org/mozilla/javascript/ContextFactory.html">ContextFactory</a>.
  *
- * @version $Revision: 4789 $
+ * @version $Revision: 6204 $
  * @author Andre Soereng
  * @author Ahmed Ashour
  * @author Marc Guillemot
  */
-public class HtmlUnitContextFactory extends ContextFactory implements Serializable {
-
-    private static final long serialVersionUID = -1282169475857079041L;
+public class HtmlUnitContextFactory extends ContextFactory {
 
     private static final int INSTRUCTION_COUNT_THRESHOLD = 10000;
 
@@ -141,19 +137,6 @@ public class HtmlUnitContextFactory extends ContextFactory implements Serializab
             // which is used for window.eval. We have to take care in which case we are.
             final boolean isWindowEval = (compiler != null);
 
-            // Pre process the source code
-            final HtmlPage page = (HtmlPage) Context.getCurrentContext()
-                .getThreadLocal(JavaScriptEngine.KEY_STARTING_PAGE);
-            source = preProcess(page, source, sourceName, null);
-
-            // PreProcess IE Conditional Compilation if needed
-            if (browserVersion_.isIE()) {
-                final ScriptPreProcessor ieCCPreProcessor = new IEConditionalCompilationScriptPreProcessor();
-                source = ieCCPreProcessor.preProcess(page, source, sourceName, null);
-//                sourceCode = IEWeirdSyntaxScriptPreProcessor.getInstance()
-//                    .preProcess(htmlPage, sourceCode, sourceName, null);
-            }
-
             // Remove HTML comments around the source if needed
             if (!isWindowEval) {
                 final String sourceCodeTrimmed = source.trim();
@@ -161,13 +144,30 @@ public class HtmlUnitContextFactory extends ContextFactory implements Serializab
                     source = source.replaceFirst("<!--", "// <!--");
                 }
                 // IE ignores the last line containing uncommented -->
-                if (browserVersion_.isIE() && sourceCodeTrimmed.endsWith("-->")) {
+                if (browserVersion_.hasFeature(BrowserVersionFeatures.GENERATED_140)
+                        && sourceCodeTrimmed.endsWith("-->")) {
                     final int lastDoubleSlash = source.lastIndexOf("//");
                     final int lastNewLine = Math.max(source.lastIndexOf('\n'), source.lastIndexOf('\r'));
                     if (lastNewLine > lastDoubleSlash) {
                         source = source.substring(0, lastNewLine);
                     }
                 }
+            }
+
+            // Pre process the source code
+            final HtmlPage page = (HtmlPage) Context.getCurrentContext()
+                .getThreadLocal(JavaScriptEngine.KEY_STARTING_PAGE);
+            source = preProcess(page, source, sourceName, lineno, null);
+
+            //source = new StringScriptPreProcessor(HtmlUnitContextFactory.this)
+            //    .preProcess(page, source, sourceName, lineno, null);
+
+            // PreProcess IE Conditional Compilation if needed
+            if (browserVersion_.hasFeature(BrowserVersionFeatures.GENERATED_141)) {
+                final ScriptPreProcessor ieCCPreProcessor = new IEConditionalCompilationScriptPreProcessor();
+                source = ieCCPreProcessor.preProcess(page, source, sourceName, lineno, null);
+//                sourceCode = IEWeirdSyntaxScriptPreProcessor.getInstance()
+//                    .preProcess(htmlPage, sourceCode, sourceName, null);
             }
 
             return super.compileString(source, compiler, compilationErrorReporter,
@@ -183,17 +183,19 @@ public class HtmlUnitContextFactory extends ContextFactory implements Serializab
      * @param htmlPage the page
      * @param sourceCode the code to process
      * @param sourceName a name for the chunk of code (used in error messages)
+     * @param lineNumber the line number of the source code
      * @param htmlElement the HTML element that will act as the context
      * @return the source code after being pre processed
      * @see com.gargoylesoftware.htmlunit.ScriptPreProcessor
      */
     protected String preProcess(
-        final HtmlPage htmlPage, final String sourceCode, final String sourceName, final HtmlElement htmlElement) {
+        final HtmlPage htmlPage, final String sourceCode, final String sourceName, final int lineNumber,
+        final HtmlElement htmlElement) {
 
         String newSourceCode = sourceCode;
         final ScriptPreProcessor preProcessor = webClient_.getScriptPreProcessor();
         if (preProcessor != null) {
-            newSourceCode = preProcessor.preProcess(htmlPage, sourceCode, sourceName, htmlElement);
+            newSourceCode = preProcessor.preProcess(htmlPage, sourceCode, sourceName, lineNumber, htmlElement);
             if (newSourceCode == null) {
                 newSourceCode = "";
             }
@@ -223,6 +225,8 @@ public class HtmlUnitContextFactory extends ContextFactory implements Serializab
 
         // register custom RegExp processing
         ScriptRuntime.setRegExpProxy(cx, new HtmlUnitRegExpProxy(ScriptRuntime.getRegExpProxy(cx)));
+
+        cx.setMaximumInterpreterStackDepth(10000);
 
         return cx;
     }
@@ -272,14 +276,15 @@ public class HtmlUnitContextFactory extends ContextFactory implements Serializab
             case Context.FEATURE_RESERVED_KEYWORD_AS_IDENTIFIER:
                 return true;
             case Context.FEATURE_PARENT_PROTO_PROPERTIES:
-                return !browserVersion_.isIE();
+                return !browserVersion_.hasFeature(BrowserVersionFeatures.GENERATED_142);
             case Context.FEATURE_NON_ECMA_GET_YEAR:
-                return browserVersion_.isIE();
+                return browserVersion_.hasFeature(BrowserVersionFeatures.GENERATED_143);
             case Context.FEATURE_HTMLUNIT_WRITE_READONLY_PROPERTIES:
                 return browserVersion_.hasFeature(BrowserVersionFeatures.SET_READONLY_PROPERTIES);
+            case Context.FEATURE_HTMLUNIT_JS_CATCH_JAVA_EXCEPTION:
+                return false;
             default:
                 return super.hasFeature(cx, featureIndex);
         }
     }
-
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import java.util.NoSuchElementException;
 /**
  * Provides some utilities for working on the Html document.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
@@ -161,12 +161,12 @@ abstract class NodeIterator implements Iterator<DomNode> {
         node_ = getFirstNode(contextNode);
     }
 
-    /** @inheritDoc Iterator#hasNext() */
+    /** {@inheritDoc} */
     public boolean hasNext() {
         return (node_ != null);
     }
 
-    /** @inheritDoc Iterator#next() */
+    /** {@inheritDoc} */
     public DomNode next() {
         if (node_ == null) {
             throw new NoSuchElementException();
@@ -176,7 +176,7 @@ abstract class NodeIterator implements Iterator<DomNode> {
         return ret;
     }
 
-    /** @inheritDoc Iterator#remove() */
+    /** {@inheritDoc} */
     public void remove() {
         throw new UnsupportedOperationException();
     }

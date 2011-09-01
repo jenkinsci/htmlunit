@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,19 +18,19 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 
 /**
  * Unit tests for {@link HTMLDivElement}.
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
 @RunWith(BrowserRunner.class)
-public class HTMLDivElementTest extends WebTestCase {
+public class HTMLDivElementTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if an error occurs
@@ -56,7 +56,7 @@ public class HTMLDivElementTest extends WebTestCase {
             + "  </head>\n"
             + "  <body onload='test()'><div id='d'>abc</div></body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -93,6 +93,6 @@ public class HTMLDivElementTest extends WebTestCase {
             + "  </head>\n"
             + "  <body onload='test()'><div id='d'>abc</div></body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 }

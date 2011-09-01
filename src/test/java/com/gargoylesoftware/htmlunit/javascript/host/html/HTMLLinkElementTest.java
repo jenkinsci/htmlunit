@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,26 +14,29 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Unit tests for {@link HTMLLinkElement}.
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
+ * @author Marc Guillemot
+ * @author Ahmed Ashour
  */
-public class HTMLLinkElementTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public class HTMLLinkElementTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
+    @Alerts({ "", "", "", "", "§§URL§§test.css", "text/css", "stylesheet", "stylesheet1" })
     public void basicLinkAttributes() throws Exception {
         final String html =
               "<html>\n"
@@ -44,22 +47,21 @@ public class HTMLLinkElementTest extends WebTestCase {
             + "                alert(s.href);\n"
             + "                alert(s.type);\n"
             + "                alert(s.rel);\n"
-            + "                s.href= 'test.css';\n"
+            + "                alert(s.rev);\n"
+            + "                s.href = 'test.css';\n"
             + "                s.type = 'text/css';\n"
-            + "                s.rel = 'stylesheet';\n"
+            + "                s.rel  = 'stylesheet';\n"
+            + "                s.rev  = 'stylesheet1';\n"
             + "                alert(s.href);\n"
             + "                alert(s.type);\n"
             + "                alert(s.rel);\n"
+            + "                alert(s.rev);\n"
             + "            }\n"
             + "        </script>\n"
             + "    </body>\n"
             + "</html>";
-        final List<String> actual = new ArrayList<String>();
-        loadPage(BrowserVersion.FIREFOX_2, html, actual);
-        final String[] expected = new String[] {
-            "", "", "",
-            "http://www.gargoylesoftware.com/test.css", "text/css", "stylesheet"};
-        assertEquals(expected, actual);
+
+        loadPageWithAlerts(html);
     }
 
 }

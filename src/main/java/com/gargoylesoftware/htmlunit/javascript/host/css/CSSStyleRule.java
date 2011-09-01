@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,18 +17,18 @@ package com.gargoylesoftware.htmlunit.javascript.host.css;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.gargoylesoftware.htmlunit.javascript.host.Stylesheet;
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 
 /**
  * A JavaScript object for a CSSStyleRule.
  *
- * @version $Revision: 4502 $
+ * @version $Revision: 6488 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
  */
 public class CSSStyleRule extends CSSRule {
-
-    private static final long serialVersionUID = 207943879569003822L;
+    private static final Pattern SELECTOR_PARTS_PATTERN = Pattern.compile("[\\.#]?[a-zA-Z]+");
+    private static final Pattern SELECTOR_REPLACE_PATTERN = Pattern.compile("\\*([\\.#])");
 
     /**
      * Creates a new instance. JavaScript objects must have a default constructor.
@@ -42,7 +42,7 @@ public class CSSStyleRule extends CSSRule {
      * @param stylesheet the Stylesheet of this rule.
      * @param rule the wrapped rule
      */
-    protected CSSStyleRule(final Stylesheet stylesheet, final org.w3c.dom.css.CSSRule rule) {
+    protected CSSStyleRule(final CSSStyleSheet stylesheet, final org.w3c.dom.css.CSSRule rule) {
         super(stylesheet, rule);
     }
 
@@ -52,16 +52,16 @@ public class CSSStyleRule extends CSSRule {
      */
     public String jsxGet_selectorText() {
         String selectorText = ((org.w3c.dom.css.CSSStyleRule) getRule()).getSelectorText();
-        final Pattern p = Pattern.compile("[\\.#]?[a-zA-Z]+");
-        final Matcher m = p.matcher(selectorText);
+        final Matcher m = SELECTOR_PARTS_PATTERN.matcher(selectorText);
         final StringBuffer sb = new StringBuffer();
         while (m.find()) {
             String fixedName = m.group();
             // this should be handled with the right regex but...
-            if (fixedName.startsWith(".") || fixedName.startsWith("#")) {
+            if ((fixedName.length() > 0)
+                    && (('.' == fixedName.charAt(0)) || ('#' == fixedName.charAt(0)))) {
                 // nothing
             }
-            else if (getBrowserVersion().isIE()) {
+            else if (getBrowserVersion().hasFeature(BrowserVersionFeatures.JS_SELECTOR_TEXT_UPPERCASE)) {
                 fixedName = fixedName.toUpperCase();
             }
             else {
@@ -71,7 +71,8 @@ public class CSSStyleRule extends CSSRule {
         }
         m.appendTail(sb);
 
-        selectorText = sb.toString().replaceAll("\\*([\\.#])", "$1"); // ".foo" and not "*.foo"
+        // ".foo" and not "*.foo"
+        selectorText = SELECTOR_REPLACE_PATTERN.matcher(sb.toString()).replaceAll("$1");
         return selectorText;
     }
 

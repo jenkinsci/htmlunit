@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import org.apache.commons.io.FileUtils;
 /**
  * Subversion utilities.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  */
 public final class SVN {
@@ -37,7 +37,7 @@ public final class SVN {
     public static void deleteSVN(final File dir) throws IOException {
         for (final File f : dir.listFiles()) {
             if (f.isDirectory()) {
-                if (f.getName().equals(".svn")) {
+                if (".svn".equals(f.getName())) {
                     FileUtils.deleteDirectory(f);
                 }
                 else {
@@ -55,7 +55,7 @@ public final class SVN {
     public static void consistentNewlines(final File dir) throws IOException {
         for (final File f : dir.listFiles()) {
             if (f.isDirectory()) {
-                if (!f.getName().equals(".svn")) {
+                if (!".svn".equals(f.getName())) {
                     consistentNewlines(f);
                 }
             }

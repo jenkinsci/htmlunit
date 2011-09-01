@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import javax.xml.parsers.ParserConfigurationException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.DocumentType;
 import org.w3c.dom.NamedNodeMap;
@@ -46,6 +47,7 @@ import com.gargoylesoftware.htmlunit.html.DomComment;
 import com.gargoylesoftware.htmlunit.html.DomDocumentType;
 import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.DomNode;
+import com.gargoylesoftware.htmlunit.html.DomProcessingInstruction;
 import com.gargoylesoftware.htmlunit.html.DomText;
 import com.gargoylesoftware.htmlunit.html.HTMLParser;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
@@ -56,7 +58,7 @@ import com.gargoylesoftware.htmlunit.html.IElementFactory;
  *
  * Provides facility method to work with XML responses.
  *
- * @version $Revision: 4806 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  * @author Sudhan Moghe
@@ -153,7 +155,8 @@ public final class XmlUtil {
         final Map<String, DomAttr> attributes = new HashMap<String, DomAttr>();
         final NamedNodeMap nodeAttributes = source.getAttributes();
         for (int i = 0; i < nodeAttributes.getLength(); i++) {
-            final Node attribute = nodeAttributes.item(i);
+            final Attr attribute = (Attr) nodeAttributes.item(i);
+            final String namespaceURI = attribute.getNamespaceURI();
             final String qualifiedName;
             if (attribute.getPrefix() != null) {
                 qualifiedName = attribute.getPrefix() + ':' + attribute.getLocalName();
@@ -161,8 +164,9 @@ public final class XmlUtil {
             else {
                 qualifiedName = attribute.getLocalName();
             }
-            final DomAttr xmlAttribute =
-                new DomAttr(page, attribute.getNamespaceURI(), qualifiedName, attribute.getNodeValue());
+            final String value = attribute.getNodeValue();
+            final boolean specified = attribute.getSpecified();
+            final DomAttr xmlAttribute = new DomAttr(page, namespaceURI, qualifiedName, value, specified);
             attributes.put(attribute.getNodeName(), xmlAttribute);
         }
         if (page instanceof HtmlPage) {
@@ -208,23 +212,24 @@ public final class XmlUtil {
                     break;
 
                 case Node.TEXT_NODE:
-                    final DomText text = new DomText(page, child.getNodeValue());
-                    dest.appendChild(text);
+                    dest.appendChild(new DomText(page, child.getNodeValue()));
                     break;
 
                 case Node.CDATA_SECTION_NODE:
-                    final DomCDataSection cdata = new DomCDataSection(page, child.getNodeValue());
-                    dest.appendChild(cdata);
+                    dest.appendChild(new DomCDataSection(page, child.getNodeValue()));
                     break;
 
                 case Node.COMMENT_NODE:
-                    final DomComment comment = new DomComment(page, child.getNodeValue());
-                    dest.appendChild(comment);
+                    dest.appendChild(new DomComment(page, child.getNodeValue()));
+                    break;
+
+                case Node.PROCESSING_INSTRUCTION_NODE:
+                    dest.appendChild(new DomProcessingInstruction(page, child.getNodeName(), child.getNodeValue()));
                     break;
 
                 default:
                     LOG.warn("NodeType " + child.getNodeType()
-                            + " (" + child.getNodeName() + ") is not yet supported.");
+                        + " (" + child.getNodeName() + ") is not yet supported.");
             }
         }
     }
@@ -254,8 +259,10 @@ public final class XmlUtil {
      */
     public static String lookupPrefix(final DomElement element, final String namespace) {
         final Map<String, DomAttr> attributes = element.getAttributesMap();
-        for (final String name : attributes.keySet()) {
-            if (name.startsWith("xmlns:") && attributes.get(name).getValue().equals(namespace)) {
+        for (final Map.Entry<String, DomAttr>entry : attributes.entrySet()) {
+            final String name = entry.getKey();
+            final DomAttr value = entry.getValue();
+            if (name.startsWith("xmlns:") && value.getValue().equals(namespace)) {
                 return name.substring(6);
             }
         }

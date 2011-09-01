@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,12 +18,13 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.lang.ArrayUtils;
-import org.apache.commons.lang.ClassUtils;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.FunctionObject;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
+
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.ClassUtils;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.NodeList;
 
@@ -34,12 +35,10 @@ import org.w3c.dom.NodeList;
  * properties and functions should occur from the XML configuration according to
  * the browser to simulate.
  *
- * @version $Revision: 4403 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  */
 public class ScriptableWrapper extends ScriptableObject {
-    private static final long serialVersionUID = 1736378450382368760L;
-
     private final Map<String, Method> properties_ = new HashMap<String, Method>();
 
     private Method getByIndexMethod_;
@@ -179,7 +178,7 @@ public class ScriptableWrapper extends ScriptableObject {
     public Object get(final int index, final Scriptable start) {
         if (getByIndexMethod_ != null) {
             final Object byIndex = invoke(getByIndexMethod_,
-                    new Object[] {new Integer(index)});
+                    new Object[] {Integer.valueOf(index)});
             return Context.javaToJS(byIndex, ScriptableObject
                     .getTopLevelScope(start));
         }

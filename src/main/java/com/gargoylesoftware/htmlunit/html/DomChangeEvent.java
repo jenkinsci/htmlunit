@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,13 +19,11 @@ import java.util.EventObject;
 /**
  * This is the event class for notifications about changes to the DOM structure.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  * @see DomChangeListener
  */
 public class DomChangeEvent extends EventObject {
-
-    private static final long serialVersionUID = -7301406882254534491L;
 
     private final DomNode changedNode_;
 
@@ -37,7 +35,7 @@ public class DomChangeEvent extends EventObject {
      */
     public DomChangeEvent(final DomNode parentNode, final DomNode changedNode) {
         super(parentNode);
-        this.changedNode_ = changedNode;
+        changedNode_ = changedNode;
     }
 
     /**

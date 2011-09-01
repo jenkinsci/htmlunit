@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,11 +20,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
+import java.util.WeakHashMap;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -56,6 +55,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlDefinitionTerm;
 import com.gargoylesoftware.htmlunit.html.HtmlDivision;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlEmphasis;
+import com.gargoylesoftware.htmlunit.html.HtmlExample;
 import com.gargoylesoftware.htmlunit.html.HtmlHeading1;
 import com.gargoylesoftware.htmlunit.html.HtmlHeading2;
 import com.gargoylesoftware.htmlunit.html.HtmlHeading3;
@@ -89,7 +89,6 @@ import com.gargoylesoftware.htmlunit.html.HtmlTableHeader;
 import com.gargoylesoftware.htmlunit.html.HtmlTeletype;
 import com.gargoylesoftware.htmlunit.html.HtmlUnderlined;
 import com.gargoylesoftware.htmlunit.html.HtmlVariable;
-import com.gargoylesoftware.htmlunit.html.HtmlExample;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 import com.gargoylesoftware.htmlunit.javascript.StrictErrorHandler;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLDivElement;
@@ -103,7 +102,7 @@ import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLTableSectionElemen
  * A container for all the JavaScript configuration information.
  * TODO - Need to add the logic to support the browser and JavaScript conditionals in the Class elements.
  *
- * @version $Revision: 4806 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Chris Erskine
  * @author Ahmed Ashour
@@ -112,6 +111,7 @@ public final class JavaScriptConfiguration {
 
     private static final Log LOG = LogFactory.getLog(JavaScriptConfiguration.class);
 
+    /** The JavaScript configuration XML document. */
     private static Document XmlDocument_;
 
     /** Constant indicating that this function/property is used by the specified browser version. */
@@ -123,28 +123,28 @@ public final class JavaScriptConfiguration {
     /** Constant indicating that this function/property is not defined in the configuration file. */
     public static final int NOT_FOUND = 3;
 
+    /** Cache of browser versions and their corresponding JavaScript configurations. */
     private static Map<BrowserVersion, JavaScriptConfiguration> ConfigurationMap_ =
-        new HashMap<BrowserVersion, JavaScriptConfiguration>(11);
+        new WeakHashMap<BrowserVersion, JavaScriptConfiguration>(11);
+
     private static Map<String, String> ClassnameMap_ = new HashMap<String, String>();
-    private static Map<Class < ? extends HtmlElement>, Class < ? extends SimpleScriptable>> HtmlJavaScriptMap_;
+
+    private Map<Class < ? extends HtmlElement>, Class < ? extends SimpleScriptable>> htmlJavaScriptMap_;
 
     private final Map<String, ClassConfiguration> configuration_;
-    private final BrowserVersion browser_;
 
     /**
      * Constructor is only called from {@link #getInstance(BrowserVersion)} which is synchronized.
      * @param browser the browser version to use
      */
     private JavaScriptConfiguration(final BrowserVersion browser) {
-        browser_ = browser;
         if (XmlDocument_ == null) {
             loadConfiguration();
         }
-
         if (XmlDocument_ == null) {
             throw new IllegalStateException("Configuration was not initialized - see log for details");
         }
-        configuration_ = buildUsageMap();
+        configuration_ = buildUsageMap(browser);
     }
 
     /**
@@ -157,13 +157,11 @@ public final class JavaScriptConfiguration {
     }
 
     /**
-     * Reset the this class to it's initial state. This method is
-     * used for testing only.
-     *
+     * Resets this class to its initial state. This method is used for testing only.
      */
     protected static void resetClassForTesting() {
         XmlDocument_ = null;
-        ConfigurationMap_ = new HashMap<BrowserVersion, JavaScriptConfiguration>(11);
+        ConfigurationMap_ = new WeakHashMap<BrowserVersion, JavaScriptConfiguration>(11);
     }
 
     /**
@@ -214,9 +212,9 @@ public final class JavaScriptConfiguration {
         }
         catch (final SAXParseException parseException) {
             LOG.error("line=[" + parseException.getLineNumber()
-                    + "] columnNumber=[" + parseException.getColumnNumber()
-                    + "] systemId=[" + parseException.getSystemId()
-                    + "] publicId=[" + parseException.getPublicId() + "]", parseException);
+                + "] columnNumber=[" + parseException.getColumnNumber()
+                + "] systemId=[" + parseException.getSystemId()
+                + "] publicId=[" + parseException.getPublicId() + "]", parseException);
         }
         catch (final Exception e) {
             LOG.error("Error when loading JavascriptConfiguration.xml", e);
@@ -280,36 +278,73 @@ public final class JavaScriptConfiguration {
     }
 
     /**
-     * Gets the set of keys for the class configurations.
-     * @return the set of keys for the class configurations
+     * Gets all the configurations.
+     * @return the class configurations
      */
-    public Set<String> keySet() {
-        return configuration_.keySet();
+    public Iterable<ClassConfiguration> getAll() {
+        return configuration_.values();
     }
 
-    private Map<String, ClassConfiguration> buildUsageMap() {
+    private Map<String, ClassConfiguration> buildUsageMap(final BrowserVersion browser) {
         final Map<String, ClassConfiguration> classMap = new HashMap<String, ClassConfiguration>(30);
         Node node = XmlDocument_.getDocumentElement().getFirstChild();
+
+        final Map<String, ClassConfiguration> virtualClasses = new HashMap<String, ClassConfiguration>();
+
         while (node != null) {
             if (node instanceof Element) {
                 final Element element = (Element) node;
-                if (element.getTagName().equals("class")) {
-                    final String className = element.getAttribute("name");
-                    if (!testToExcludeElement(element)) {
+                if ("class".equals(element.getTagName())) {
+                    if (!testToExcludeElement(element, browser)) {
+                        final String hostClassName = element.getAttribute("classname");
+                        if (hostClassName.startsWith("#")) {
+                            // this is not a real class but a facility for configuration
+                            final String extendsClassName = element.getAttribute("extends");
+                            final ClassConfiguration parentConfig = classMap.get(extendsClassName);
+                            if (parentConfig == null) {
+                                throw new RuntimeException(extendsClassName
+                                    + " should be specified before " + hostClassName);
+                            }
+                            element.setAttribute("classname", parentConfig.getHostClass().getName());
+                        }
+
                         try {
-                            final ClassConfiguration classConfiguration = parseClassElement(className, element);
-                            if (classConfiguration != null) {
-                                classMap.put(className, classConfiguration);
+                            final ClassConfiguration config = parseClassElement(element, browser);
+                            if (config != null) {
+                                if (hostClassName.startsWith("#")) {
+                                    virtualClasses.put(hostClassName, config);
+                                    element.setAttribute("classname", hostClassName); // restore it
+                                }
+                                else {
+                                    classMap.put(config.getHostClass().getSimpleName(), config);
+                                }
                             }
                         }
                         catch (final ClassNotFoundException e) {
-                            throw new IllegalStateException("The class was not found for '" + className + "'");
+                            throw new IllegalStateException("The class was not found for '"
+                                    + element.getAttribute("classname") + "'");
                         }
                     }
                 }
             }
             node = node.getNextSibling();
         }
+
+        // add properties and methods from the virtual classes directly to the classes that "inherit" from them
+        for (final ClassConfiguration config : classMap.values()) {
+            final String extendsClassName = config.getExtendedClassName();
+            if (extendsClassName.startsWith("#")) {
+                final ClassConfiguration virtualClassConfig = virtualClasses.get(extendsClassName);
+                if (virtualClassConfig == null) {
+                    throw new RuntimeException("Virtual config >" + extendsClassName + "< doesn't exist!");
+                }
+
+                config.addAllDefinitions(virtualClassConfig);
+                // only one level of virtual classes allowed
+                config.setExtendedClassName(virtualClassConfig.getExtendedClassName());
+            }
+        }
+
         return Collections.unmodifiableMap(classMap);
     }
 
@@ -317,51 +352,54 @@ public final class JavaScriptConfiguration {
      * Parses the class element to build the class configuration.
      * @param className the name of the class element
      * @param element the element to parse
+     * @param browser the browser version under consideration
      * @return the class element to build the class configuration
      * @throws ClassNotFoundException if the specified class could not be found
      */
-    private ClassConfiguration parseClassElement(final String className, final Element element)
-        throws ClassNotFoundException {
+    private ClassConfiguration parseClassElement(final Element element,
+        final BrowserVersion browser) throws ClassNotFoundException {
         final String notImplemented = element.getAttribute("notImplemented");
         if ("true".equalsIgnoreCase(notImplemented)) {
             return null;
         }
-        final String linkedClassname = element.getAttribute("classname");
+        final String hostClassName = element.getAttribute("classname");
         final String jsConstructor = element.getAttribute("jsConstructor");
-        final String superclassName = element.getAttribute("extends");
-        final String htmlClassname = element.getAttribute("htmlClass");
+        final String extendsClassName = element.getAttribute("extends");
+        final String htmlClassName = element.getAttribute("htmlClass");
         boolean jsObjectFlag = false;
         final String jsObjectStr = element.getAttribute("JSObject");
         if ("true".equalsIgnoreCase(jsObjectStr)) {
             jsObjectFlag = true;
         }
-        final ClassConfiguration classConfiguration =
-            new ClassConfiguration(className, linkedClassname, jsConstructor,
-                    superclassName, htmlClassname, jsObjectFlag);
-        ClassnameMap_.put(linkedClassname, className);
+        final ClassConfiguration classConfiguration = new ClassConfiguration(hostClassName, jsConstructor,
+                    extendsClassName, htmlClassName, jsObjectFlag);
+        final String simpleClassName = hostClassName.substring(hostClassName.lastIndexOf('.') + 1);
+        ClassnameMap_.put(hostClassName, simpleClassName);
         Node node = element.getFirstChild();
         while (node != null) {
             if (node instanceof Element) {
                 final Element childElement = (Element) node;
                 final String tagName = childElement.getTagName();
-                if (tagName.equals("property")) {
-                    parsePropertyElement(classConfiguration, childElement);
+                if ("property".equals(tagName)) {
+                    parsePropertyElement(classConfiguration, childElement, browser);
                 }
-                else if (tagName.equals("function")) {
-                    parseFunctionElement(classConfiguration, childElement);
+                else if ("function".equals(tagName)) {
+                    parseFunctionElement(classConfiguration, childElement, browser);
                 }
-                else if (tagName.equals("constant")) {
-                    parseConstantElement(classConfiguration, childElement);
+                else if ("constant".equals(tagName)) {
+                    parseConstantElement(classConfiguration, childElement, browser);
                 }
-                else if (tagName.equals("browser")) {
-                    LOG.debug("browser tag not yet handled for class " + linkedClassname);
+                else if ("browser".equals(tagName)) {
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("browser tag not yet handled for class " + hostClassName);
+                    }
                 }
-                else if (tagName.equals("doclink")) {
+                else if ("doclink".equals(tagName)) {
                     // ignore this link
                 }
                 else {
                     throw new IllegalStateException("Do not understand element type '"
-                        + tagName + "' in '" + linkedClassname + "'");
+                        + tagName + "' in '" + hostClassName + "'");
                 }
             }
             node = node.getNextSibling();
@@ -374,27 +412,29 @@ public final class JavaScriptConfiguration {
      *
      * @param classConfiguration the configuration that is being built
      * @param element the property element
+     * @param browser the browser version under consideration
      */
-    private void parsePropertyElement(final ClassConfiguration classConfiguration, final Element element) {
+    private void parsePropertyElement(final ClassConfiguration classConfiguration, final Element element,
+        final BrowserVersion browser) {
         final String notImplemented = element.getAttribute("notImplemented");
         if ("true".equalsIgnoreCase(notImplemented)) {
             return;
         }
-        if (testToExcludeElement(element)) {
+        if (testToExcludeElement(element, browser)) {
             return;
         }
         final String propertyName = element.getAttribute("name");
         boolean readable = false;
-        boolean writeable = false;
+        boolean writable = false;
         final String readFlag = element.getAttribute("readable");
         if ("true".equalsIgnoreCase(readFlag)) {
             readable = true;
         }
         final String writeFlag = element.getAttribute("writable");
         if ("true".equalsIgnoreCase(writeFlag)) {
-            writeable = true;
+            writable = true;
         }
-        classConfiguration.addProperty(propertyName, readable, writeable);
+        classConfiguration.addProperty(propertyName, readable, writable);
     }
 
     /**
@@ -402,14 +442,16 @@ public final class JavaScriptConfiguration {
      *
      * @param classConfiguration the configuration that is being built
      * @param element the function element
+     * @param browser the browser version under consideration
      */
-    private void parseFunctionElement(final ClassConfiguration classConfiguration, final Element element) {
+    private void parseFunctionElement(final ClassConfiguration classConfiguration, final Element element,
+        final BrowserVersion browser) {
         final String notImplemented = element.getAttribute("notImplemented");
         if ("true".equalsIgnoreCase(notImplemented)) {
             return;
         }
         final String propertyName = element.getAttribute("name");
-        if (testToExcludeElement(element)) {
+        if (testToExcludeElement(element, browser)) {
             return;
         }
         classConfiguration.addFunction(propertyName);
@@ -420,9 +462,11 @@ public final class JavaScriptConfiguration {
      *
      * @param classConfiguration the configuration that is being built
      * @param element the property element
+     * @param browser the browser version under consideration
      */
-    private void parseConstantElement(final ClassConfiguration classConfiguration, final Element element) {
-        if (testToExcludeElement(element)) {
+    private void parseConstantElement(final ClassConfiguration classConfiguration, final Element element,
+        final BrowserVersion browser) {
+        if (testToExcludeElement(element, browser)) {
             return;
         }
         final String constantName = element.getAttribute("name");
@@ -433,10 +477,11 @@ public final class JavaScriptConfiguration {
      * Test for the browser and JavaScript constraints. Returns true if any constraints are present
      * and the browser does not meet the constraints.
      * @param element the element to scan the children of
+     * @param browser the browser version under consideration
      * @return true to exclude this element
      */
-    private boolean testToExcludeElement(final Element element) {
-        if (browser_ == null) {
+    private boolean testToExcludeElement(final Element element, final BrowserVersion browser) {
+        if (browser == null) {
             return false;
         }
         Node node = element.getFirstChild();
@@ -445,9 +490,9 @@ public final class JavaScriptConfiguration {
         while (node != null) {
             if (node instanceof Element) {
                 final Element childElement = (Element) node;
-                if (childElement.getTagName().equals("browser")) {
+                if ("browser".equals(childElement.getTagName())) {
                     browserConstraint = true;
-                    if (testToIncludeForBrowserConstraint(childElement, browser_)) {
+                    if (testToIncludeForBrowserConstraint(childElement, browser)) {
                         allowBrowser = true;
                     }
                 }
@@ -458,26 +503,6 @@ public final class JavaScriptConfiguration {
             return true;
         }
         return false;
-    }
-
-    /**
-     * Test to see if the supplied configuration matches for the parsed configuration for the named class
-     * This is a method for testing.
-     *
-     * @param classname - the parsed classname to test
-     * @param config - the expected configuration
-     * @return true if they match
-     */
-    protected boolean classConfigEquals(final String classname, final ClassConfiguration config) {
-        final ClassConfiguration myConfig = configuration_.get(classname);
-        return config.equals(myConfig);
-    }
-
-    /**
-     * @return the browser
-     */
-    public BrowserVersion getBrowser() {
-        return browser_;
     }
 
     /**
@@ -502,7 +527,7 @@ public final class JavaScriptConfiguration {
         else {
             maxVersion = Float.parseFloat(max);
         }
-        if ((maxVersion > 0) && (browser.getBrowserVersionNumeric() > maxVersion)) {
+        if (maxVersion > 0 && browser.getBrowserVersionNumeric() > maxVersion) {
             return false;
         }
 
@@ -514,158 +539,7 @@ public final class JavaScriptConfiguration {
         else {
             minVersion = Float.parseFloat(min);
         }
-        if ((minVersion > 0) && (browser.getBrowserVersionNumeric() < minVersion)) {
-            return false;
-        }
-        return true;
-    }
-
-    /**
-     * Returns the class for the given class name.
-     * @param classname the classname that you want the implementing class for  (for testing only)
-     * @return the class for the given class name
-     */
-    protected Class< ? > getClassObject(final String classname) {
-        final ClassConfiguration config = configuration_.get(classname);
-        return config.getLinkedClass();
-    }
-
-    /**
-     * Gets the method that implements the getter for the given property based upon the class object.
-     * @param clazz the actual class to use as reference
-     * @param propertyName the property to find the getter for
-     * @return the method that implements the getter for the given property based upon the class object
-     */
-    public Method getPropertyReadMethod(final Class< ? > clazz, final String propertyName) {
-        final String classname = getClassnameForClass(clazz);
-        return getPropertyReadMethod(classname, propertyName);
-    }
-
-    /**
-     * Returns the method that implements the get function for in the class for the given class.
-     *
-     * @param classname the name of the class to work with
-     * @param propertyName the property to find the getter for
-     * @return the method that implements the get function for in the class for the given class
-     */
-    public Method getPropertyReadMethod(String classname, final String propertyName) {
-        ClassConfiguration config;
-        Method theMethod;
-        while (classname.length() > 0) {
-            config = configuration_.get(classname);
-            if (config == null) {
-                return null;
-            }
-            theMethod = config.getPropertyReadMethod(propertyName);
-            if (theMethod != null) {
-                return theMethod;
-            }
-            classname = config.getExtendedClass();
-        }
-        return null;
-    }
-
-    private ClassConfiguration.PropertyInfo findPropertyInChain(final String classname, final String propertyName) {
-        String workname = classname;
-        ClassConfiguration config;
-        while (workname.length() > 0) {
-            config = configuration_.get(workname);
-            final ClassConfiguration.PropertyInfo info = config.getPropertyInfo(propertyName);
-            if (info != null) {
-                return info;
-            }
-            workname = config.getExtendedClass();
-        }
-        return null;
-    }
-
-    /**
-     * Gets the method that implements the setter for the given property based upon the class object.
-     * @param clazz the actual class to use as reference
-     * @param propertyName the property to find the getter for
-     * @return the method that implements the setter for the given property based upon the class object
-     */
-    public Method getPropertyWriteMethod(final Class< ? > clazz, final String propertyName) {
-        final String classname = getClassnameForClass(clazz);
-        return getPropertyWriteMethod(classname, propertyName);
-    }
-
-    /**
-     * Returns the method that implements the set function in the class for the given class.
-     *
-     * @param classname the name of the class to work with
-     * @param propertyName the property to find the setter for
-     * @return the method that implements the set function in the class for the given class
-     */
-    public Method getPropertyWriteMethod(String classname, final String propertyName) {
-        ClassConfiguration config;
-        Method theMethod;
-        while (classname.length() > 0) {
-            config = configuration_.get(classname);
-            theMethod = config.getPropertyWriteMethod(propertyName);
-            if (theMethod != null) {
-                return theMethod;
-            }
-            classname = config.getExtendedClass();
-        }
-        return null;
-    }
-
-    /**
-     * Gets the method that implements the setter for the given property based upon the class object.
-     *
-     * @param clazz the actual class to use as reference
-     * @param functionName the function to find the method for
-     * @return the method that implements the setter for the given property based upon the class object
-     */
-    public Method getFunctionMethod(final Class< ? > clazz, final String functionName) {
-        final String classname = getClassnameForClass(clazz);
-        return getFunctionMethod(classname, functionName);
-    }
-
-    /**
-     * Returns the method that implements the given function in the class for the given class.
-     *
-     * @param classname the name of the class to work with
-     * @param functionName the function to find the method for
-     * @return the method that implements the given function in the class for the given class
-     */
-    public Method getFunctionMethod(String classname, final String functionName) {
-        ClassConfiguration config;
-        Method theMethod;
-        while (classname.length() > 0) {
-            config = configuration_.get(classname);
-            theMethod = config.getFunctionMethod(functionName);
-            if (theMethod != null) {
-                return theMethod;
-            }
-            classname = config.getExtendedClass();
-        }
-        return null;
-    }
-
-    /**
-     * Checks to see if there is an entry for the given property.
-     *
-     * @param clazz the class the property is for
-     * @param propertyName the name of the property
-     * @return boolean <tt>true</tt> if the property exists
-     */
-    public boolean propertyExists(final Class< ? > clazz, final String propertyName) {
-        final String classname = getClassnameForClass(clazz);
-        return propertyExists(classname, propertyName);
-    }
-
-    /**
-     * Checks to see if there is an entry for the given property.
-     *
-     * @param classname the class the property is for
-     * @param propertyName the name of the property
-     * @return boolean <tt>true</tt> if the property exists
-     */
-    public boolean propertyExists(final String classname, final String propertyName) {
-        final ClassConfiguration.PropertyInfo info = findPropertyInChain(classname, propertyName);
-        if (info == null) {
+        if (minVersion > 0 && browser.getBrowserVersionNumeric() < minVersion) {
             return false;
         }
         return true;
@@ -679,7 +553,7 @@ public final class JavaScriptConfiguration {
      * @param clazz
      * @return the classname
      */
-    private String getClassnameForClass(final Class< ? > clazz) {
+    String getClassnameForClass(final Class< ? > clazz) {
         final String name = ClassnameMap_.get(clazz.getName());
         if (name == null) {
             throw new IllegalStateException("Did not find the mapping of the class to the classname for "
@@ -695,30 +569,31 @@ public final class JavaScriptConfiguration {
      * @return the mappings
      */
     @SuppressWarnings("unchecked")
-    public static synchronized Map<Class < ? extends HtmlElement>, Class < ? extends SimpleScriptable>>
+    public Map<Class < ? extends HtmlElement>, Class < ? extends SimpleScriptable>>
     getHtmlJavaScriptMapping() {
-        if (HtmlJavaScriptMap_ != null) {
-            return HtmlJavaScriptMap_;
+        if (htmlJavaScriptMap_ != null) {
+            return htmlJavaScriptMap_;
         }
-        final JavaScriptConfiguration configuration = JavaScriptConfiguration.getAllEntries();
 
         final Map<Class < ? extends HtmlElement>, Class < ? extends SimpleScriptable>> map =
             new HashMap<Class < ? extends HtmlElement>, Class < ? extends SimpleScriptable>>();
 
-        for (String jsClassname : configuration.keySet()) {
-            ClassConfiguration classConfig = configuration.getClassConfiguration(jsClassname);
+        for (String jsClassname : configuration_.keySet()) {
+            ClassConfiguration classConfig = getClassConfiguration(jsClassname);
             final String htmlClassname = classConfig.getHtmlClassname();
             if (htmlClassname != null) {
                 try {
                     final Class< ? extends HtmlElement> htmlClass =
                         (Class< ? extends HtmlElement>) Class.forName(htmlClassname);
                     // preload and validate that the class exists
-                    LOG.debug("Mapping " + htmlClass.getName() + " to " + jsClassname);
-                    while (!classConfig.isJsObject()) {
-                        jsClassname = classConfig.getExtendedClass();
-                        classConfig = configuration.getClassConfiguration(jsClassname);
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("Mapping " + htmlClass.getName() + " to " + jsClassname);
                     }
-                    map.put(htmlClass, classConfig.getLinkedClass());
+                    while (!classConfig.isJsObject()) {
+                        jsClassname = classConfig.getExtendedClassName();
+                        classConfig = getClassConfiguration(jsClassname);
+                    }
+                    map.put(htmlClass, classConfig.getHostClass());
                 }
                 catch (final ClassNotFoundException e) {
                     throw new NoClassDefFoundError(e.getMessage());
@@ -782,7 +657,8 @@ public final class JavaScriptConfiguration {
         map.put(HtmlTableColumn.class, HTMLTableColElement.class);
         map.put(HtmlTableColumnGroup.class, HTMLTableColElement.class);
 
-        HtmlJavaScriptMap_ = Collections.unmodifiableMap(map);
-        return HtmlJavaScriptMap_;
+        htmlJavaScriptMap_ = Collections.unmodifiableMap(map);
+
+        return htmlJavaScriptMap_;
     }
 }

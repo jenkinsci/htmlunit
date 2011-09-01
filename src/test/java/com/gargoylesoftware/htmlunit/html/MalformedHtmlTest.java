@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,10 +20,11 @@ import org.junit.runner.RunWith;
 import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
 
 /**
  * Set of tests for ill formed HTML code.
- * @version $Revision: 4801 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  * @author Sudhan Moghe
  * @author Ahmed Ashour
@@ -132,7 +133,7 @@ public class MalformedHtmlTest extends WebTestCase {
         else {
             query = "a=1%A9=2&prod=3";
         }
-        assertEquals(query, page2.getWebResponse().getRequestSettings().getUrl().getQuery());
+        assertEquals(query, page2.getWebResponse().getWebRequest().getUrl().getQuery());
     }
 
     /**
@@ -195,5 +196,55 @@ public class MalformedHtmlTest extends WebTestCase {
 
         final HtmlPage page = loadPageWithAlerts(html);
         assertEquals("foo", page.getTitleText());
+    }
+
+    /**
+    * Regression test for bug 2838901.
+    * @throws Exception if an error occurs
+    */
+    @Test
+    @NotYetImplemented
+    @Alerts(FF = "1", IE = "0")
+    public void missingSingleQuote() throws Exception {
+        final String html = "<html><body>"
+            + "Go to <a href='http://blah.com>blah</a> now."
+            + "<script>alert(document.links.length)</script>"
+            + "</body></html>";
+        loadPageWithAlerts(html);
+    }
+
+    /**
+    * Regression test for bug 2838901.
+    * @throws Exception if an error occurs
+    */
+    @Test
+    @NotYetImplemented
+    @Alerts(FF = "1", IE = "0")
+    public void missingDoubleQuote() throws Exception {
+        final String html = "<html><body>"
+            + "Go to <a href=\"http://blah.com>blah</a> now."
+            + "<script>alert(document.links.length)</script>"
+            + "</body></html>";
+        loadPageWithAlerts(html);
+    }
+
+    /**
+     * Regression test for bug 2940936.
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void tableTextOutsideTD() throws Exception {
+        final String html = "<html><body>"
+            + "<table border='1'>\n"
+            + "<tr><td>1</td>\n"
+            + "<td>2</td>\n"
+            + "some text\n"
+            + "</tr>\n"
+            + "</table>\n"
+            + "</body></html>";
+        final HtmlPage page = loadPageWithAlerts(html);
+        final String expectedText = "some text" + LINE_SEPARATOR
+            + "1\t2";
+        assertEquals(expectedText, page.asText());
     }
 }

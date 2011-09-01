@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import java.io.UnsupportedEncodingException;
 /**
  * Utility methods relating to text.
  *
- * @version $Revision: 4676 $
+ * @version $Revision: 6243 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Brad Clarke
  * @author Ahmed Ashour
@@ -38,27 +38,6 @@ public final class TextUtil {
 
     /** Private constructor to prevent instantiation. */
     private TextUtil() { }
-
-    /**
-     * Returns true if the string starts with the specified prefix, irrespective of case.
-     * @param stringToCheck the string to check
-     * @param prefix the prefix
-     * @return true if the string starts with the prefix
-     */
-    public static boolean startsWithIgnoreCase(final String stringToCheck, final String prefix) {
-        WebAssert.notNull("stringToCheck", stringToCheck);
-        WebAssert.notNull("prefix", prefix);
-
-        if (prefix.length() == 0) {
-            throw new IllegalArgumentException("Prefix may not be empty");
-        }
-
-        final int prefixLength = prefix.length();
-        if (stringToCheck.length() < prefixLength) {
-            return false;
-        }
-        return stringToCheck.substring(0, prefixLength).toLowerCase().equals(prefix.toLowerCase());
-    }
 
     /**
      * Convert a string into an input stream.
@@ -103,8 +82,7 @@ public final class TextUtil {
         catch (final IOException e) {
             // Theoretically impossible since all the "IO" is in memory but it's a
             // checked exception so we have to catch it.
-            e.printStackTrace();
-            throw new IllegalStateException("Exception when converting a string to an input stream: " + e);
+            throw new IllegalStateException("Exception when converting a string to an input stream: '" + e + "'", e);
         }
     }
 

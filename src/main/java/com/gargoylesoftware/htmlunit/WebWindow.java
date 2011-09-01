@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.gargoylesoftware.htmlunit.javascript.background.JavaScriptJobManager;
 /**
  * An interface that represents one window in a browser. It could be a top level window or a frame.
  *
- * @version $Revision: 4756 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author David D. Kilzer
@@ -114,5 +114,11 @@ public interface WebWindow extends Serializable {
      * @return the job manager for this window
      */
     JavaScriptJobManager getJobManager();
+
+    /**
+     * Indicates if this window is closed. No action should be performed on a closed window.
+     * @return <code>true</code> when the window is closed
+     */
+    boolean isClosed();
 
 }

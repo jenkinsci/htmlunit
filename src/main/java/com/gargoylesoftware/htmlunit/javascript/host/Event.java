@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,18 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
-import static java.lang.Boolean.FALSE;
-
 import java.util.LinkedList;
 
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
+import net.sourceforge.htmlunit.corejs.javascript.Undefined;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.ScriptResult;
 import com.gargoylesoftware.htmlunit.html.DomNode;
+import com.gargoylesoftware.htmlunit.html.HtmlAnchor;
+import com.gargoylesoftware.htmlunit.html.HtmlArea;
+import com.gargoylesoftware.htmlunit.html.SubmittableElement;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 
 /**
@@ -33,7 +36,7 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
  * Level 2 Event Documentation</a> or <a href="http://msdn2.microsoft.com/en-us/library/aa703876.aspx">IE's
  * IHTMLEventObj interface</a>.
  *
- * @version $Revision: 4890 $
+ * @version $Revision: 6392 $
  * @author <a href="mailto:chriseldredge@comcast.net">Chris Eldredge</a>
  * @author Mike Bowler
  * @author Chris Erskine
@@ -101,6 +104,9 @@ public class Event extends SimpleScriptable {
 
     /** The event type triggered by "onreadystatechange" event handlers. */
     public static final String TYPE_READY_STATE_CHANGE = "readystatechange";
+
+    /** The event type triggered by "onerror" event handlers. */
+    public static final String TYPE_ERROR = "error";
 
     /** The first event phase: the capturing phase. */
     public static final short CAPTURING_PHASE = 1;
@@ -216,9 +222,7 @@ public class Event extends SimpleScriptable {
     /** Constant. */
     public static final int XFER_DONE = 0x200000;
 
-    private static final long serialVersionUID = 4050485607908455730L;
-
-    private Object srcElement_;        // IE-only writeable equivalent of target.
+    private Object srcElement_;        // IE-only writable equivalent of target.
     private Object target_;            // W3C standard read-only equivalent of srcElement.
     private Object currentTarget_;     // Changes during event capturing and bubbling.
     private String type_;              // The event type.
@@ -264,46 +268,14 @@ public class Event extends SimpleScriptable {
      * @param type the event type
      */
     public Event(final DomNode domNode, final String type) {
-        this(domNode, type, false, false, false);
-    }
-
-    /**
-     * Creates a new event instance.
-     * @param domNode the DOM node that triggered the event
-     * @param type the event type
-     * @param shiftKey true if SHIFT is pressed
-     * @param ctrlKey true if CTRL is pressed
-     * @param altKey true if ALT is pressed
-     */
-    public Event(final DomNode domNode, final String type,
-            final boolean shiftKey, final boolean ctrlKey, final boolean altKey) {
         final Object target = domNode.getScriptObject();
         srcElement_ = target;
         target_ = target;
         currentTarget_ = target;
         type_ = type;
-        shiftKey_ = shiftKey;
-        ctrlKey_ = ctrlKey;
-        altKey_ = altKey;
-        setKeyCode(Context.getUndefinedValue());
         setParentScope((SimpleScriptable) target);
         setPrototype(getPrototype(getClass()));
         setDomNode(domNode, false);
-    }
-
-    /**
-     * Creates a new event instance for a keypress event.
-     * @param domNode the DOM node that triggered the event
-     * @param type the event type
-     * @param keyCode the key code associated with the event
-     * @param shiftKey true if SHIFT is pressed
-     * @param ctrlKey true if CTRL is pressed
-     * @param altKey true if ALT is pressed
-     */
-    public Event(final DomNode domNode, final String type, final int keyCode,
-            final boolean shiftKey, final boolean ctrlKey, final boolean altKey) {
-        this(domNode, type, shiftKey, ctrlKey, altKey);
-        setKeyCode(keyCode);
     }
 
     /**
@@ -432,6 +404,12 @@ public class Event extends SimpleScriptable {
      * @return the key code associated with the event
      */
     public Object jsxGet_keyCode() {
+        if (keyCode_ == null) {
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_155)) {
+                return Integer.valueOf(0);
+            }
+            return Undefined.instance;
+        }
         return keyCode_;
     }
 
@@ -594,8 +572,8 @@ public class Event extends SimpleScriptable {
      * @return <tt>true</tt> if this event has been aborted
      */
     public boolean isAborted(final ScriptResult result) {
-        final boolean ie = getBrowserVersion().isIE();
-        return ScriptResult.isFalse(result) || (!ie && preventDefault_) || (ie && FALSE.equals(returnValue_));
+        final boolean ie = getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_38);
+        return ScriptResult.isFalse(result) || (!ie && preventDefault_) || (ie && Boolean.FALSE.equals(returnValue_));
     }
 
     /**
@@ -610,6 +588,20 @@ public class Event extends SimpleScriptable {
         buffer.append(currentTarget_);
         buffer.append(");");
         return buffer.toString();
+    }
+
+    /**
+     * Indicates if the current event can be applied to the provided node.
+     * TODO: investigate systematically ALL nodes and ALL events!
+     * @param node the node to test
+     * @return <code>false</code> if the event can't be applied
+     */
+    public boolean applies(final DomNode node) {
+        if (TYPE_BLUR.equals(jsxGet_type()) || TYPE_FOCUS.equals(jsxGet_type())) {
+            return node instanceof SubmittableElement || node instanceof HtmlAnchor
+                || node instanceof HtmlArea;
+        }
+        return true;
     }
 
 }

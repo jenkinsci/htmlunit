@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,16 +15,15 @@
 package com.gargoylesoftware.htmlunit.javascript.host;
 
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSStyleSheet;
 
 /**
  * A JavaScript object for a MediaList.
  *
- * @version $Revision: 4244 $
+ * @version $Revision: 6386 $
  * @author Daniel Gredler
  */
 public class MediaList extends SimpleScriptable {
-
-    private static final long serialVersionUID = 1766588734264714462L;
 
     private final org.w3c.dom.stylesheets.MediaList wrappedList_;
 
@@ -41,10 +40,22 @@ public class MediaList extends SimpleScriptable {
      * @param parent the parent style
      * @param wrappedList the wrapped media list that this host object exposes
      */
-    public MediaList(final Stylesheet parent, final org.w3c.dom.stylesheets.MediaList wrappedList) {
+    public MediaList(final CSSStyleSheet parent, final org.w3c.dom.stylesheets.MediaList wrappedList) {
         wrappedList_ = wrappedList;
         setParentScope(parent);
         setPrototype(getPrototype(getClass()));
+    }
+
+    /**
+     * Returns the item or items corresponding to the specified index or key.
+     * @param index the index or key corresponding to the element or elements to return
+     * @return the element or elements corresponding to the specified index or key
+     */
+    public String jsxFunction_item(final int index) {
+        if (index < 0 || index >= jsxGet_length()) {
+            return null;
+        }
+        return wrappedList_.item(index);
     }
 
     /**
@@ -55,4 +66,12 @@ public class MediaList extends SimpleScriptable {
         return wrappedList_.getLength();
     }
 
+    /**
+     * The parsable textual representation of the media list.
+     * This is a comma-separated list of media.
+     * @return the parsable textual representation.
+     */
+    public String jsxGet_mediaText() {
+        return wrappedList_.getMediaText();
+    }
 }

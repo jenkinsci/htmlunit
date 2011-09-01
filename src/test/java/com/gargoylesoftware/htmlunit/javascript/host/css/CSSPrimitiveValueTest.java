@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
@@ -26,18 +26,17 @@ import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
 /**
  * Tests for {@link CSSPrimitiveValue}.
  *
- * @version $Revision: 4712 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  */
 @RunWith(BrowserRunner.class)
-public class CSSPrimitiveValueTest extends WebTestCase {
+public class CSSPrimitiveValueTest extends WebDriverTestCase {
 
     /**
      * @throws Exception on test failure
      */
     @Test
-    @Alerts(FF2 = { "[CSSPrimitiveValue]", "012345678910111213141516171819202122232425" },
-            FF3 = { "[object CSSPrimitiveValue]", "012345678910111213141516171819202122232425" },
+    @Alerts(FF = { "[object CSSPrimitiveValue]", "012345678910111213141516171819202122232425" },
             IE = { "exception" })
     public void test() throws Exception {
         final String html = "<html><head><title>First</title>\n"
@@ -58,7 +57,7 @@ public class CSSPrimitiveValueTest extends WebTestCase {
             + "</script>\n"
             + "</head><body onload='test()'>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -79,6 +78,6 @@ public class CSSPrimitiveValueTest extends WebTestCase {
             + "</script></head>\n"
             + "<body onload='doTest()'>\n"
             + "<div id='div1' style='color: rgb(0, 0, 255)'>foo</div></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 }

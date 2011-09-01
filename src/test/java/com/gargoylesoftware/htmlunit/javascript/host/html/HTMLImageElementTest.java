@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,38 +14,59 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.httpclient.NameValuePair;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
-import com.gargoylesoftware.htmlunit.html.HtmlImage;
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Tests for {@link HTMLImageElement}.
  *
- * @version $Revision: 4900 $
+ * @version $Revision: 6479 $
  * @author <a href="mailto:george@murnock.com">George Murnock</a>
  * @author Marc Guillemot
  */
 @RunWith(BrowserRunner.class)
-public class HTMLImageElementTest extends WebTestCase {
+public class HTMLImageElementTest extends WebDriverTestCase {
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(FF = "[object HTMLImageElement]", IE = "[object]")
+    public void simpleScriptable() throws Exception {
+        final String html = "<html><head>\n"
+            + "<script>\n"
+            + "  function test() {\n"
+            + "    alert(document.getElementById('myId'));\n"
+            + "  }\n"
+            + "</script>\n"
+            + "</head><body onload='test()'>\n"
+            + "  <img id='myId'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
 
     /**
      * This test verifies that JavaScript can be used to get the <tt>src</tt> attribute of an <tt>&lt;img&gt;</tt> tag.
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts("http://www.gargoylesoftware.com/foo.gif")
+    @Alerts("§§URL§§foo.gif")
     public void getSrc() throws Exception {
         final String html
             = "<html><head><script>\n"
@@ -56,7 +77,8 @@ public class HTMLImageElementTest extends WebTestCase {
             + "<img src='foo.gif' id='anImage'/>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        getMockWebConnection().setDefaultResponse(""); // to have a dummy response for the image
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -74,7 +96,7 @@ public class HTMLImageElementTest extends WebTestCase {
             + "</script></head><body onload='doTest()'>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -93,9 +115,10 @@ public class HTMLImageElementTest extends WebTestCase {
             + "<img src='foo.gif' id='anImage'/>\n"
             + "</body></html>";
 
-        final HtmlPage page = loadPage(getBrowserVersion(), html, null, URL_FIRST);
-        final HtmlImage image = page.getHtmlElementById("anImage");
-        assertEquals("bar.gif", image.getSrcAttribute());
+        System.out.println(html);
+        final WebDriver driver = loadPage2(html);
+        final WebElement image = driver.findElement(By.id("anImage"));
+        assertEquals(URL_FIRST + "bar.gif", image.getAttribute("src"));
     }
 
     /**
@@ -110,7 +133,7 @@ public class HTMLImageElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts("http://www.gargoylesoftware.com/bar.gif")
+    @Alerts("§§URL§§bar.gif")
     public void setSrc_newImage() throws Exception {
         final String html
             = "<html><head><script>\n"
@@ -122,7 +145,8 @@ public class HTMLImageElementTest extends WebTestCase {
             + "</script></head><body onload='doTest()'>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        getMockWebConnection().setDefaultResponse(""); // to have a dummy response for the image
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -142,7 +166,8 @@ public class HTMLImageElementTest extends WebTestCase {
             + "<img src='foo.png' id='myImage'>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        getMockWebConnection().setDefaultResponse(""); // to have a dummy response for the image
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -152,7 +177,7 @@ public class HTMLImageElementTest extends WebTestCase {
      */
     @Test
     public void onLoad_calledWhenImageDownloaded_static() throws Exception {
-        final String html = "<html><body><img src='" + URL_SECOND + "' onload='test()'>\n"
+        final String html = "<html><body><img src='foo.png' onload='test()'>\n"
             + "<script>\n"
             + "  alert(0)\n" // first script to be sure that img onload doesn't get executed after first JS execution
             + "</script>\n"
@@ -164,17 +189,18 @@ public class HTMLImageElementTest extends WebTestCase {
             + "</body></html>";
 
         final WebClient client = getWebClient();
+        final URL imageUrl = new URL(getDefaultUrl(), "foo.png");
 
         final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, "foo", "image/png");
+        conn.setResponse(getDefaultUrl(), html);
+        conn.setResponse(imageUrl, "foo", "image/png");
         client.setWebConnection(conn);
 
         final List<String> actual = new ArrayList<String>();
         client.setAlertHandler(new CollectingAlertHandler(actual));
 
-        client.getPage(URL_FIRST);
-        assertEquals(URL_SECOND, conn.getLastWebRequestSettings().getUrl());
+        client.getPage(getDefaultUrl());
+        assertEquals(imageUrl, conn.getLastWebRequest().getUrl());
 
         final String[] expected = {"0", "1"};
         assertEquals(expected, actual);
@@ -206,10 +232,54 @@ public class HTMLImageElementTest extends WebTestCase {
         client.setAlertHandler(new CollectingAlertHandler(actual));
 
         client.getPage(URL_FIRST);
-        assertEquals(URL_THIRD, conn.getLastWebRequestSettings().getUrl());
+        assertEquals(URL_THIRD, conn.getLastWebRequest().getUrl());
 
         final String[] expected = {"1"};
         assertEquals(expected, actual);
+    }
+
+    /**
+     * Verifies that if an image has an <tt>onload</tt> attribute set from a script, it gets downloaded
+     * and the <tt>onload</tt> handler gets invoked.
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts({ "image one", "image two" })
+    public void onLoad_calledWhenImageDownloaded_mixed() throws Exception {
+        final String html
+            = "<html><body><img id='img' name='img'/><script>\n"
+            + "  var i = document.getElementById('img');\n"
+            + "  i.onload = function(){\n"
+            + "    alert('image one');\n"
+            + "    i.onload = function(){\n"
+            + "      alert('image two');\n"
+            + "    };\n"
+            + "    i.src = '" + URL_THIRD + "';\n"
+            + "  };\n"
+            + "  i.src = '" + URL_SECOND + "';\n"
+            + "  var t = setTimeout(function(){clearTimeout(t);}, 500);\n"
+            + "</script></body></html>";
+
+        final WebClient client = getWebClient();
+
+        final MockWebConnection conn = new MockWebConnection();
+        conn.setResponse(URL_FIRST, html);
+        conn.setResponse(URL_SECOND, "foo", "image/png");
+        conn.setResponse(URL_THIRD, "foo", "image/png");
+        client.setWebConnection(conn);
+
+        final List<String> actual = new ArrayList<String>();
+        client.setAlertHandler(new CollectingAlertHandler(actual));
+
+        client.getPage(URL_FIRST);
+        client.waitForBackgroundJavaScript(1200);
+
+        final List<String> requestedUrls = conn.getRequestedUrls(URL_FIRST);
+        assertEquals(requestedUrls.size(), 3);
+        assertEquals("", requestedUrls.get(0));
+        assertEquals("second/", requestedUrls.get(1));
+        assertEquals(URL_THIRD.toString(), requestedUrls.get(2));
+        assertEquals(URL_THIRD, conn.getLastWebRequest().getUrl());
     }
 
     /**
@@ -232,10 +302,19 @@ public class HTMLImageElementTest extends WebTestCase {
         client.setAlertHandler(new CollectingAlertHandler(actual));
 
         client.getPage(URL_FIRST);
-        assertEquals(URL_SECOND, conn.getLastWebRequestSettings().getUrl());
+        assertEquals(URL_SECOND, conn.getLastWebRequest().getUrl());
 
         final String[] expected = {};
         assertEquals(expected, actual);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void onLoad_BadUrl() throws Exception {
+        final String html = "<html><body><img src='http:// [/url]http://x.com/a/b' onload='alert(1)'/></body></html>";
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -256,7 +335,7 @@ public class HTMLImageElementTest extends WebTestCase {
             + "}\n"
             + "</script></head><body onload='doTest()'>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -293,7 +372,39 @@ public class HTMLImageElementTest extends WebTestCase {
             + "  </head>\n"
             + "  <body onload='test()'><img id='i' /></body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
+    /**
+     * Test that image's width and height are numbers.
+     * Regression test for bug
+     * http://sourceforge.net/tracker/?func=detail&atid=448266&aid=2861064&group_id=47038
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "number: 300", "number: 200", "number", "number", "number", "number" })
+    public void testWidthHeight() throws Exception {
+        final String html = "<html><head>\n"
+            + "<script>\n"
+            + "  function showInfos(imageId) {\n"
+            + "    var img = document.getElementById(imageId);\n"
+            + "    alert(typeof(img.width));\n"
+            + "    alert(typeof(img.height));\n"
+            + "  }\n"
+            + "  function test() {\n"
+            + "    var img1 = document.getElementById('myImage1');\n"
+            + "    alert(typeof(img1.width) + ': ' + img1.width);\n"
+            + "    alert(typeof(img1.height) + ': ' + img1.height);\n"
+            + "    showInfos('myImage2');\n"
+            + "    showInfos('myImage3');\n"
+            + "  }\n"
+            + "</script>\n"
+            + "</head><body onload='test()'>\n"
+            + "  <img id='myImage1' width='300' height='200'>\n"
+            + "  <img id='myImage2'>\n"
+            + "  <img id='myImage3' width='hello' height='hello'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
 }

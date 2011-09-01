@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,13 +26,10 @@ import com.gargoylesoftware.htmlunit.util.UrlUtils;
 /**
  * Representation of the navigation history of a single window.
  *
- * @version $Revision: 4877 $
+ * @version $Revision: 6456 $
  * @author Daniel Gredler
  */
 public class History implements Serializable {
-
-    /** Serial version UID. */
-    private static final long serialVersionUID = 2913698177338034112L;
 
     /** The window to which this navigation history belongs. */
     private final WebWindow window_;
@@ -148,19 +145,31 @@ public class History implements Serializable {
     }
 
     /**
+     * Removes the current URL from the history.
+     */
+    public void removeCurrent() {
+        if (index_ >= 0 && index_ < urls_.size()) {
+            urls_.remove(index_);
+            if (index_ > 0) {
+                index_--;
+            }
+        }
+    }
+
+    /**
      * Adds a new page to the navigation history.
      * @param page the page to add to the navigation history
      */
     protected void addPage(final Page page) {
         final Boolean ignoreNewPages = ignoreNewPages_.get();
-        if (ignoreNewPages != null && ignoreNewPages) {
+        if (ignoreNewPages != null && ignoreNewPages.booleanValue()) {
             return;
         }
         index_++;
         while (urls_.size() > index_) {
             urls_.remove(index_);
         }
-        urls_.add(page.getWebResponse().getRequestSettings().getUrl().toExternalForm());
+        urls_.add(page.getWebResponse().getWebRequest().getUrl().toExternalForm());
     }
 
     /**
@@ -169,10 +178,10 @@ public class History implements Serializable {
      */
     private void goToUrlAtCurrentIndex() throws IOException {
         final URL url = UrlUtils.toUrlSafe(urls_.get(index_));
-        final WebRequestSettings wrs = new WebRequestSettings(url);
+        final WebRequest wrs = new WebRequest(url);
         final Boolean old = ignoreNewPages_.get();
         try {
-            ignoreNewPages_.set(true);
+            ignoreNewPages_.set(Boolean.TRUE);
             window_.getWebClient().getPage(window_, wrs);
         }
         finally {

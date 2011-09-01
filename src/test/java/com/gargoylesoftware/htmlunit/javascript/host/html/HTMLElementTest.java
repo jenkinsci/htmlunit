@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 import java.net.URL;
@@ -23,15 +22,17 @@ import java.util.List;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.openqa.selenium.WebDriver;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
 import com.gargoylesoftware.htmlunit.html.HtmlAnchor;
 import com.gargoylesoftware.htmlunit.html.HtmlButton;
 import com.gargoylesoftware.htmlunit.html.HtmlDivision;
@@ -44,7 +45,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlTextInput;
 /**
  * Tests for {@link HTMLElement}.
  *
- * @version $Revision: 4900 $
+ * @version $Revision: 6204 $
  * @author Brad Clarke
  * @author Chris Erskine
  * @author David D. Kilzer
@@ -58,13 +59,13 @@ import com.gargoylesoftware.htmlunit.html.HtmlTextInput;
  * @author Ethan Glasser-Camp
  */
 @RunWith(BrowserRunner.class)
-public class HTMLElementTest extends WebTestCase {
+public class HTMLElementTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.IE)
+    @NotYetImplemented(Browser.FF)
     @Alerts(IE = { "all node for body: DIV A IMG DIV ", "all node for testDiv: A IMG ",
             "all node for testA: IMG ", "all node for testImg: ", "all node for testDiv2: " })
     public void all_IndexByInt() throws Exception {
@@ -94,7 +95,7 @@ public class HTMLElementTest extends WebTestCase {
             + "<div id='testDiv2'>foo</div>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -121,8 +122,27 @@ public class HTMLElementTest extends WebTestCase {
                 + "</p>\n"
                 + "</body>\n"
                 + "</html>";
-        final HtmlPage page = loadPageWithAlerts(html);
-        assertEquals("test", page.getTitleText());
+
+        final WebDriver webDriver = loadPageWithAlerts2(html);
+        assertEquals("test", webDriver.getTitle());
+    }
+
+    /**
+     * @throws Exception on test failure
+     */
+    @Test
+    @Alerts(FF = "color: green;", IE = "")
+    public void getAttribute_styleAttributeWithFlag() throws Exception {
+        final String html =
+              "<html><body onload='test()'><div id='div' style='color: green;'>abc</div>\n"
+            + "<script>\n"
+            + "  function test(){\n"
+            + "    var div = document.getElementById('div');\n"
+            + "    alert(div.getAttribute('style', 2));\n"
+            + "  }\n"
+            + "</script>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -152,7 +172,7 @@ public class HTMLElementTest extends WebTestCase {
                 + "</body>\n"
                 + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -160,7 +180,7 @@ public class HTMLElementTest extends WebTestCase {
      */
     @Test
     @Browsers(Browser.FF)
-    @Alerts({ "", "bla" })
+    @Alerts({ "", "bla", "true" })
     public void getSetAttributeNS() throws Exception {
         final String html = "<html>\n"
                 + "<head>\n"
@@ -171,6 +191,7 @@ public class HTMLElementTest extends WebTestCase {
                 + "       alert(myNode.getAttributeNS('myNamespaceURI', 'my:foo'));\n"
                 + "       myNode.setAttributeNS('myNamespaceURI', 'my:foo', 'bla');\n"
                 + "       alert(myNode.getAttributeNS('myNamespaceURI', 'foo'));\n"
+                + "       alert(myNode.getAttributeNodeNS('myNamespaceURI', 'foo').specified);\n"
                 + "   }\n"
                 + "    </script>\n"
                 + "</head>\n"
@@ -180,7 +201,7 @@ public class HTMLElementTest extends WebTestCase {
                 + "</body>\n"
                 + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -209,8 +230,9 @@ public class HTMLElementTest extends WebTestCase {
             + "</p>\n"
             + "</body>\n"
             + "</html>";
-        final HtmlPage page = loadPageWithAlerts(html);
-        assertEquals("test", page.getTitleText());
+
+        final WebDriver webDriver = loadPageWithAlerts2(html);
+        assertEquals("test", webDriver.getTitle());
     }
 
     /**
@@ -286,8 +308,9 @@ public class HTMLElementTest extends WebTestCase {
             + "  <div id='div3'></div>\n"
             + "</body>\n"
             + "</html>";
-        final HtmlPage page = loadPageWithAlerts(html);
-        assertEquals("test", page.getTitleText());
+
+        final WebDriver webDriver = loadPageWithAlerts2(html);
+        assertEquals("test", webDriver.getTitle());
     }
 
     /**
@@ -320,8 +343,8 @@ public class HTMLElementTest extends WebTestCase {
             + "  <div id='div1' align='left'></div>\n"
             + "</body>\n"
             + "</html>";
-        final HtmlPage page = loadPageWithAlerts(html);
-        assertEquals("test", page.getTitleText());
+        final WebDriver webDriver = loadPageWithAlerts2(html);
+        assertEquals("test", webDriver.getTitle());
     }
 
     /**
@@ -347,7 +370,7 @@ public class HTMLElementTest extends WebTestCase {
             + "<tr id='r2'><td>3</td><td>4</td></tr>\n"
             + "</table>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -369,7 +392,7 @@ public class HTMLElementTest extends WebTestCase {
             + "  </form>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -399,7 +422,7 @@ public class HTMLElementTest extends WebTestCase {
             + "</form>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -418,7 +441,7 @@ public class HTMLElementTest extends WebTestCase {
             + "</script>\n"
             + "<div id='div'><p>a</p><p>b</p><p>c</p></div>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -436,7 +459,7 @@ public class HTMLElementTest extends WebTestCase {
             + "alert(document.getElementsByTagName('script') == document.getElementsByTagName('body'));\n"
             + "alert(document.getElementsByTagName('script') == div.getElementsByTagName('script'));\n"
             + "</script></div></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -458,7 +481,7 @@ public class HTMLElementTest extends WebTestCase {
             + "<p id='pid' class='x'>text</p>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -481,7 +504,7 @@ public class HTMLElementTest extends WebTestCase {
             + "<p id='pid' class='x'>text</p>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -507,7 +530,7 @@ public class HTMLElementTest extends WebTestCase {
             + "<form id='myNode'></form>\n"
             + "</body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -517,7 +540,7 @@ public class HTMLElementTest extends WebTestCase {
     @Alerts(IE = "<DIV id=i foo=\"\" name=\"\"></DIV>", FF = "<div id=\"i\" foo=\"\" name=\"\"></div>")
     public void getInnerHTML_EmptyAttributes() throws Exception {
         final String html = "<body onload='alert(document.body.innerHTML)'><div id='i' foo='' name=''></div></body>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -525,7 +548,7 @@ public class HTMLElementTest extends WebTestCase {
      */
     @Test
     @Alerts(IE = { "Old = <B>Old innerHTML</B>", "New = New cell value" },
-            FF = { "Old = <b>Old innerHTML</b>", "New = New cell value" })
+            FF = { "Old = <b>Old innerHTML</b>", "New = New  cell value" })
     public void getSetInnerHTMLSimple_FF() throws Exception {
         final String html = "<html>\n"
             + "<head>\n"
@@ -543,7 +566,7 @@ public class HTMLElementTest extends WebTestCase {
             + "<p id='myNode'><b>Old innerHTML</b></p>\n"
             + "</body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -609,7 +632,7 @@ public class HTMLElementTest extends WebTestCase {
             + "<form id='myNode'></form>\n"
             + "</body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -621,7 +644,7 @@ public class HTMLElementTest extends WebTestCase {
             "New = New cell value &amp; \u0110 \u0110" },
             FF = {
             "Old = <b>Old innerHTML</b>",
-            "New = New cell value &amp; \u0110 \u0110" })
+            "New = New  cell value &amp; \u0110 \u0110" })
     public void getSetInnerHTMLChar_FF() throws Exception {
         final String html = "<html>\n"
             + "<head>\n"
@@ -639,7 +662,7 @@ public class HTMLElementTest extends WebTestCase {
             + "<p id='myNode'><b>Old innerHTML</b></p>\n"
             + "</body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -660,7 +683,7 @@ public class HTMLElementTest extends WebTestCase {
             + "</script>\n"
             + "<div id='div'><ul/></div>"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -681,7 +704,7 @@ public class HTMLElementTest extends WebTestCase {
             + "</script>\n"
             + "<div id='div'><span class='a b'></span></div>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -698,7 +721,7 @@ public class HTMLElementTest extends WebTestCase {
                 + "    node.innerHTML = '';\n"
                 + "    alert('Empty ChildrenLength: ' + node.childNodes.length);\n"
                 + "</script></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -716,7 +739,7 @@ public class HTMLElementTest extends WebTestCase {
                 + "    alert('Null ChildrenLength: ' + node.childNodes.length);\n"
                 + "</script></body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -743,7 +766,7 @@ public class HTMLElementTest extends WebTestCase {
             + "<p id='myNode'><b id='innerNode'>Old outerHTML</b></p>\n"
             + "</body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -901,7 +924,7 @@ public class HTMLElementTest extends WebTestCase {
             + "</head>\n"
             + "<body onload='doTest()'>Test</body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -957,7 +980,7 @@ public class HTMLElementTest extends WebTestCase {
         client.setWebConnection(webConnection);
         final HtmlPage page = client.getPage(url1);
         assertEquals(getExpectedAlerts(), collectedAlerts);
-        assertEquals(url2.toExternalForm(), page.getWebResponse().getRequestSettings().getUrl().toExternalForm());
+        assertEquals(url2.toExternalForm(), page.getWebResponse().getWebRequest().getUrl().toExternalForm());
     }
 
     /**
@@ -1047,7 +1070,7 @@ public class HTMLElementTest extends WebTestCase {
             + "</head>\n"
             + "<body onload='doTest()'>Test</body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1075,7 +1098,7 @@ public class HTMLElementTest extends WebTestCase {
             + "<div id='myDiv'><br/><div><span>test</span></div></div>\n"
             + "</body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1183,6 +1206,14 @@ public class HTMLElementTest extends WebTestCase {
     }
 
     /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void setOnerror() throws Exception {
+        eventHandlerSetterGetterTest("onerror");
+    }
+
+    /**
      * @param eventName the name of the event
      * @throws Exception if the test fails
      */
@@ -1211,8 +1242,7 @@ public class HTMLElementTest extends WebTestCase {
         final HtmlPage page = loadPage(getBrowserVersion(), html, collectedAlerts);
         final HtmlElement div = page.getHtmlElementById("myDiv");
 
-        assertNotNull("Event handler was not set", div.getEventHandler(eventName));
-
+        assertTrue("Event handler was not set", div.hasEventHandlers(eventName));
         assertEquals(expectedAlerts, collectedAlerts);
     }
 
@@ -1239,7 +1269,7 @@ public class HTMLElementTest extends WebTestCase {
             + "<div id='myNode'><b>Old <p>innerText</p></b></div>\n"
             + "</body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1302,7 +1332,7 @@ public class HTMLElementTest extends WebTestCase {
             + "<body onload='doTest()'><div id='aDiv' name='removeMe'>\n"
             + "</div></body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1330,301 +1360,7 @@ public class HTMLElementTest extends WebTestCase {
             + "<body onload='doTest()'><div id='aDiv' name='removeMe'>\n"
             + "</div></body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * Test offsets (real values don't matter currently).
-     *
-     * @throws Exception if the test fails
-     */
-    @Test
-    @Alerts({ "number", "number", "number", "number", "number", "number", "number", "number" })
-    public void offsets() throws Exception {
-        final String html = "<html>\n"
-              + "<head>\n"
-              + "    <title>Test</title>\n"
-              + "</head>\n"
-              + "<body>\n"
-              + "</div></body>\n"
-              + "<div id='div1'>foo</div>\n"
-              + "<script>\n"
-              + "function alertOffsets(_oElt) {\n"
-              + "  alert(typeof _oElt.offsetHeight);\n"
-              + "  alert(typeof _oElt.offsetWidth);\n"
-              + "  alert(typeof _oElt.offsetLeft);\n"
-              + "  alert(typeof _oElt.offsetTop);\n"
-              + "}\n"
-              + "alertOffsets(document.body);\n"
-              + "alertOffsets(document.getElementById('div1'));\n"
-              + "</script></body></html>";
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * @throws Exception if an error occurs
-     */
-    @Test
-    @Alerts({ "30px", "46", "55px", "71" })
-    public void offsetWidthAndHeight() throws Exception {
-        final String html =
-              "<html>\n"
-            + "<head>\n"
-            + "<script>\n"
-            + "  function test() {\n"
-            + "    var e = document.getElementById('myDiv');\n"
-            + "    e.style.width = 30;\n"
-            + "    alert(e.style.width);\n"
-            + "    alert(e.offsetWidth);\n"
-            + "    e.style.height = 55;\n"
-            + "    alert(e.style.height);\n"
-            + "    alert(e.offsetHeight);\n"
-            + "  }\n"
-            + "</script>\n"
-            + "</head>\n"
-            + "<body onload='test()'>\n"
-            + "  <div id='myDiv' style='border: 3px solid #fff; padding: 5px;'></div>\n"
-            + "</body></html>";
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * @throws Exception if an error occurs
-     */
-    @Test
-    @Browsers(Browser.IE)
-    @Alerts({ "30", "30", "30" })
-    public void offsetWidth_withEvent() throws Exception {
-        final String html =
-              "<html>\n"
-            + "<head>\n"
-            + "<script>\n"
-            + "  function test() {\n"
-            + "    var myDiv2 = document.getElementById('myDiv2');\n"
-            + "    myDiv2.attachEvent('ondataavailable', handler);\n"
-            + "    document.attachEvent('ondataavailable', handler);\n"
-            + "    var m = document.createEventObject();\n"
-            + "    m.eventType = 'ondataavailable';\n"
-            + "    myDiv2.fireEvent(m.eventType, m);\n"
-            + "    document.fireEvent(m.eventType, m);\n"
-            + "  }\n"
-            + "  function handler() {\n"
-            + "    var e = document.getElementById('myDiv');\n"
-            + "    e.style.width = 30;\n"
-            + "    alert(e.offsetWidth);\n"
-            + "  }\n"
-            + "</script>\n"
-            + "</head>\n"
-            + "<body onload='test()'>\n"
-            + "  <div id='myDiv'></div>\n"
-            + "  <div id='myDiv2'></div>\n"
-            + "</body></html>";
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * @throws Exception if an error occurs
-     */
-    @Test
-    @Alerts("30")
-    public void offsetWidth_parentWidthConstrainsChildWidth() throws Exception {
-        final String html = "<html><head><style>#a { width: 30px; }</style></head><body>\n"
-            + "<div id='a'><div id='b'>foo</div></div>\n"
-            + "<script>alert(document.getElementById('b').offsetWidth);</script>\n"
-            + "</body></html>";
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * @throws Exception if an error occurs
-     */
-    @Test
-    @Alerts({ "15", "15" })
-    public void offsetTopAndLeft_Padding() throws Exception {
-        final String html =
-              "<html>\n"
-            + "  <head>\n"
-            + "    <script>\n"
-            + "      function test() {\n"
-            + "        var e = document.getElementById('d');\n"
-            + "        alert(e.offsetTop);\n"
-            + "        alert(e.offsetLeft);\n"
-            + "      }\n"
-            + "    </script>\n"
-            + "  </head>\n"
-            + "  <body onload='test()' style='padding: 3px; margin: 0px; border: 0px solid green;'>\n"
-            + "    <div style='padding: 5px; margin: 0px; border: 0px solid blue;'>\n"
-            + "      <div style='padding: 7px; margin: 0px; border: 0px solid red;'>\n"
-            + "        <div id='d' style='padding: 13px; margin: 0px; border: 0px solid black;'>d</div>\n"
-            + "      </div>\n"
-            + "    </div>\n"
-            + "  </body>\n"
-            + "</html>";
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * @throws Exception if an error occurs
-     */
-    @Test
-    @Alerts({ "13", "28" })
-    public void offsetTopAndLeft_Margins() throws Exception {
-        final String html =
-              "<html>\n"
-            + "  <head>\n"
-            + "    <script>\n"
-            + "      function test() {\n"
-            + "        var e = document.getElementById('d');\n"
-            + "        alert(e.offsetTop);\n"
-            + "        alert(e.offsetLeft);\n"
-            + "      }\n"
-            + "    </script>\n"
-            + "  </head>\n"
-            + "  <body onload='test()' style='padding: 0px; margin: 3px; border: 0px solid green;'>\n"
-            + "    <div style='padding: 0px; margin: 5px; border: 0px solid blue;'>\n"
-            + "      <div style='padding: 0px; margin: 7px; border: 0px solid red;'>\n"
-            + "        <div id='d' style='padding: 0px; margin: 13px; border: 0px solid black;'>d</div>\n"
-            + "      </div>\n"
-            + "    </div>\n"
-            + "  </body>\n"
-            + "</html>";
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * @throws Exception if an error occurs
-     */
-    @Test
-    @Alerts({ "12", "12" })
-    public void offsetTopAndLeft_Borders() throws Exception {
-        final String html =
-              "<html>\n"
-            + "  <head>\n"
-            + "    <script>\n"
-            + "      function test() {\n"
-            + "        var e = document.getElementById('d');\n"
-            + "        alert(e.offsetTop);\n"
-            + "        alert(e.offsetLeft);\n"
-            + "      }\n"
-            + "    </script>\n"
-            + "  </head>\n"
-            + "  <body onload='test()' style='padding: 0px; margin: 0px; border: 3px solid green;'>\n"
-            + "    <div style='padding: 0px; margin: 0px; border: 5px solid blue;'>\n"
-            + "      <div style='padding: 0px; margin: 0px; border: 7px solid red;'>\n"
-            + "        <div id='d' style='padding: 0px; margin: 0px; border: 13px solid black;'>d</div>\n"
-            + "      </div>\n"
-            + "    </div>\n"
-            + "  </body>\n"
-            + "</html>";
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * @throws Exception if an error occurs
-     */
-    @Test
-    @Alerts({ "0", "0" })
-    public void offsetTopAndLeft_Nothing() throws Exception {
-        final String html =
-              "<html>\n"
-            + "  <head>\n"
-            + "    <script>\n"
-            + "      function test() {\n"
-            + "        var e = document.getElementById('d');\n"
-            + "        alert(e.offsetTop);\n"
-            + "        alert(e.offsetLeft);\n"
-            + "      }\n"
-            + "    </script>\n"
-            + "  </head>\n"
-            + "  <body onload='test()' style='padding: 0px; margin: 0px; border: 0px solid green;'>\n"
-            + "    <div style='padding: 0px; margin: 0px; border: 0px solid blue;'>\n"
-            + "      <div style='padding: 0px; margin: 0px; border: 0px solid red;'>\n"
-            + "        <div id='d' style='padding: 0px; margin: 0px; border: 0px solid black;'>d</div>\n"
-            + "      </div>\n"
-            + "    </div>\n"
-            + "  </body>\n"
-            + "</html>";
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * @throws Exception if an error occurs
-     */
-    @Test
-    @Alerts({ "50", "50" })
-    public void offsetTopAndLeft_AbsolutelyPositioned() throws Exception {
-        final String html =
-              "<html>\n"
-            + "  <head>\n"
-            + "    <script>\n"
-            + "      function test() {\n"
-            + "        var e = document.getElementById('d');\n"
-            + "        alert(e.offsetTop);\n"
-            + "        alert(e.offsetLeft);\n"
-            + "      }\n"
-            + "    </script>\n"
-            + "  </head>\n"
-            + "  <body onload='test()'>\n"
-            + "    <div>\n"
-            + "      <div>\n"
-            + "        <div id='d' style='position:absolute; top:50; left:50;'>d</div>\n"
-            + "      </div>\n"
-            + "    </div>\n"
-            + "  </body>\n"
-            + "</html>";
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * @throws Exception if an error occurs
-     */
-    @Test
-    @Alerts({ "40", "10" })
-    public void offsetTopAndLeft_parentAbsolute() throws Exception {
-        final String html =
-              "<html>\n"
-            + "<head>\n"
-            + "<script>\n"
-            + "  function test() {\n"
-            + "    var e = document.getElementById('innerDiv');\n"
-            + "    alert(e.offsetLeft);\n"
-            + "    alert(e.offsetTop);\n"
-            + "  }\n"
-            + "</script>\n"
-            + "</head>\n"
-            + "<body onload='test()'>\n"
-            + "<div id='styleTest' style='position: absolute; left: 400px; top: 50px; padding: 10px 20px 30px 40px;'>"
-            + "<div id='innerDiv'></div>TEST</div>\n"
-            + "</body></html>";
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * Minimal flow/layouting test: verifies that the <tt>offsetTop</tt> property changes depending
-     * on previous siblings. In the example below, the second div is below the first one, so its
-     * offsetTop must be greater than zero. This sort of test is part of the Dojo unit tests, so
-     * this needs to pass for the Dojo unit tests to pass.
-     *
-     * @throws Exception if an error occurs
-     */
-    @Test
-    @Alerts({ "false", "true" })
-    public void offsetTopWithPreviousSiblings() throws Exception {
-        final String html = "<html>\n"
-            + "  <head>\n"
-            + "    <script>\n"
-            + "      function test() {\n"
-            + "        alert(document.getElementById('d1').offsetTop > 0);\n"
-            + "        alert(document.getElementById('d2').offsetTop > 0);\n"
-            + "      }\n"
-            + "    </script>\n"
-            + "  </head>\n"
-            + "  <body style='padding: 0px; margin: 0px;' onload='test()'>\n"
-            + "    <div id='d1'>foo</div>\n"
-            + "    <div id='d2'>bar</div>\n"
-            + "  </body>\n"
-            + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1654,7 +1390,115 @@ public class HTMLElementTest extends WebTestCase {
               + "alertScrolls(document.body);\n"
               + "alertScrolls(document.getElementById('div1'));\n"
               + "</script></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts({ "0", "0", "0", "0", "0", "17", "0", "0" })
+    public void scrollLeft_overflowScroll() throws Exception {
+        scrollLeft("scroll");
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts({ "0", "0", "0", "0", "0", "17", "0", "0" })
+    public void scrollLeft_overflowAuto() throws Exception {
+        scrollLeft("auto");
+    }
+
+    /**
+     * NOTE: When running this test with Firefox (3.6, at least), it's important to reload the page with Ctrl+F5
+     * in order to completely clear the cache; otherwise, Firefox appears to incorrectly cache some style attributes.
+     * @throws Exception if an error occurs
+     */
+    private void scrollLeft(final String overflow) throws Exception {
+        final String html
+            = "<html><body onload='test()'>\n"
+            + "<div id='d1' style='width:100px;height:100px;background-color:green;'>\n"
+            + "  <div id='d2' style='width:50px;height:50px;background-color:blue;'></div>\n"
+            + "</div>\n"
+            + "<script>\n"
+            + "function test() {\n"
+            + "  var d1 = document.getElementById('d1'), d2 = document.getElementById('d2');\n"
+            + "  alert(d1.scrollLeft);\n"
+            + "  d1.scrollLeft = -1;\n"
+            + "  alert(d1.scrollLeft);\n"
+            + "  d1.scrollLeft = 5;\n"
+            + "  alert(d1.scrollLeft);\n"
+            + "  d2.style.width = '200px';\n"
+            + "  d2.style.height = '200px';\n"
+            + "  d1.scrollLeft = 7;\n"
+            + "  alert(d1.scrollLeft);\n"
+            + "  d1.style.overflow = '" + overflow + "';\n"
+            + "  alert(d1.scrollLeft);\n"
+            + "  d1.scrollLeft = 17;\n"
+            + "  alert(d1.scrollLeft);\n"
+            + "  d1.style.overflow = 'visible';\n"
+            + "  alert(d1.scrollLeft);\n"
+            + "  d1.scrollLeft = 19;\n"
+            + "  alert(d1.scrollLeft);\n"
+            + "}\n"
+            + "</script></body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts({ "0", "0", "0", "0", "0", "17", "0", "0" })
+    public void scrollTop_overflowScroll() throws Exception {
+        scrollTop("scroll");
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts({ "0", "0", "0", "0", "0", "17", "0", "0" })
+    public void scrollTop_overflowAuto() throws Exception {
+        scrollTop("auto");
+    }
+
+    /**
+     * NOTE: When running this test with Firefox (3.6, at least), it's important to reload the page with Ctrl+F5
+     * in order to completely clear the cache; otherwise, Firefox appears to incorrectly cache some style attributes.
+     * @throws Exception if an error occurs
+     */
+    private void scrollTop(final String overflow) throws Exception {
+        final String html
+            = "<html><body onload='test()'>\n"
+            + "<div id='d1' style='width:100px;height:100px;background-color:green;'>\n"
+            + "  <div id='d2' style='width:50px;height:50px;background-color:blue;'></div>\n"
+            + "</div>\n"
+            + "<script>\n"
+            + "function test() {\n"
+            + "  var d1 = document.getElementById('d1'), d2 = document.getElementById('d2');\n"
+            + "  alert(d1.scrollTop);\n"
+            + "  d1.scrollTop = -1;\n"
+            + "  alert(d1.scrollTop);\n"
+            + "  d1.scrollTop = 5;\n"
+            + "  alert(d1.scrollTop);\n"
+            + "  d2.style.width = '200px';\n"
+            + "  d2.style.height = '200px';\n"
+            + "  d1.scrollTop = 7;\n"
+            + "  alert(d1.scrollTop);\n"
+            + "  d1.style.overflow = '" + overflow + "';\n"
+            + "  alert(d1.scrollTop);\n"
+            + "  d1.scrollTop = 17;\n"
+            + "  alert(d1.scrollTop);\n"
+            + "  d1.style.overflow = 'visible';\n"
+            + "  alert(d1.scrollTop);\n"
+            + "  d1.scrollTop = 19;\n"
+            + "  alert(d1.scrollTop);\n"
+            + "}\n"
+            + "</script></body></html>";
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1668,7 +1512,7 @@ public class HTMLElementTest extends WebTestCase {
               + "<body>\n"
               + "<script id='me'>document.getElementById('me').scrollIntoView(); alert('ok');</script>\n"
               + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1682,7 +1526,7 @@ public class HTMLElementTest extends WebTestCase {
             "element: td1 offsetParent: table1", "element: tr1 offsetParent: table1",
             "element: table1 offsetParent: body1", "element: span2 offsetParent: body1",
             "element: span1 offsetParent: body1", "element: div1 offsetParent: body1",
-            "element: body1 offsetParent: null", "new element: undefined" })
+            "element: body1 offsetParent: null" })
     public void offsetParent_Basic() throws Exception {
         final String html = "<html><head>\n"
             + "<script type='text/javascript'>\n"
@@ -1710,8 +1554,6 @@ public class HTMLElementTest extends WebTestCase {
             + "  alertOffsetParent('span1');\n"
             + "  alertOffsetParent('div1');\n"
             + "  alertOffsetParent('body1');\n"
-            + "  var oNew = document.createElement('span');\n"
-            + "  alert('new element: ' + oNew.offsetParent);\n"
             + "}\n"
             + "</script></head>\n"
             + "<body id='body1' onload='test()'>\n"
@@ -1735,7 +1577,28 @@ public class HTMLElementTest extends WebTestCase {
             + "  </span>\n"
             + "</div>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Tests the offsetParent property.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(FF = { "null", "null" }, IE = { "exception", "null" })
+    public void offsetParent_newElement() throws Exception {
+        final String html = "<html><body>\n"
+            + "<script>\n"
+            + "try {\n"
+            + "  var oNew = document.createElement('span');\n"
+            + "  alert(oNew.offsetParent);\n"
+            + "} catch(e) { alert('exception') }\n"
+            + "var fragment = document.createDocumentFragment();\n"
+            + "fragment.appendChild(oNew);\n"
+            + "alert(oNew.offsetParent);\n"
+            + "</script>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1793,7 +1656,7 @@ public class HTMLElementTest extends WebTestCase {
             + "    </script>\n"
             + "  </body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1818,7 +1681,7 @@ public class HTMLElementTest extends WebTestCase {
             + "<div id='outer'></div>\n"
             + "</body>\n"
             + "</html>";
-        loadPage(getBrowserVersion(), html, null);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1850,7 +1713,7 @@ public class HTMLElementTest extends WebTestCase {
             + "<div id='foo'>bla</div>\n"
             + "<a id='testLink' href='foo'>bla</a>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1872,7 +1735,7 @@ public class HTMLElementTest extends WebTestCase {
             + "</script></head><body onload='test()'>\n"
             + "  <div id='myDiv'></div>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1894,7 +1757,7 @@ public class HTMLElementTest extends WebTestCase {
             + "<div id='foo'>bla</div>\n"
             + "<a id='testLink' href='foo'>bla</a>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1915,7 +1778,7 @@ public class HTMLElementTest extends WebTestCase {
             + "</script>\n"
             + "</body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1933,7 +1796,7 @@ public class HTMLElementTest extends WebTestCase {
      */
     @Test
     @Alerts("")
-    @Browsers(Browser.IE)
+    @NotYetImplemented(Browser.FF)
     public void runtimeStyle() throws Exception {
         style("runtimeStyle");
     }
@@ -1950,7 +1813,7 @@ public class HTMLElementTest extends WebTestCase {
             + "<body onload='test()'>\n"
             + "<div id='myDiv'></div>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1971,14 +1834,14 @@ public class HTMLElementTest extends WebTestCase {
             + "<div id='outer' style='position: absolute; left: 400px; top: 100px; width: 50px; height: 80px;'>"
             + "<div id='div1'></div></div>"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.IE)
+    @NotYetImplemented(Browser.FF)
     public void getClientRects() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
@@ -1988,7 +1851,7 @@ public class HTMLElementTest extends WebTestCase {
             + "</script></head><body onload='test()'>\n"
             + "<div id='div1'/>\n"
             + "</body></html>";
-        loadPage(getBrowserVersion(), html, null);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -2009,7 +1872,7 @@ public class HTMLElementTest extends WebTestCase {
             + "  }\n"
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -2030,20 +1893,20 @@ public class HTMLElementTest extends WebTestCase {
             + "  }\n"
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = { "true", "false" }, FF = { "true", "true" })
+    @Alerts(IE = { "false", "true", "false" }, FF = { "true", "true", "true" })
     public void uniqueID() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
             + "     var div1 = document.getElementById('div1');\n"
             + "     var div2 = document.getElementById('div2');\n"
-            + "     alert(div1.uniqueID);\n"
+            + "     alert(div1.uniqueID == undefined);\n"
             + "     alert(div1.uniqueID == div1.uniqueID);\n"
             + "     alert(div1.uniqueID == div2.uniqueID);\n"
             + "  }\n"
@@ -2052,23 +1915,7 @@ public class HTMLElementTest extends WebTestCase {
             + "  <div id='div2'/>\n"
             + "</body></html>";
 
-        final WebClient client = getWebClient();
-        final List<String> collectedAlerts = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-
-        final MockWebConnection webConnection = new MockWebConnection();
-        webConnection.setResponse(URL_GARGOYLE, html);
-        client.setWebConnection(webConnection);
-
-        client.getPage(URL_GARGOYLE);
-
-        if (!getBrowserVersion().isIE()) {
-            assertEquals("undefined", collectedAlerts.get(0));
-        }
-        else {
-            assertFalse("undefined".equals(collectedAlerts.get(0)));
-        }
-        assertEquals(getExpectedAlerts(), collectedAlerts.subList(1, collectedAlerts.size()));
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -2096,7 +1943,7 @@ public class HTMLElementTest extends WebTestCase {
             + "  <div id='div1'/>\n"
             + "  <div id='div2'/>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -2186,7 +2033,7 @@ public class HTMLElementTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    @Browsers(Browser.IE)
+    @NotYetImplemented(Browser.FF)
     public void setExpression() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
@@ -2196,14 +2043,14 @@ public class HTMLElementTest extends WebTestCase {
             + "</script></head><body onload='test()'>\n"
             + "  <div id='div1'/>\n"
             + "</body></html>";
-        loadPage(getBrowserVersion(), html, null);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Browsers(Browser.IE)
+    @NotYetImplemented(Browser.FF)
     public void removeExpression() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
@@ -2214,7 +2061,7 @@ public class HTMLElementTest extends WebTestCase {
             + "</script></head><body onload='test()'>\n"
             + "  <div id='div1'/>\n"
             + "</body></html>";
-        loadPage(getBrowserVersion(), html, null);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -2236,7 +2083,7 @@ public class HTMLElementTest extends WebTestCase {
             + "</script>\n"
             + "<body onload='click()'><div id='d' onclick='alert(\"clicked\")'>foo</div></body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -2260,14 +2107,13 @@ public class HTMLElementTest extends WebTestCase {
             + "</head>\n"
             + "<body onload='test()'></body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Browsers(Browser.NONE)
     public void dispatchEvent2() throws Exception {
         testHTMLFile("HTMLElementTest_dispatchEvent2.html");
     }
@@ -2291,7 +2137,7 @@ public class HTMLElementTest extends WebTestCase {
             + "}\n"
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -2313,7 +2159,7 @@ public class HTMLElementTest extends WebTestCase {
             + "<body onload='test()'>\n"
             + "  <div id='myDiv'/>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -2321,7 +2167,7 @@ public class HTMLElementTest extends WebTestCase {
      */
     @Test
     @Browsers(Browser.IE)
-    @Alerts({"[object]", "text1", "[object]", "onfocus text2", "text2", "onfocus text1", "onfocus text2" })
+    @Alerts({"body1", "button1", "text1", "[object]", "onfocus text2", "text2", "onfocus text1", "onfocus text2" })
     public void setActiveAndFocus() throws Exception {
         final WebClient webClient = getWebClient();
         final MockWebConnection webConnection = new MockWebConnection();
@@ -2331,25 +2177,25 @@ public class HTMLElementTest extends WebTestCase {
 
         final String firstHtml = "<html><head><title>First</title>\n"
             + "<script>var win2;</script></head>\n"
-            + "<body><form name='form1'>\n"
+            + "<body id='body1' onload='alert(document.activeElement.id)'><form name='form1'>\n"
             + "<input id='text1' onfocus='alert(\"onfocus text1\");win2.focus();'>\n"
             + "<button id='button1' onClick='win2=window.open(\"" + URL_SECOND + "\");'>Click me</a>\n"
             + "</form></body></html>";
         webConnection.setResponse(URL_FIRST, firstHtml);
 
         final String secondHtml = "<html><head><title>Second</title></head>\n"
-            + "<body>\n"
+            + "<body id='body2'>\n"
             + "<input id='text2' onfocus='alert(\"onfocus text2\")'>\n"
             + "<button id='button2' onClick='doTest();'>Click me</a>\n"
             + "<script>\n"
             + "     function doTest() {\n"
-            + "         alert(opener.document.activeElement);\n"
+            + "         alert(opener.document.activeElement.id);\n"
             + "         opener.document.getElementById('text1').setActive();\n"
             + "         alert(opener.document.activeElement.id);\n"
             + "         alert(document.activeElement);\n"
             + "         document.getElementById('text2').setActive();\n"
             + "         alert(document.activeElement.id);\n"
-            + "         opener.focus();"
+            + "         opener.focus();\n"
             + "    }\n"
             + "</script></body></html>";
         webConnection.setResponse(URL_SECOND, secondHtml);
@@ -2463,8 +2309,8 @@ public class HTMLElementTest extends WebTestCase {
             + "<script>\n"
             + "     document.body.innerHTML = unescape(document.body.innerHTML);\n"
             + "</script></body></html>";
-        final HtmlPage page = loadPageWithAlerts(html);
-        assertEquals("Recursion", page.getTitleText());
+        final WebDriver webDriver = loadPageWithAlerts2(html);
+        assertEquals("Recursion", webDriver.getTitle());
     }
 
     /**
@@ -2509,7 +2355,7 @@ public class HTMLElementTest extends WebTestCase {
             + "<p id='pid' class='x'>text</p>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -2543,7 +2389,7 @@ public class HTMLElementTest extends WebTestCase {
             + "<p id='pid' class='x'>text</p>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -2580,7 +2426,7 @@ public class HTMLElementTest extends WebTestCase {
             + "</div>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -2602,14 +2448,16 @@ public class HTMLElementTest extends WebTestCase {
             + "</div>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(FF = { ">myClass<", "> myId  <" }, IE = { "> myClass <", "> myId  <" })
+    @Alerts(FF3 = { ">myClass<", "> myId  <" },
+            FF3_6 = { "> myClass <", "> myId  <" },
+            IE = { "> myClass <", "> myId  <" })
     public void attributes_trimmed() throws Exception {
         final String html
             = "<html><head>\n"
@@ -2625,16 +2473,15 @@ public class HTMLElementTest extends WebTestCase {
             + "</div>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(FF3 = { "function", "* => body: 0, div1: 0", "foo => body: 3, div1: 1", "foo red => body: 1, div1: 0",
+    @Alerts(FF = { "function", "* => body: 0, div1: 0", "foo => body: 3, div1: 1", "foo red => body: 1, div1: 0",
             "red foo => body: 1, div1: 0", "blue foo => body: 0, div1: 0", "null => body: 0, div1: 0" },
-            FF2 = { "undefined", "exception" },
             IE = { "undefined", "exception" })
     public void getElementsByClassName() throws Exception {
         final String html
@@ -2669,7 +2516,7 @@ public class HTMLElementTest extends WebTestCase {
             + "<span class='red' id='span4'>bye</span>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -2693,7 +2540,7 @@ public class HTMLElementTest extends WebTestCase {
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -2719,7 +2566,7 @@ public class HTMLElementTest extends WebTestCase {
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -2751,7 +2598,7 @@ public class HTMLElementTest extends WebTestCase {
             + "  <div id='div5'><div id='div6'><div id='div7'></div><div id='div8'></div></div></div>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -2776,7 +2623,7 @@ public class HTMLElementTest extends WebTestCase {
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -2797,7 +2644,7 @@ public class HTMLElementTest extends WebTestCase {
             + "alert([u(i.type), u(i.id), u(i.name), u(i.style), u(i.onclick),"
             + "       u(i.custom1), u(i.custom2)].join(','));\n"
             + "</script>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -2834,16 +2681,8 @@ public class HTMLElementTest extends WebTestCase {
             + "alert(i.name);\n"
             + "</script>";
 
-        final WebClient client = getWebClient();
-        final List<String> actual = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(actual));
-
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_GARGOYLE, html);
-        client.setWebConnection(conn);
-
-        client.getPage(URL_GARGOYLE);
-        assertEquals(expectedAlerts, actual);
+        setExpectedAlerts(expectedAlerts);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -2861,6 +2700,26 @@ public class HTMLElementTest extends WebTestCase {
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(FF = { "undefined", "true" }, IE = "exception")
+    public void prototype_innerHTML() throws Exception {
+        final String html = "<html><body>\n"
+            + "<script>\n"
+            + "try {\n"
+            + "  alert(HTMLElement.prototype.innerHTML);\n"
+            + "  var myFunc = function() {};\n"
+            + "  HTMLElement.prototype.innerHTML = myFunc;\n"
+            + "  alert(HTMLElement.prototype.innerHTML == myFunc);\n"
+            + "} catch (e) { alert('exception') }\n"
+            + "</script>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
     }
 }

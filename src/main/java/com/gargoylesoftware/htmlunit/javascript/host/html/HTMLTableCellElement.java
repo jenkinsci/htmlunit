@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import java.util.List;
 
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlTableCell;
@@ -28,7 +29,7 @@ import com.gargoylesoftware.htmlunit.javascript.host.css.ComputedCSSStyleDeclara
 /**
  * The JavaScript object representing a TD or TH.
  *
- * @version $Revision: 4791 $
+ * @version $Revision: 6391 $
  * @author <a href="https://sourceforge.net/users/marlee/">Mark van Leeuwen</a>
  * @author Ahmed Ashour
  * @author Sudhan Moghe
@@ -36,14 +37,13 @@ import com.gargoylesoftware.htmlunit.javascript.host.css.ComputedCSSStyleDeclara
  */
 public class HTMLTableCellElement extends HTMLTableComponent {
 
-    private static final long serialVersionUID = -4321684413510290017L;
-
     /**
      * {@inheritDoc}
      */
     @Override
     public void jsxFunction_setAttribute(final String name, String value) {
-        if ("noWrap".equals(name) && value != null && getBrowserVersion().isIE()) {
+        if ("noWrap".equals(name) && value != null
+                && getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_92)) {
             value = "true";
         }
         super.jsxFunction_setAttribute(name, value);
@@ -60,7 +60,7 @@ public class HTMLTableCellElement extends HTMLTableComponent {
         }
 
         final ComputedCSSStyleDeclaration style = jsxGet_currentStyle();
-        final boolean includeBorder = getBrowserVersion().isIE();
+        final boolean includeBorder = getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_93);
         return style.getCalculatedHeight(includeBorder, true);
     }
 
@@ -81,7 +81,7 @@ public class HTMLTableCellElement extends HTMLTableComponent {
             if (row != null) {
                 final HtmlElement thiz = getDomNodeOrDie();
                 final List<HtmlTableCell> cells = row.getCells();
-                final boolean ie = getBrowserVersion().isIE();
+                final boolean ie = getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_94);
                 final boolean leftmost = (cells.indexOf(thiz) == 0);
                 final boolean rightmost = (cells.indexOf(thiz) == cells.size() - 1);
                 w -= ((ie && leftmost ? 0 : 0.5) * style.getBorderLeft());
@@ -100,7 +100,10 @@ public class HTMLTableCellElement extends HTMLTableComponent {
     public Integer jsxGet_cellIndex() {
         final HtmlTableCell cell = (HtmlTableCell) getDomNodeOrDie();
         final HtmlTableRow row = cell.getEnclosingRow();
-        return new Integer(row.getCells().indexOf(cell));
+        if (row == null) { // a not attached document.createElement('TD')
+            return Integer.valueOf(-1);
+        }
+        return Integer.valueOf(row.getCells().indexOf(cell));
     }
 
     /**
@@ -174,16 +177,16 @@ public class HTMLTableCellElement extends HTMLTableComponent {
     public void jsxSet_colSpan(final String colSpan) {
         String s;
         try {
-            final int i = new Double(Double.parseDouble(colSpan)).intValue();
+            final int i = (int) Double.parseDouble(colSpan);
             if (i > 0) {
-                s = String.valueOf(i);
+                s = Integer.toString(i);
             }
             else {
                 throw new NumberFormatException(colSpan);
             }
         }
         catch (final NumberFormatException e) {
-            if (getBrowserVersion().isIE()) {
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_95)) {
                 throw Context.throwAsScriptRuntimeEx(e);
             }
             s = "1";
@@ -212,16 +215,16 @@ public class HTMLTableCellElement extends HTMLTableComponent {
     public void jsxSet_rowSpan(final String rowSpan) {
         String s;
         try {
-            final int i = new Double(Double.parseDouble(rowSpan)).intValue();
+            final int i = (int) Double.parseDouble(rowSpan);
             if (i > 0) {
-                s = String.valueOf(i);
+                s = Integer.toString(i);
             }
             else {
                 throw new NumberFormatException(rowSpan);
             }
         }
         catch (final NumberFormatException e) {
-            if (getBrowserVersion().isIE()) {
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_96)) {
                 throw Context.throwAsScriptRuntimeEx(e);
             }
             s = "1";
@@ -245,7 +248,7 @@ public class HTMLTableCellElement extends HTMLTableComponent {
      */
     public void jsxSet_noWrap(final boolean noWrap) {
         if (noWrap) {
-            final String value = (getBrowserVersion().isIE() ? "true" : "");
+            final String value = (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_97) ? "true" : "");
             getDomNodeOrDie().setAttribute("noWrap", value);
         }
         else {
@@ -263,6 +266,42 @@ public class HTMLTableCellElement extends HTMLTableComponent {
             node = node.getParentNode();
         }
         return (HtmlTableRow) node;
+    }
+
+    /**
+     * Returns the value of the "width" property.
+     * @return the value of the "width" property
+     */
+    public String jsxGet_width() {
+        final boolean ie = getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_98);
+        final Boolean returnNegativeValues = ie ? Boolean.TRUE : null;
+        return getWidthOrHeight("width", returnNegativeValues);
+    }
+
+    /**
+     * Sets the value of the "width" property.
+     * @param width the value of the "width" property
+     */
+    public void jsxSet_width(final String width) {
+        setWidthOrHeight("width", width, !getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_99));
+    }
+
+    /**
+     * Returns the value of the "width" property.
+     * @return the value of the "width" property
+     */
+    public String jsxGet_height() {
+        final boolean ie = getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_100);
+        final Boolean returnNegativeValues = ie ? Boolean.TRUE : null;
+        return getWidthOrHeight("height", returnNegativeValues);
+    }
+
+    /**
+     * Sets the value of the "width" property.
+     * @param width the value of the "width" property
+     */
+    public void jsxSet_height(final String width) {
+        setWidthOrHeight("height", width, !getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_101));
     }
 
 }

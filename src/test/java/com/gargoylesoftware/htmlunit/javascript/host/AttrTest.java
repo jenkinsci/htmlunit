@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,19 +18,22 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
 
 /**
  * Tests for {@link Attr}.
  *
- * @version $Revision: 4557 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  * @author Daniel Gredler
  */
 @RunWith(BrowserRunner.class)
-public class AttrTest extends WebTestCase {
+public class AttrTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if the test fails
@@ -61,7 +64,29 @@ public class AttrTest extends WebTestCase {
             + "</form>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Trimming of "class" attributes during Firefox emulation was having the unintended side effect
+     * of setting the attribute's "specified" attribute to "false".
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Browsers(Browser.FF)
+    @Alerts(FF = { "true", "true" })
+    public void specified2() throws Exception {
+        final String html
+            = "<html><body onload='test()'><div id='div' class='test'></div>\n"
+            + "<script>\n"
+            + "  function test(){\n"
+            + "    var div = document.getElementById('div');\n"
+            + "    alert(div.attributes.id.specified);\n"
+            + "    alert(div.attributes.class.specified);\n"
+            + "  }\n"
+            + "</script>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -86,7 +111,7 @@ public class AttrTest extends WebTestCase {
             + "</form>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -94,8 +119,7 @@ public class AttrTest extends WebTestCase {
      */
     @Test
     @Alerts(IE = { "undefined", "undefined", "undefined" },
-            FF2 = { "undefined", "undefined", "undefined" },
-            FF3 = { "true", "false", "false" })
+            FF = { "true", "false", "false" })
     public void isId() throws Exception {
         final String html
             = "<html><head><script>\n"
@@ -109,7 +133,52 @@ public class AttrTest extends WebTestCase {
             + "<div iD='d' name='d' width='40'>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(FF = "test()", IE = "undefined")
+    public void textContent() throws Exception {
+        final String html
+            = "<html><head><script>\n"
+            + "function test() {\n"
+            + "  var a = document.body.getAttributeNode('onload');\n"
+            + "  alert(a.textContent);\n"
+            + "}\n"
+            + "</script></head><body onload='test()'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @NotYetImplemented(Browser.IE)
+    @Alerts(IE = { "[object]", "undefined", "[object]", "" }, FF = {"[object Attr]", "", "[object Attr]", "" })
+    public void value() throws Exception {
+        final String html = "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            + "    var attr = document.createAttribute('hi');\n"
+            + "    alert(attr);\n"
+            + "    alert(attr.value)\n"
+            + "    attr = createXmlDocument().createAttribute('hi');\n"
+            + "    alert(attr);\n"
+            + "    alert(attr.value)\n"
+            + "  }\n"
+            + "  function createXmlDocument() {\n"
+            + "    if (document.implementation && document.implementation.createDocument)\n"
+            + "      return document.implementation.createDocument('', '', null);\n"
+            + "    else if (window.ActiveXObject)\n"
+            + "      return new ActiveXObject('Microsoft.XMLDOM');\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
 }

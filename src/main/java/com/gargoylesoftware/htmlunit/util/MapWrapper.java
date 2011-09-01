@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,14 +24,12 @@ import java.util.Set;
  * class is <tt>Serializable</tt>, but serialization will fail if the wrapped map is not
  * itself <tt>Serializable</tt>.
  *
- * @version $Revision: 4767 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  * @param <K> the type of the map key
  * @param <V> the type of the value
  */
 public class MapWrapper<K, V> implements Map<K, V>, Serializable {
-
-    private static final long serialVersionUID = 2761869317828831102L;
 
     private Map<K, V> wrappedMap_;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 /**
  * Base class for jQuery tests.
  *
- * @version $Revision: 4789 $
+ * @version $Revision: 6205 $
  * @author Ahmed Ashour
  */
 @RunWith(BrowserRunner.class)
@@ -97,7 +97,6 @@ public abstract class JQueryTestBase extends WebServerTestCase {
     /**
      * @throws Exception if an error occurs
      */
-    @SuppressWarnings("unchecked")
     protected void runTest() throws Exception {
         final Iterator<HtmlElement> it = loadPage();
         final List<String> lines = FileUtils.readLines(new File(getExpectedPath()), "UTF-8");
@@ -135,6 +134,7 @@ public abstract class JQueryTestBase extends WebServerTestCase {
      */
     protected Iterator<HtmlElement> loadPage() throws Exception {
         final HtmlPage page = client_.getPage(getUrl());
+
         client_.waitForBackgroundJavaScriptStartingBefore(4 * 60 * 1000);
 
         // dump the result page if not OK
@@ -144,7 +144,8 @@ public abstract class JQueryTestBase extends WebServerTestCase {
                 "jquery" + getVersion() + '_' + getBrowserVersion().getNickname() + "_result.html");
             FileUtils.writeStringToFile(f, page.asXml(), "UTF-8");
             LOG.info("Test result for "
-                + getVersion() + '_' + getBrowserVersion().getNickname() + " written to: " + f.getAbsolutePath());
+                    + getVersion() + '_' + getBrowserVersion().getNickname()
+                    + " written to: " + f.getAbsolutePath());
         }
 
         final HtmlElement doc = page.getDocumentElement();

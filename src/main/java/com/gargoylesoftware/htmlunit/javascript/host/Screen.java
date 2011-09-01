@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
  * A JavaScript object for a Screen. Combines properties from both Mozilla's DOM
  * and IE's DOM.
  *
- * @version $Revision: 4097 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Daniel Gredler
  * @author Chris Erskine
@@ -30,8 +30,6 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
  * @see <a href="http://www.mozilla.org/docs/dom/domref/dom_window_ref.html">Mozilla documentation</a>
  */
 public class Screen extends SimpleScriptable {
-
-    private static final long serialVersionUID = 7775024295042666245L;
 
     private int left_;
     private int top_;

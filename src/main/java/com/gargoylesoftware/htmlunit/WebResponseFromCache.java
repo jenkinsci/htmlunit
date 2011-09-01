@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,30 +20,36 @@ import com.gargoylesoftware.htmlunit.util.WebResponseWrapper;
  * A {@link WebResponse} implementation to deliver with content from cache. The response
  * is the same but the request may have some variation like an anchor.
  *
- * @version $Revision: 4872 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  */
 class WebResponseFromCache extends WebResponseWrapper {
 
-    private static final long serialVersionUID = 450330231180187171L;
-
-    private final WebRequestSettings settings_;
+    private final WebRequest request_;
 
     /**
      * Wraps the provide response for the given request
      * @param cachedResponse the response from cache
      * @param currentRequest the new request
      */
-    WebResponseFromCache(final WebResponse cachedResponse, final WebRequestSettings currentRequest) {
+    WebResponseFromCache(final WebResponse cachedResponse, final WebRequest currentRequest) {
         super(cachedResponse);
-        settings_ = currentRequest;
+        request_ = currentRequest;
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public WebRequestSettings getRequestSettings() {
-        return settings_;
+    public WebRequest getRequestSettings() {
+        return request_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public WebRequest getWebRequest() {
+        return request_;
     }
 }

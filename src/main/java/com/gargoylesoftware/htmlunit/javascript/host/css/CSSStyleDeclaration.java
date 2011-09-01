@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,7 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.css;
 
-import static com.gargoylesoftware.htmlunit.util.StringUtils.isFloat;
-
+import java.awt.Color;
 import java.io.IOException;
 import java.io.StringReader;
 import java.text.MessageFormat;
@@ -29,8 +28,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import net.sourceforge.htmlunit.corejs.javascript.Context;
+import net.sourceforge.htmlunit.corejs.javascript.EvaluatorException;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 import net.sourceforge.htmlunit.corejs.javascript.Undefined;
+import net.sourceforge.htmlunit.corejs.javascript.WrappedException;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
@@ -39,9 +40,13 @@ import org.apache.commons.logging.LogFactory;
 import org.w3c.css.sac.ErrorHandler;
 import org.w3c.css.sac.InputSource;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.WebAssert;
+import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLCanvasElement;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLHtmlElement;
 import com.steadystate.css.dom.CSSValueImpl;
 import com.steadystate.css.parser.CSSOMParser;
 import com.steadystate.css.parser.SACParserCSS21;
@@ -49,7 +54,7 @@ import com.steadystate.css.parser.SACParserCSS21;
 /**
  * A JavaScript object for a CSSStyleDeclaration.
  *
- * @version $Revision: 4789 $
+ * @version $Revision: 6473 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Daniel Gredler
@@ -57,19 +62,241 @@ import com.steadystate.css.parser.SACParserCSS21;
  * @author Ahmed Ashour
  * @author Rodney Gitzel
  * @author Sudhan Moghe
+ * @author Ronald Brill
  */
 public class CSSStyleDeclaration extends SimpleScriptable {
+    private static final String AZIMUTH = "azimuth";
+    private static final String BACKGROUND = "background";
+    private static final String BACKGROUND_ATTACHMENT = "background-attachment";
+    private static final String BACKGROUND_COLOR = "background-color";
+    private static final String BACKGROUND_IMAGE = "background-image";
+    private static final String BACKGROUND_POSITION = "background-position";
+    private static final String BACKGROUND_POSITION_X = "background-position-x";
+    private static final String BACKGROUND_POSITION_Y = "background-position-y";
+    private static final String BACKGROUND_REPEAT = "background-repeat";
+    private static final String BEHAVIOR = "behavior";
+    private static final String BORDER = "border";
+    private static final String BORDER_BOTTOM = "border-bottom";
+    private static final String BORDER_BOTTOM_COLOR = "border-bottom-color";
+    private static final String BORDER_BOTTOM_STYLE = "border-bottom-style";
+    private static final String BORDER_BOTTOM_WIDTH = "border-bottom-width";
+    private static final String BORDER_COLLAPSE = "border-collapse";
+    private static final String BORDER_COLOR = "border-color";
+    private static final String BORDER_LEFT = "border-left";
+    private static final String BORDER_LEFT_COLOR = "border-left-color";
+    private static final String BORDER_LEFT_STYLE = "border-left-style";
+    private static final String BORDER_WIDTH = "border-width";
+    private static final String BORDER_LEFT_WIDTH = "border-left-width";
+    private static final String BORDER_RIGHT = "border-right";
+    private static final String BORDER_RIGHT_COLOR = "border-right-color";
+    private static final String BORDER_RIGHT_STYLE = "border-right-style";
+    private static final String BORDER_RIGHT_WIDTH = "border-right-width";
+    private static final String BORDER_SPACING = "border-spacing";
+    private static final String BORDER_STYLE = "border-style";
+    private static final String BORDER_TOP = "border-top";
+    private static final String BORDER_TOP_COLOR = "border-top-color";
+    private static final String BORDER_TOP_STYLE = "border-top-style";
+    private static final String BORDER_TOP_WIDTH = "border-top-width";
+    private static final String BOTTOM = "bottom";
+    private static final String CAPTION_SIDE = "caption-side";
+    private static final String CLEAR = "clear";
+    private static final String CLIP = "clip";
+    private static final String COLOR = "color";
+    private static final String CONTENT = "content";
+    private static final String COUNTER_INCREMENT = "counter-increment";
+    private static final String COUNTER_RESET = "counter-reset";
+    private static final String CUE = "cue";
+    private static final String CUE_AFTER = "cue-after";
+    private static final String CUE_BEFORE = "cue-before";
+    private static final String CURSOR = "cursor";
+    private static final String DIRECTION = "direction";
+    private static final String DISPLAY = "display";
+    private static final String ELEVATION = "elevation";
+    private static final String EMPTY_CELLS = "empty-cells";
+    private static final String FILTER = "filter";
+    private static final String FONT = "font";
+    private static final String FONT_FAMILY = "font-family";
+    private static final String FONT_SIZE = "font-size";
+    private static final String FONT_SIZE_ADJUST = "font-size-adjust";
+    private static final String FONT_STRETCH = "font-stretch";
+    private static final String FONT_STYLE = "font-style";
+    private static final String FONT_VARIANT = "font-variant";
+    private static final String FONT_WEIGHT = "font-weight";
+    private static final String HEIGHT = "height";
+    private static final String IME_MODE = "ime-mode";
+    private static final String LAYOUT_FLOW = "layout-flow";
+    private static final String LAYOUT_GRID = "layout-grid";
+    private static final String LAYOUT_GRID_CHAR = "layout-grid-char";
+    private static final String LAYOUT_GRID_LINE = "layout-grid-line";
+    private static final String LAYOUT_GRID_MODE = "layout-grid-mode";
+    private static final String LAYOUT_GRID_TYPE = "layout-grid-type";
+    private static final String LEFT = "left";
+    private static final String LETTER_SPACING = "letter-spacing";
+    private static final String LINE_BREAK = "line-break";
+    private static final String LINE_HEIGHT = "line-height";
+    private static final String LIST_STYLE = "list-style";
+    private static final String LIST_STYLE_IMAGE = "list-style-image";
+    private static final String LIST_STYLE_POSITION = "list-style-position";
+    private static final String LIST_STYLE_TYPE = "list-style-type";
+    private static final String MARGIN_BOTTOM = "margin-bottom";
+    private static final String MARGIN_LEFT = "margin-left";
+    private static final String MARGIN_RIGHT = "margin-right";
+    private static final String MARGIN = "margin";
+    private static final String MARGIN_TOP = "margin-top";
+    private static final String MARKER_OFFSET = "marker-offset";
+    private static final String MARKS = "marks";
+    private static final String MAX_HEIGHT = "max-height";
+    private static final String MAX_WIDTH = "max-width";
+    private static final String MIN_HEIGHT = "min-height";
+    private static final String MIN_WIDTH = "min-width";
+    private static final String MOZ_APPEARANCE = "-moz-appearance";
+    private static final String MOZ_BACKGROUND_CLIP = "-moz-background-clip";
+    private static final String MOZ_BACKGROUND_INLINE_POLICY = "-moz-background-inline-policy";
+    private static final String MOZ_BACKGROUND_ORIGIN = "-moz-background-origin";
+    private static final String MOZ_BINDING = "-moz-binding";
+    private static final String MOZ_BORDER_BOTTOM_COLORS = "-moz-border-bottom-colors";
+    private static final String MOZ_BORDER_LEFT_COLORS = "-moz-border-left-colors";
+    private static final String MOZ_BORDER_RADIUS = "-moz-border-radius";
+    private static final String MOZ_BORDER_RADIUS_BOTTOMLEFT = "-moz-border-radius-bottomleft";
+    private static final String MOZ_BORDER_RADIUS_BOTTOMRIGHT = "-moz-border-radius-bottomright";
+    private static final String MOZ_BORDER_RADIUS_TOPLEFT = "-moz-border-radius-topleft";
+    private static final String MOZ_BORDER_RADIUS_TOPRIGHT = "-moz-border-radius-topright";
+    private static final String MOZ_BORDER_RIGHT_COLORS = "-moz-border-right-colors";
+    private static final String MOZ_BORDER_TOP_COLORS = "-moz-border-top-colors";
+    private static final String MOZ_BOX_ALIGN = "-moz-box-align";
+    private static final String MOZ_BOX_DIRECTION = "-moz-box-direction";
+    private static final String MOZ_BOX_FLEX = "-moz-box-flex";
+    private static final String MOZ_BOX_ORDINAL_GROUP = "-moz-box-ordinal-group";
+    private static final String MOZ_BOX_ORIENT = "-moz-box-orient";
+    private static final String MOZ_BOX_PACK = "-moz-box-pack";
+    private static final String MOZ_BOX_SIZING = "-moz-box-sizing";
+    private static final String MOZ_COLUMN_COUNT = "-moz-column-count";
+    private static final String MOZ_COLUMN_GAP = "-moz-column-gap";
+    private static final String MOZ_COLUMN_WIDTH = "-moz-column-width";
+    private static final String MOZ_FLOAT_EDGE = "-moz-float-edge";
+    private static final String MOZ_FORCE_BROKEN_IMAGE_ICON = "-moz-force-broken-image-icon";
+    private static final String MOZ_IMAGE_REGION = "-moz-image-region";
+    private static final String MOZ_MARGIN_END = "-moz-margin-end";
+    private static final String MOZ_MARGIN_START = "-moz-margin-start";
+    private static final String MOZ_OPACITY = "-moz-opacity";
+    private static final String MOZ_OUTLINE = "-moz-outline";
+    private static final String MOZ_OUTLINE_COLOR = "-moz-outline-color";
+    private static final String MOZ_OUTLINE_OFFSET = "-moz-outline-offset";
+    private static final String MOZ_OUTLINE_RADIUS = "-mz-outline-radius";
+    private static final String MOZ_OUTLINE_RADIUS_BOTTOMLEFT = "-moz-outline-radius-bottomleft";
+    private static final String MOZ_OUTLINE_RADIUS_BOTTOMRIGHT = "-moz-outline-radius-bottomright";
+    private static final String MOZ_OUTLINE_RADIUS_TOPLEFT = "-moz-outline-radius-topleft";
+    private static final String MOZ_OUTLINE_RADIUS_TOPRIGHT = "-moz-outline-radius-topright";
+    private static final String MOZ_OUTLINE_STYLE = "-moz-outline-style";
+    private static final String MOZ_OUTLINE_WIDTH = "-moz-outline-width";
+    private static final String MOZ_PADDING_END = "-moz-padding-end";
+    private static final String MOZ_PADDING_START = "-moz-padding-start";
+    private static final String MOZ_USER_FOCUS = "-moz-user-focus";
+    private static final String MOZ_USER_INPUT = "-moz-user-input";
+    private static final String MOZ_USER_MODIFY = "-moz-user-modify";
+    private static final String MOZ_USER_SELECT = "-moz-user-select";
+    private static final String MS_INTERPOLATION_MODE = "ms-interpolation-mode";
+    private static final String OPACITY = "opacity";
+    private static final String ORPHANS = "orphans";
+    private static final String OUTLINE = "outline";
+    private static final String OUTLINE_COLOR = "outline-color";
+    private static final String OUTLINE_OFFSET = "outline-offset";
+    private static final String OUTLINE_STYLE = "outline-style";
+    private static final String OUTLINE_WIDTH = "outline-width";
+    private static final String OVERFLOW = "overflow";
+    private static final String OVERFLOW_X = "overflow-x";
+    private static final String OVERFLOW_Y = "overflow-y";
+    private static final String PADDING_BOTTOM = "padding-bottom";
+    private static final String PADDING_LEFT = "padding-left";
+    private static final String PADDING_RIGHT = "padding-right";
+    private static final String PADDING = "padding";
+    private static final String PADDING_TOP = "padding-top";
+    private static final String PAGE = "page";
+    private static final String PAGE_BREAK_AFTER = "page-break-after";
+    private static final String PAGE_BREAK_BEFORE = "page-break-before";
+    private static final String PAGE_BREAK_INSIDE = "page-break-inside";
+    private static final String PAUSE = "pause";
+    private static final String PAUSE_AFTER = "pause-after";
+    private static final String PAUSE_BEFORE = "pause-before";
+    private static final String PITCH = "pitch";
+    private static final String PITCH_RANGE = "pitch-range";
+    private static final String POSITION = "position";
+    private static final String QUOTES = "quotes";
+    private static final String RICHNESS = "richness";
+    private static final String RIGHT = "right";
+    private static final String RUBY_ALIGN = "ruby-align";
+    private static final String RUBY_OVERHANG = "ruby-overhang";
+    private static final String RUBY_POSITION = "ruby-position";
+    private static final String SCROLLBAR3D_LIGHT_COLOR = "scrollbar3d-light-color";
+    private static final String SCROLLBAR_ARROW_COLOR = "scrollbar-arrow-color";
+    private static final String SCROLLBAR_BASE_COLOR = "scrollbar-base-color";
+    private static final String SCROLLBAR_DARK_SHADOW_COLOR = "scrollbar-dark-shadow-color";
+    private static final String SCROLLBAR_FACE_COLOR = "scrollbar-face-color";
+    private static final String SCROLLBAR_HIGHLIGHT_COLOR = "scrollbar-highlight-color";
+    private static final String SCROLLBAR_SHADOW_COLOR = "scrollbar-shadow-color";
+    private static final String SCROLLBAR_TRACK_COLOR = "scrollbar-track-color";
+    private static final String SIZE = "size";
+    private static final String SPEAK = "speak";
+    private static final String SPEAK_HEADER = "speak-header";
+    private static final String SPEAK_NUMERAL = "speak-numeral";
+    private static final String SPEAK_PUNCTUATION = "speak-punctuation";
+    private static final String SPEECH_RATE = "speech-rate";
+    private static final String STRESS = "stress";
+    private static final String FLOAT = "float";
+    private static final String TABLE_LAYOUT = "table-layout";
+    private static final String TEXT_ALIGN = "text-align";
+    private static final String TEXT_ALIGN_LAST = "text-align-last";
+    private static final String TEXT_AUTOSPACE = "text-autospace";
+    private static final String TEXT_DECORATION = "text-decoration";
+    private static final String TEXT_INDENT = "text-indent";
+    private static final String TEXT_JUSTIFY = "text-justify";
+    private static final String TEXT_JUSTIFY_TRIM = "text-justify-trim";
+    private static final String TEXT_KASHIDA = "text-kashida";
+    private static final String TEXT_KASHIDA_SPACE = "text-kashida-space";
+    private static final String TEXT_OVERFLOW = "text-overflow";
+    private static final String TEXT_SHADOW = "text-shadow";
+    private static final String TEXT_TRANSFORM = "text-transform";
+    private static final String TEXT_UNDERLINE_POSITION = "text-underline-position";
+    private static final String TOP = "top";
+    private static final String UNICODE_BIDI = "unicode-bidi";
+    private static final String VERTICAL_ALIGN = "vertical-align";
+    private static final String VISIBILITY = "visibility";
+    private static final String VOICE_FAMILY = "voice-family";
+    private static final String VOLUME = "volume";
+    private static final String WHITE_SPACE = "white-space";
+    private static final String WIDOWS = "widows";
+    private static final String WORD_BREAK = "word-break";
+    private static final String WORD_SPACING = "word-spacing";
+    private static final String WORD_WRAP = "word-wrap";
+    private static final String WRITING_MODE = "writing-mode";
+    private static final String Z_INDEX = "z-index";
+    private static final String ZOOM = "zoom";
 
-    private static final long serialVersionUID = -1976370264911039311L;
+    /** The width style attribute. **/
+    protected static final String WIDTH = "width";
+
+    private static final Pattern VALUES_SPLIT_PATTERN = Pattern.compile("\\s+");
+    private static final Pattern TO_INT_PATTERN = Pattern.compile("(\\d+).*");
+    private static final Pattern URL_PATTERN =
+        Pattern.compile("url\\(\\s*[\"']?(.*?)[\"']?\\s*\\)");
+    private static final Pattern POSITION_PATTERN =
+        Pattern.compile("(\\d+\\s*(%|px|cm|mm|in|pt|pc|em|ex))\\s*"
+                + "(\\d+\\s*(%|px|cm|mm|in|pt|pc|em|ex)|top|bottom|center)");
+    private static final Pattern POSITION_PATTERN2 =
+        Pattern.compile("(left|right|center)\\s*(\\d+\\s*(%|px|cm|mm|in|pt|pc|em|ex)|top|bottom|center)");
+    private static final Pattern POSITION_PATTERN3 =
+        Pattern.compile("(top|bottom|center)\\s*(\\d+\\s*(%|px|cm|mm|in|pt|pc|em|ex)|left|right|center)");
+
     private static final Log LOG = LogFactory.getLog(CSSStyleDeclaration.class);
     private static Map<String, String> CSSColors_ = new HashMap<String, String>();
+    private static Map<String, String> CamelizeCache_ = new HashMap<String, String>();
 
     /** The different types of shorthand values. */
     private enum Shorthand {
-        TOP("Top"),
-        RIGHT("Right"),
-        BOTTOM("Bottom"),
-        LEFT("Left");
+        TOP("top"),
+        RIGHT("right"),
+        BOTTOM("bottom"),
+        LEFT("left");
 
         private final String string_;
 
@@ -152,9 +379,9 @@ public class CSSStyleDeclaration extends SimpleScriptable {
         jsElement_ = htmlElement;
         setDomNode(htmlElement.getDomNodeOrNull(), false);
         // If an IE behavior was specified in the style, apply the behavior.
-        if (getBrowserVersion().isIE()) {
-            for (final StyleElement element : getStyleMap(true).values()) {
-                if ("behavior".equals(element.getName())) {
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.CSS_SUPPORTS_BEHAVIOR_PROPERTY)) {
+            for (final StyleElement element : getStyleMap().values()) {
+                if (BEHAVIOR.equals(element.getName())) {
                     try {
                         final Object[] url = URL_FORMAT.parse(element.getValue());
                         if (url.length > 0) {
@@ -182,17 +409,19 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * Returns the value of the named style attribute, or an empty string if it is not found.
      *
      * @param name the name of the style attribute whose value is to be retrieved
-     * @param camelCase whether or not the name is expected to be in camel case
+     * @param styleMap if the style map was calculated before, you can provide it here
+     * for performance
      * @return the named style attribute value, or an empty string if it is not found
      */
-    protected String getStyleAttribute(String name, final boolean camelCase) {
+    protected String getStyleAttribute(final String name, final Map<String, StyleElement> styleMap) {
         if (styleDeclaration_ != null) {
-            if (camelCase) {
-                name = uncamelize(name);
-            }
             return styleDeclaration_.getPropertyValue(name);
         }
-        final StyleElement element = getStyleMap(camelCase).get(name);
+        Map<String, StyleElement> style = styleMap;
+        if (null == style) {
+            style = getStyleMap();
+        }
+        final StyleElement element = style.get(name);
         if (element != null && element.getValue() != null) {
             return element.getValue();
         }
@@ -217,43 +446,45 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param name1 the name of the first style attribute
      * @param name2 the name of the second style attribute
      * @param shorthand the type of shorthand value to return, if any
-     * @param camelCase whether or not the names are expected to be in camel case
      * @return the value of one of the two named style attributes
      */
-    private String getStyleAttribute(final String name1, final String name2, final Shorthand shorthand,
-        final boolean camelCase) {
-
-        final Map<String, StyleElement> styleMap = getStyleMap(camelCase);
-        final StyleElement element1 = styleMap.get(name1);
-        final StyleElement element2 = styleMap.get(name2);
-        if (element1 == null && element2 == null) {
-            return "";
-        }
-
+    private String getStyleAttribute(final String name1, final String name2, final Shorthand shorthand) {
         final String value;
-        final boolean mayBeShorthand;
-        if (element1 != null && element2 == null) {
-            value = element1.getValue();
-            mayBeShorthand = false;
-        }
-        else if (element1 == null && element2 != null) {
-            value = element2.getValue();
-            mayBeShorthand = true;
-        }
-        else if (element1.getIndex() > element2.getIndex()) {
-            value = element1.getValue();
-            mayBeShorthand = false;
+        if (styleDeclaration_ != null) {
+            final String value1 = styleDeclaration_.getPropertyValue(name1);
+            final String value2 = styleDeclaration_.getPropertyValue(name2);
+
+            if ("".equals(value1) && "".equals(value2)) {
+                return "";
+            }
+            if (!"".equals(value1) && "".equals(value2)) {
+                return value1;
+            }
+            value = value2;
         }
         else {
-            value = element2.getValue();
-            mayBeShorthand = true;
+            final Map<String, StyleElement> styleMap = getStyleMap();
+            final StyleElement element1 = styleMap.get(name1);
+            final StyleElement element2 = styleMap.get(name2);
+
+            if (element1 == null && element2 == null) {
+                return "";
+            }
+            if (element1 != null && element2 == null) {
+                return element1.getValue();
+            }
+            if (element1 == null && element2 != null) {
+                value = element2.getValue();
+            }
+            else if (element1.getIndex() > element2.getIndex()) {
+                return element1.getValue();
+            }
+            else {
+                value = element2.getValue();
+            }
         }
 
-        if (!mayBeShorthand) {
-            return value;
-        }
-
-        final String[] values = value.split("\\s+");
+        final String[] values = VALUES_SPLIT_PATTERN.split(value, 0);
         switch (shorthand) {
             case TOP:
                 return values[0];
@@ -287,14 +518,13 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param name the attribute name (camel-cased)
      * @param newValue the attribute value
      */
-    protected void setStyleAttribute(String name, final String newValue) {
-        name = uncamelize(name);
+    protected void setStyleAttribute(final String name, final String newValue) {
         if (styleDeclaration_ != null) {
             styleDeclaration_.setProperty(name, newValue, null);
+            return;
         }
-        else {
-            replaceStyleAttribute(name, newValue);
-        }
+
+        replaceStyleAttribute(name, newValue);
     }
 
     /**
@@ -305,13 +535,13 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param value the attribute value
      */
     private void replaceStyleAttribute(final String name, final String value) {
-        if (value.trim().length() == 0) {
+        if (StringUtils.isBlank(value)) {
             removeStyleAttribute(name);
         }
         else {
-            final Map<String, StyleElement> styleMap = getStyleMap(false);
+            final Map<String, StyleElement> styleMap = getStyleMap();
             final StyleElement old = styleMap.get(name);
-            final Long index;
+            final long index;
             if (old != null) {
                 index = old.getIndex();
             }
@@ -327,36 +557,34 @@ public class CSSStyleDeclaration extends SimpleScriptable {
     /**
      * Removes the specified style attribute, returning the element index of the removed attribute.
      * @param name the attribute name (delimiter-separated, not camel-cased)
-     * @return the style element index of the removed attribute, or <tt>null</tt> if no attribute was removed
      */
-    private Long removeStyleAttribute(final String name) {
-        final Map<String, StyleElement> styleMap = getStyleMap(false);
-        if (!styleMap.containsKey(name)) {
-            return null;
+    private void removeStyleAttribute(final String name) {
+        if (null != styleDeclaration_) {
+            styleDeclaration_.removeProperty(name);
+            return;
         }
-        final StyleElement removed = styleMap.remove(name);
+
+        final Map<String, StyleElement> styleMap = getStyleMap();
+        if (!styleMap.containsKey(name)) {
+            return;
+        }
+        styleMap.remove(name);
         writeToElement(styleMap);
-        return removed.getIndex();
     }
 
     /**
      * Returns a sorted map containing style elements, keyed on style element name. We use a
      * {@link LinkedHashMap} map so that results are deterministic and are thus testable.
      *
-     * @param camelCase if <tt>true</tt>, the keys are camel cased (i.e. <tt>fontSize</tt>),
-     *        if <tt>false</tt>, the keys are delimiter-separated (i.e. <tt>font-size</tt>).
      * @return a sorted map containing style elements, keyed on style element name
      */
-    protected Map<String, StyleElement> getStyleMap(final boolean camelCase) {
+    protected Map<String, StyleElement> getStyleMap() {
         final Map<String, StyleElement> styleMap = new LinkedHashMap<String, StyleElement>();
         final String styleAttribute = jsElement_.getDomNodeOrDie().getAttribute("style");
-        for (final String token : styleAttribute.split(";")) {
+        for (final String token : StringUtils.split(styleAttribute, ';')) {
             final int index = token.indexOf(":");
             if (index != -1) {
-                String key = token.substring(0, index).trim().toLowerCase();
-                if (camelCase) {
-                    key = camelize(key);
-                }
+                final String key = token.substring(0, index).trim().toLowerCase();
                 final String value = token.substring(index + 1).trim();
                 final StyleElement element = new StyleElement(key, value, getCurrentElementIndex());
                 styleMap.put(key, element);
@@ -402,27 +630,31 @@ public class CSSStyleDeclaration extends SimpleScriptable {
         if (string == null) {
             return null;
         }
+
+        String result = CamelizeCache_.get(string);
+        if (null != result) {
+            return result;
+        }
+
+        final int pos = string.indexOf('-');
+        if (pos == -1 || pos >= string.length() - 1) {
+            return string;
+        }
+
         final StringBuilder buffer = new StringBuilder(string);
-        for (int i = 0; i < buffer.length() - 1; i++) {
+        buffer.deleteCharAt(pos);
+        buffer.setCharAt(pos, Character.toUpperCase(buffer.charAt(pos)));
+
+        for (int i = pos + 1; i < buffer.length() - 1; i++) {
             if (buffer.charAt(i) == '-') {
                 buffer.deleteCharAt(i);
                 buffer.setCharAt(i, Character.toUpperCase(buffer.charAt(i)));
             }
         }
-        return buffer.toString();
-    }
+        result = buffer.toString();
+        CamelizeCache_.put(string, result);
 
-    /**
-     * Transforms the specified string from camel-cased (e.g. <tt>fontSize</tt>) to
-     * delimiter-separated (e.g. <tt>font-size</tt>)
-     * @param string the string to uncamelize
-     * @return the transformed string
-     */
-    protected static String uncamelize(final String string) {
-        if (string == null) {
-            return null;
-        }
-        return string.replaceAll("([A-Z])", "-$1").toLowerCase();
+        return result;
     }
 
     /**
@@ -430,7 +662,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_azimuth() {
-        return getStyleAttribute("azimuth", true);
+        return getStyleAttribute(AZIMUTH, null);
     }
 
     /**
@@ -438,7 +670,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param azimuth the new attribute
      */
     public void jsxSet_azimuth(final String azimuth) {
-        setStyleAttribute("azimuth", azimuth);
+        setStyleAttribute(AZIMUTH, azimuth);
     }
 
     /**
@@ -446,7 +678,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_background() {
-        return getStyleAttribute("background", true);
+        return getStyleAttribute(BACKGROUND, null);
     }
 
     /**
@@ -454,7 +686,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param background the new attribute
      */
     public void jsxSet_background(final String background) {
-        setStyleAttribute("background", background);
+        setStyleAttribute(BACKGROUND, background);
     }
 
     /**
@@ -462,7 +694,25 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_backgroundAttachment() {
-        return getStyleAttribute("backgroundAttachment", true);
+        Map<String, StyleElement> style = null;
+        if (styleDeclaration_ == null) {
+            style = getStyleMap();
+        }
+
+        String value = getStyleAttribute(BACKGROUND_ATTACHMENT, style);
+        if (StringUtils.isBlank(value)) {
+            final String bg = getStyleAttribute(BACKGROUND, style);
+            if (StringUtils.isNotBlank(bg)) {
+                value = findAttachment(bg);
+                if (value == null) {
+                    return "scroll"; // default if shorthand is used
+                }
+                return value;
+            }
+            return "";
+        }
+
+        return value;
     }
 
     /**
@@ -470,7 +720,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param backgroundAttachment the new attribute
      */
     public void jsxSet_backgroundAttachment(final String backgroundAttachment) {
-        setStyleAttribute("backgroundAttachment", backgroundAttachment);
+        setStyleAttribute(BACKGROUND_ATTACHMENT, backgroundAttachment);
     }
 
     /**
@@ -478,14 +728,26 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_backgroundColor() {
-        String value = getStyleAttribute("backgroundColor", true);
-        if (value.length() == 0) {
-            value = findColor(getStyleAttribute("background", true));
-            if (value == null) {
-                value = "";
-            }
+        Map<String, StyleElement> style = null;
+        if (styleDeclaration_ == null) {
+            style = getStyleMap();
         }
 
+        String value = getStyleAttribute(BACKGROUND_COLOR, style);
+        if (StringUtils.isBlank(value)) {
+            final String bg = getStyleAttribute(BACKGROUND, style);
+            if (StringUtils.isBlank(bg)) {
+                return "";
+            }
+            value = findColor(bg);
+            if (value == null) {
+                return "transparent"; // default if shorthand is used
+            }
+            return value;
+        }
+        if (StringUtils.isBlank(value)) {
+            return "";
+        }
         return value;
     }
 
@@ -494,7 +756,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param backgroundColor the new attribute
      */
     public void jsxSet_backgroundColor(final String backgroundColor) {
-        setStyleAttribute("backgroundColor", backgroundColor);
+        setStyleAttribute(BACKGROUND_COLOR, backgroundColor);
     }
 
     /**
@@ -502,7 +764,25 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_backgroundImage() {
-        return getStyleAttribute("backgroundImage", true);
+        Map<String, StyleElement> style = null;
+        if (styleDeclaration_ == null) {
+            style = getStyleMap();
+        }
+
+        String value = getStyleAttribute(BACKGROUND_IMAGE, style);
+        if (StringUtils.isBlank(value)) {
+            final String bg = getStyleAttribute(BACKGROUND, style);
+            if (StringUtils.isNotBlank(bg)) {
+                value = findImageUrl(bg);
+                if (value == null) {
+                    return "none"; // default if shorthand is used
+                }
+                return value;
+            }
+            return "";
+        }
+
+        return value;
     }
 
     /**
@@ -510,7 +790,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param backgroundImage the new attribute
      */
     public void jsxSet_backgroundImage(final String backgroundImage) {
-        setStyleAttribute("backgroundImage", backgroundImage);
+        setStyleAttribute(BACKGROUND_IMAGE, backgroundImage);
     }
 
     /**
@@ -518,7 +798,31 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_backgroundPosition() {
-        return getStyleAttribute("backgroundPosition", true);
+        Map<String, StyleElement> style = null;
+        if (styleDeclaration_ == null) {
+            style = getStyleMap();
+        }
+
+        String value = getStyleAttribute(BACKGROUND_POSITION, style);
+        if (value == null) {
+            return null;
+        }
+        if (StringUtils.isBlank(value)) {
+            final String bg = getStyleAttribute(BACKGROUND, style);
+            if (bg == null) {
+                return null;
+            }
+            if (StringUtils.isNotBlank(bg)) {
+                value = findPosition(bg);
+                if (value == null) {
+                    return "0% 0%"; // default if shorthand is used
+                }
+                return value;
+            }
+            return "";
+        }
+
+        return value;
     }
 
     /**
@@ -526,7 +830,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param backgroundPosition the new attribute
      */
     public void jsxSet_backgroundPosition(final String backgroundPosition) {
-        setStyleAttribute("backgroundPosition", backgroundPosition);
+        setStyleAttribute(BACKGROUND_POSITION, backgroundPosition);
     }
 
     /**
@@ -534,7 +838,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_backgroundPositionX() {
-        return getStyleAttribute("backgroundPositionX", true);
+        return getStyleAttribute(BACKGROUND_POSITION_X, null);
     }
 
     /**
@@ -542,7 +846,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param backgroundPositionX the new attribute
      */
     public void jsxSet_backgroundPositionX(final String backgroundPositionX) {
-        setStyleAttribute("backgroundPositionX", backgroundPositionX);
+        setStyleAttribute(BACKGROUND_POSITION_X, backgroundPositionX);
     }
 
     /**
@@ -550,7 +854,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_backgroundPositionY() {
-        return getStyleAttribute("backgroundPositionY", true);
+        return getStyleAttribute(BACKGROUND_POSITION_Y, null);
     }
 
     /**
@@ -558,7 +862,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param backgroundPositionY the new attribute
      */
     public void jsxSet_backgroundPositionY(final String backgroundPositionY) {
-        setStyleAttribute("backgroundPositionY", backgroundPositionY);
+        setStyleAttribute(BACKGROUND_POSITION_Y, backgroundPositionY);
     }
 
     /**
@@ -566,7 +870,25 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_backgroundRepeat() {
-        return getStyleAttribute("backgroundRepeat", true);
+        Map<String, StyleElement> style = null;
+        if (styleDeclaration_ == null) {
+            style = getStyleMap();
+        }
+
+        String value = getStyleAttribute(BACKGROUND_REPEAT, style);
+        if (StringUtils.isBlank(value)) {
+            final String bg = getStyleAttribute(BACKGROUND, style);
+            if (StringUtils.isNotBlank(bg)) {
+                value = findRepeat(bg);
+                if (value == null) {
+                    return "repeat"; // default if shorthand is used
+                }
+                return value;
+            }
+            return "";
+        }
+
+        return value;
     }
 
     /**
@@ -574,7 +896,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param backgroundRepeat the new attribute
      */
     public void jsxSet_backgroundRepeat(final String backgroundRepeat) {
-        setStyleAttribute("backgroundRepeat", backgroundRepeat);
+        setStyleAttribute(BACKGROUND_REPEAT, backgroundRepeat);
     }
 
     /**
@@ -582,7 +904,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the object's behavior
      */
     public String jsxGet_behavior() {
-        return getStyleAttribute("behavior", true);
+        return getStyleAttribute(BEHAVIOR, null);
     }
 
     /**
@@ -590,7 +912,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param behavior the new behavior
      */
     public void jsxSet_behavior(final String behavior) {
-        setStyleAttribute("behavior", behavior);
+        setStyleAttribute(BEHAVIOR, behavior);
         jsElement_.jsxFunction_removeBehavior(HTMLElement.BEHAVIOR_ID_CLIENT_CAPS);
         jsElement_.jsxFunction_removeBehavior(HTMLElement.BEHAVIOR_ID_HOMEPAGE);
         jsElement_.jsxFunction_removeBehavior(HTMLElement.BEHAVIOR_ID_DOWNLOAD);
@@ -612,7 +934,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_border() {
-        return getStyleAttribute("border", true);
+        return getStyleAttribute(BORDER, null);
     }
 
     /**
@@ -620,7 +942,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param border the new attribute
      */
     public void jsxSet_border(final String border) {
-        setStyleAttribute("border", border);
+        setStyleAttribute(BORDER, border);
     }
 
     /**
@@ -628,7 +950,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_borderBottom() {
-        return getStyleAttribute("borderBottom", true);
+        return getStyleAttribute(BORDER_BOTTOM, null);
     }
 
     /**
@@ -636,7 +958,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param borderBottom the new attribute
      */
     public void jsxSet_borderBottom(final String borderBottom) {
-        setStyleAttribute("borderBottom", borderBottom);
+        setStyleAttribute(BORDER_BOTTOM, borderBottom);
     }
 
     /**
@@ -644,11 +966,16 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_borderBottomColor() {
-        String value = getStyleAttribute("borderBottomColor", true);
+        Map<String, StyleElement> style = null;
+        if (styleDeclaration_ == null) {
+            style = getStyleMap();
+        }
+
+        String value = getStyleAttribute(BORDER_BOTTOM_COLOR, style);
         if (value.length() == 0) {
-            value = findColor(getStyleAttribute("borderBottom", true));
+            value = findColor(getStyleAttribute(BORDER_BOTTOM, style));
             if (value == null) {
-                value = findColor(getStyleAttribute("border", true));
+                value = findColor(getStyleAttribute(BORDER, style));
             }
             if (value == null) {
                 value = "";
@@ -662,7 +989,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param borderBottomColor the new attribute
      */
     public void jsxSet_borderBottomColor(final String borderBottomColor) {
-        setStyleAttribute("borderBottomColor", borderBottomColor);
+        setStyleAttribute(BORDER_BOTTOM_COLOR, borderBottomColor);
     }
 
     /**
@@ -670,11 +997,16 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_borderBottomStyle() {
-        String value = getStyleAttribute("borderBottomStyle", true);
+        Map<String, StyleElement> style = null;
+        if (styleDeclaration_ == null) {
+            style = getStyleMap();
+        }
+
+        String value = getStyleAttribute(BORDER_BOTTOM_STYLE, style);
         if (value.length() == 0) {
-            value = findBorderStyle(getStyleAttribute("borderBottom", true));
+            value = findBorderStyle(getStyleAttribute(BORDER_BOTTOM, style));
             if (value == null) {
-                value = findBorderStyle(getStyleAttribute("border", true));
+                value = findBorderStyle(getStyleAttribute(BORDER, style));
             }
             if (value == null) {
                 value = "";
@@ -688,7 +1020,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param borderBottomStyle the new attribute
      */
     public void jsxSet_borderBottomStyle(final String borderBottomStyle) {
-        setStyleAttribute("borderBottomStyle", borderBottomStyle);
+        setStyleAttribute(BORDER_BOTTOM_STYLE, borderBottomStyle);
     }
 
     /**
@@ -704,7 +1036,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param borderBottomWidth the new attribute
      */
     public void jsxSet_borderBottomWidth(final String borderBottomWidth) {
-        setStyleAttribute("borderBottomWidth", borderBottomWidth);
+        setStyleAttributePixelInt(BORDER_BOTTOM_WIDTH, borderBottomWidth);
     }
 
     /**
@@ -712,7 +1044,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_borderCollapse() {
-        return getStyleAttribute("borderCollapse", true);
+        return getStyleAttribute(BORDER_COLLAPSE, null);
     }
 
     /**
@@ -720,7 +1052,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param borderCollapse the new attribute
      */
     public void jsxSet_borderCollapse(final String borderCollapse) {
-        setStyleAttribute("borderCollapse", borderCollapse);
+        setStyleAttribute(BORDER_COLLAPSE, borderCollapse);
     }
 
     /**
@@ -728,7 +1060,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_borderColor() {
-        return getStyleAttribute("borderColor", true);
+        return getStyleAttribute(BORDER_COLOR, null);
     }
 
     /**
@@ -736,7 +1068,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param borderColor the new attribute
      */
     public void jsxSet_borderColor(final String borderColor) {
-        setStyleAttribute("borderColor", borderColor);
+        setStyleAttribute(BORDER_COLOR, borderColor);
     }
 
     /**
@@ -744,7 +1076,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_borderLeft() {
-        return getStyleAttribute("borderLeft", true);
+        return getStyleAttribute(BORDER_LEFT, null);
     }
 
     /**
@@ -752,7 +1084,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param borderLeft the new attribute
      */
     public void jsxSet_borderLeft(final String borderLeft) {
-        setStyleAttribute("borderLeft", borderLeft);
+        setStyleAttribute(BORDER_LEFT, borderLeft);
     }
 
     /**
@@ -760,11 +1092,16 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_borderLeftColor() {
-        String value = getStyleAttribute("borderLeftColor", true);
+        Map<String, StyleElement> style = null;
+        if (styleDeclaration_ == null) {
+            style = getStyleMap();
+        }
+
+        String value = getStyleAttribute(BORDER_LEFT_COLOR, style);
         if (value.length() == 0) {
-            value = findColor(getStyleAttribute("borderLeft", true));
+            value = findColor(getStyleAttribute(BORDER_LEFT, style));
             if (value == null) {
-                value = findColor(getStyleAttribute("border", true));
+                value = findColor(getStyleAttribute(BORDER, style));
             }
             if (value == null) {
                 value = "";
@@ -778,7 +1115,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param borderLeftColor the new attribute
      */
     public void jsxSet_borderLeftColor(final String borderLeftColor) {
-        setStyleAttribute("borderLeftColor", borderLeftColor);
+        setStyleAttribute(BORDER_LEFT_COLOR, borderLeftColor);
     }
 
     /**
@@ -786,11 +1123,16 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_borderLeftStyle() {
-        String value = getStyleAttribute("borderLeftStyle", true);
+        Map<String, StyleElement> style = null;
+        if (styleDeclaration_ == null) {
+            style = getStyleMap();
+        }
+
+        String value = getStyleAttribute(BORDER_LEFT_STYLE, style);
         if (value.length() == 0) {
-            value = findBorderStyle(getStyleAttribute("borderLeft", true));
+            value = findBorderStyle(getStyleAttribute(BORDER_LEFT, style));
             if (value == null) {
-                value = findBorderStyle(getStyleAttribute("border", true));
+                value = findBorderStyle(getStyleAttribute(BORDER, style));
             }
             if (value == null) {
                 value = "";
@@ -804,7 +1146,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param borderLeftStyle the new attribute
      */
     public void jsxSet_borderLeftStyle(final String borderLeftStyle) {
-        setStyleAttribute("borderLeftStyle", borderLeftStyle);
+        setStyleAttribute(BORDER_LEFT_STYLE, borderLeftStyle);
     }
 
     /**
@@ -822,20 +1164,25 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the width, "" if not defined
      */
     private String getBorderWidth(final Shorthand side) {
-        String value = getStyleAttribute("border" + side + "Width", true);
+        Map<String, StyleElement> style = null;
+        if (styleDeclaration_ == null) {
+            style = getStyleMap();
+        }
+
+        String value = getStyleAttribute(BORDER + "-" + side + "-width", style);
         if (value.length() == 0) {
-            value = findBorderWidth(getStyleAttribute("border" + side, true));
+            value = findBorderWidth(getStyleAttribute(BORDER + "-" + side, style));
             if (value == null) {
-                final String borderWidth = getStyleAttribute("borderWidth", true);
+                final String borderWidth = getStyleAttribute(BORDER_WIDTH, style);
                 if (!StringUtils.isEmpty(borderWidth)) {
-                    final String[] values = borderWidth.split("\\s");
+                    final String[] values = VALUES_SPLIT_PATTERN.split(borderWidth, 0);
                     if (values.length > side.ordinal()) {
                         value = values[side.ordinal()];
                     }
                 }
             }
             if (value == null) {
-                value = findBorderWidth(getStyleAttribute("border", true));
+                value = findBorderWidth(getStyleAttribute(BORDER, style));
             }
             if (value == null) {
                 value = "";
@@ -849,7 +1196,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param borderLeftWidth the new attribute
      */
     public void jsxSet_borderLeftWidth(final String borderLeftWidth) {
-        setStyleAttribute("borderLeftWidth", borderLeftWidth);
+        setStyleAttributePixelInt(BORDER_LEFT_WIDTH, borderLeftWidth);
     }
 
     /**
@@ -857,7 +1204,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_borderRight() {
-        return getStyleAttribute("borderRight", true);
+        return getStyleAttribute(BORDER_RIGHT, null);
     }
 
     /**
@@ -865,7 +1212,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param borderRight the new attribute
      */
     public void jsxSet_borderRight(final String borderRight) {
-        setStyleAttribute("borderRight", borderRight);
+        setStyleAttribute(BORDER_RIGHT, borderRight);
     }
 
     /**
@@ -873,11 +1220,16 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_borderRightColor() {
-        String value = getStyleAttribute("borderRightColor", true);
+        Map<String, StyleElement> style = null;
+        if (styleDeclaration_ == null) {
+            style = getStyleMap();
+        }
+
+        String value = getStyleAttribute(BORDER_RIGHT_COLOR, style);
         if (value.length() == 0) {
-            value = findColor(getStyleAttribute("borderRight", true));
+            value = findColor(getStyleAttribute(BORDER_RIGHT, style));
             if (value == null) {
-                value = findColor(getStyleAttribute("border", true));
+                value = findColor(getStyleAttribute(BORDER, style));
             }
             if (value == null) {
                 value = "";
@@ -891,7 +1243,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param borderRightColor the new attribute
      */
     public void jsxSet_borderRightColor(final String borderRightColor) {
-        setStyleAttribute("borderRightColor", borderRightColor);
+        setStyleAttribute(BORDER_RIGHT_COLOR, borderRightColor);
     }
 
     /**
@@ -899,11 +1251,16 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_borderRightStyle() {
-        String value = getStyleAttribute("borderRightStyle", true);
+        Map<String, StyleElement> style = null;
+        if (styleDeclaration_ == null) {
+            style = getStyleMap();
+        }
+
+        String value = getStyleAttribute(BORDER_RIGHT_STYLE, style);
         if (value.length() == 0) {
-            value = findBorderStyle(getStyleAttribute("borderRight", true));
+            value = findBorderStyle(getStyleAttribute(BORDER_RIGHT, style));
             if (value == null) {
-                value = findBorderStyle(getStyleAttribute("border", true));
+                value = findBorderStyle(getStyleAttribute(BORDER, style));
             }
             if (value == null) {
                 value = "";
@@ -917,7 +1274,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param borderRightStyle the new attribute
      */
     public void jsxSet_borderRightStyle(final String borderRightStyle) {
-        setStyleAttribute("borderRightStyle", borderRightStyle);
+        setStyleAttribute(BORDER_RIGHT_STYLE, borderRightStyle);
     }
 
     /**
@@ -933,7 +1290,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param borderRightWidth the new attribute
      */
     public void jsxSet_borderRightWidth(final String borderRightWidth) {
-        setStyleAttribute("borderRightWidth", borderRightWidth);
+        setStyleAttributePixelInt(BORDER_RIGHT_WIDTH, borderRightWidth);
     }
 
     /**
@@ -941,7 +1298,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_borderSpacing() {
-        return getStyleAttribute("borderSpacing", true);
+        return getStyleAttribute(BORDER_SPACING, null);
     }
 
     /**
@@ -949,7 +1306,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param borderSpacing the new attribute
      */
     public void jsxSet_borderSpacing(final String borderSpacing) {
-        setStyleAttribute("borderSpacing", borderSpacing);
+        setStyleAttribute(BORDER_SPACING, borderSpacing);
     }
 
     /**
@@ -957,7 +1314,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_borderStyle() {
-        return getStyleAttribute("borderStyle", true);
+        return getStyleAttribute(BORDER_STYLE, null);
     }
 
     /**
@@ -965,7 +1322,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param borderStyle the new attribute
      */
     public void jsxSet_borderStyle(final String borderStyle) {
-        setStyleAttribute("borderStyle", borderStyle);
+        setStyleAttribute(BORDER_STYLE, borderStyle);
     }
 
     /**
@@ -973,7 +1330,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_borderTop() {
-        return getStyleAttribute("borderTop", true);
+        return getStyleAttribute(BORDER_TOP, null);
     }
 
     /**
@@ -981,7 +1338,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param borderTop the new attribute
      */
     public void jsxSet_borderTop(final String borderTop) {
-        setStyleAttribute("borderTop", borderTop);
+        setStyleAttribute(BORDER_TOP, borderTop);
     }
 
     /**
@@ -989,11 +1346,16 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_borderTopColor() {
-        String value = getStyleAttribute("borderTopColor", true);
+        Map<String, StyleElement> style = null;
+        if (styleDeclaration_ == null) {
+            style = getStyleMap();
+        }
+
+        String value = getStyleAttribute(BORDER_TOP_COLOR, style);
         if (value.length() == 0) {
-            value = findColor(getStyleAttribute("borderTop", true));
+            value = findColor(getStyleAttribute(BORDER_TOP, style));
             if (value == null) {
-                value = findColor(getStyleAttribute("border", true));
+                value = findColor(getStyleAttribute(BORDER, style));
             }
             if (value == null) {
                 value = "";
@@ -1007,7 +1369,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param borderTopColor the new attribute
      */
     public void jsxSet_borderTopColor(final String borderTopColor) {
-        setStyleAttribute("borderTopColor", borderTopColor);
+        setStyleAttribute(BORDER_TOP_COLOR, borderTopColor);
     }
 
     /**
@@ -1015,11 +1377,16 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_borderTopStyle() {
-        String value = getStyleAttribute("borderTopStyle", true);
+        Map<String, StyleElement> style = null;
+        if (styleDeclaration_ == null) {
+            style = getStyleMap();
+        }
+
+        String value = getStyleAttribute(BORDER_TOP_STYLE, style);
         if (value.length() == 0) {
-            value = findBorderStyle(getStyleAttribute("borderTop", true));
+            value = findBorderStyle(getStyleAttribute(BORDER_TOP, style));
             if (value == null) {
-                value = findBorderStyle(getStyleAttribute("border", true));
+                value = findBorderStyle(getStyleAttribute(BORDER, style));
             }
             if (value == null) {
                 value = "";
@@ -1033,7 +1400,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param borderTopStyle the new attribute
      */
     public void jsxSet_borderTopStyle(final String borderTopStyle) {
-        setStyleAttribute("borderTopStyle", borderTopStyle);
+        setStyleAttribute(BORDER_TOP_STYLE, borderTopStyle);
     }
 
     /**
@@ -1049,7 +1416,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param borderTopWidth the new attribute
      */
     public void jsxSet_borderTopWidth(final String borderTopWidth) {
-        setStyleAttribute("borderTopWidth", borderTopWidth);
+        setStyleAttributePixelInt(BORDER_TOP_WIDTH, borderTopWidth);
     }
 
     /**
@@ -1057,7 +1424,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_borderWidth() {
-        return getStyleAttribute("borderWidth", true);
+        return getStyleAttribute(BORDER_WIDTH, null);
     }
 
     /**
@@ -1065,7 +1432,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param borderWidth the new attribute
      */
     public void jsxSet_borderWidth(final String borderWidth) {
-        setStyleAttribute("borderWidth", borderWidth);
+        setStyleAttribute(BORDER_WIDTH, borderWidth);
     }
 
     /**
@@ -1073,7 +1440,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_bottom() {
-        return getStyleAttribute("bottom", true);
+        return getStyleAttribute(BOTTOM, null);
     }
 
     /**
@@ -1081,7 +1448,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param bottom the new attribute
      */
     public void jsxSet_bottom(final String bottom) {
-        setStyleAttribute("bottom", bottom);
+        setStyleAttributePixelInt(BOTTOM, bottom);
     }
 
     /**
@@ -1089,7 +1456,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_captionSide() {
-        return getStyleAttribute("captionSide", true);
+        return getStyleAttribute(CAPTION_SIDE, null);
     }
 
     /**
@@ -1097,7 +1464,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param captionSide the new attribute
      */
     public void jsxSet_captionSide(final String captionSide) {
-        setStyleAttribute("captionSide", captionSide);
+        setStyleAttribute(CAPTION_SIDE, captionSide);
     }
 
     /**
@@ -1105,7 +1472,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_clear() {
-        return getStyleAttribute("clear", true);
+        return getStyleAttribute(CLEAR, null);
     }
 
     /**
@@ -1113,7 +1480,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param clear the new attribute
      */
     public void jsxSet_clear(final String clear) {
-        setStyleAttribute("clear", clear);
+        setStyleAttribute(CLEAR, clear);
     }
 
     /**
@@ -1121,7 +1488,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_clip() {
-        return getStyleAttribute("clip", true);
+        return getStyleAttribute(CLIP, null);
     }
 
     /**
@@ -1129,7 +1496,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param clip the new attribute
      */
     public void jsxSet_clip(final String clip) {
-        setStyleAttribute("clip", clip);
+        setStyleAttribute(CLIP, clip);
     }
 
     /**
@@ -1137,7 +1504,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_color() {
-        return getStyleAttribute("color", true);
+        return getStyleAttribute(COLOR, null);
     }
 
     /**
@@ -1145,7 +1512,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param color the new attribute
      */
     public void jsxSet_color(final String color) {
-        setStyleAttribute("color", color);
+        setStyleAttribute(COLOR, color);
     }
 
     /**
@@ -1153,7 +1520,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_content() {
-        return getStyleAttribute("content", true);
+        return getStyleAttribute(CONTENT, null);
     }
 
     /**
@@ -1161,7 +1528,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param content the new attribute
      */
     public void jsxSet_content(final String content) {
-        setStyleAttribute("content", content);
+        setStyleAttribute(CONTENT, content);
     }
 
     /**
@@ -1169,7 +1536,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_counterIncrement() {
-        return getStyleAttribute("counterIncrement", true);
+        return getStyleAttribute(COUNTER_INCREMENT, null);
     }
 
     /**
@@ -1177,7 +1544,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param counterIncrement the new attribute
      */
     public void jsxSet_counterIncrement(final String counterIncrement) {
-        setStyleAttribute("counterIncrement", counterIncrement);
+        setStyleAttribute(COUNTER_INCREMENT, counterIncrement);
     }
 
     /**
@@ -1185,7 +1552,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_counterReset() {
-        return getStyleAttribute("counterReset", true);
+        return getStyleAttribute(COUNTER_RESET, null);
     }
 
     /**
@@ -1193,7 +1560,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param counterReset the new attribute
      */
     public void jsxSet_counterReset(final String counterReset) {
-        setStyleAttribute("counterReset", counterReset);
+        setStyleAttribute(COUNTER_RESET, counterReset);
     }
 
     /**
@@ -1201,7 +1568,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_cssFloat() {
-        return getStyleAttribute("float", true);
+        return getStyleAttribute(FLOAT, null);
     }
 
     /**
@@ -1209,7 +1576,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param value the new attribute
      */
     public void jsxSet_cssFloat(final String value) {
-        setStyleAttribute("float", value);
+        setStyleAttribute(FLOAT, value);
     }
 
     /**
@@ -1233,7 +1600,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_cue() {
-        return getStyleAttribute("cue", true);
+        return getStyleAttribute(CUE, null);
     }
 
     /**
@@ -1241,7 +1608,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param cue the new attribute
      */
     public void jsxSet_cue(final String cue) {
-        setStyleAttribute("cue", cue);
+        setStyleAttribute(CUE, cue);
     }
 
     /**
@@ -1249,7 +1616,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_cueAfter() {
-        return getStyleAttribute("cueAfter", true);
+        return getStyleAttribute(CUE_AFTER, null);
     }
 
     /**
@@ -1257,7 +1624,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param cueAfter the new attribute
      */
     public void jsxSet_cueAfter(final String cueAfter) {
-        setStyleAttribute("cueAfter", cueAfter);
+        setStyleAttribute(CUE_AFTER, cueAfter);
     }
 
     /**
@@ -1265,7 +1632,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_cueBefore() {
-        return getStyleAttribute("cueBefore", true);
+        return getStyleAttribute(CUE_BEFORE, null);
     }
 
     /**
@@ -1273,7 +1640,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param cueBefore the new attribute
      */
     public void jsxSet_cueBefore(final String cueBefore) {
-        setStyleAttribute("cueBefore", cueBefore);
+        setStyleAttribute(CUE_BEFORE, cueBefore);
     }
 
     /**
@@ -1281,7 +1648,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_cursor() {
-        return getStyleAttribute("cursor", true);
+        return getStyleAttribute(CURSOR, null);
     }
 
     /**
@@ -1289,7 +1656,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param cursor the new attribute
      */
     public void jsxSet_cursor(final String cursor) {
-        setStyleAttribute("cursor", cursor);
+        setStyleAttribute(CURSOR, cursor);
     }
 
     /**
@@ -1297,7 +1664,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_direction() {
-        return getStyleAttribute("direction", true);
+        return getStyleAttribute(DIRECTION, null);
     }
 
     /**
@@ -1305,7 +1672,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param direction the new attribute
      */
     public void jsxSet_direction(final String direction) {
-        setStyleAttribute("direction", direction);
+        setStyleAttribute(DIRECTION, direction);
     }
 
     /**
@@ -1313,7 +1680,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_display() {
-        return getStyleAttribute("display", true);
+        return getStyleAttribute(DISPLAY, null);
     }
 
     /**
@@ -1321,7 +1688,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param display the new attribute
      */
     public void jsxSet_display(final String display) {
-        setStyleAttribute("display", display);
+        setStyleAttribute(DISPLAY, display);
     }
 
     /**
@@ -1329,7 +1696,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_elevation() {
-        return getStyleAttribute("elevation", true);
+        return getStyleAttribute(ELEVATION, null);
     }
 
     /**
@@ -1337,7 +1704,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param elevation the new attribute
      */
     public void jsxSet_elevation(final String elevation) {
-        setStyleAttribute("elevation", elevation);
+        setStyleAttribute(ELEVATION, elevation);
     }
 
     /**
@@ -1345,7 +1712,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_emptyCells() {
-        return getStyleAttribute("emptyCells", true);
+        return getStyleAttribute(EMPTY_CELLS, null);
     }
 
     /**
@@ -1353,7 +1720,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param emptyCells the new attribute
      */
     public void jsxSet_emptyCells(final String emptyCells) {
-        setStyleAttribute("emptyCells", emptyCells);
+        setStyleAttribute(EMPTY_CELLS, emptyCells);
     }
 
     /**
@@ -1363,7 +1730,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the object's filter
      */
     public String jsxGet_filter() {
-        return getStyleAttribute("filter", true);
+        return getStyleAttribute(FILTER, null);
     }
 
     /**
@@ -1373,7 +1740,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param filter the new filter
      */
     public void jsxSet_filter(final String filter) {
-        setStyleAttribute("filter", filter);
+        setStyleAttribute(FILTER, filter);
     }
 
     /**
@@ -1381,7 +1748,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_font() {
-        return getStyleAttribute("font", true);
+        return getStyleAttribute(FONT, null);
     }
 
     /**
@@ -1389,7 +1756,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param font the new attribute
      */
     public void jsxSet_font(final String font) {
-        setStyleAttribute("font", font);
+        setStyleAttribute(FONT, font);
     }
 
     /**
@@ -1397,7 +1764,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_fontFamily() {
-        return getStyleAttribute("fontFamily", true);
+        return getStyleAttribute(FONT_FAMILY, null);
     }
 
     /**
@@ -1405,7 +1772,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param fontFamily the new attribute
      */
     public void jsxSet_fontFamily(final String fontFamily) {
-        setStyleAttribute("fontFamily", fontFamily);
+        setStyleAttribute(FONT_FAMILY, fontFamily);
     }
 
     /**
@@ -1413,7 +1780,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_fontSize() {
-        return getStyleAttribute("fontSize", true);
+        return getStyleAttribute(FONT_SIZE, null);
     }
 
     /**
@@ -1421,7 +1788,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param fontSize the new attribute
      */
     public void jsxSet_fontSize(final String fontSize) {
-        setStyleAttribute("fontSize", fontSize);
+        setStyleAttributePixelInt(FONT_SIZE, fontSize);
     }
 
     /**
@@ -1429,7 +1796,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_fontSizeAdjust() {
-        return getStyleAttribute("fontSizeAdjust", true);
+        return getStyleAttribute(FONT_SIZE_ADJUST, null);
     }
 
     /**
@@ -1437,7 +1804,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param fontSizeAdjust the new attribute
      */
     public void jsxSet_fontSizeAdjust(final String fontSizeAdjust) {
-        setStyleAttribute("fontSizeAdjust", fontSizeAdjust);
+        setStyleAttribute(FONT_SIZE_ADJUST, fontSizeAdjust);
     }
 
     /**
@@ -1445,7 +1812,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_fontStretch() {
-        return getStyleAttribute("fontStretch", true);
+        return getStyleAttribute(FONT_STRETCH, null);
     }
 
     /**
@@ -1453,7 +1820,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param fontStretch the new attribute
      */
     public void jsxSet_fontStretch(final String fontStretch) {
-        setStyleAttribute("fontStretch", fontStretch);
+        setStyleAttribute(FONT_STRETCH, fontStretch);
     }
 
     /**
@@ -1461,7 +1828,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_fontStyle() {
-        return getStyleAttribute("fontStyle", true);
+        return getStyleAttribute(FONT_STYLE, null);
     }
 
     /**
@@ -1469,7 +1836,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param fontStyle the new attribute
      */
     public void jsxSet_fontStyle(final String fontStyle) {
-        setStyleAttribute("fontStyle", fontStyle);
+        setStyleAttribute(FONT_STYLE, fontStyle);
     }
 
     /**
@@ -1477,7 +1844,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_fontVariant() {
-        return getStyleAttribute("fontVariant", true);
+        return getStyleAttribute(FONT_VARIANT, null);
     }
 
     /**
@@ -1485,7 +1852,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param fontVariant the new attribute
      */
     public void jsxSet_fontVariant(final String fontVariant) {
-        setStyleAttribute("fontVariant", fontVariant);
+        setStyleAttribute(FONT_VARIANT, fontVariant);
     }
 
     /**
@@ -1493,7 +1860,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_fontWeight() {
-        return getStyleAttribute("fontWeight", true);
+        return getStyleAttribute(FONT_WEIGHT, null);
     }
 
     /**
@@ -1501,7 +1868,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param fontWeight the new attribute
      */
     public void jsxSet_fontWeight(final String fontWeight) {
-        setStyleAttribute("fontWeight", fontWeight);
+        setStyleAttribute(FONT_WEIGHT, fontWeight);
     }
 
     /**
@@ -1509,13 +1876,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_height() {
-        String height = getStyleAttribute("height", true);
-        if (height.length() > 0) {
-            if (height.matches("\\d+")) {
-                height += "px";
-            }
-        }
-        return height;
+        return getStyleAttribute(HEIGHT, null);
     }
 
     /**
@@ -1523,7 +1884,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param height the new attribute
      */
     public void jsxSet_height(final String height) {
-        setStyleAttribute("height", height);
+        setStyleAttributePixelInt(HEIGHT, height);
     }
 
     /**
@@ -1531,7 +1892,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_imeMode() {
-        return getStyleAttribute("imeMode", true);
+        return getStyleAttribute(IME_MODE, null);
     }
 
     /**
@@ -1539,7 +1900,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param imeMode the new attribute
      */
     public void jsxSet_imeMode(final String imeMode) {
-        setStyleAttribute("imeMode", imeMode);
+        setStyleAttribute(IME_MODE, imeMode);
     }
 
     /**
@@ -1547,7 +1908,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_layoutFlow() {
-        return getStyleAttribute("layoutFlow", true);
+        return getStyleAttribute(LAYOUT_FLOW, null);
     }
 
     /**
@@ -1555,7 +1916,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param layoutFlow the new attribute
      */
     public void jsxSet_layoutFlow(final String layoutFlow) {
-        setStyleAttribute("layoutFlow", layoutFlow);
+        setStyleAttribute(LAYOUT_FLOW, layoutFlow);
     }
 
     /**
@@ -1563,7 +1924,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_layoutGrid() {
-        return getStyleAttribute("layoutGrid", true);
+        return getStyleAttribute(LAYOUT_GRID, null);
     }
 
     /**
@@ -1571,7 +1932,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param layoutGrid the new attribute
      */
     public void jsxSet_layoutGrid(final String layoutGrid) {
-        setStyleAttribute("layoutGrid", layoutGrid);
+        setStyleAttribute(LAYOUT_GRID_CHAR, layoutGrid);
     }
 
     /**
@@ -1579,7 +1940,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_layoutGridChar() {
-        return getStyleAttribute("layoutGridChar", true);
+        return getStyleAttribute(LAYOUT_GRID_CHAR, null);
     }
 
     /**
@@ -1587,7 +1948,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param layoutGridChar the new attribute
      */
     public void jsxSet_layoutGridChar(final String layoutGridChar) {
-        setStyleAttribute("layoutGridChar", layoutGridChar);
+        setStyleAttribute(LAYOUT_GRID_CHAR, layoutGridChar);
     }
 
     /**
@@ -1595,7 +1956,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_layoutGridLine() {
-        return getStyleAttribute("layoutGridLine", true);
+        return getStyleAttribute(LAYOUT_GRID_LINE, null);
     }
 
     /**
@@ -1603,7 +1964,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param layoutGridLine the new attribute
      */
     public void jsxSet_layoutGridLine(final String layoutGridLine) {
-        setStyleAttribute("layoutGridLine", layoutGridLine);
+        setStyleAttribute(LAYOUT_GRID_LINE, layoutGridLine);
     }
 
     /**
@@ -1611,7 +1972,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_layoutGridMode() {
-        return getStyleAttribute("layoutGridMode", true);
+        return getStyleAttribute(LAYOUT_GRID_MODE, null);
     }
 
     /**
@@ -1619,7 +1980,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param layoutGridMode the new attribute
      */
     public void jsxSet_layoutGridMode(final String layoutGridMode) {
-        setStyleAttribute("layoutGridMode", layoutGridMode);
+        setStyleAttribute(LAYOUT_GRID_MODE, layoutGridMode);
     }
 
     /**
@@ -1627,7 +1988,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_layoutGridType() {
-        return getStyleAttribute("layoutGridType", true);
+        return getStyleAttribute(LAYOUT_GRID_TYPE, null);
     }
 
     /**
@@ -1635,7 +1996,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param layoutGridType the new attribute
      */
     public void jsxSet_layoutGridType(final String layoutGridType) {
-        setStyleAttribute("layoutGridType", layoutGridType);
+        setStyleAttribute(LAYOUT_GRID_TYPE, layoutGridType);
     }
 
     /**
@@ -1643,7 +2004,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_left() {
-        return getStyleAttribute("left", true);
+        return getStyleAttribute(LEFT, null);
     }
 
     /**
@@ -1651,7 +2012,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param left the new attribute
      */
     public void jsxSet_left(final String left) {
-        setStyleAttribute("left", left);
+        setStyleAttributePixelInt(LEFT, left);
     }
 
     /**
@@ -1667,7 +2028,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_letterSpacing() {
-        return getStyleAttribute("letterSpacing", true);
+        return getStyleAttribute(LETTER_SPACING, null);
     }
 
     /**
@@ -1675,7 +2036,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param letterSpacing the new attribute
      */
     public void jsxSet_letterSpacing(final String letterSpacing) {
-        setStyleAttribute("letterSpacing", letterSpacing);
+        setStyleAttributePixelInt(LETTER_SPACING, letterSpacing);
     }
 
     /**
@@ -1683,7 +2044,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_lineBreak() {
-        return getStyleAttribute("lineBreak", true);
+        return getStyleAttribute(LINE_BREAK, null);
     }
 
     /**
@@ -1691,7 +2052,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param lineBreak the new attribute
      */
     public void jsxSet_lineBreak(final String lineBreak) {
-        setStyleAttribute("lineBreak", lineBreak);
+        setStyleAttribute(LINE_BREAK, lineBreak);
     }
 
     /**
@@ -1699,7 +2060,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_lineHeight() {
-        return getStyleAttribute("lineHeight", true);
+        return getStyleAttribute(LINE_HEIGHT, null);
     }
 
     /**
@@ -1707,7 +2068,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param lineHeight the new attribute
      */
     public void jsxSet_lineHeight(final String lineHeight) {
-        setStyleAttribute("lineHeight", lineHeight);
+        setStyleAttribute(LINE_HEIGHT, lineHeight);
     }
 
     /**
@@ -1715,7 +2076,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_listStyle() {
-        return getStyleAttribute("listStyle", true);
+        return getStyleAttribute(LIST_STYLE, null);
     }
 
     /**
@@ -1723,7 +2084,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param listStyle the new attribute
      */
     public void jsxSet_listStyle(final String listStyle) {
-        setStyleAttribute("listStyle", listStyle);
+        setStyleAttribute(LIST_STYLE, listStyle);
     }
 
     /**
@@ -1731,7 +2092,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_listStyleImage() {
-        return getStyleAttribute("listStyleImage", true);
+        return getStyleAttribute(LIST_STYLE_IMAGE, null);
     }
 
     /**
@@ -1739,7 +2100,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param listStyleImage the new attribute
      */
     public void jsxSet_listStyleImage(final String listStyleImage) {
-        setStyleAttribute("listStyleImage", listStyleImage);
+        setStyleAttribute(LIST_STYLE_IMAGE, listStyleImage);
     }
 
     /**
@@ -1747,7 +2108,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_listStylePosition() {
-        return getStyleAttribute("listStylePosition", true);
+        return getStyleAttribute(LIST_STYLE_POSITION, null);
     }
 
     /**
@@ -1755,7 +2116,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param listStylePosition the new attribute
      */
     public void jsxSet_listStylePosition(final String listStylePosition) {
-        setStyleAttribute("listStylePosition", listStylePosition);
+        setStyleAttribute(LIST_STYLE_POSITION, listStylePosition);
     }
 
     /**
@@ -1763,7 +2124,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_listStyleType() {
-        return getStyleAttribute("listStyleType", true);
+        return getStyleAttribute(LIST_STYLE_TYPE, null);
     }
 
     /**
@@ -1771,7 +2132,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param listStyleType the new attribute
      */
     public void jsxSet_listStyleType(final String listStyleType) {
-        setStyleAttribute("listStyleType", listStyleType);
+        setStyleAttribute(LIST_STYLE_TYPE, listStyleType);
     }
 
     /**
@@ -1779,7 +2140,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_margin() {
-        return getStyleAttribute("margin", true);
+        return getStyleAttribute(MARGIN, null);
     }
 
     /**
@@ -1787,7 +2148,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param margin the new attribute
      */
     public void jsxSet_margin(final String margin) {
-        setStyleAttribute("margin", margin);
+        setStyleAttribute(MARGIN, margin);
     }
 
     /**
@@ -1795,7 +2156,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_marginBottom() {
-        return getStyleAttribute("marginBottom", "margin", Shorthand.BOTTOM, true);
+        return getStyleAttribute(MARGIN_BOTTOM, MARGIN, Shorthand.BOTTOM);
     }
 
     /**
@@ -1803,7 +2164,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param marginBottom the new attribute
      */
     public void jsxSet_marginBottom(final String marginBottom) {
-        setStyleAttribute("marginBottom", marginBottom);
+        setStyleAttributePixelInt(MARGIN_BOTTOM, marginBottom);
     }
 
     /**
@@ -1811,7 +2172,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_marginLeft() {
-        return getStyleAttribute("marginLeft", "margin", Shorthand.LEFT, true);
+        return getStyleAttribute(MARGIN_LEFT, MARGIN, Shorthand.LEFT);
     }
 
     /**
@@ -1819,7 +2180,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param marginLeft the new attribute
      */
     public void jsxSet_marginLeft(final String marginLeft) {
-        setStyleAttribute("marginLeft", marginLeft);
+        setStyleAttributePixelInt(MARGIN_LEFT, marginLeft);
     }
 
     /**
@@ -1827,7 +2188,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_marginRight() {
-        return getStyleAttribute("marginRight", "margin", Shorthand.RIGHT, true);
+        return getStyleAttribute(MARGIN_RIGHT, MARGIN, Shorthand.RIGHT);
     }
 
     /**
@@ -1835,7 +2196,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param marginRight the new attribute
      */
     public void jsxSet_marginRight(final String marginRight) {
-        setStyleAttribute("marginRight", marginRight);
+        setStyleAttributePixelInt(MARGIN_RIGHT, marginRight);
     }
 
     /**
@@ -1843,7 +2204,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_marginTop() {
-        return getStyleAttribute("marginTop", "margin", Shorthand.TOP, true);
+        return getStyleAttribute(MARGIN_TOP, MARGIN, Shorthand.TOP);
     }
 
     /**
@@ -1851,7 +2212,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param marginTop the new attribute
      */
     public void jsxSet_marginTop(final String marginTop) {
-        setStyleAttribute("marginTop", marginTop);
+        setStyleAttributePixelInt(MARGIN_TOP, marginTop);
     }
 
     /**
@@ -1859,7 +2220,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_markerOffset() {
-        return getStyleAttribute("markerOffset", true);
+        return getStyleAttribute(MARKER_OFFSET, null);
     }
 
     /**
@@ -1867,7 +2228,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param markerOffset the new attribute
      */
     public void jsxSet_markerOffset(final String markerOffset) {
-        setStyleAttribute("markerOffset", markerOffset);
+        setStyleAttribute(MARKER_OFFSET, markerOffset);
     }
 
     /**
@@ -1875,7 +2236,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_marks() {
-        return getStyleAttribute("marks", true);
+        return getStyleAttribute(MARKS, null);
     }
 
     /**
@@ -1883,7 +2244,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param marks the new attribute
      */
     public void jsxSet_marks(final String marks) {
-        setStyleAttribute("marks", marks);
+        setStyleAttribute(MARKS, marks);
     }
 
     /**
@@ -1891,7 +2252,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_maxHeight() {
-        return getStyleAttribute("maxHeight", true);
+        return getStyleAttribute(MAX_HEIGHT, null);
     }
 
     /**
@@ -1899,7 +2260,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param maxHeight the new attribute
      */
     public void jsxSet_maxHeight(final String maxHeight) {
-        setStyleAttribute("maxHeight", maxHeight);
+        setStyleAttributePixelInt(MAX_HEIGHT, maxHeight);
     }
 
     /**
@@ -1907,7 +2268,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_maxWidth() {
-        return getStyleAttribute("maxWidth", true);
+        return getStyleAttribute(MAX_WIDTH, null);
     }
 
     /**
@@ -1915,7 +2276,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param maxWidth the new attribute
      */
     public void jsxSet_maxWidth(final String maxWidth) {
-        setStyleAttribute("maxWidth", maxWidth);
+        setStyleAttributePixelInt(MAX_WIDTH, maxWidth);
     }
 
     /**
@@ -1923,7 +2284,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_minHeight() {
-        return getStyleAttribute("minHeight", true);
+        return getStyleAttribute(MIN_HEIGHT, null);
     }
 
     /**
@@ -1931,7 +2292,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param minHeight the new attribute
      */
     public void jsxSet_minHeight(final String minHeight) {
-        setStyleAttribute("minHeight", minHeight);
+        setStyleAttributePixelInt(MIN_HEIGHT, minHeight);
     }
 
     /**
@@ -1939,7 +2300,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_minWidth() {
-        return getStyleAttribute("minWidth", true);
+        return getStyleAttribute(MIN_WIDTH, null);
     }
 
     /**
@@ -1947,7 +2308,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param minWidth the new attribute
      */
     public void jsxSet_minWidth(final String minWidth) {
-        setStyleAttribute("minWidth", minWidth);
+        setStyleAttributePixelInt(MIN_WIDTH, minWidth);
     }
 
     /**
@@ -1955,7 +2316,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozAppearance() {
-        return getStyleAttribute("MozAppearance", true);
+        return getStyleAttribute(MOZ_APPEARANCE, null);
     }
 
     /**
@@ -1963,7 +2324,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozAppearance the new attribute
      */
     public void jsxSet_MozAppearance(final String mozAppearance) {
-        setStyleAttribute("MozAppearance", mozAppearance);
+        setStyleAttribute(MOZ_APPEARANCE, mozAppearance);
     }
 
     /**
@@ -1971,7 +2332,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozBackgroundClip() {
-        return getStyleAttribute("MozBackgroundClip", true);
+        return getStyleAttribute(MOZ_BACKGROUND_CLIP, null);
     }
 
     /**
@@ -1979,7 +2340,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozBackgroundClip the new attribute
      */
     public void jsxSet_MozBackgroundClip(final String mozBackgroundClip) {
-        setStyleAttribute("MozBackgroundClip", mozBackgroundClip);
+        setStyleAttribute(MOZ_BACKGROUND_CLIP, mozBackgroundClip);
     }
 
     /**
@@ -1987,7 +2348,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozBackgroundInlinePolicy() {
-        return getStyleAttribute("MozBackgroundInlinePolicy", true);
+        return getStyleAttribute(MOZ_BACKGROUND_INLINE_POLICY, null);
     }
 
     /**
@@ -1995,7 +2356,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozBackgroundInlinePolicy the new attribute
      */
     public void jsxSet_MozBackgroundInlinePolicy(final String mozBackgroundInlinePolicy) {
-        setStyleAttribute("MozBackgroundInlinePolicy", mozBackgroundInlinePolicy);
+        setStyleAttribute(MOZ_BACKGROUND_INLINE_POLICY, mozBackgroundInlinePolicy);
     }
 
     /**
@@ -2003,7 +2364,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozBackgroundOrigin() {
-        return getStyleAttribute("MozBackgroundOrigin", true);
+        return getStyleAttribute(MOZ_BACKGROUND_ORIGIN, null);
     }
 
     /**
@@ -2011,7 +2372,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozBackgroundOrigin the new attribute
      */
     public void jsxSet_MozBackgroundOrigin(final String mozBackgroundOrigin) {
-        setStyleAttribute("MozBackgroundOrigin", mozBackgroundOrigin);
+        setStyleAttribute(MOZ_BACKGROUND_ORIGIN, mozBackgroundOrigin);
     }
 
     /**
@@ -2019,7 +2380,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozBinding() {
-        return getStyleAttribute("MozBinding", true);
+        return getStyleAttribute(MOZ_BINDING, null);
     }
 
     /**
@@ -2027,7 +2388,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozBinding the new attribute
      */
     public void jsxSet_MozBinding(final String mozBinding) {
-        setStyleAttribute("MozBinding", mozBinding);
+        setStyleAttribute(MOZ_BINDING, mozBinding);
     }
 
     /**
@@ -2035,7 +2396,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozBorderBottomColors() {
-        return getStyleAttribute("MozBorderBottomColors", true);
+        return getStyleAttribute(MOZ_BORDER_BOTTOM_COLORS, null);
     }
 
     /**
@@ -2043,7 +2404,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozBorderBottomColors the new attribute
      */
     public void jsxSet_MozBorderBottomColors(final String mozBorderBottomColors) {
-        setStyleAttribute("MozBorderBottomColors", mozBorderBottomColors);
+        setStyleAttribute(MOZ_BORDER_BOTTOM_COLORS, mozBorderBottomColors);
     }
 
     /**
@@ -2051,7 +2412,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozBorderLeftColors() {
-        return getStyleAttribute("MozBorderLeftColors", true);
+        return getStyleAttribute(MOZ_BORDER_LEFT_COLORS, null);
     }
 
     /**
@@ -2059,7 +2420,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozBorderLeftColors the new attribute
      */
     public void jsxSet_MozBorderLeftColors(final String mozBorderLeftColors) {
-        setStyleAttribute("MozBorderLeftColors", mozBorderLeftColors);
+        setStyleAttribute(MOZ_BORDER_LEFT_COLORS, mozBorderLeftColors);
     }
 
     /**
@@ -2067,7 +2428,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozBorderRadius() {
-        return getStyleAttribute("MozBorderRadius", true);
+        return getStyleAttribute(MOZ_BORDER_RADIUS, null);
     }
 
     /**
@@ -2075,7 +2436,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozBorderRadius the new attribute
      */
     public void jsxSet_MozBorderRadius(final String mozBorderRadius) {
-        setStyleAttribute("MozBorderRadius", mozBorderRadius);
+        setStyleAttribute(MOZ_BORDER_RADIUS, mozBorderRadius);
     }
 
     /**
@@ -2083,7 +2444,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozBorderRadiusBottomleft() {
-        return getStyleAttribute("MozBorderRadiusBottomleft", true);
+        return getStyleAttribute(MOZ_BORDER_RADIUS_BOTTOMLEFT, null);
     }
 
     /**
@@ -2091,7 +2452,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozBorderRadiusBottomleft the new attribute
      */
     public void jsxSet_MozBorderRadiusBottomleft(final String mozBorderRadiusBottomleft) {
-        setStyleAttribute("MozBorderRadiusBottomleft", mozBorderRadiusBottomleft);
+        setStyleAttribute(MOZ_BORDER_RADIUS_BOTTOMLEFT, mozBorderRadiusBottomleft);
     }
 
     /**
@@ -2099,7 +2460,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozBorderRadiusBottomright() {
-        return getStyleAttribute("MozBorderRadiusBottomright", true);
+        return getStyleAttribute(MOZ_BORDER_RADIUS_BOTTOMRIGHT, null);
     }
 
     /**
@@ -2107,7 +2468,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozBorderRadiusBottomright the new attribute
      */
     public void jsxSet_MozBorderRadiusBottomright(final String mozBorderRadiusBottomright) {
-        setStyleAttribute("MozBorderRadiusBottomright", mozBorderRadiusBottomright);
+        setStyleAttribute(MOZ_BORDER_RADIUS_BOTTOMRIGHT, mozBorderRadiusBottomright);
     }
 
     /**
@@ -2115,7 +2476,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozBorderRadiusTopleft() {
-        return getStyleAttribute("MozBorderRadiusTopleft", true);
+        return getStyleAttribute(MOZ_BORDER_RADIUS_TOPLEFT, null);
     }
 
     /**
@@ -2123,7 +2484,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozBorderRadiusTopleft the new attribute
      */
     public void jsxSet_MozBorderRadiusTopleft(final String mozBorderRadiusTopleft) {
-        setStyleAttribute("MozBorderRadiusTopleft", mozBorderRadiusTopleft);
+        setStyleAttribute(MOZ_BORDER_RADIUS_TOPLEFT, mozBorderRadiusTopleft);
     }
 
     /**
@@ -2131,7 +2492,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozBorderRadiusTopright() {
-        return getStyleAttribute("MozBorderRadiusTopright", true);
+        return getStyleAttribute(MOZ_BORDER_RADIUS_TOPRIGHT, null);
     }
 
     /**
@@ -2139,7 +2500,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozBorderRadiusTopright the new attribute
      */
     public void jsxSet_MozBorderRadiusTopright(final String mozBorderRadiusTopright) {
-        setStyleAttribute("MozBorderRadiusTopright", mozBorderRadiusTopright);
+        setStyleAttribute(MOZ_BORDER_RADIUS_TOPRIGHT, mozBorderRadiusTopright);
     }
 
     /**
@@ -2147,7 +2508,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozBorderRightColors() {
-        return getStyleAttribute("MozBorderRightColors", true);
+        return getStyleAttribute(MOZ_BORDER_RIGHT_COLORS, null);
     }
 
     /**
@@ -2155,7 +2516,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozBorderRightColors the new attribute
      */
     public void jsxSet_MozBorderRightColors(final String mozBorderRightColors) {
-        setStyleAttribute("MozBorderRightColors", mozBorderRightColors);
+        setStyleAttribute(MOZ_BORDER_RIGHT_COLORS, mozBorderRightColors);
     }
 
     /**
@@ -2163,7 +2524,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozBorderTopColors() {
-        return getStyleAttribute("MozBorderTopColors", true);
+        return getStyleAttribute(MOZ_BORDER_TOP_COLORS, null);
     }
 
     /**
@@ -2171,7 +2532,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozBorderTopColors the new attribute
      */
     public void jsxSet_MozBorderTopColors(final String mozBorderTopColors) {
-        setStyleAttribute("MozBorderTopColors", mozBorderTopColors);
+        setStyleAttribute(MOZ_BORDER_TOP_COLORS, mozBorderTopColors);
     }
 
     /**
@@ -2179,7 +2540,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozBoxAlign() {
-        return getStyleAttribute("MozBoxAlign", true);
+        return getStyleAttribute(MOZ_BOX_ALIGN, null);
     }
 
     /**
@@ -2187,7 +2548,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozBoxAlign the new attribute
      */
     public void jsxSet_MozBoxAlign(final String mozBoxAlign) {
-        setStyleAttribute("MozBoxAlign", mozBoxAlign);
+        setStyleAttribute(MOZ_BOX_ALIGN, mozBoxAlign);
     }
 
     /**
@@ -2195,7 +2556,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozBoxDirection() {
-        return getStyleAttribute("MozBoxDirection", true);
+        return getStyleAttribute(MOZ_BOX_DIRECTION, null);
     }
 
     /**
@@ -2203,7 +2564,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozBoxDirection the new attribute
      */
     public void jsxSet_MozBoxDirection(final String mozBoxDirection) {
-        setStyleAttribute("MozBoxDirection", mozBoxDirection);
+        setStyleAttribute(MOZ_BOX_DIRECTION, mozBoxDirection);
     }
 
     /**
@@ -2211,7 +2572,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozBoxFlex() {
-        return getStyleAttribute("MozBoxFlex", true);
+        return getStyleAttribute(MOZ_BOX_FLEX, null);
     }
 
     /**
@@ -2219,7 +2580,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozBoxFlex the new attribute
      */
     public void jsxSet_MozBoxFlex(final String mozBoxFlex) {
-        setStyleAttribute("MozBoxFlex", mozBoxFlex);
+        setStyleAttribute(MOZ_BOX_FLEX, mozBoxFlex);
     }
 
     /**
@@ -2227,7 +2588,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozBoxOrdinalGroup() {
-        return getStyleAttribute("MozBoxOrdinalGroup", true);
+        return getStyleAttribute(MOZ_BOX_ORDINAL_GROUP, null);
     }
 
     /**
@@ -2235,7 +2596,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozBoxOrdinalGroup the new attribute
      */
     public void jsxSet_MozBoxOrdinalGroup(final String mozBoxOrdinalGroup) {
-        setStyleAttribute("MozBoxOrdinalGroup", mozBoxOrdinalGroup);
+        setStyleAttribute(MOZ_BOX_ORDINAL_GROUP, mozBoxOrdinalGroup);
     }
 
     /**
@@ -2243,7 +2604,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozBoxOrient() {
-        return getStyleAttribute("MozBoxOrient", true);
+        return getStyleAttribute(MOZ_BOX_ORIENT, null);
     }
 
     /**
@@ -2251,7 +2612,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozBoxOrient the new attribute
      */
     public void jsxSet_MozBoxOrient(final String mozBoxOrient) {
-        setStyleAttribute("MozBoxOrient", mozBoxOrient);
+        setStyleAttribute(MOZ_BOX_ORIENT, mozBoxOrient);
     }
 
     /**
@@ -2259,7 +2620,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozBoxPack() {
-        return getStyleAttribute("MozBoxPack", true);
+        return getStyleAttribute(MOZ_BOX_PACK, null);
     }
 
     /**
@@ -2267,7 +2628,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozBoxPack the new attribute
      */
     public void jsxSet_MozBoxPack(final String mozBoxPack) {
-        setStyleAttribute("MozBoxPack", mozBoxPack);
+        setStyleAttribute(MOZ_BOX_PACK, mozBoxPack);
     }
 
     /**
@@ -2275,7 +2636,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozBoxSizing() {
-        return getStyleAttribute("MozBoxSizing", true);
+        return getStyleAttribute(MOZ_BOX_SIZING, null);
     }
 
     /**
@@ -2283,7 +2644,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozBoxSizing the new attribute
      */
     public void jsxSet_MozBoxSizing(final String mozBoxSizing) {
-        setStyleAttribute("MozBoxSizing", mozBoxSizing);
+        setStyleAttribute(MOZ_BOX_SIZING, mozBoxSizing);
     }
 
     /**
@@ -2291,7 +2652,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozColumnCount() {
-        return getStyleAttribute("MozColumnCount", true);
+        return getStyleAttribute(MOZ_COLUMN_COUNT, null);
     }
 
     /**
@@ -2299,7 +2660,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozColumnCount the new attribute
      */
     public void jsxSet_MozColumnCount(final String mozColumnCount) {
-        setStyleAttribute("MozColumnCount", mozColumnCount);
+        setStyleAttribute(MOZ_COLUMN_COUNT, mozColumnCount);
     }
 
     /**
@@ -2307,7 +2668,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozColumnGap() {
-        return getStyleAttribute("MozColumnGap", true);
+        return getStyleAttribute(MOZ_COLUMN_GAP, null);
     }
 
     /**
@@ -2315,7 +2676,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozColumnGap the new attribute
      */
     public void jsxSet_MozColumnGap(final String mozColumnGap) {
-        setStyleAttribute("MozColumnGap", mozColumnGap);
+        setStyleAttribute(MOZ_COLUMN_GAP, mozColumnGap);
     }
 
     /**
@@ -2323,7 +2684,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozColumnWidth() {
-        return getStyleAttribute("MozColumnWidth", true);
+        return getStyleAttribute(MOZ_COLUMN_WIDTH, null);
     }
 
     /**
@@ -2331,7 +2692,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozColumnWidth the new attribute
      */
     public void jsxSet_MozColumnWidth(final String mozColumnWidth) {
-        setStyleAttribute("MozColumnWidth", mozColumnWidth);
+        setStyleAttribute(MOZ_COLUMN_WIDTH, mozColumnWidth);
     }
 
     /**
@@ -2339,7 +2700,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozFloatEdge() {
-        return getStyleAttribute("MozFloatEdge", true);
+        return getStyleAttribute(MOZ_FLOAT_EDGE, null);
     }
 
     /**
@@ -2347,7 +2708,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozFloatEdge the new attribute
      */
     public void jsxSet_MozFloatEdge(final String mozFloatEdge) {
-        setStyleAttribute("MozFloatEdge", mozFloatEdge);
+        setStyleAttribute(MOZ_FLOAT_EDGE, mozFloatEdge);
     }
 
     /**
@@ -2355,7 +2716,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozForceBrokenImageIcon() {
-        return getStyleAttribute("MozForceBrokenImageIcon", true);
+        return getStyleAttribute(MOZ_FORCE_BROKEN_IMAGE_ICON, null);
     }
 
     /**
@@ -2363,7 +2724,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozForceBrokenImageIcon the new attribute
      */
     public void jsxSet_MozForceBrokenImageIcon(final String mozForceBrokenImageIcon) {
-        setStyleAttribute("MozForceBrokenImageIcon", mozForceBrokenImageIcon);
+        setStyleAttribute(MOZ_FORCE_BROKEN_IMAGE_ICON, mozForceBrokenImageIcon);
     }
 
     /**
@@ -2371,7 +2732,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozImageRegion() {
-        return getStyleAttribute("MozImageRegion", true);
+        return getStyleAttribute(MOZ_IMAGE_REGION, null);
     }
 
     /**
@@ -2379,7 +2740,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozImageRegion the new attribute
      */
     public void jsxSet_MozImageRegion(final String mozImageRegion) {
-        setStyleAttribute("MozImageRegion", mozImageRegion);
+        setStyleAttribute(MOZ_IMAGE_REGION, mozImageRegion);
     }
 
     /**
@@ -2387,7 +2748,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozMarginEnd() {
-        return getStyleAttribute("MozMarginEnd", true);
+        return getStyleAttribute(MOZ_MARGIN_END, null);
     }
 
     /**
@@ -2395,7 +2756,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozMarginEnd the new attribute
      */
     public void jsxSet_MozMarginEnd(final String mozMarginEnd) {
-        setStyleAttribute("MozMarginEnd", mozMarginEnd);
+        setStyleAttribute(MOZ_MARGIN_END, mozMarginEnd);
     }
 
     /**
@@ -2403,7 +2764,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozMarginStart() {
-        return getStyleAttribute("MozMarginStart", true);
+        return getStyleAttribute(MOZ_MARGIN_START, null);
     }
 
     /**
@@ -2411,7 +2772,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozMarginStart the new attribute
      */
     public void jsxSet_MozMarginStart(final String mozMarginStart) {
-        setStyleAttribute("MozMarginStart", mozMarginStart);
+        setStyleAttribute(MOZ_MARGIN_START, mozMarginStart);
     }
 
     /**
@@ -2419,7 +2780,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozOpacity() {
-        return getStyleAttribute("MozOpacity", true);
+        return getStyleAttribute(MOZ_OPACITY, null);
     }
 
     /**
@@ -2427,7 +2788,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozOpacity the new attribute
      */
     public void jsxSet_MozOpacity(final String mozOpacity) {
-        setStyleAttribute("MozOpacity", mozOpacity);
+        setStyleAttribute(MOZ_OPACITY, mozOpacity);
     }
 
     /**
@@ -2435,7 +2796,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozOutline() {
-        return getStyleAttribute("MozOutline", true);
+        return getStyleAttribute(MOZ_OUTLINE, null);
     }
 
     /**
@@ -2443,7 +2804,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozOutline the new attribute
      */
     public void jsxSet_MozOutline(final String mozOutline) {
-        setStyleAttribute("MozOutline", mozOutline);
+        setStyleAttribute(MOZ_OUTLINE, mozOutline);
     }
 
     /**
@@ -2451,7 +2812,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozOutlineColor() {
-        return getStyleAttribute("MozOutlineColor", true);
+        return getStyleAttribute(MOZ_OUTLINE_COLOR, null);
     }
 
     /**
@@ -2459,7 +2820,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozOutlineColor the new attribute
      */
     public void jsxSet_MozOutlineColor(final String mozOutlineColor) {
-        setStyleAttribute("MozOutlineColor", mozOutlineColor);
+        setStyleAttribute(MOZ_OUTLINE_COLOR, mozOutlineColor);
     }
 
     /**
@@ -2467,7 +2828,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozOutlineOffset() {
-        return getStyleAttribute("MozOutlineOffset", true);
+        return getStyleAttribute(MOZ_OUTLINE_OFFSET, null);
     }
 
     /**
@@ -2475,7 +2836,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozOutlineOffset the new attribute
      */
     public void jsxSet_MozOutlineOffset(final String mozOutlineOffset) {
-        setStyleAttribute("MozOutlineOffset", mozOutlineOffset);
+        setStyleAttribute(MOZ_OUTLINE_OFFSET, mozOutlineOffset);
     }
 
     /**
@@ -2483,7 +2844,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozOutlineRadius() {
-        return getStyleAttribute("MozOutlineRadius", true);
+        return getStyleAttribute(MOZ_OUTLINE_RADIUS, null);
     }
 
     /**
@@ -2491,7 +2852,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozOutlineRadius the new attribute
      */
     public void jsxSet_MozOutlineRadius(final String mozOutlineRadius) {
-        setStyleAttribute("MozOutlineRadius", mozOutlineRadius);
+        setStyleAttribute(MOZ_OUTLINE_RADIUS, mozOutlineRadius);
     }
 
     /**
@@ -2499,7 +2860,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozOutlineRadiusBottomleft() {
-        return getStyleAttribute("MozOutlineRadiusBottomleft", true);
+        return getStyleAttribute(MOZ_OUTLINE_RADIUS_BOTTOMLEFT, null);
     }
 
     /**
@@ -2507,7 +2868,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozOutlineRadiusBottomleft the new attribute
      */
     public void jsxSet_MozOutlineRadiusBottomleft(final String mozOutlineRadiusBottomleft) {
-        setStyleAttribute("MozOutlineRadiusBottomleft", mozOutlineRadiusBottomleft);
+        setStyleAttribute(MOZ_OUTLINE_RADIUS_BOTTOMLEFT, mozOutlineRadiusBottomleft);
     }
 
     /**
@@ -2515,7 +2876,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozOutlineRadiusBottomright() {
-        return getStyleAttribute("MozOutlineRadiusBottomright", true);
+        return getStyleAttribute(MOZ_OUTLINE_RADIUS_BOTTOMRIGHT, null);
     }
 
     /**
@@ -2523,7 +2884,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozOutlineRadiusBottomright the new attribute
      */
     public void jsxSet_MozOutlineRadiusBottomright(final String mozOutlineRadiusBottomright) {
-        setStyleAttribute("MozOutlineRadiusBottomright", mozOutlineRadiusBottomright);
+        setStyleAttribute(MOZ_OUTLINE_RADIUS_BOTTOMRIGHT, mozOutlineRadiusBottomright);
     }
 
     /**
@@ -2531,7 +2892,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozOutlineRadiusTopleft() {
-        return getStyleAttribute("MozOutlineRadiusTopleft", true);
+        return getStyleAttribute(MOZ_OUTLINE_RADIUS_TOPLEFT, null);
     }
 
     /**
@@ -2539,7 +2900,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozOutlineRadiusTopleft the new attribute
      */
     public void jsxSet_MozOutlineRadiusTopleft(final String mozOutlineRadiusTopleft) {
-        setStyleAttribute("MozOutlineRadiusTopleft", mozOutlineRadiusTopleft);
+        setStyleAttribute(MOZ_OUTLINE_RADIUS_TOPLEFT, mozOutlineRadiusTopleft);
     }
 
     /**
@@ -2547,7 +2908,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozOutlineRadiusTopright() {
-        return getStyleAttribute("MozOutlineRadiusTopright", true);
+        return getStyleAttribute(MOZ_OUTLINE_RADIUS_TOPRIGHT, null);
     }
 
     /**
@@ -2555,7 +2916,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozOutlineRadiusTopright the new attribute
      */
     public void jsxSet_MozOutlineRadiusTopright(final String mozOutlineRadiusTopright) {
-        setStyleAttribute("MozOutlineRadiusTopright", mozOutlineRadiusTopright);
+        setStyleAttribute(MOZ_OUTLINE_RADIUS_TOPRIGHT, mozOutlineRadiusTopright);
     }
 
     /**
@@ -2563,7 +2924,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozOutlineStyle() {
-        return getStyleAttribute("MozOutlineStyle", true);
+        return getStyleAttribute(MOZ_OUTLINE_STYLE, null);
     }
 
     /**
@@ -2571,7 +2932,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozOutlineStyle the new attribute
      */
     public void jsxSet_MozOutlineStyle(final String mozOutlineStyle) {
-        setStyleAttribute("MozOutlineStyle", mozOutlineStyle);
+        setStyleAttribute(MOZ_OUTLINE_STYLE, mozOutlineStyle);
     }
 
     /**
@@ -2579,7 +2940,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozOutlineWidth() {
-        return getStyleAttribute("MozOutlineWidth", true);
+        return getStyleAttribute(MOZ_OUTLINE_WIDTH, null);
     }
 
     /**
@@ -2587,7 +2948,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozOutlineWidth the new attribute
      */
     public void jsxSet_MozOutlineWidth(final String mozOutlineWidth) {
-        setStyleAttribute("MozOutlineWidth", mozOutlineWidth);
+        setStyleAttribute(MOZ_OUTLINE_WIDTH, mozOutlineWidth);
     }
 
     /**
@@ -2595,7 +2956,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozPaddingEnd() {
-        return getStyleAttribute("MozPaddingEnd", true);
+        return getStyleAttribute(MOZ_PADDING_END, null);
     }
 
     /**
@@ -2603,7 +2964,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozPaddingEnd the new attribute
      */
     public void jsxSet_MozPaddingEnd(final String mozPaddingEnd) {
-        setStyleAttribute("MozPaddingEnd", mozPaddingEnd);
+        setStyleAttribute(MOZ_PADDING_END, mozPaddingEnd);
     }
 
     /**
@@ -2611,7 +2972,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozPaddingStart() {
-        return getStyleAttribute("MozPaddingStart", true);
+        return getStyleAttribute(MOZ_PADDING_START, null);
     }
 
     /**
@@ -2619,7 +2980,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozPaddingStart the new attribute
      */
     public void jsxSet_MozPaddingStart(final String mozPaddingStart) {
-        setStyleAttribute("MozPaddingStart", mozPaddingStart);
+        setStyleAttribute(MOZ_PADDING_START, mozPaddingStart);
     }
 
     /**
@@ -2627,7 +2988,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozUserFocus() {
-        return getStyleAttribute("MozUserFocus", true);
+        return getStyleAttribute(MOZ_USER_FOCUS, null);
     }
 
     /**
@@ -2635,7 +2996,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozUserFocus the new attribute
      */
     public void jsxSet_MozUserFocus(final String mozUserFocus) {
-        setStyleAttribute("MozUserFocus", mozUserFocus);
+        setStyleAttribute(MOZ_USER_FOCUS, mozUserFocus);
     }
 
     /**
@@ -2643,7 +3004,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozUserInput() {
-        return getStyleAttribute("MozUserInput", true);
+        return getStyleAttribute(MOZ_USER_INPUT, null);
     }
 
     /**
@@ -2651,7 +3012,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozUserInput the new attribute
      */
     public void jsxSet_MozUserInput(final String mozUserInput) {
-        setStyleAttribute("MozUserInput", mozUserInput);
+        setStyleAttribute(MOZ_USER_INPUT, mozUserInput);
     }
 
     /**
@@ -2659,7 +3020,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozUserModify() {
-        return getStyleAttribute("MozUserModify", true);
+        return getStyleAttribute(MOZ_USER_MODIFY, null);
     }
 
     /**
@@ -2667,7 +3028,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozUserModify the new attribute
      */
     public void jsxSet_MozUserModify(final String mozUserModify) {
-        setStyleAttribute("MozUserModify", mozUserModify);
+        setStyleAttribute(MOZ_USER_MODIFY, mozUserModify);
     }
 
     /**
@@ -2675,7 +3036,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_MozUserSelect() {
-        return getStyleAttribute("MozUserSelect", true);
+        return getStyleAttribute(MOZ_USER_SELECT, null);
     }
 
     /**
@@ -2683,7 +3044,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param mozUserSelect the new attribute
      */
     public void jsxSet_MozUserSelect(final String mozUserSelect) {
-        setStyleAttribute("MozUserSelect", mozUserSelect);
+        setStyleAttribute(MOZ_USER_SELECT, mozUserSelect);
     }
 
     /**
@@ -2691,7 +3052,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_msInterpolationMode() {
-        return getStyleAttribute("msInterpolationMode", true);
+        return getStyleAttribute(MS_INTERPOLATION_MODE, null);
     }
 
     /**
@@ -2699,7 +3060,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param msInterpolationMode the new attribute
      */
     public void jsxSet_msInterpolationMode(final String msInterpolationMode) {
-        setStyleAttribute("msInterpolationMode", msInterpolationMode);
+        setStyleAttribute(MS_INTERPOLATION_MODE, msInterpolationMode);
     }
 
     /**
@@ -2707,7 +3068,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_opacity() {
-        return getStyleAttribute("opacity", true);
+        return getStyleAttribute(OPACITY, null);
     }
 
     /**
@@ -2715,11 +3076,11 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param opacity the new attribute
      */
     public void jsxSet_opacity(final String opacity) {
-        if (getBrowserVersion().isIE()) {
-            setStyleAttribute("opacity", opacity);
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_23)) {
+            setStyleAttribute(OPACITY, opacity);
         }
-        else if (isFloat(opacity, true) || opacity.length() == 0) {
-            setStyleAttribute("opacity", opacity.trim());
+        else if (com.gargoylesoftware.htmlunit.util.StringUtils.isFloat(opacity, true) || opacity.length() == 0) {
+            setStyleAttribute(OPACITY, opacity.trim());
         }
     }
 
@@ -2728,7 +3089,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_orphans() {
-        return getStyleAttribute("orphans", true);
+        return getStyleAttribute(ORPHANS, null);
     }
 
     /**
@@ -2736,7 +3097,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param orphans the new attribute
      */
     public void jsxSet_orphans(final String orphans) {
-        setStyleAttribute("orphans", orphans);
+        setStyleAttribute(ORPHANS, orphans);
     }
 
     /**
@@ -2744,7 +3105,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_outline() {
-        return getStyleAttribute("outline", true);
+        return getStyleAttribute(OUTLINE, null);
     }
 
     /**
@@ -2752,7 +3113,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param outline the new attribute
      */
     public void jsxSet_outline(final String outline) {
-        setStyleAttribute("outline", outline);
+        setStyleAttribute(OUTLINE, outline);
     }
 
     /**
@@ -2760,7 +3121,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_outlineColor() {
-        return getStyleAttribute("outlineColor", true);
+        return getStyleAttribute(OUTLINE_COLOR, null);
     }
 
     /**
@@ -2768,7 +3129,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param outlineColor the new attribute
      */
     public void jsxSet_outlineColor(final String outlineColor) {
-        setStyleAttribute("outlineColor", outlineColor);
+        setStyleAttribute(OUTLINE_COLOR, outlineColor);
     }
 
     /**
@@ -2776,7 +3137,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_outlineOffset() {
-        return getStyleAttribute("outlineOffset", true);
+        return getStyleAttribute(OUTLINE_OFFSET, null);
     }
 
     /**
@@ -2784,7 +3145,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param outlineOffset the new attribute
      */
     public void jsxSet_outlineOffset(final String outlineOffset) {
-        setStyleAttribute("outlineOffset", outlineOffset);
+        setStyleAttribute(OUTLINE_OFFSET, outlineOffset);
     }
 
     /**
@@ -2792,7 +3153,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_outlineStyle() {
-        return getStyleAttribute("outlineStyle", true);
+        return getStyleAttribute(OUTLINE_STYLE, null);
     }
 
     /**
@@ -2800,7 +3161,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param outlineStyle the new attribute
      */
     public void jsxSet_outlineStyle(final String outlineStyle) {
-        setStyleAttribute("outlineStyle", outlineStyle);
+        setStyleAttribute(OUTLINE_STYLE, outlineStyle);
     }
 
     /**
@@ -2808,7 +3169,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_outlineWidth() {
-        return getStyleAttribute("outlineWidth", true);
+        return getStyleAttribute(OUTLINE_WIDTH, null);
     }
 
     /**
@@ -2816,7 +3177,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param outlineWidth the new attribute
      */
     public void jsxSet_outlineWidth(final String outlineWidth) {
-        setStyleAttribute("outlineWidth", outlineWidth);
+        setStyleAttributePixelInt(OUTLINE_WIDTH, outlineWidth);
     }
 
     /**
@@ -2824,7 +3185,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_overflow() {
-        return getStyleAttribute("overflow", true);
+        return getStyleAttribute(OVERFLOW, null);
     }
 
     /**
@@ -2832,7 +3193,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param overflow the new attribute
      */
     public void jsxSet_overflow(final String overflow) {
-        setStyleAttribute("overflow", overflow);
+        setStyleAttribute(OVERFLOW, overflow);
     }
 
     /**
@@ -2840,7 +3201,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_overflowX() {
-        return getStyleAttribute("overflowX", true);
+        return getStyleAttribute(OVERFLOW_X, null);
     }
 
     /**
@@ -2848,7 +3209,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param overflowX the new attribute
      */
     public void jsxSet_overflowX(final String overflowX) {
-        setStyleAttribute("overflowX", overflowX);
+        setStyleAttribute(OVERFLOW_X, overflowX);
     }
 
     /**
@@ -2856,7 +3217,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_overflowY() {
-        return getStyleAttribute("overflowY", true);
+        return getStyleAttribute(OVERFLOW_Y, null);
     }
 
     /**
@@ -2864,7 +3225,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param overflowY the new attribute
      */
     public void jsxSet_overflowY(final String overflowY) {
-        setStyleAttribute("overflowY", overflowY);
+        setStyleAttribute(OVERFLOW_Y, overflowY);
     }
 
     /**
@@ -2872,7 +3233,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_padding() {
-        return getStyleAttribute("padding", true);
+        return getStyleAttribute(PADDING, null);
     }
 
     /**
@@ -2880,7 +3241,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param padding the new attribute
      */
     public void jsxSet_padding(final String padding) {
-        setStyleAttribute("padding", padding);
+        setStyleAttribute(PADDING, padding);
     }
 
     /**
@@ -2888,7 +3249,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_paddingBottom() {
-        return getStyleAttribute("paddingBottom", "padding", Shorthand.BOTTOM, true);
+        return getStyleAttribute(PADDING_BOTTOM, PADDING, Shorthand.BOTTOM);
     }
 
     /**
@@ -2896,7 +3257,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param paddingBottom the new attribute
      */
     public void jsxSet_paddingBottom(final String paddingBottom) {
-        setStyleAttribute("paddingBottom", paddingBottom);
+        setStyleAttributePixelInt(PADDING_BOTTOM, paddingBottom);
     }
 
     /**
@@ -2904,7 +3265,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_paddingLeft() {
-        return getStyleAttribute("paddingLeft", "padding", Shorthand.LEFT, true);
+        return getStyleAttribute(PADDING_LEFT, PADDING, Shorthand.LEFT);
     }
 
     /**
@@ -2912,7 +3273,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param paddingLeft the new attribute
      */
     public void jsxSet_paddingLeft(final String paddingLeft) {
-        setStyleAttribute("paddingLeft", paddingLeft);
+        setStyleAttributePixelInt(PADDING_LEFT, paddingLeft);
     }
 
     /**
@@ -2920,7 +3281,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_paddingRight() {
-        return getStyleAttribute("paddingRight", "padding", Shorthand.RIGHT, true);
+        return getStyleAttribute(PADDING_RIGHT, PADDING, Shorthand.RIGHT);
     }
 
     /**
@@ -2928,7 +3289,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param paddingRight the new attribute
      */
     public void jsxSet_paddingRight(final String paddingRight) {
-        setStyleAttribute("paddingRight", paddingRight);
+        setStyleAttributePixelInt(PADDING_RIGHT, paddingRight);
     }
 
     /**
@@ -2936,7 +3297,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_paddingTop() {
-        return getStyleAttribute("paddingTop", "padding", Shorthand.TOP, true);
+        return getStyleAttribute(PADDING_TOP, PADDING, Shorthand.TOP);
     }
 
     /**
@@ -2944,7 +3305,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param paddingTop the new attribute
      */
     public void jsxSet_paddingTop(final String paddingTop) {
-        setStyleAttribute("paddingTop", paddingTop);
+        setStyleAttributePixelInt(PADDING_TOP, paddingTop);
     }
 
     /**
@@ -2952,7 +3313,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_page() {
-        return getStyleAttribute("page", true);
+        return getStyleAttribute(PAGE, null);
     }
 
     /**
@@ -2960,7 +3321,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param page the new attribute
      */
     public void jsxSet_page(final String page) {
-        setStyleAttribute("page", page);
+        setStyleAttribute(PAGE, page);
     }
 
     /**
@@ -2968,7 +3329,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_pageBreakAfter() {
-        return getStyleAttribute("pageBreakAfter", true);
+        return getStyleAttribute(PAGE_BREAK_AFTER, null);
     }
 
     /**
@@ -2976,7 +3337,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param pageBreakAfter the new attribute
      */
     public void jsxSet_pageBreakAfter(final String pageBreakAfter) {
-        setStyleAttribute("pageBreakAfter", pageBreakAfter);
+        setStyleAttribute(PAGE_BREAK_AFTER, pageBreakAfter);
     }
 
     /**
@@ -2984,7 +3345,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_pageBreakBefore() {
-        return getStyleAttribute("pageBreakBefore", true);
+        return getStyleAttribute(PAGE_BREAK_BEFORE, null);
     }
 
     /**
@@ -2992,7 +3353,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param pageBreakBefore the new attribute
      */
     public void jsxSet_pageBreakBefore(final String pageBreakBefore) {
-        setStyleAttribute("pageBreakBefore", pageBreakBefore);
+        setStyleAttribute(PAGE_BREAK_BEFORE, pageBreakBefore);
     }
 
     /**
@@ -3000,7 +3361,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_pageBreakInside() {
-        return getStyleAttribute("pageBreakInside", true);
+        return getStyleAttribute(PAGE_BREAK_INSIDE, null);
     }
 
     /**
@@ -3008,7 +3369,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param pageBreakInside the new attribute
      */
     public void jsxSet_pageBreakInside(final String pageBreakInside) {
-        setStyleAttribute("pageBreakInside", pageBreakInside);
+        setStyleAttribute(PAGE_BREAK_INSIDE, pageBreakInside);
     }
 
     /**
@@ -3016,7 +3377,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_pause() {
-        return getStyleAttribute("pause", true);
+        return getStyleAttribute(PAUSE, null);
     }
 
     /**
@@ -3024,7 +3385,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param pause the new attribute
      */
     public void jsxSet_pause(final String pause) {
-        setStyleAttribute("pause", pause);
+        setStyleAttribute(PAUSE, pause);
     }
 
     /**
@@ -3032,7 +3393,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_pauseAfter() {
-        return getStyleAttribute("pauseAfter", true);
+        return getStyleAttribute(PAUSE_AFTER, null);
     }
 
     /**
@@ -3040,7 +3401,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param pauseAfter the new attribute
      */
     public void jsxSet_pauseAfter(final String pauseAfter) {
-        setStyleAttribute("pauseAfter", pauseAfter);
+        setStyleAttribute(PAUSE_AFTER, pauseAfter);
     }
 
     /**
@@ -3048,7 +3409,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_pauseBefore() {
-        return getStyleAttribute("pauseBefore", true);
+        return getStyleAttribute(PAUSE_BEFORE, null);
     }
 
     /**
@@ -3056,7 +3417,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param pauseBefore the new attribute
      */
     public void jsxSet_pauseBefore(final String pauseBefore) {
-        setStyleAttribute("pauseBefore", pauseBefore);
+        setStyleAttribute(PAUSE_BEFORE, pauseBefore);
     }
 
     /**
@@ -3064,7 +3425,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_pitch() {
-        return getStyleAttribute("pitch", true);
+        return getStyleAttribute(PITCH, null);
     }
 
     /**
@@ -3072,7 +3433,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param pitch the new attribute
      */
     public void jsxSet_pitch(final String pitch) {
-        setStyleAttribute("pitch", pitch);
+        setStyleAttribute(PITCH, pitch);
     }
 
     /**
@@ -3080,7 +3441,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_pitchRange() {
-        return getStyleAttribute("pitchRange", true);
+        return getStyleAttribute(PITCH_RANGE, null);
     }
 
     /**
@@ -3088,7 +3449,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param pitchRange the new attribute
      */
     public void jsxSet_pitchRange(final String pitchRange) {
-        setStyleAttribute("pitchRange", pitchRange);
+        setStyleAttribute(PITCH_RANGE, pitchRange);
     }
 
     /**
@@ -3192,7 +3553,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_position() {
-        return getStyleAttribute("position", true);
+        return getStyleAttribute(POSITION, null);
     }
 
     /**
@@ -3200,7 +3561,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param position the new attribute
      */
     public void jsxSet_position(final String position) {
-        setStyleAttribute("position", position);
+        setStyleAttribute(POSITION, position);
     }
 
     /**
@@ -3272,7 +3633,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_quotes() {
-        return getStyleAttribute("quotes", true);
+        return getStyleAttribute(QUOTES, null);
     }
 
     /**
@@ -3280,7 +3641,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param quotes the new attribute
      */
     public void jsxSet_quotes(final String quotes) {
-        setStyleAttribute("quotes", quotes);
+        setStyleAttribute(QUOTES, quotes);
     }
 
     /**
@@ -3288,7 +3649,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_richness() {
-        return getStyleAttribute("richness", true);
+        return getStyleAttribute(RICHNESS, null);
     }
 
     /**
@@ -3296,7 +3657,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param richness the new attribute
      */
     public void jsxSet_richness(final String richness) {
-        setStyleAttribute("richness", richness);
+        setStyleAttribute(RICHNESS, richness);
     }
 
     /**
@@ -3304,7 +3665,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_right() {
-        return getStyleAttribute("right", true);
+        return getStyleAttribute(RIGHT, null);
     }
 
     /**
@@ -3312,7 +3673,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param right the new attribute
      */
     public void jsxSet_right(final String right) {
-        setStyleAttribute("right", right);
+        setStyleAttributePixelInt(RIGHT, right);
     }
 
     /**
@@ -3320,7 +3681,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_rubyAlign() {
-        return getStyleAttribute("rubyAlign", true);
+        return getStyleAttribute(RUBY_ALIGN, null);
     }
 
     /**
@@ -3328,7 +3689,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param rubyAlign the new attribute
      */
     public void jsxSet_rubyAlign(final String rubyAlign) {
-        setStyleAttribute("rubyAlign", rubyAlign);
+        setStyleAttribute(RUBY_ALIGN, rubyAlign);
     }
 
     /**
@@ -3336,7 +3697,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_rubyOverhang() {
-        return getStyleAttribute("rubyOverhang", true);
+        return getStyleAttribute(RUBY_OVERHANG, null);
     }
 
     /**
@@ -3344,7 +3705,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param rubyOverhang the new attribute
      */
     public void jsxSet_rubyOverhang(final String rubyOverhang) {
-        setStyleAttribute("rubyOverhang", rubyOverhang);
+        setStyleAttribute(RUBY_OVERHANG, rubyOverhang);
     }
 
     /**
@@ -3352,7 +3713,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_rubyPosition() {
-        return getStyleAttribute("rubyPosition", true);
+        return getStyleAttribute(RUBY_POSITION, null);
     }
 
     /**
@@ -3360,7 +3721,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param rubyPosition the new attribute
      */
     public void jsxSet_rubyPosition(final String rubyPosition) {
-        setStyleAttribute("rubyPosition", rubyPosition);
+        setStyleAttribute(RUBY_POSITION, rubyPosition);
     }
 
     /**
@@ -3368,7 +3729,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_scrollbar3dLightColor() {
-        return getStyleAttribute("scrollbar3dLightColor", true);
+        return getStyleAttribute(SCROLLBAR3D_LIGHT_COLOR, null);
     }
 
     /**
@@ -3376,7 +3737,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param scrollbar3dLightColor the new attribute
      */
     public void jsxSet_scrollbar3dLightColor(final String scrollbar3dLightColor) {
-        setStyleAttribute("scrollbar3dLightColor", scrollbar3dLightColor);
+        setStyleAttribute(SCROLLBAR3D_LIGHT_COLOR, scrollbar3dLightColor);
     }
 
     /**
@@ -3384,7 +3745,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_scrollbarArrowColor() {
-        return getStyleAttribute("scrollbarArrowColor", true);
+        return getStyleAttribute(SCROLLBAR_ARROW_COLOR, null);
     }
 
     /**
@@ -3392,7 +3753,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param scrollbarArrowColor the new attribute
      */
     public void jsxSet_scrollbarArrowColor(final String scrollbarArrowColor) {
-        setStyleAttribute("scrollbarArrowColor", scrollbarArrowColor);
+        setStyleAttribute(SCROLLBAR_ARROW_COLOR, scrollbarArrowColor);
     }
 
     /**
@@ -3400,7 +3761,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_scrollbarBaseColor() {
-        return getStyleAttribute("scrollbarBaseColor", true);
+        return getStyleAttribute(SCROLLBAR_BASE_COLOR, null);
     }
 
     /**
@@ -3408,7 +3769,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param scrollbarBaseColor the new attribute
      */
     public void jsxSet_scrollbarBaseColor(final String scrollbarBaseColor) {
-        setStyleAttribute("scrollbarBaseColor", scrollbarBaseColor);
+        setStyleAttribute(SCROLLBAR_BASE_COLOR, scrollbarBaseColor);
     }
 
     /**
@@ -3416,7 +3777,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_scrollbarDarkShadowColor() {
-        return getStyleAttribute("scrollbarDarkShadowColor", true);
+        return getStyleAttribute(SCROLLBAR_DARK_SHADOW_COLOR, null);
     }
 
     /**
@@ -3424,7 +3785,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param scrollbarDarkShadowColor the new attribute
      */
     public void jsxSet_scrollbarDarkShadowColor(final String scrollbarDarkShadowColor) {
-        setStyleAttribute("scrollbarDarkShadowColor", scrollbarDarkShadowColor);
+        setStyleAttribute(SCROLLBAR_DARK_SHADOW_COLOR, scrollbarDarkShadowColor);
     }
 
     /**
@@ -3432,7 +3793,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_scrollbarFaceColor() {
-        return getStyleAttribute("scrollbarFaceColor", true);
+        return getStyleAttribute(SCROLLBAR_FACE_COLOR, null);
     }
 
     /**
@@ -3440,7 +3801,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param scrollbarFaceColor the new attribute
      */
     public void jsxSet_scrollbarFaceColor(final String scrollbarFaceColor) {
-        setStyleAttribute("scrollbarFaceColor", scrollbarFaceColor);
+        setStyleAttribute(SCROLLBAR_FACE_COLOR, scrollbarFaceColor);
     }
 
     /**
@@ -3448,7 +3809,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_scrollbarHighlightColor() {
-        return getStyleAttribute("scrollbarHighlightColor", true);
+        return getStyleAttribute(SCROLLBAR_HIGHLIGHT_COLOR, null);
     }
 
     /**
@@ -3456,7 +3817,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param scrollbarHighlightColor the new attribute
      */
     public void jsxSet_scrollbarHighlightColor(final String scrollbarHighlightColor) {
-        setStyleAttribute("scrollbarHighlightColor", scrollbarHighlightColor);
+        setStyleAttribute(SCROLLBAR_HIGHLIGHT_COLOR, scrollbarHighlightColor);
     }
 
     /**
@@ -3464,7 +3825,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_scrollbarShadowColor() {
-        return getStyleAttribute("scrollbarShadowColor", true);
+        return getStyleAttribute(SCROLLBAR_SHADOW_COLOR, null);
     }
 
     /**
@@ -3472,7 +3833,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param scrollbarShadowColor the new attribute
      */
     public void jsxSet_scrollbarShadowColor(final String scrollbarShadowColor) {
-        setStyleAttribute("scrollbarShadowColor", scrollbarShadowColor);
+        setStyleAttribute(SCROLLBAR_SHADOW_COLOR, scrollbarShadowColor);
     }
 
     /**
@@ -3480,7 +3841,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_scrollbarTrackColor() {
-        return getStyleAttribute("scrollbarTrackColor", true);
+        return getStyleAttribute(SCROLLBAR_TRACK_COLOR, null);
     }
 
     /**
@@ -3488,7 +3849,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param scrollbarTrackColor the new attribute
      */
     public void jsxSet_scrollbarTrackColor(final String scrollbarTrackColor) {
-        setStyleAttribute("scrollbarTrackColor", scrollbarTrackColor);
+        setStyleAttribute(SCROLLBAR_TRACK_COLOR, scrollbarTrackColor);
     }
 
     /**
@@ -3496,7 +3857,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_size() {
-        return getStyleAttribute("size", true);
+        return getStyleAttribute(SIZE, null);
     }
 
     /**
@@ -3504,7 +3865,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param size the new attribute
      */
     public void jsxSet_size(final String size) {
-        setStyleAttribute("size", size);
+        setStyleAttribute(SIZE, size);
     }
 
     /**
@@ -3512,7 +3873,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_speak() {
-        return getStyleAttribute("speak", true);
+        return getStyleAttribute(SPEAK, null);
     }
 
     /**
@@ -3520,7 +3881,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param speak the new attribute
      */
     public void jsxSet_speak(final String speak) {
-        setStyleAttribute("speak", speak);
+        setStyleAttribute(SPEAK, speak);
     }
 
     /**
@@ -3528,7 +3889,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_speakHeader() {
-        return getStyleAttribute("speakHeader", true);
+        return getStyleAttribute(SPEAK_HEADER, null);
     }
 
     /**
@@ -3536,7 +3897,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param speakHeader the new attribute
      */
     public void jsxSet_speakHeader(final String speakHeader) {
-        setStyleAttribute("speakHeader", speakHeader);
+        setStyleAttribute(SPEAK_HEADER, speakHeader);
     }
 
     /**
@@ -3544,7 +3905,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_speakNumeral() {
-        return getStyleAttribute("speakNumeral", true);
+        return getStyleAttribute(SPEAK_NUMERAL, null);
     }
 
     /**
@@ -3552,7 +3913,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param speakNumeral the new attribute
      */
     public void jsxSet_speakNumeral(final String speakNumeral) {
-        setStyleAttribute("speakNumeral", speakNumeral);
+        setStyleAttribute(SPEAK_NUMERAL, speakNumeral);
     }
 
     /**
@@ -3560,7 +3921,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_speakPunctuation() {
-        return getStyleAttribute("speakPunctuation", true);
+        return getStyleAttribute(SPEAK_PUNCTUATION, null);
     }
 
     /**
@@ -3568,7 +3929,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param speakPunctuation the new attribute
      */
     public void jsxSet_speakPunctuation(final String speakPunctuation) {
-        setStyleAttribute("speakPunctuation", speakPunctuation);
+        setStyleAttribute(SPEAK_PUNCTUATION, speakPunctuation);
     }
 
     /**
@@ -3576,7 +3937,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_speechRate() {
-        return getStyleAttribute("speechRate", true);
+        return getStyleAttribute(SPEECH_RATE, null);
     }
 
     /**
@@ -3584,7 +3945,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param speechRate the new attribute
      */
     public void jsxSet_speechRate(final String speechRate) {
-        setStyleAttribute("speechRate", speechRate);
+        setStyleAttribute(SPEECH_RATE, speechRate);
     }
 
     /**
@@ -3592,7 +3953,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_stress() {
-        return getStyleAttribute("stress", true);
+        return getStyleAttribute(STRESS, null);
     }
 
     /**
@@ -3600,7 +3961,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param stress the new attribute
      */
     public void jsxSet_stress(final String stress) {
-        setStyleAttribute("stress", stress);
+        setStyleAttribute(STRESS, stress);
     }
 
     /**
@@ -3608,7 +3969,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_styleFloat() {
-        return getStyleAttribute("float", true);
+        return getStyleAttribute(FLOAT, null);
     }
 
     /**
@@ -3616,7 +3977,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param value the new attribute
      */
     public void jsxSet_styleFloat(final String value) {
-        setStyleAttribute("float", value);
+        setStyleAttribute(FLOAT, value);
     }
 
     /**
@@ -3624,7 +3985,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_tableLayout() {
-        return getStyleAttribute("tableLayout", true);
+        return getStyleAttribute(TABLE_LAYOUT, null);
     }
 
     /**
@@ -3632,7 +3993,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param tableLayout the new attribute
      */
     public void jsxSet_tableLayout(final String tableLayout) {
-        setStyleAttribute("tableLayout", tableLayout);
+        setStyleAttribute(TABLE_LAYOUT, tableLayout);
     }
 
     /**
@@ -3640,7 +4001,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_textAlign() {
-        return getStyleAttribute("textAlign", true);
+        return getStyleAttribute(TEXT_ALIGN, null);
     }
 
     /**
@@ -3648,7 +4009,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param textAlign the new attribute
      */
     public void jsxSet_textAlign(final String textAlign) {
-        setStyleAttribute("textAlign", textAlign);
+        setStyleAttribute(TEXT_ALIGN, textAlign);
     }
 
     /**
@@ -3656,7 +4017,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_textAlignLast() {
-        return getStyleAttribute("textAlignLast", true);
+        return getStyleAttribute(TEXT_ALIGN_LAST, null);
     }
 
     /**
@@ -3664,7 +4025,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param textAlignLast the new attribute
      */
     public void jsxSet_textAlignLast(final String textAlignLast) {
-        setStyleAttribute("textAlignLast", textAlignLast);
+        setStyleAttribute(TEXT_ALIGN_LAST, textAlignLast);
     }
 
     /**
@@ -3672,7 +4033,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_textAutospace() {
-        return getStyleAttribute("textAutospace", true);
+        return getStyleAttribute(TEXT_AUTOSPACE, null);
     }
 
     /**
@@ -3680,7 +4041,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param textAutospace the new attribute
      */
     public void jsxSet_textAutospace(final String textAutospace) {
-        setStyleAttribute("textAutospace", textAutospace);
+        setStyleAttribute(TEXT_AUTOSPACE, textAutospace);
     }
 
     /**
@@ -3688,7 +4049,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_textDecoration() {
-        return getStyleAttribute("textDecoration", true);
+        return getStyleAttribute(TEXT_DECORATION, null);
     }
 
     /**
@@ -3696,7 +4057,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param textDecoration the new attribute
      */
     public void jsxSet_textDecoration(final String textDecoration) {
-        setStyleAttribute("textDecoration", textDecoration);
+        setStyleAttribute(TEXT_DECORATION, textDecoration);
     }
 
     /**
@@ -3784,7 +4145,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_textIndent() {
-        return getStyleAttribute("textIndent", true);
+        return getStyleAttribute(TEXT_INDENT, null);
     }
 
     /**
@@ -3792,7 +4153,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param textIndent the new attribute
      */
     public void jsxSet_textIndent(final String textIndent) {
-        setStyleAttribute("textIndent", textIndent);
+        setStyleAttributePixelInt(TEXT_INDENT, textIndent);
     }
 
     /**
@@ -3800,7 +4161,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_textJustify() {
-        return getStyleAttribute("textJustify", true);
+        return getStyleAttribute(TEXT_JUSTIFY, null);
     }
 
     /**
@@ -3808,7 +4169,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param textJustify the new attribute
      */
     public void jsxSet_textJustify(final String textJustify) {
-        setStyleAttribute("textJustify", textJustify);
+        setStyleAttribute(TEXT_JUSTIFY, textJustify);
     }
 
     /**
@@ -3816,7 +4177,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_textJustifyTrim() {
-        return getStyleAttribute("textJustifyTrim", true);
+        return getStyleAttribute(TEXT_JUSTIFY_TRIM, null);
     }
 
     /**
@@ -3824,7 +4185,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param textJustifyTrim the new attribute
      */
     public void jsxSet_textJustifyTrim(final String textJustifyTrim) {
-        setStyleAttribute("textJustifyTrim", textJustifyTrim);
+        setStyleAttribute(TEXT_JUSTIFY_TRIM, textJustifyTrim);
     }
 
     /**
@@ -3832,7 +4193,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_textKashida() {
-        return getStyleAttribute("textKashida", true);
+        return getStyleAttribute(TEXT_KASHIDA, null);
     }
 
     /**
@@ -3840,7 +4201,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param textKashida the new attribute
      */
     public void jsxSet_textKashida(final String textKashida) {
-        setStyleAttribute("textKashida", textKashida);
+        setStyleAttribute(TEXT_KASHIDA, textKashida);
     }
 
     /**
@@ -3848,7 +4209,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_textKashidaSpace() {
-        return getStyleAttribute("textKashidaSpace", true);
+        return getStyleAttribute(TEXT_KASHIDA_SPACE, null);
     }
 
     /**
@@ -3856,7 +4217,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param textKashidaSpace the new attribute
      */
     public void jsxSet_textKashidaSpace(final String textKashidaSpace) {
-        setStyleAttribute("textKashidaSpace", textKashidaSpace);
+        setStyleAttribute(TEXT_KASHIDA_SPACE, textKashidaSpace);
     }
 
     /**
@@ -3864,7 +4225,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_textOverflow() {
-        return getStyleAttribute("textOverflow", true);
+        return getStyleAttribute(TEXT_OVERFLOW, null);
     }
 
     /**
@@ -3872,7 +4233,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param textOverflow the new attribute
      */
     public void jsxSet_textOverflow(final String textOverflow) {
-        setStyleAttribute("textOverflow", textOverflow);
+        setStyleAttribute(TEXT_OVERFLOW, textOverflow);
     }
 
     /**
@@ -3880,7 +4241,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_textShadow() {
-        return getStyleAttribute("textShadow", true);
+        return getStyleAttribute(TEXT_SHADOW, null);
     }
 
     /**
@@ -3888,7 +4249,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param textShadow the new attribute
      */
     public void jsxSet_textShadow(final String textShadow) {
-        setStyleAttribute("textShadow", textShadow);
+        setStyleAttribute(TEXT_SHADOW, textShadow);
     }
 
     /**
@@ -3896,7 +4257,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_textTransform() {
-        return getStyleAttribute("textTransform", true);
+        return getStyleAttribute(TEXT_TRANSFORM, null);
     }
 
     /**
@@ -3904,7 +4265,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param textTransform the new attribute
      */
     public void jsxSet_textTransform(final String textTransform) {
-        setStyleAttribute("textTransform", textTransform);
+        setStyleAttribute(TEXT_TRANSFORM, textTransform);
     }
 
     /**
@@ -3912,7 +4273,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_textUnderlinePosition() {
-        return getStyleAttribute("textUnderlinePosition", true);
+        return getStyleAttribute(TEXT_UNDERLINE_POSITION, null);
     }
 
     /**
@@ -3920,7 +4281,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param textUnderlinePosition the new attribute
      */
     public void jsxSet_textUnderlinePosition(final String textUnderlinePosition) {
-        setStyleAttribute("textUnderlinePosition", textUnderlinePosition);
+        setStyleAttribute(TEXT_UNDERLINE_POSITION, textUnderlinePosition);
     }
 
     /**
@@ -3928,7 +4289,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_top() {
-        return getStyleAttribute("top", true);
+        return getStyleAttribute(TOP, null);
     }
 
     /**
@@ -3936,7 +4297,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param top the new attribute
      */
     public void jsxSet_top(final String top) {
-        setStyleAttribute("top", top);
+        setStyleAttributePixelInt(TOP, top);
     }
 
     /**
@@ -3944,7 +4305,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_unicodeBidi() {
-        return getStyleAttribute("unicodeBidi", true);
+        return getStyleAttribute(UNICODE_BIDI, null);
     }
 
     /**
@@ -3952,7 +4313,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param unicodeBidi the new attribute
      */
     public void jsxSet_unicodeBidi(final String unicodeBidi) {
-        setStyleAttribute("unicodeBidi", unicodeBidi);
+        setStyleAttribute(UNICODE_BIDI, unicodeBidi);
     }
 
     /**
@@ -3960,7 +4321,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_verticalAlign() {
-        return getStyleAttribute("verticalAlign", true);
+        return getStyleAttribute(VERTICAL_ALIGN, null);
     }
 
     /**
@@ -3968,7 +4329,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param verticalAlign the new attribute
      */
     public void jsxSet_verticalAlign(final String verticalAlign) {
-        setStyleAttribute("verticalAlign", verticalAlign);
+        setStyleAttributePixelInt(VERTICAL_ALIGN, verticalAlign);
     }
 
     /**
@@ -3976,7 +4337,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_visibility() {
-        return getStyleAttribute("visibility", true);
+        return getStyleAttribute(VISIBILITY, null);
     }
 
     /**
@@ -3984,7 +4345,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param visibility the new attribute
      */
     public void jsxSet_visibility(final String visibility) {
-        setStyleAttribute("visibility", visibility);
+        setStyleAttribute(VISIBILITY, visibility);
     }
 
     /**
@@ -3992,7 +4353,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_voiceFamily() {
-        return getStyleAttribute("voiceFamily", true);
+        return getStyleAttribute(VOICE_FAMILY, null);
     }
 
     /**
@@ -4000,7 +4361,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param voiceFamily the new attribute
      */
     public void jsxSet_voiceFamily(final String voiceFamily) {
-        setStyleAttribute("voiceFamily", voiceFamily);
+        setStyleAttribute(VOICE_FAMILY, voiceFamily);
     }
 
     /**
@@ -4008,7 +4369,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_volume() {
-        return getStyleAttribute("volume", true);
+        return getStyleAttribute(VOLUME, null);
     }
 
     /**
@@ -4016,7 +4377,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param volume the new attribute
      */
     public void jsxSet_volume(final String volume) {
-        setStyleAttribute("volume", volume);
+        setStyleAttribute(VOLUME, volume);
     }
 
     /**
@@ -4024,7 +4385,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_whiteSpace() {
-        return getStyleAttribute("whiteSpace", true);
+        return getStyleAttribute(WHITE_SPACE, null);
     }
 
     /**
@@ -4032,7 +4393,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param whiteSpace the new attribute
      */
     public void jsxSet_whiteSpace(final String whiteSpace) {
-        setStyleAttribute("whiteSpace", whiteSpace);
+        setStyleAttribute(WHITE_SPACE, whiteSpace);
     }
 
     /**
@@ -4040,7 +4401,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_widows() {
-        return getStyleAttribute("widows", true);
+        return getStyleAttribute(WIDOWS, null);
     }
 
     /**
@@ -4048,7 +4409,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param widows the new attribute
      */
     public void jsxSet_widows(final String widows) {
-        setStyleAttribute("widows", widows);
+        setStyleAttribute(WIDOWS, widows);
     }
 
     /**
@@ -4056,13 +4417,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_width() {
-        String width = getStyleAttribute("width", true);
-        if (width.length() > 0) {
-            if (width.matches("\\d+")) {
-                width += "px";
-            }
-        }
-        return width;
+        return getStyleAttribute(WIDTH, null);
     }
 
     /**
@@ -4070,7 +4425,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param width the new attribute
      */
     public void jsxSet_width(final String width) {
-        setStyleAttribute("width", width);
+        setStyleAttributePixelInt(WIDTH, width);
     }
 
     /**
@@ -4078,7 +4433,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_wordBreak() {
-        return getStyleAttribute("wordBreak", true);
+        return getStyleAttribute(WORD_BREAK, null);
     }
 
     /**
@@ -4086,7 +4441,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param wordBreak the new attribute
      */
     public void jsxSet_wordBreak(final String wordBreak) {
-        setStyleAttribute("wordBreak", wordBreak);
+        setStyleAttribute(WORD_BREAK, wordBreak);
     }
 
     /**
@@ -4094,7 +4449,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_wordSpacing() {
-        return getStyleAttribute("wordSpacing", true);
+        return getStyleAttribute(WORD_SPACING, null);
     }
 
     /**
@@ -4102,7 +4457,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param wordSpacing the new attribute
      */
     public void jsxSet_wordSpacing(final String wordSpacing) {
-        setStyleAttribute("wordSpacing", wordSpacing);
+        setStyleAttributePixelInt(WORD_SPACING, wordSpacing);
     }
 
     /**
@@ -4110,7 +4465,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_wordWrap() {
-        return getStyleAttribute("wordWrap", true);
+        return getStyleAttribute(WORD_WRAP, null);
     }
 
     /**
@@ -4118,7 +4473,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param wordWrap the new attribute
      */
     public void jsxSet_wordWrap(final String wordWrap) {
-        setStyleAttribute("wordWrap", wordWrap);
+        setStyleAttribute(WORD_WRAP, wordWrap);
     }
 
     /**
@@ -4126,7 +4481,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_writingMode() {
-        return getStyleAttribute("writingMode", true);
+        return getStyleAttribute(WRITING_MODE, null);
     }
 
     /**
@@ -4134,7 +4489,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param writingMode the new attribute
      */
     public void jsxSet_writingMode(final String writingMode) {
-        setStyleAttribute("writingMode", writingMode);
+        setStyleAttribute(WRITING_MODE, writingMode);
     }
 
     /**
@@ -4142,60 +4497,29 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public Object jsxGet_zIndex() {
-        final String value = getStyleAttribute("zIndex", true);
-        if (getBrowserVersion().isIE()) {
-            if (value == null || value.length() == 0) {
-                return 0;
+        final String value = getStyleAttribute(Z_INDEX, null);
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.CSS_ZINDEX_TYPE_NUMBER)) {
+            if (value == null
+                    || Context.getUndefinedValue().equals(value)
+                    || StringUtils.isEmpty(value.toString())) {
+                return Integer.valueOf(0);
             }
-            return Integer.parseInt(value);
+            try {
+                final Double numericValue = Double.valueOf(value);
+                return Integer.valueOf(numericValue.intValue());
+            }
+            catch (final NumberFormatException e) {
+                return Integer.valueOf(0);
+            }
         }
-        return value;
-    }
 
-    /**
-     * Sets the specified style attribute, which is presumed to be a numeric, taking into consideration
-     * its {@link Math#round(float)}ed value.
-     * @param name the attribute name (camel-cased)
-     * @param value the attribute value
-     */
-    protected void setRoundedStyleAttribute(final String name, final Object value) {
-        if (value == null || value.toString().length() == 0) {
-            setStyleAttribute(name, "0");
+        // zIndex is string
+        try {
+            Integer.parseInt(value);
+            return value;
         }
-        else {
-            final Double d;
-            if (value instanceof Double) {
-                d = (Double) value;
-            }
-            else {
-                d = Double.parseDouble(value.toString());
-            }
-            setStyleAttribute(name, ((Integer) Math.round(d.floatValue())).toString());
-        }
-    }
-
-    /**
-     * Sets the specified style attribute, if it's only an integer.
-     * @param name the attribute name (camel-cased)
-     * @param value the attribute value
-     */
-    protected void setIntegerStyleAttribute(final String name, final Object value) {
-        if ((value == null) || value.toString().length() == 0) {
-            setStyleAttribute(name, "0");
-        }
-        else {
-            final String valueString = value.toString();
-            if (value instanceof Number) {
-                final Number number = (Number) value;
-                if (number.doubleValue() % 1 == 0) {
-                    setStyleAttribute(name, ((Integer) number.intValue()).toString());
-                }
-            }
-            else {
-                if (valueString.indexOf('.') == -1) {
-                    setStyleAttribute(name, valueString);
-                }
-            }
+        catch (final NumberFormatException e) {
+            return "";
         }
     }
 
@@ -4204,11 +4528,64 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param zIndex the new attribute
      */
     public void jsxSet_zIndex(final Object zIndex) {
-        if (getBrowserVersion().isIE()) {
-            setRoundedStyleAttribute("zIndex", zIndex);
+        if (zIndex == null
+                && getBrowserVersion().hasFeature(BrowserVersionFeatures.CSS_ZINDEX_UNDEFINED_OR_NULL_THROWS_ERROR)) {
+            throw new EvaluatorException("Null is invalid for z-index.");
         }
-        else {
-            setIntegerStyleAttribute("zIndex", zIndex);
+
+        // empty
+        if (zIndex == null || StringUtils.isEmpty(zIndex.toString())) {
+            setStyleAttribute(Z_INDEX, "");
+            return;
+        }
+        // undefined
+        if (Context.getUndefinedValue().equals(zIndex)) {
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.CSS_ZINDEX_UNDEFINED_OR_NULL_THROWS_ERROR)) {
+                throw new EvaluatorException("Undefind is invalid for z-index.");
+            }
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.CSS_ZINDEX_UNDEFINED_FORCES_RESET)) {
+                setStyleAttribute(Z_INDEX, "");
+            }
+            return;
+        }
+
+        // numeric (IE)
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.CSS_ZINDEX_TYPE_NUMBER)) {
+            final Double d;
+            if (zIndex instanceof Double) {
+                d = (Double) zIndex;
+            }
+            else {
+                try {
+                    d = Double.valueOf(zIndex.toString());
+                }
+                catch (final NumberFormatException e) {
+                    throw new WrappedException(e);
+                }
+            }
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.CSS_ZINDEX_ROUNDED)) {
+                setStyleAttribute(Z_INDEX, Integer.toString(Math.round(d.floatValue() - 0.00001f)));
+            }
+            else {
+                setStyleAttribute(Z_INDEX, Integer.toString(d.intValue()));
+            }
+            return;
+        }
+
+        // string (FF)
+        if (zIndex instanceof Number) {
+            final Number number = (Number) zIndex;
+            if (number.doubleValue() % 1 == 0) {
+                setStyleAttribute(Z_INDEX, (Integer.toString(number.intValue())));
+            }
+            return;
+        }
+        try {
+            final int i = Integer.parseInt(zIndex.toString());
+            setStyleAttribute(Z_INDEX, (Integer.toString(i)));
+        }
+        catch (final NumberFormatException e) {
+            // ignore
         }
     }
 
@@ -4217,7 +4594,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the style attribute
      */
     public String jsxGet_zoom() {
-        return getStyleAttribute("zoom", true);
+        return getStyleAttribute(ZOOM, null);
     }
 
     /**
@@ -4225,7 +4602,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param zoom the new attribute
      */
     public void jsxSet_zoom(final String zoom) {
-        setStyleAttribute("zoom", zoom);
+        setStyleAttribute(ZOOM, zoom);
     }
 
     /**
@@ -4240,7 +4617,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
                 return (String) value;
             }
         }
-        return getStyleAttribute(name, false);
+        return getStyleAttribute(name, null);
     }
 
     /**
@@ -4253,7 +4630,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
         // following is a hack, just to have basic support for getPropertyCSSValue
         // TODO: rework the whole CSS processing here! we should *always* parse the style!
         if (styleDeclaration_ == null) {
-            final String uri = getDomNodeOrDie().getPage().getWebResponse().getRequestSettings()
+            final String uri = this.<DomNode>getDomNodeOrDie().getPage().getWebResponse().getWebRequest()
             .getUrl().toExternalForm();
             final String styleAttribute = jsElement_.getDomNodeOrDie().getAttribute("style");
             final InputSource source = new InputSource(new StringReader(styleAttribute));
@@ -4274,9 +4651,12 @@ public class CSSStyleDeclaration extends SimpleScriptable {
             newValue.setFloatValue(CSSPrimitiveValue.CSS_PX, 0);
             cssValue = newValue;
         }
+
         // FF has spaces next to ","
-        if (cssValue.getCssText().startsWith("rgb(")) {
-            cssValue.setCssText(cssValue.getCssText().replaceAll(",", ", "));
+        final String cssText = cssValue.getCssText();
+        if (cssText.startsWith("rgb(")) {
+            final String formatedCssText = StringUtils.replace(cssText, ",", ", ");
+            cssValue.setCssText(formatedCssText);
         }
 
         return new CSSPrimitiveValue(jsElement_, (org.w3c.dom.css.CSSPrimitiveValue) cssValue);
@@ -4317,11 +4697,11 @@ public class CSSStyleDeclaration extends SimpleScriptable {
     public Object jsxFunction_getAttribute(final String name, final int flag) {
         if (flag == 1) {
             // Case-sensitive.
-            return getStyleAttribute(name, true);
+            return getStyleAttribute(name, null);
         }
 
         // Case-insensitive.
-        final Map<String, StyleElement> map = getStyleMap(true);
+        final Map<String, StyleElement> map = getStyleMap();
         for (final String key : map.keySet()) {
             if (key.equalsIgnoreCase(name)) {
                 return map.get(key).getValue();
@@ -4348,7 +4728,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
         }
         if (flagInt == 0) {
             // Case-insensitive.
-            final Map<String, StyleElement> map = getStyleMap(true);
+            final Map<String, StyleElement> map = getStyleMap();
             for (final String key : map.keySet()) {
                 if (key.equalsIgnoreCase(name)) {
                     setStyleAttribute(key, value);
@@ -4357,7 +4737,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
         }
         else {
             // Case-sensitive.
-            if (getStyleAttribute(name, true).length() > 0) {
+            if (getStyleAttribute(name, null).length() > 0) {
                 setStyleAttribute(name, value);
             }
         }
@@ -4382,7 +4762,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
         if (flagInt == 0) {
             // Case-insensitive.
             String lastName = null;
-            final Map<String, StyleElement> map = getStyleMap(true);
+            final Map<String, StyleElement> map = getStyleMap();
             for (final String key : map.keySet()) {
                 if (key.equalsIgnoreCase(name)) {
                     lastName = key;
@@ -4396,7 +4776,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
         }
 
         // Case-sensitive.
-        final String s = getStyleAttribute(name, true);
+        final String s = getStyleAttribute(name, null);
         if (s.length() > 0) {
             removeStyleAttribute(name);
             return true;
@@ -4409,20 +4789,99 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @param text the string to search in
      * @return the string of the color if found, null otherwise
      */
-    private static String findColor(final String text) {
-        final Pattern p = Pattern.compile("(rgb.*?\\(.*?\\d{1,3}.*?,.*?\\d{1,3}.*?,.*?\\d{1,3}.*?\\))");
-        final Matcher m = p.matcher(text);
-        if (m.find()) {
-            return m.group(1);
+    private String findColor(final String text) {
+        Color tmpColor = com.gargoylesoftware.htmlunit.util.StringUtils.findColorRGB(text);
+        if (tmpColor != null) {
+            return com.gargoylesoftware.htmlunit.util.StringUtils.formatColor(tmpColor);
         }
-        final String[] tokens = text.split(" ");
+
+        final String[] tokens = StringUtils.split(text, ' ');
         for (final String token : tokens) {
             if (isColorKeyword(token)) {
                 return token;
             }
-            else if (isColorHexadecimal(token)) {
+
+            tmpColor = com.gargoylesoftware.htmlunit.util.StringUtils.asColorHexadecimal(token);
+            if (tmpColor != null) {
+                if (getBrowserVersion().
+                        hasFeature(BrowserVersionFeatures.JS_GET_BACKGROUND_COLOR_FOR_COMPUTED_STYLE_RETURNS_RGB)) {
+                    return com.gargoylesoftware.htmlunit.util.StringUtils.formatColor(tmpColor);
+                }
                 return token;
             }
+        }
+        return null;
+    }
+
+    /**
+     * Searches for any url notation in the specified text.
+     * @param text the string to search in
+     * @return the string of the url if found, null otherwise
+     */
+    private String findImageUrl(final String text) {
+        final Matcher m = URL_PATTERN.matcher(text);
+        if (m.find()) {
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.CSS_IMAGE_URL_QUOTED)) {
+                return "url(\"" + m.group(1) + "\")";
+            }
+            return "url(" + m.group(1) + ")";
+        }
+        return null;
+    }
+
+    /**
+     * Searches for any position notation in the specified text.
+     * @param text the string to search in
+     * @return the string of the position if found, null otherwise
+     */
+    private static String findPosition(final String text) {
+        Matcher m = POSITION_PATTERN.matcher(text);
+        if (m.find()) {
+            return m.group(1) + " " + m.group(3);
+        }
+        m = POSITION_PATTERN2.matcher(text);
+        if (m.find()) {
+            return m.group(1) + " " + m.group(2);
+        }
+        m = POSITION_PATTERN3.matcher(text);
+        if (m.find()) {
+            return m.group(2) + " " + m.group(1);
+        }
+        return null;
+    }
+
+    /**
+     * Searches for any repeat notation in the specified text.
+     * @param text the string to search in
+     * @return the string of the repeat if found, null otherwise
+     */
+    private static String findRepeat(final String text) {
+        if (text.contains("repeat-x")) {
+            return "repeat-x";
+        }
+        if (text.contains("repeat-y")) {
+            return "repeat-y";
+        }
+        if (text.contains("no-repeat")) {
+            return "no-repeat";
+        }
+        if (text.contains("repeat")) {
+            return "repeat";
+        }
+        return null;
+    }
+
+    /**
+     * Searches for any attachment notation in the specified text.
+     * @param text the string to search in
+     * @return the string of the attachment if found, null otherwise
+     */
+    private static String findAttachment(final String text) {
+        if (text.contains("scroll")) {
+            return "scroll";
+        }
+        if (text.contains("fixed")) {
+            return "fixed";
         }
         return null;
     }
@@ -4433,7 +4892,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the border style if found, null otherwise
      */
     private static String findBorderStyle(final String text) {
-        for (final String token : text.split(" ")) {
+        for (final String token : StringUtils.split(text, ' ')) {
             if (isBorderStyle(token)) {
                 return token;
             }
@@ -4447,21 +4906,12 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return the border width if found, null otherwise
      */
     private static String findBorderWidth(final String text) {
-        for (final String token : text.split(" ")) {
+        for (final String token : StringUtils.split(text, ' ')) {
             if (isBorderWidth(token)) {
                 return token;
             }
         }
         return null;
-    }
-
-    /**
-     * Returns if the specified token is an RGB in hexadecimal notation.
-     * @param token the token to check
-     * @return whether the token is a color in hexadecimal notation or not
-     */
-    private static boolean isColorHexadecimal(final String token) {
-        return token.toLowerCase().matches("#([0-9a-f]{3}|[0-9a-f]{6})");
     }
 
     /**
@@ -4493,11 +4943,11 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return whether the token is a border style or not
      */
     private static boolean isBorderStyle(final String token) {
-        return token.equalsIgnoreCase("none") || token.equalsIgnoreCase("hidden")
-            || token.equalsIgnoreCase("dotted") || token.equalsIgnoreCase("dashed")
-            || token.equalsIgnoreCase("solid") || token.equalsIgnoreCase("double")
-            || token.equalsIgnoreCase("groove") || token.equalsIgnoreCase("ridge")
-            || token.equalsIgnoreCase("inset") || token.equalsIgnoreCase("outset");
+        return "none".equalsIgnoreCase(token) || "hidden".equalsIgnoreCase(token)
+            || "dotted".equalsIgnoreCase(token) || "dashed".equalsIgnoreCase(token)
+            || "solid".equalsIgnoreCase(token) || "double".equalsIgnoreCase(token)
+            || "groove".equalsIgnoreCase(token) || "ridge".equalsIgnoreCase(token)
+            || "inset".equalsIgnoreCase(token) || "outset".equalsIgnoreCase(token);
     }
 
     /**
@@ -4506,8 +4956,8 @@ public class CSSStyleDeclaration extends SimpleScriptable {
      * @return whether the token is a border width or not
      */
     private static boolean isBorderWidth(final String token) {
-        return token.equalsIgnoreCase("thin") || token.equalsIgnoreCase("medium")
-            || token.equalsIgnoreCase("thick ") || isLength(token);
+        return "thin".equalsIgnoreCase(token) || "medium".equalsIgnoreCase(token)
+            || "thick".equalsIgnoreCase(token) || isLength(token);
     }
 
     /**
@@ -4538,13 +4988,39 @@ public class CSSStyleDeclaration extends SimpleScriptable {
     }
 
     /**
-     * Converts the specified length string value into an integer number of pixels.
+     * Converts the specified length CSS attribute value into an integer number of pixels. If the
+     * specified CSS attribute value is a percentage, this method uses the specified value object
+     * to recursively retrieve the base (parent) CSS attribute value.
+     * @param element the element for which the CSS attribute value is to be retrieved
+     * @param value the CSS attribute value which is to be retrieved
+     * @return the integer number of pixels corresponding to the specified length CSS attribute value
+     * @see #pixelValue(String)
+     */
+    protected static int pixelValue(final HTMLElement element, final CssValue value) {
+        final String s = value.get(element);
+        if (s.endsWith("%") || (s.length() == 0 && element instanceof HTMLHtmlElement)) {
+            final int i = NumberUtils.toInt(TO_INT_PATTERN.matcher(s).replaceAll("$1"), 100);
+            final HTMLElement parent = element.getParentHTMLElement();
+            final int absoluteValue = (parent == null) ? value.getWindowDefaultValue() : pixelValue(parent, value);
+            return (int) ((i / 100D) * absoluteValue);
+        }
+        else if (s.length() == 0 && element instanceof HTMLCanvasElement) {
+            return value.getWindowDefaultValue();
+        }
+        return pixelValue(s);
+    }
+
+    /**
+     * Converts the specified length string value into an integer number of pixels. This method does
+     * <b>NOT</b> handle percentages correctly; use {@link #pixelValue(HTMLElement, CssValue)} if you
+     * need percentage support).
      * @param value the length string value to convert to an integer number of pixels
      * @return the integer number of pixels corresponding to the specified length string value
      * @see <a href="http://htmlhelp.com/reference/css/units.html">CSS Units</a>
+     * @see #pixelValue(HTMLElement, CssValue)
      */
     protected static int pixelValue(final String value) {
-        final int i = NumberUtils.toInt(value.replaceAll("(\\d+).*", "$1"), 0);
+        final int i = NumberUtils.toInt(TO_INT_PATTERN.matcher(value).replaceAll("$1"), 0);
         if (value.endsWith("px")) {
             return i;
         }
@@ -4569,12 +5045,49 @@ public class CSSStyleDeclaration extends SimpleScriptable {
         else if (value.endsWith("pc")) {
             return i * 24;
         }
-        else if (value.endsWith("%")) {
-            return i;
-        }
         else {
             return i;
         }
+    }
+
+    /**
+     * Encapsulates the retrieval of a style attribute, given a DOM element from which to retrieve it.
+     */
+    protected abstract static class CssValue {
+        private final int windowDefaultValue_;
+
+        /**
+         * C'tor.
+         * @param windowDefaultValue the default value for the window
+         */
+        public CssValue(final int windowDefaultValue) {
+            windowDefaultValue_ = windowDefaultValue;
+        }
+
+        /**
+         * Gets the default size for the window.
+         * @return the default value for the window
+         */
+        public int getWindowDefaultValue() {
+            return windowDefaultValue_;
+        }
+
+        /**
+         * Returns the CSS attribute value for the specified element.
+         * @param element the element for which the CSS attribute value is to be retrieved
+         * @return the CSS attribute value for the specified element
+         */
+        public final String get(final HTMLElement element) {
+            final ComputedCSSStyleDeclaration style = element.jsxGet_currentStyle();
+            final String value = get(style);
+            return value;
+        }
+        /**
+         * Returns the CSS attribute value from the specified computed style.
+         * @param style the computed style from which to retrieve the CSS attribute value
+         * @return the CSS attribute value from the specified computed style
+         */
+        public abstract String get(final ComputedCSSStyleDeclaration style);
     }
 
     /**
@@ -4596,7 +5109,27 @@ public class CSSStyleDeclaration extends SimpleScriptable {
     protected static class StyleElement implements Comparable<StyleElement> {
         private final String name_;
         private final String value_;
+        private final String priority_;
         private final long index_;
+        private final SelectorSpecificity specificity_;
+
+        /**
+         * Creates a new instance.
+         * @param name the style element's name
+         * @param value the style element's value
+         * @param priority the style element's priority like "important"
+         * @param specificity the specificity of the rule providing this style information
+         * @param index the style element's index
+         */
+        protected StyleElement(final String name, final String value, final String priority,
+                final SelectorSpecificity specificity, final long index) {
+            name_ = name;
+            value_ = value;
+            priority_ = priority;
+            index_ = index;
+            specificity_ = specificity;
+        }
+
         /**
          * Creates a new instance.
          * @param name the style element's name
@@ -4604,20 +5137,18 @@ public class CSSStyleDeclaration extends SimpleScriptable {
          * @param index the style element's index
          */
         protected StyleElement(final String name, final String value, final long index) {
-            this.name_ = name;
-            this.value_ = value;
-            this.index_ = index;
+            this(name, value, "", SelectorSpecificity.FROM_STYLE_ATTRIBUTE, index);
         }
+
         /**
          * Creates a new default instance.
          * @param name the style element's name
          * @param value the style element's value
          */
         protected StyleElement(final String name, final String value) {
-            this.name_ = name;
-            this.value_ = value;
-            this.index_ = Long.MIN_VALUE;
+            this(name, value, Long.MIN_VALUE);
         }
+
         /**
          * Returns the style element's name.
          * @return the style element's name
@@ -4625,6 +5156,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
         public String getName() {
             return name_;
         }
+
         /**
          * Returns the style element's value.
          * @return the style element's value
@@ -4632,6 +5164,23 @@ public class CSSStyleDeclaration extends SimpleScriptable {
         public String getValue() {
             return value_;
         }
+
+        /**
+         * Returns the style element's priority.
+         * @return the style element's priority
+         */
+        public String getPriority() {
+            return priority_;
+        }
+
+        /**
+         * Returns the specificity of the rule specifying this element.
+         * @return the specificity
+         */
+        public SelectorSpecificity getSpecificity() {
+            return specificity_;
+        }
+
         /**
          * Returns the style element's index.
          * @return the style element's index
@@ -4639,6 +5188,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
         public long getIndex() {
             return index_;
         }
+
         /**
          * Returns <tt>true</tt> if this style element contains a default value. This method isn't
          * currently used anywhere because default style elements are applied before non-default
@@ -4650,6 +5200,7 @@ public class CSSStyleDeclaration extends SimpleScriptable {
         public boolean isDefault() {
             return index_ == Long.MIN_VALUE;
         }
+
         /**
          * {@inheritDoc}
          */
@@ -4657,15 +5208,47 @@ public class CSSStyleDeclaration extends SimpleScriptable {
         public String toString() {
             return "[" + index_ + "]" + name_  + "=" + value_;
         }
+
         /**
          * {@inheritDoc}
          */
         public int compareTo(final StyleElement e) {
             if (e != null) {
-                return new Long(index_).compareTo(e.index_);
+                final long styleIndex = e.index_;
+                // avoid conversion to long
+                return (index_ < styleIndex) ? -1 : (index_ == styleIndex) ? 0 : 1;
             }
             return 1;
         }
+    }
+
+    /**
+     * Sets the style attribute which should be treated as an integer in pixels.
+     * @param name the attribute name
+     * @param value the attribute value
+     */
+    protected void setStyleAttributePixelInt(final String name, String value) {
+        if (value.endsWith("px")) {
+            value = value.substring(0, value.length() - 2);
+        }
+        try {
+            final float floatValue = Float.parseFloat(value);
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_26)) {
+                value = Integer.toString((int) floatValue) + "px";
+            }
+            else {
+                if (floatValue % 1 == 0) {
+                    value = Integer.toString((int) floatValue) + "px";
+                }
+                else {
+                    value = Float.toString(floatValue) + "px";
+                }
+            }
+        }
+        catch (final Exception e) {
+            //ignore
+        }
+        setStyleAttribute(name, value);
     }
 
 }

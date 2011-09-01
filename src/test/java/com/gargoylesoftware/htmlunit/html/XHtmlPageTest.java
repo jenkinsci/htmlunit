@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import static org.junit.Assert.assertNotNull;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.httpclient.HttpStatus;
+import org.apache.http.HttpStatus;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -33,7 +33,7 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
 /**
  * Tests for {@link XHtmlPage}.
  *
- * @version $Revision: 4563 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
  */
 @RunWith(BrowserRunner.class)
@@ -59,10 +59,10 @@ public class XHtmlPageTest extends WebTestCase {
         client.setAlertHandler(new CollectingAlertHandler(actual));
 
         final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_GARGOYLE, html, "text/xml");
+        conn.setResponse(getDefaultUrl(), html, "text/xml");
         client.setWebConnection(conn);
 
-        final XHtmlPage page = client.getPage(URL_GARGOYLE);
+        final XHtmlPage page = client.getPage(getDefaultUrl());
         final DomNode body = page.getDocumentElement().getFirstChild().getNextSibling();
         final DomNode div = body.getFirstChild();
 
@@ -89,7 +89,7 @@ public class XHtmlPageTest extends WebTestCase {
         webConnection.setDefaultResponse(content, 200, "OK", "text/xml");
         client.setWebConnection(webConnection);
         final Page page = client.getPage(URL_FIRST);
-        assertEquals(URL_FIRST, page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(URL_FIRST, page.getWebResponse().getWebRequest().getUrl());
         assertEquals("OK", page.getWebResponse().getStatusMessage());
         assertEquals(HttpStatus.SC_OK, page.getWebResponse().getStatusCode());
         assertEquals("text/xml", page.getWebResponse().getContentType());

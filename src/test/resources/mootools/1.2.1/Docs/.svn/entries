@@ -1,83 +1,0 @@
-10
-
-dir
-5285
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/tags/HtmlUnit-2.6/src/test/resources/mootools/1.2.1/Docs
-https://htmlunit.svn.sourceforge.net/svnroot/htmlunit
-
-
-
-2009-02-28T02:35:49.580446Z
-4215
-sdanig
-has-props
-
-
-
-
-
-
-
-
-
-
-
-
-
-797ba2fd-6919-0410-a55a-8c1f0daf9432
-
-license.md
-file
-
-
-
-
-2009-12-22T19:28:45.000000Z
-08dcab2997a9fa31a1263f16f09b2d35
-2009-02-28T02:35:49.580446Z
-4215
-sdanig
-has-props
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-209
-
-Class
-dir
-
-Native
-dir
-
-Core
-dir
-
-Request
-dir
-
-Element
-dir
-
-Utilities
-dir
-
-Fx
-dir
-

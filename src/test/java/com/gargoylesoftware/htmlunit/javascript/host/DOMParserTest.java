@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,18 +18,20 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
 
 /**
  * Tests for {@link DOMParser}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
  */
 @RunWith(BrowserRunner.class)
-public class DOMParserTest extends WebTestCase {
+public class DOMParserTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if the test fails
@@ -59,15 +61,38 @@ public class DOMParserTest extends WebTestCase {
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(content);
+        loadPageWithAlerts2(content);
+    }
+
+    /**
+     * In 2.9-SNAPSHOT on 26.10.2010 this was causing an internal error in DOMParser.jsxFunction_parseFromString.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("end")
+    public void parseFromString_invalidXml() throws Exception {
+        final String content = "<html><head><title>foo</title><script>\n"
+            + "var text = '</notvalid> ';\n"
+            + "if (window.ActiveXObject) {\n"
+            + "  var doc = new ActiveXObject('Microsoft.XMLDOM');\n"
+            + "  doc.async = false;\n"
+            + "  doc.loadXML(text);\n"
+            + "} else {\n"
+            + "  var parser=new DOMParser();\n"
+            + "  var doc=parser.parseFromString(text,'text/xml');\n"
+            + "}\n"
+            + "alert('end');\n"
+            + "</script></head><body>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(content);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts()
-    public void parseFromString_EmptyString() throws Exception {
+    public void parseFromString_emptyString() throws Exception {
         final String content = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
             + "    var text='';\n"
@@ -83,6 +108,33 @@ public class DOMParserTest extends WebTestCase {
             + "  }\n"
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
-        loadPageWithAlerts(content);
+        loadPageWithAlerts2(content);
     }
+
+    /**
+     * Regression test for bug 2899485.
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Browsers(Browser.FF)
+    @Alerts({ "5", "[object CDATASection]", "[object Comment]", "[object Element]", "[object ProcessingInstruction]",
+        "[object Text]" })
+    public void parseFromString_processingInstructionKept() throws Exception {
+        final String html
+            = "<html><head><script>\n"
+            + "  function test() {\n"
+            + "    var s = '<elementWithChildren>' + '<![CDATA[sampl<<< >>e data]]>' + '<!--a sample comment-->'\n"
+            + "      + '<elementWithChildren/>' + '<?target processing instruction data?>' + 'sample text node'\n"
+            + "      + '</elementWithChildren>'\n"
+            + "    var parser = new DOMParser();\n"
+            + "    var doc = parser.parseFromString(s, 'text/xml');\n"
+            + "    alert(doc.documentElement.childNodes.length);\n"
+            + "    for(var i = 0; i < doc.documentElement.childNodes.length; i++) {\n"
+            + "      alert(doc.documentElement.childNodes[i]);\n"
+            + "    }\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'></body></html>";
+        loadPageWithAlerts2(html);
+    }
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,12 +20,10 @@ import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
 /**
  * A JavaScript object for a BoxObject.
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:sam@redspr.com">Sam Hough</a>
  */
 public class BoxObject extends SimpleScriptable {
-
-    private static final long serialVersionUID = -6650009325965623469L;
 
     /** The element to which this box object corresponds. */
     private final HTMLElement element_;

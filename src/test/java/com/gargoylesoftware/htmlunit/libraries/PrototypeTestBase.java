@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 /**
  * Base class for tests for compatibility with <a href="http://prototype.conio.net/">Prototype</a>.
  *
- * @version $Revision: 4789 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
  * @author Ahmed Ashour
  * @author Marc Guillemot
@@ -71,6 +71,10 @@ public abstract class PrototypeTestBase extends WebServerTestCase {
         expected = expected.replaceAll("Info:.*", "Info: -- skipped for comparison --");
         actual = actual.replaceAll("Info:.*", "Info: -- skipped for comparison --");
 
+        // normalize line break
+        expected = expected.replaceAll("\r\n", "\n");
+        actual = actual.replaceAll("\r\n", "\n");
+
         // dump the result page if not ok
         if (System.getProperty(PROPERTY_GENERATE_TESTPAGES) != null && !expected.equals(actual)) {
             final File tmpDir = new File(System.getProperty("java.io.tmpdir"));
@@ -85,7 +89,7 @@ public abstract class PrototypeTestBase extends WebServerTestCase {
     private String getExpectations(final BrowserVersion browserVersion, final String filename)
         throws IOException {
         final String fileNameBase = StringUtils.substringBeforeLast(filename, ".");
-        final String baseName = "src/test/resources/prototype/" + getVersion() + "/expected." + fileNameBase;
+        final String baseName = "src/test/resources/libraries/prototype/" + getVersion() + "/expected." + fileNameBase;
 
         File expectationsFile = null;
         // version specific to this browser (or browser group)?
@@ -117,7 +121,7 @@ public abstract class PrototypeTestBase extends WebServerTestCase {
      */
     @Before
     public void setUp() throws Exception {
-        startWebServer("src/test/resources/prototype/" + getVersion());
+        startWebServer("src/test/resources/libraries/prototype/" + getVersion());
     }
 
     /**

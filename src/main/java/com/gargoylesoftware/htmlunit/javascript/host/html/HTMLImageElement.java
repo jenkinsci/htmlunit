@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,13 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
-import static com.gargoylesoftware.htmlunit.html.HtmlImage.TAG_NAME;
-
 import java.net.MalformedURLException;
 
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 
 import org.apache.xalan.xsltc.runtime.AttributeList;
 
+import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.html.HTMLParser;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
@@ -32,7 +31,7 @@ import com.gargoylesoftware.htmlunit.javascript.PostponedAction;
 /**
  * The JavaScript object that represents an "Image".
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6220 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:george@murnock.com">George Murnock</a>
  * @author Chris Erskine
@@ -40,8 +39,6 @@ import com.gargoylesoftware.htmlunit.javascript.PostponedAction;
  * @author Ahmed Ashour
  */
 public class HTMLImageElement extends HTMLElement {
-
-    private static final long serialVersionUID = 5630843390548382869L;
 
     private boolean instantiatedViaJavaScript_ = false;
 
@@ -59,7 +56,8 @@ public class HTMLImageElement extends HTMLElement {
     public void jsConstructor() {
         instantiatedViaJavaScript_ = true;
         final SgmlPage page = (SgmlPage) getWindow().getWebWindow().getEnclosedPage();
-        final HtmlElement fake = HTMLParser.getFactory(TAG_NAME).createElement(page, TAG_NAME, new AttributeList());
+        final HtmlElement fake =
+                HTMLParser.getFactory(HtmlImage.TAG_NAME).createElement(page, HtmlImage.TAG_NAME, new AttributeList());
         setDomNode(fake);
     }
 
@@ -68,8 +66,10 @@ public class HTMLImageElement extends HTMLElement {
      * @param src the <tt>src</tt> attribute value
      */
     public void jsxSet_src(final String src) {
-        getDomNodeOrDie().setAttribute("src", src);
-        getWindow().getJavaScriptEngine().addPostponedAction(new ImageOnLoadAction());
+        final HtmlElement img = getDomNodeOrDie();
+        img.setAttribute("src", src);
+        getWindow().getWebWindow().getWebClient()
+            .getJavaScriptEngine().addPostponedAction(new ImageOnLoadAction(img.getPage()));
     }
 
     /**
@@ -98,7 +98,8 @@ public class HTMLImageElement extends HTMLElement {
      */
     public void jsxSet_onload(final Object onloadHandler) {
         setEventHandlerProp("onload", onloadHandler);
-        getWindow().getJavaScriptEngine().addPostponedAction(new ImageOnLoadAction());
+        getWindow().getWebWindow().getWebClient()
+            .getJavaScriptEngine().addPostponedAction(new ImageOnLoadAction(getDomNodeOrDie().getPage()));
     }
 
     /**
@@ -112,7 +113,11 @@ public class HTMLImageElement extends HTMLElement {
     /**
      * Custom JavaScript postponed action which downloads the image and invokes the onload handler, if necessary.
      */
-    private class ImageOnLoadAction implements PostponedAction {
+    private class ImageOnLoadAction extends PostponedAction {
+        public ImageOnLoadAction(final Page page) {
+            super(page);
+        }
+        @Override
         public void execute() throws Exception {
             final HtmlImage img = (HtmlImage) getDomNodeOrNull();
             if (img != null) {
@@ -126,10 +131,7 @@ public class HTMLImageElement extends HTMLElement {
      * @return the value of the "alt" property
      */
     public String jsxGet_alt() {
-        String alt = getDomNodeOrDie().getAttribute("alt");
-        if (alt == NOT_FOUND) {
-            alt = "";
-        }
+        final String alt = getDomNodeOrDie().getAttribute("alt");
         return alt;
     }
 
@@ -146,10 +148,7 @@ public class HTMLImageElement extends HTMLElement {
      * @return the "border" attribute
      */
     public String jsxGet_border() {
-        String border = getDomNodeOrDie().getAttribute("border");
-        if (border == NOT_FOUND) {
-            border = "";
-        }
+        final String border = getDomNodeOrDie().getAttribute("border");
         return border;
     }
 
@@ -177,4 +176,49 @@ public class HTMLImageElement extends HTMLElement {
         setAlign(align, false);
     }
 
+    /**
+     * Returns the value of the "width" property.
+     * @return the value of the "width" property
+     */
+    public int jsxGet_width() {
+        final HtmlImage img = (HtmlImage) getDomNodeOrDie();
+        final String width = img.getWidthAttribute();
+        try {
+            return Integer.parseInt(width);
+        }
+        catch (final NumberFormatException e) {
+            return 24; // anything else
+        }
+    }
+
+    /**
+     * Sets the value of the "width" property.
+     * @param width the value of the "width" property
+     */
+    public void jsxSet_width(final String width) {
+        getDomNodeOrDie().setAttribute("width", width);
+    }
+
+    /**
+     * Returns the value of the "height" property.
+     * @return the value of the "height" property
+     */
+    public int jsxGet_height() {
+        final HtmlImage img = (HtmlImage) getDomNodeOrDie();
+        final String height = img.getHeightAttribute();
+        try {
+            return Integer.parseInt(height);
+        }
+        catch (final NumberFormatException e) {
+            return 24; // anything else
+        }
+    }
+
+    /**
+     * Sets the value of the "height" property.
+     * @param height the value of the "height" property
+     */
+    public void jsxSet_height(final String height) {
+        getDomNodeOrDie().setAttribute("height", height);
+    }
 }

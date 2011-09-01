@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,18 +27,19 @@ import java.util.WeakHashMap;
 
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.Function;
+import net.sourceforge.htmlunit.corejs.javascript.FunctionObject;
 import net.sourceforge.htmlunit.corejs.javascript.Script;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
 import net.sourceforge.htmlunit.corejs.javascript.Undefined;
 
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.collections.Transformer;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.gargoylesoftware.htmlunit.AlertHandler;
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.ConfirmHandler;
 import com.gargoylesoftware.htmlunit.DialogWindow;
 import com.gargoylesoftware.htmlunit.ElementNotFoundException;
@@ -63,23 +64,28 @@ import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlLink;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.html.HtmlStyle;
-import com.gargoylesoftware.htmlunit.javascript.JavaScriptEngine;
 import com.gargoylesoftware.htmlunit.javascript.ScriptableWithFallbackGetter;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 import com.gargoylesoftware.htmlunit.javascript.background.JavaScriptFunctionJob;
 import com.gargoylesoftware.htmlunit.javascript.background.JavaScriptStringJob;
+import com.gargoylesoftware.htmlunit.javascript.host.Storage.Type;
 import com.gargoylesoftware.htmlunit.javascript.host.css.CSSStyleDeclaration;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSStyleSheet;
 import com.gargoylesoftware.htmlunit.javascript.host.css.ComputedCSSStyleDeclaration;
+import com.gargoylesoftware.htmlunit.javascript.host.css.StyleSheetList;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLBodyElement;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLCollection;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLDocument;
+import com.gargoylesoftware.htmlunit.javascript.host.html.DocumentProxy;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLUnknownElement;
 import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLDocument;
+import com.gargoylesoftware.htmlunit.xml.XmlPage;
 
 /**
  * A JavaScript object for a Window.
  *
- * @version $Revision: 4820 $
+ * @version $Revision: 6489 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:chen_jun@users.sourceforge.net">Chen Jun</a>
  * @author David K. Taylor
@@ -95,8 +101,13 @@ import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLDocument;
  */
 public class Window extends SimpleScriptable implements ScriptableWithFallbackGetter, Function {
 
-    private static final long serialVersionUID = -7730298149962810325L;
     private static final Log LOG = LogFactory.getLog(Window.class);
+
+    /** HtmlUnit's "window" width, in pixels. */
+    public static final int WINDOW_WIDTH = 1256;
+
+    /** HtmlUnit's "window" height, in pixels. */
+    public static final int WINDOW_HEIGHT = 605;
 
     /**
      * The minimum delay that can be used with setInterval() or setTimeout(). Browser minimums are
@@ -105,9 +116,11 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      */
     private static final int MIN_TIMER_DELAY = 1;
 
-    private HTMLDocument document_;
+    private Document document_;
+    private DocumentProxy documentProxy_;
     private Navigator navigator_;
     private WebWindow webWindow_;
+    private WindowProxy windowProxy_;
     private Screen screen_;
     private History history_;
     private Location location_;
@@ -118,14 +131,14 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
     private HTMLCollection frames_; // has to be a member to have equality (==) working
     private Map<Class< ? extends SimpleScriptable>, Scriptable> prototypes_ =
         new HashMap<Class< ? extends SimpleScriptable>, Scriptable>();
-    private final JavaScriptEngine scriptEngine_;
     private EventListenersContainer eventListenersContainer_;
     private Object controllers_;
+    private Object opener_;
+    private Object top_ = NOT_FOUND; // top can be set from JS to any value!
 
     /**
-     * Cache computed styles when possible, because their calculation is very expensive, involving lots
-     * of CSS parsing and lots of XPath expression evaluation (CSS selectors are translated to XPath and
-     * then evaluated). We use a weak hash map because we don't want this cache to be the only reason
+     * Cache computed styles when possible, because their calculation is very expensive.
+     * We use a weak hash map because we don't want this cache to be the only reason
      * nodes are kept around in the JVM, if all other references to them are gone.
      */
     private transient WeakHashMap<Node, ComputedCSSStyleDeclaration> computedStyles_ =
@@ -144,19 +157,8 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
 
     /**
      * Creates an instance.
-     *
-     * @param scriptEngine the JavaScript engine responsible for the new window instance
      */
-    public Window(final JavaScriptEngine scriptEngine) {
-        scriptEngine_ = scriptEngine;
-    }
-
-    /**
-     * Gets the JavaScript Engine responsible for this object.
-     * @return the JavaScript engine
-     */
-    public JavaScriptEngine getJavaScriptEngine() {
-        return scriptEngine_;
+    public Window() {
     }
 
     /**
@@ -190,7 +192,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
             LOG.warn("window.alert(\"" + stringMessage + "\") no alert handler installed");
         }
         else {
-            handler.handleAlert(document_.getHtmlPage(), stringMessage);
+            handler.handleAlert(((HTMLDocument) document_).getHtmlPage(), stringMessage);
         }
     }
 
@@ -224,7 +226,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
                     + message + "\") no confirm handler installed, simulating the OK button");
             return true;
         }
-        return handler.handleConfirm(document_.getHtmlPage(), message);
+        return handler.handleConfirm(((HTMLDocument) document_).getHtmlPage(), message);
     }
 
     /**
@@ -238,14 +240,22 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
             LOG.warn("window.prompt(\"" + message + "\") no prompt handler installed");
             return null;
         }
-        return handler.handlePrompt(document_.getHtmlPage(), message);
+        return handler.handlePrompt(((HTMLDocument) document_).getHtmlPage(), message);
     }
 
     /**
      * Returns the JavaScript property "document".
      * @return the document
      */
-    public HTMLDocument jsxGet_document() {
+    public DocumentProxy jsxGet_document() {
+        return documentProxy_;
+    }
+
+    /**
+     * Returns the window's current document.
+     * @return the window's current document
+     */
+    public Document getDocument() {
         return document_;
     }
 
@@ -293,11 +303,11 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @see WebClient#isPopupBlockerEnabled()
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms536651.aspx">MSDN documentation</a>
      */
-    public Object jsxFunction_open(final Object url, final Object name, final Object features,
+    public WindowProxy jsxFunction_open(final Object url, final Object name, final Object features,
             final Object replace) {
         String urlString = null;
         if (url != Undefined.instance) {
-            urlString = (String) url;
+            urlString = Context.toString(url);
         }
         String windowName = "";
         if (name != Undefined.instance) {
@@ -305,27 +315,31 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
         }
         String featuresString = null;
         if (features != Undefined.instance) {
-            featuresString = (String) features;
+            featuresString = Context.toString(features);
         }
         boolean replaceCurrentEntryInBrowsingHistory = false;
         if (replace != Undefined.instance) {
-            replaceCurrentEntryInBrowsingHistory = (Boolean) replace;
+            replaceCurrentEntryInBrowsingHistory = ((Boolean) replace).booleanValue();
         }
         final WebClient webClient = webWindow_.getWebClient();
 
         if (webClient.isPopupBlockerEnabled()) {
-            LOG.debug("Ignoring window.open() invocation because popups are blocked.");
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Ignoring window.open() invocation because popups are blocked.");
+            }
             return null;
         }
 
         if (featuresString != null || replaceCurrentEntryInBrowsingHistory) {
-            LOG.debug(
-                "window.open: features and replaceCurrentEntryInBrowsingHistory "
-                + "not implemented: url=[" + urlString
-                + "] windowName=[" + windowName
-                + "] features=[" + featuresString
-                + "] replaceCurrentEntry=[" + replaceCurrentEntryInBrowsingHistory
-                + "]");
+            if (LOG.isDebugEnabled()) {
+                LOG.debug(
+                        "window.open: features and replaceCurrentEntryInBrowsingHistory "
+                        + "not implemented: url=[" + urlString
+                        + "] windowName=[" + windowName
+                        + "] features=[" + featuresString
+                        + "] replaceCurrentEntry=[" + replaceCurrentEntryInBrowsingHistory
+                        + "]");
+            }
         }
 
         // if specified name is the name of an existing window, then hold it
@@ -333,7 +347,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
             final WebWindow webWindow;
             try {
                 webWindow = webClient.getWebWindowByName(windowName);
-                return webWindow.getScriptObject();
+                return getProxy(webWindow);
             }
             catch (final WebWindowNotFoundException e) {
                 // nothing
@@ -341,7 +355,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
         }
         final URL newUrl = makeUrlForOpenWindow(urlString);
         final WebWindow newWebWindow = webClient.openWindow(newUrl, windowName, webWindow_);
-        return newWebWindow.getScriptObject();
+        return getProxy(newWebWindow);
     }
 
     /**
@@ -393,17 +407,26 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
         final int id;
         final WebWindow w = getWebWindow();
         final Page page = (Page) getDomNodeOrNull();
-        final String description = "window.setTimeout(" + timeout + ")";
         if (code == null) {
             throw Context.reportRuntimeError("Function not provided.");
         }
         else if (code instanceof String) {
             final String s = (String) code;
+            final String description = "window.setTimeout(" + s + ", " + timeout + ")";
             final JavaScriptStringJob job = new JavaScriptStringJob(timeout, null, description, w, s);
             id = getWebWindow().getJobManager().addJob(job, page);
         }
         else if (code instanceof Function) {
             final Function f = (Function) code;
+            final String functionName;
+            if (f instanceof FunctionObject) {
+                functionName = ((FunctionObject) f).getFunctionName();
+            }
+            else {
+                functionName = String.valueOf(f); // can this happen?
+            }
+
+            final String description = "window.setTimeout(" + functionName + ", " + timeout + ")";
             final JavaScriptFunctionJob job = new JavaScriptFunctionJob(timeout, null, description, w, f);
             id = getWebWindow().getJobManager().addJob(job, page);
         }
@@ -419,7 +442,9 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @param timeoutId identifier for the timeout to clear (returned by <tt>setTimeout</tt>)
      */
     public void jsxFunction_clearTimeout(final int timeoutId) {
-        LOG.debug("clearTimeout(" + timeoutId + ")");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("clearTimeout(" + timeoutId + ")");
+        }
         getWebWindow().getJobManager().removeJob(timeoutId);
     }
 
@@ -454,16 +479,51 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * Returns the window property. This is a synonym for "self".
      * @return the window property (a reference to <tt>this</tt>)
      */
-    public Window jsxGet_window() {
-        return this;
+    public WindowProxy jsxGet_window() {
+        return windowProxy_;
     }
 
     /**
      * Returns the "self" property.
      * @return this
      */
-    public Window jsxGet_self() {
-        return this;
+    public WindowProxy jsxGet_self() {
+        return windowProxy_;
+    }
+
+    /**
+     * Returns the localStorage property.
+     * @return the localStorage property
+     */
+    public Storage jsxGet_localStorage() {
+        final Storage storage = new Storage();
+        storage.setParentScope(this);
+        storage.setPrototype(getPrototype(storage.getClass()));
+        storage.setType(Type.LOCAL_STORAGE);
+        return storage;
+    }
+
+    /**
+     * Returns the sessionStorage property.
+     * @return the sessionStorage property
+     */
+    public Storage jsxGet_sessionStorage() {
+        final Storage storage = new Storage();
+        storage.setParentScope(this);
+        storage.setPrototype(getPrototype(storage.getClass()));
+        storage.setType(Type.SESSION_STORAGE);
+        return storage;
+    }
+
+    /**
+     * Returns the globalStorage property.
+     * @return the globalStorage property
+     */
+    public StorageList jsxGet_globalStorage() {
+        final StorageList list = new StorageList();
+        list.setParentScope(this);
+        list.setPrototype(getPrototype(list.getClass()));
+        return list;
     }
 
     /**
@@ -500,6 +560,17 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
     }
 
     /**
+     * Returns the "external" property.
+     * @return the "external" property
+     */
+    public External jsxGet_external() {
+        final External external = new External();
+        external.setParentScope(this);
+        external.setPrototype(getPrototype(external.getClass()));
+        return external;
+    }
+
+    /**
      * Initializes this window.
      * @param webWindow the web window corresponding to this window
      */
@@ -507,10 +578,18 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
         webWindow_ = webWindow;
         webWindow_.setScriptObject(this);
 
-        document_ = new HTMLDocument();
+        windowProxy_ = new WindowProxy(webWindow_);
+
+        if (webWindow.getEnclosedPage() instanceof XmlPage) {
+            document_ = new XMLDocument();
+        }
+        else {
+            document_ = new HTMLDocument();
+        }
         document_.setParentScope(this);
-        document_.setPrototype(getPrototype(HTMLDocument.class));
+        document_.setPrototype(getPrototype(document_.getClass()));
         document_.setWindow(this);
+
         if (webWindow.getEnclosedPage() instanceof SgmlPage) {
             final SgmlPage page = (SgmlPage) webWindow.getEnclosedPage();
             document_.setDomNode(page);
@@ -523,30 +602,39 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
             }
         }
 
+        documentProxy_ = new DocumentProxy(webWindow_);
+
         navigator_ = new Navigator();
         navigator_.setParentScope(this);
-        navigator_.setPrototype(getPrototype(Navigator.class));
+        navigator_.setPrototype(getPrototype(navigator_.getClass()));
 
         screen_ = new Screen();
         screen_.setParentScope(this);
-        screen_.setPrototype(getPrototype(Screen.class));
+        screen_.setPrototype(getPrototype(screen_.getClass()));
 
         history_ = new History();
         history_.setParentScope(this);
-        history_.setPrototype(getPrototype(History.class));
+        history_.setPrototype(getPrototype(history_.getClass()));
 
         location_ = new Location();
         location_.setParentScope(this);
-        location_.setPrototype(getPrototype(Location.class));
+        location_.setPrototype(getPrototype(location_.getClass()));
         location_.initialize(this);
 
         applicationCache_ = new OfflineResourceList();
         applicationCache_.setParentScope(this);
-        applicationCache_.setPrototype(getPrototype(OfflineResourceList.class));
+        applicationCache_.setPrototype(getPrototype(applicationCache_.getClass()));
 
         // like a JS new Object()
         final Context ctx = Context.getCurrentContext();
         controllers_ = ctx.newObject(this);
+
+        if (webWindow_ instanceof TopLevelWindow) {
+            final WebWindow opener = ((TopLevelWindow) webWindow_).getOpener();
+            if (opener != null) {
+                opener_ = opener.getScriptObject();
+            }
+        }
     }
 
     /**
@@ -579,33 +667,58 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * Returns the value of the top property.
      * @return the value of "top"
      */
-    public SimpleScriptable jsxGet_top() {
-        final WebWindow topWebWindow = webWindow_.getTopWindow();
-        return (SimpleScriptable) topWebWindow.getScriptObject();
+    public Object jsxGet_top() {
+        if (top_ != NOT_FOUND) {
+            return top_;
+        }
+
+        final WebWindow top = webWindow_.getTopWindow();
+        return getProxy(top);
+    }
+
+    /**
+     * Sets the value of the top property.
+     * @param o the new value
+     */
+    public void jsxSet_top(final Object o) {
+        top_ = o;
     }
 
     /**
      * Returns the value of the parent property.
      * @return the value of window.parent
      */
-    public SimpleScriptable jsxGet_parent() {
-        final WebWindow parentWebWindow = webWindow_.getParentWindow();
-        return (SimpleScriptable) parentWebWindow.getScriptObject();
+    public WindowProxy jsxGet_parent() {
+        final WebWindow parent = webWindow_.getParentWindow();
+        return getProxy(parent);
     }
 
     /**
      * Returns the value of the opener property.
-     * @return the value of window.opener, <code>null</code> for a top level window
+     * @return the value of window.opener, <tt>null</tt> for a top level window
      */
     public Object jsxGet_opener() {
-        if (webWindow_ instanceof TopLevelWindow) {
-            final WebWindow opener = ((TopLevelWindow) webWindow_).getOpener();
-            if (opener != null) {
-                return opener.getScriptObject();
+        Object opener = opener_;
+        if (opener instanceof Window) {
+            opener = ((Window) opener).windowProxy_;
+        }
+        return opener;
+    }
+
+    /**
+     * Sets the opener property.
+     * @param newValue the new value
+     */
+    public void jsxSet_opener(Object newValue) {
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_177) && newValue != opener_) {
+            if (opener_ == null || newValue == null || newValue == Context.getUndefinedValue()) {
+                newValue = null;
+            }
+            else {
+                throw Context.reportRuntimeError("Can't set opener!");
             }
         }
-
-        return null;
+        opener_ = newValue;
     }
 
     /**
@@ -624,8 +737,8 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * Returns the value of the frames property.
      * @return the value of the frames property
      */
-    public Object jsxGet_frames() {
-        return new WindowProxy(getWebWindow());
+    public WindowProxy jsxGet_frames() {
+        return windowProxy_;
     }
 
     /**
@@ -642,11 +755,8 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      */
     private HTMLCollection getFrames() {
         if (frames_ == null) {
-            final String xpath = ".//*[(name() = 'frame' or name() = 'iframe')]";
             final HtmlPage page = (HtmlPage) getWebWindow().getEnclosedPage();
-            frames_ = new HTMLCollection(this);
-            final Transformer toEnclosedWindow = new FrameToWindowTransformer();
-            frames_.init(page, xpath, toEnclosedWindow);
+            frames_ = new HTMLCollectionFrames(page);
         }
         return frames_;
     }
@@ -670,7 +780,9 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * Removes focus from this element.
      */
     public void jsxFunction_blur() {
-        LOG.debug("window.blur() not implemented");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("window.blur() not implemented");
+        }
     }
 
     /**
@@ -700,7 +812,9 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @param y the vertical position
      */
     public void jsxFunction_moveTo(final int x, final int y) {
-        LOG.debug("window.moveTo() not implemented");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("window.moveTo() not implemented");
+        }
     }
 
     /**
@@ -709,7 +823,9 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @param y the vertical position
      */
     public void jsxFunction_moveBy(final int x, final int y) {
-        LOG.debug("window.moveBy() not implemented");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("window.moveBy() not implemented");
+        }
     }
 
     /**
@@ -718,7 +834,9 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @param height the height offset
      */
     public void jsxFunction_resizeBy(final int width, final int height) {
-        LOG.debug("window.resizeBy() not implemented");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("window.resizeBy() not implemented");
+        }
     }
 
     /**
@@ -727,50 +845,66 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @param height the height of the Window in pixel after resize
      */
     public void jsxFunction_resizeTo(final int width, final int height) {
-        LOG.debug("window.resizeTo() not implemented");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("window.resizeTo() not implemented");
+        }
     }
 
     /**
-     * Does nothing.
+     * Scrolls to the specified location on the page.
      * @param x the horizontal position to scroll to
      * @param y the vertical position to scroll to
      */
     public void jsxFunction_scroll(final int x, final int y) {
-        LOG.debug("window.scroll() not implemented");
+        jsxFunction_scrollTo(x, y);
     }
 
     /**
-     * Does nothing.
+     * Scrolls the window content the specified distance.
      * @param x the horizontal distance to scroll by
      * @param y the vertical distance to scroll by
      */
     public void jsxFunction_scrollBy(final int x, final int y) {
-        LOG.debug("window.scrollBy() not implemented");
+        final HTMLElement body = ((HTMLDocument) document_).jsxGet_body();
+        if (body != null) {
+            body.jsxSet_scrollLeft(body.jsxGet_scrollLeft() + x);
+            body.jsxSet_scrollTop(body.jsxGet_scrollTop() + y);
+        }
     }
 
     /**
-     * Does nothing.
+     * Scrolls the window content down by the specified number of lines.
      * @param lines the number of lines to scroll down
      */
     public void jsxFunction_scrollByLines(final int lines) {
-        LOG.debug("window.scrollByLines() not implemented");
+        final HTMLElement body = ((HTMLDocument) document_).jsxGet_body();
+        if (body != null) {
+            body.jsxSet_scrollTop(body.jsxGet_scrollTop() + (19 * lines));
+        }
     }
 
     /**
-     * Does nothing.
+     * Scrolls the window content down by the specified number of pages.
      * @param pages the number of pages to scroll down
      */
     public void jsxFunction_scrollByPages(final int pages) {
-        LOG.debug("window.scrollByPages() not implemented");
+        final HTMLElement body = ((HTMLDocument) document_).jsxGet_body();
+        if (body != null) {
+            body.jsxSet_scrollTop(body.jsxGet_scrollTop() + (WINDOW_HEIGHT * pages));
+        }
     }
 
     /**
-     * Does nothing.
+     * Scrolls to the specified location on the page.
      * @param x the horizontal position to scroll to
      * @param y the vertical position to scroll to
      */
     public void jsxFunction_scrollTo(final int x, final int y) {
-        LOG.debug("window.scrollTo() not implemented");
+        final HTMLElement body = ((HTMLDocument) document_).jsxGet_body();
+        if (body != null) {
+            body.jsxSet_scrollLeft(x);
+            body.jsxSet_scrollTop(y);
+        }
     }
 
     /**
@@ -826,7 +960,8 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
             final HtmlPage page = (HtmlPage) webWindow_.getEnclosedPage();
             final HtmlElement body = page.getBody();
             if (body != null) {
-                return body.getEventHandler("onload");
+                final HTMLBodyElement b = (HTMLBodyElement) body.getScriptObject();
+                return b.getEventHandler("onload");
             }
             return null;
         }
@@ -908,7 +1043,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @return the value of the window's <tt>onbeforeunload</tt> property
      */
     public Object jsxGet_onbeforeunload() {
-        return getHandlerForJavaScript("beforeunload");
+        return getHandlerForJavaScript(Event.TYPE_BEFORE_UNLOAD);
     }
 
     /**
@@ -916,7 +1051,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @param onbeforeunload the value of the window's <tt>onbeforeunload</tt> property
      */
     public void jsxSet_onbeforeunload(final Object onbeforeunload) {
-        setHandlerForJavaScript("beforeunload", onbeforeunload);
+        setHandlerForJavaScript(Event.TYPE_BEFORE_UNLOAD, onbeforeunload);
     }
 
     /**
@@ -924,7 +1059,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @return the value of the window's <tt>onerror</tt> property
      */
     public Object jsxGet_onerror() {
-        return getHandlerForJavaScript("error");
+        return getHandlerForJavaScript(Event.TYPE_ERROR);
     }
 
     /**
@@ -932,7 +1067,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @param onerror the value of the window's <tt>onerror</tt> property
      */
     public void jsxSet_onerror(final Object onerror) {
-        setHandlerForJavaScript("error", onerror);
+        setHandlerForJavaScript(Event.TYPE_ERROR, onerror);
     }
 
     /**
@@ -944,16 +1079,16 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
         if (o instanceof Function) {
             final Function f = (Function) o;
             final String msg = e.getMessage();
-            final String url = e.getPage().getWebResponse().getRequestSettings().getUrl().toExternalForm();
+            final String url = e.getPage().getWebResponse().getWebRequest().getUrl().toExternalForm();
             final int line = e.getFailingLineNumber();
-            final Object[] args = new Object[] {msg, url, line};
+            final Object[] args = new Object[] {msg, url, Integer.valueOf(line)};
             f.call(Context.getCurrentContext(), this, this, args);
         }
     }
 
     private Object getHandlerForJavaScript(final String eventName) {
         Object handler = getEventListenersContainer().getEventHandlerProp(eventName);
-        if (handler == null && !getBrowserVersion().isIE()) {
+        if (handler == null && !getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_129)) {
             handler = Scriptable.NOT_FOUND;
         }
         return handler;
@@ -970,7 +1105,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * {@inheritDoc}
      */
     public Object call(final Context cx, final Scriptable scope, final Scriptable thisObj, final Object[] args) {
-        if (!getBrowserVersion().isIE()) {
+        if (!getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_130)) {
             throw Context.reportRuntimeError("Window is not a function.");
         }
         if (args.length > 0) {
@@ -989,7 +1124,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * {@inheritDoc}
      */
     public Scriptable construct(final Context cx, final Scriptable scope, final Object[] args) {
-        if (!getBrowserVersion().isIE()) {
+        if (!getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_131)) {
             throw Context.reportRuntimeError("Window is not a function.");
         }
         return null;
@@ -1019,7 +1154,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
                     result = getScriptableFor(elements.get(0));
                 }
                 else if (elements.size() > 1) {
-                    result = document_.jsxFunction_getElementsByName(name);
+                    result = ((HTMLDocument) document_).jsxFunction_getElementsByName(name);
                 }
                 else {
                     // May be attempting to retrieve element by ID (try map-backed operation again instead of XPath).
@@ -1035,14 +1170,15 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
 
             if (result instanceof Window) {
                 final WebWindow webWindow = ((Window) result).getWebWindow();
-                result = new WindowProxy(webWindow);
+                result = getProxy(webWindow);
             }
-            else if (result instanceof HTMLUnknownElement && getBrowserVersion().isIE()) {
+            else if (result instanceof HTMLUnknownElement && getBrowserVersion()
+                    .hasFeature(BrowserVersionFeatures.GENERATED_132)) {
                 final HtmlElement unknownElement = ((HTMLUnknownElement) result).getDomNodeOrDie();
-                if (unknownElement.getNodeName().equals("xml")) {
+                if ("xml".equals(unknownElement.getNodeName())) {
                     final XMLDocument document = ActiveXObject.buildXMLDocument(getWebWindow());
                     document.setParentScope(this);
-                    final Iterator<HtmlElement> children = unknownElement.getAllHtmlChildElements().iterator();
+                    final Iterator<HtmlElement> children = unknownElement.getHtmlElementDescendants().iterator();
                     if (children.hasNext()) {
                         final HtmlElement root = children.next();
                         document.jsxFunction_loadXML(root.asXml().trim());
@@ -1064,7 +1200,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
         if (index >= frames.jsxGet_length()) {
             return Context.getUndefinedValue();
         }
-        return frames.jsxFunction_item(index);
+        return frames.jsxFunction_item(Integer.valueOf(index));
     }
 
     /**
@@ -1108,19 +1244,27 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
     }
 
     /**
+     * Returns the proxy for the specified window.
+     * @param w the window whose proxy is to be returned
+     * @return the proxy for the specified window
+     */
+    public static WindowProxy getProxy(final WebWindow w) {
+        return ((Window) w.getScriptObject()).windowProxy_;
+    }
+
+    /**
      * Executes the specified script code as long as the language is JavaScript or JScript. Does
      * nothing if the language specified is VBScript.
+     * Note: MSDN doc says that the function returns null but in fact this is undefined.
      * @param script the script code to execute
      * @param language the language of the specified code ("JavaScript", "JScript" or "VBScript")
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms536420.aspx">MSDN documentation</a>
-     * @return this method always returns <code>null</code>, like Internet Explorer
      */
-    public Object jsxFunction_execScript(final String script, final Object language) {
+    public void jsxFunction_execScript(final String script, final Object language) {
         final String languageStr = Context.toString(language);
         if (language == Undefined.instance
             || "javascript".equalsIgnoreCase(languageStr) || "jscript".equalsIgnoreCase(languageStr)) {
             custom_eval(script);
-            return null;
         }
         else if ("vbscript".equalsIgnoreCase(languageStr)) {
             LOG.warn("VBScript not supported in Window.execScript().");
@@ -1129,7 +1273,6 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
             // Unrecognized language: use the IE error message ("Invalid class string").
             throw Context.reportRuntimeError("Invalid class string");
         }
-        return null;
     }
 
     /**
@@ -1176,7 +1319,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @return the id of the created interval
      */
     public int jsxFunction_setInterval(final Object code, int timeout, final Object language) {
-        if (timeout == 0 && getBrowserVersion().isIE()) {
+        if (timeout == 0 && getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_133)) {
             return jsxFunction_setTimeout(code, timeout, language);
         }
         if (timeout < MIN_TIMER_DELAY) {
@@ -1191,12 +1334,14 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
         }
         else if (code instanceof String) {
             final String s = (String) code;
-            final JavaScriptStringJob job = new JavaScriptStringJob(timeout, timeout, description, w, s);
+            final JavaScriptStringJob job =
+                new JavaScriptStringJob(timeout, Integer.valueOf(timeout), description, w, s);
             id = getWebWindow().getJobManager().addJob(job, page);
         }
         else if (code instanceof Function) {
             final Function f = (Function) code;
-            final JavaScriptFunctionJob job = new JavaScriptFunctionJob(timeout, timeout, description, w, f);
+            final JavaScriptFunctionJob job =
+                new JavaScriptFunctionJob(timeout, Integer.valueOf(timeout), description, w, f);
             id = getWebWindow().getJobManager().addJob(job, page);
         }
         else {
@@ -1212,7 +1357,9 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms536353.aspx">MSDN documentation</a>
      */
     public void jsxFunction_clearInterval(final int intervalID) {
-        LOG.debug("clearInterval(" + intervalID + ")");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("clearInterval(" + intervalID + ")");
+        }
         getWebWindow().getJobManager().removeJob(intervalID);
     }
 
@@ -1222,7 +1369,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @see <a href="http://www.mozilla.org/docs/dom/domref/dom_window_ref28.html">Mozilla doc</a>
      */
     public int jsxGet_innerWidth() {
-        return 1276; // why this value? this is the current value of my Mozilla
+        return WINDOW_WIDTH;
     }
 
     /**
@@ -1231,7 +1378,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @see <a href="http://www.mozilla.org/docs/dom/domref/dom_window_ref79.html">Mozilla doc</a>
      */
     public int jsxGet_outerWidth() {
-        return 1276; // why this value? this is the current value of my Mozilla
+        return WINDOW_WIDTH + 8;
     }
 
     /**
@@ -1240,7 +1387,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @see <a href="http://www.mozilla.org/docs/dom/domref/dom_window_ref27.html">Mozilla doc</a>
      */
     public int jsxGet_innerHeight() {
-        return 778; // why this value? this is the current value of my Mozilla
+        return WINDOW_HEIGHT;
     }
 
     /**
@@ -1249,7 +1396,7 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @see <a href="http://www.mozilla.org/docs/dom/domref/dom_window_ref78.html">Mozilla doc</a>
      */
     public int jsxGet_outerHeight() {
-        return 936; // why this value? this is the current value of my Mozilla
+        return WINDOW_HEIGHT + 150;
     }
 
     /**
@@ -1259,7 +1406,9 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms536672.aspx">MSDN documentation</a>
      */
     public void jsxFunction_print() {
-        LOG.debug("window.print() not implemented");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("window.print() not implemented");
+        }
     }
 
     /**
@@ -1300,11 +1449,15 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
         final CSSStyleDeclaration original = element.jsxGet_style();
         style = new ComputedCSSStyleDeclaration(original);
 
-        final StyleSheetList sheets = document_.jsxGet_styleSheets();
+        final StyleSheetList sheets = ((HTMLDocument) document_).jsxGet_styleSheets();
         for (int i = 0; i < sheets.jsxGet_length(); i++) {
-            final Stylesheet sheet = (Stylesheet) sheets.jsxFunction_item(i);
-            LOG.debug("modifyIfNecessary: " + sheet + ", " + style + ", " + element);
-            sheet.modifyIfNecessary(style, element);
+            final CSSStyleSheet sheet = (CSSStyleSheet) sheets.jsxFunction_item(i);
+            if (sheet.isActive()) {
+                if (LOG.isTraceEnabled()) {
+                    LOG.trace("modifyIfNecessary: " + sheet + ", " + style + ", " + element);
+                }
+                sheet.modifyIfNecessary(style, element);
+            }
         }
 
         synchronized (computedStyles_) {
@@ -1319,6 +1472,13 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
      * @return the current selection
      */
     public Selection jsxFunction_getSelection() {
+        // return null if the window is in a frame that is not displayed
+        if (webWindow_ instanceof FrameWindow) {
+            final FrameWindow frameWindow = (FrameWindow) webWindow_;
+            if (!frameWindow.getFrameElement().isDisplayed()) {
+                return null;
+            }
+        }
         return getSelection();
     }
 
@@ -1438,8 +1598,6 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
     private class DomHtmlAttributeChangeListenerImpl implements DomChangeListener, HtmlAttributeChangeListener,
         Serializable {
 
-        private static final long serialVersionUID = -4651000523078926322L;
-
         /**
          * {@inheritDoc}
          */
@@ -1509,16 +1667,143 @@ public class Window extends SimpleScriptable implements ScriptableWithFallbackGe
     }
 
     /**
-     * Transforms frames to windows.
+     * Gets the name of the scripting engine.
+     * @see <a href="http://msdn.microsoft.com/en-us/library/efy5bay1.aspx">MSDN doc</a>
+     * @return "JScript"
      */
-    private static class FrameToWindowTransformer implements Transformer, Serializable {
-        private static final long serialVersionUID = -8504605115217901029L;
-        public Object transform(final Object obj) {
-            if (obj instanceof BaseFrame) {
-                return ((BaseFrame) obj).getEnclosedWindow();
-            }
-            return ((FrameWindow) obj).getFrameElement().getEnclosedWindow();
-        }
+    public String jsxFunction_ScriptEngine() {
+        return "JScript";
     }
 
+    /**
+     * Gets the build version of the scripting engine.
+     * @see <a href="http://msdn.microsoft.com/en-us/library/yftk84kt.aspx">MSDN doc</a>
+     * @return the build version
+     */
+    public int jsxFunction_ScriptEngineBuildVersion() {
+        return 12345;
+    }
+
+    /**
+     * Gets the major version of the scripting engine.
+     * @see <a href="http://msdn.microsoft.com/en-us/library/x7cbaet3.aspx">MSDN doc</a>
+     * @return the major version
+     */
+    public int jsxFunction_ScriptEngineMajorVersion() {
+        return 5;
+    }
+
+    /**
+     * Gets the minor version of the scripting engine.
+     * @see <a href="http://msdn.microsoft.com/en-us/library/wzaz8hhz.aspx">MSDN doc</a>
+     * @return the minor version
+     */
+    public int jsxFunction_ScriptEngineMinorVersion() {
+        return (int) getBrowserVersion().getBrowserVersionNumeric();
+    }
+
+    /**
+     * Should implement the stop() function on the window object.
+     * (currently empty implementation)
+     * @see <a href="https://developer.mozilla.org/en/DOM/window.stop">window.stop</a>
+     */
+    public void jsxFunction_stop() {
+        //empty
+    }
+
+    /**
+     * Returns the value of "pageXOffset" property.
+     * @return the value of "pageXOffset" property
+     */
+    public int jsxGet_pageXOffset() {
+        return 0;
+    }
+
+    /**
+     * Returns the value of "pageYOffset" property.
+     * @return the value of "pageYOffset" property
+     */
+    public int jsxGet_pageYOffset() {
+        return 0;
+    }
+
+    /**
+     * Returns the value of "scrollX" property.
+     * @return the value of "scrollX" property
+     */
+    public int jsxGet_scrollX() {
+        return 0;
+    }
+
+    /**
+     * Returns the value of "scrollY" property.
+     * @return the value of "scrollY" property
+     */
+    public int jsxGet_scrollY() {
+        return 0;
+    }
 }
+
+class HTMLCollectionFrames extends HTMLCollection {
+    private static final Log LOG = LogFactory.getLog(HTMLCollectionFrames.class);
+
+    public HTMLCollectionFrames(final HtmlPage page) {
+        super(page, false, "Window.frames");
+    }
+
+    @Override
+    protected boolean isMatching(final DomNode node) {
+        return node instanceof BaseFrame;
+    }
+
+    @Override
+    protected Scriptable getScriptableForElement(final Object obj) {
+        final WebWindow window;
+        if (obj instanceof BaseFrame) {
+            window = ((BaseFrame) obj).getEnclosedWindow();
+        }
+        else {
+            window = ((FrameWindow) obj).getFrameElement().getEnclosedWindow();
+        }
+
+        return Window.getProxy(window);
+    }
+
+    @Override
+    protected Object getWithPreemption(final String name) {
+        final List<Object> elements = getElements();
+
+        for (final Object next : elements) {
+            final BaseFrame frameElt = (BaseFrame) next;
+            final WebWindow window = frameElt.getEnclosedWindow();
+            if (name.equals(window.getName())) {
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Property \"" + name + "\" evaluated (by name) to " + window);
+                }
+                return getScriptableForElement(window);
+            }
+            else if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_47)
+                    && frameElt.getAttribute("id").equals(name)) {
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Property \"" + name + "\" evaluated (by id) to " + window);
+                }
+                return getScriptableForElement(window);
+            }
+        }
+
+        return NOT_FOUND;
+    }
+
+    @Override
+    protected void addElementIds(final List<String> idList, final List<Object> elements) {
+        for (final Object next : elements) {
+            final BaseFrame frameElt = (BaseFrame) next;
+            final WebWindow window = frameElt.getEnclosedWindow();
+            final String windowName = window.getName();
+            if (windowName != null) {
+                idList.add(windowName);
+            }
+        }
+    }
+}
+

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,14 +22,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * A fake {@link WebConnection} designed to mock out the actual HTTP connections.
  *
- * @version $Revision: 4789 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Noboru Sinohara
  * @author Marc Guillemot
@@ -42,19 +43,23 @@ public class MockWebConnection implements WebConnection {
 
     private final Map<String, WebResponseData> responseMap_ = new HashMap<String, WebResponseData>(10);
     private WebResponseData defaultResponse_;
-    private WebRequestSettings lastRequest_;
+    private WebRequest lastRequest_;
     private int requestCount_ = 0;
+    private final List<URL> requestedUrls_ = Collections.synchronizedList(new ArrayList<URL>());
 
     /**
      * {@inheritDoc}
      */
-    public WebResponse getResponse(final WebRequestSettings settings) throws IOException {
-        final URL url = settings.getUrl();
+    public WebResponse getResponse(final WebRequest request) throws IOException {
+        final URL url = request.getUrl();
 
-        LOG.debug("Getting response for " + url.toExternalForm());
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Getting response for " + url.toExternalForm());
+        }
 
-        lastRequest_ = settings;
+        lastRequest_ = request;
         requestCount_++;
+        requestedUrls_.add(url);
 
         WebResponseData response = responseMap_.get(url.toExternalForm());
         if (response == null) {
@@ -66,7 +71,26 @@ public class MockWebConnection implements WebConnection {
             }
         }
 
-        return new WebResponseImpl(response, settings, 0);
+        return new WebResponse(response, request, 0);
+    }
+
+    /**
+     * Gets the list of requested URLs relative to the provided URL.
+     * @param relativeTo what should be removed from the requested URLs.
+     * @return the list of relative URLs
+     */
+    public List<String> getRequestedUrls(final URL relativeTo) {
+        final String baseUrl = relativeTo.toString();
+        final List<String> response = new ArrayList<String>();
+        for (final URL url : requestedUrls_) {
+            String s = url.toString();
+            if (s.startsWith(baseUrl)) {
+                s = s.substring(baseUrl.length());
+            }
+            response.add(s);
+        }
+
+        return response;
     }
 
     /**
@@ -146,9 +170,21 @@ public class MockWebConnection implements WebConnection {
             final List< ? extends NameValuePair> responseHeaders) {
 
         final List<NameValuePair> compiledHeaders = new ArrayList<NameValuePair>(responseHeaders);
-        compiledHeaders.add(new NameValuePair("Content-Type", contentType));
-        final WebResponseData responseEntry = new WebResponseData(content, statusCode, statusMessage, compiledHeaders);
+        if (contentType != null) {
+            compiledHeaders.add(new NameValuePair("Content-Type", contentType));
+        }
+        final WebResponseData responseEntry = buildWebResponseData(content, statusCode, statusMessage, compiledHeaders);
         responseMap_.put(url.toExternalForm(), responseEntry);
+    }
+
+    private WebResponseData buildWebResponseData(final byte[] content, final int statusCode, final String statusMessage,
+            final List<NameValuePair> compiledHeaders) {
+        try {
+            return new WebResponseData(content, statusCode, statusMessage, compiledHeaders);
+        }
+        catch (final IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -234,8 +270,10 @@ public class MockWebConnection implements WebConnection {
             final String statusMessage, final String contentType) {
 
         final List<NameValuePair> compiledHeaders = new ArrayList<NameValuePair>();
-        compiledHeaders.add(new NameValuePair("Content-Type", contentType));
-        final WebResponseData responseEntry = new WebResponseData(content, statusCode, statusMessage, compiledHeaders);
+        if (contentType != null) {
+            compiledHeaders.add(new NameValuePair("Content-Type", contentType));
+        }
+        final WebResponseData responseEntry = buildWebResponseData(content, statusCode, statusMessage, compiledHeaders);
         defaultResponse_ = responseEntry;
     }
 
@@ -287,8 +325,10 @@ public class MockWebConnection implements WebConnection {
             final List< ? extends NameValuePair> responseHeaders) {
 
         final List<NameValuePair> compiledHeaders = new ArrayList<NameValuePair>(responseHeaders);
-        compiledHeaders.add(new NameValuePair("Content-Type", contentType));
-        defaultResponse_ = new WebResponseData(TextUtil.stringToByteArray(content),
+        if (contentType != null) {
+            compiledHeaders.add(new NameValuePair("Content-Type", contentType));
+        }
+        defaultResponse_ = buildWebResponseData(TextUtil.stringToByteArray(content),
             statusCode, statusMessage, compiledHeaders);
     }
 
@@ -307,27 +347,39 @@ public class MockWebConnection implements WebConnection {
 
         final List<NameValuePair> compiledHeaders = new ArrayList<NameValuePair>(responseHeaders);
         compiledHeaders.add(new NameValuePair("Content-Type", contentType));
-        defaultResponse_ = new WebResponseData(TextUtil.stringToByteArray(content, charset),
+        defaultResponse_ = buildWebResponseData(TextUtil.stringToByteArray(content, charset),
             statusCode, statusMessage, compiledHeaders);
     }
 
     /**
      * Returns the additional headers that were used in the in the last call
-     * to {@link #getResponse(WebRequestSettings)}.
+     * to {@link #getResponse(WebRequest)}.
      * @return the additional headers that were used in the in the last call
-     *         to {@link #getResponse(WebRequestSettings)}
+     *         to {@link #getResponse(WebRequest)}
      */
     public Map<String, String> getLastAdditionalHeaders() {
         return lastRequest_.getAdditionalHeaders();
     }
 
     /**
-     * Returns the {@link WebRequestSettings} that was used in the in the last call
-     * to {@link #getResponse(WebRequestSettings)}.
-     * @return the {@link WebRequestSettings} that was used in the in the last call
-     *         to {@link #getResponse(WebRequestSettings)}
+     * Returns the {@link WebRequest} that was used in the in the last call
+     * to {@link #getResponse(WebRequest)}.
+     * @return the {@link WebRequest} that was used in the in the last call
+     *         to {@link #getResponse(WebRequest)}
+     * @deprecated as of 2.8, please use {@link #getLastWebRequest()} instead
      */
-    public WebRequestSettings getLastWebRequestSettings() {
+    @Deprecated
+    public WebRequest getLastWebRequestSettings() {
+        return lastRequest_;
+    }
+
+    /**
+     * Returns the {@link WebRequest} that was used in the in the last call
+     * to {@link #getResponse(WebRequest)}.
+     * @return the {@link WebRequest} that was used in the in the last call
+     *         to {@link #getResponse(WebRequest)}
+     */
+    public WebRequest getLastWebRequest() {
         return lastRequest_;
     }
 
@@ -339,4 +391,12 @@ public class MockWebConnection implements WebConnection {
         return requestCount_;
     }
 
+    /**
+     * Indicates if a response has already been configured for this URL.
+     * @param url the url
+     * @return <code>false</code> if no response has been configured
+     */
+    public boolean hasResponse(final URL url) {
+        return responseMap_.containsKey(url.toExternalForm());
+    }
 }

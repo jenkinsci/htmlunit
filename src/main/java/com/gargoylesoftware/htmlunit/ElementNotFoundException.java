@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,10 @@ package com.gargoylesoftware.htmlunit;
 /**
  * An exception that is thrown when a specified XML element cannot be found in the DOM model.
  *
- * @version $Revision: 4097 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  */
 public class ElementNotFoundException extends RuntimeException {
-
-    private static final long serialVersionUID = 22133747152805455L;
 
     private final String elementName_;
     private final String attributeName_;

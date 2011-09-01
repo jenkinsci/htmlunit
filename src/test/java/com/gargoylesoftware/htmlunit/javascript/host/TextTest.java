@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +18,17 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Tests for {@link Text}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6466 $
  * @author Ahmed Ashour
  */
 @RunWith(BrowserRunner.class)
-public class TextTest extends WebTestCase {
+public class TextTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if the test fails
@@ -43,6 +43,6 @@ public class TextTest extends WebTestCase {
             + "}\n"
             + "</script></head><body onload='test()'> </body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 }

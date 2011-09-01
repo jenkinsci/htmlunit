@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
 /**
  * Tests for {@link HTMLCollection}.
  *
- * @version $Revision: 4684 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
@@ -62,7 +62,7 @@ public class HTMLCollectionTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @NotYetImplemented(Browser.FF)
+    @NotYetImplemented(Browser.IE)
     @Alerts(IE = "object", FF = "function")
     public void testToStringFunction() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
@@ -188,8 +188,7 @@ public class HTMLCollectionTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(FF2 = {"true", "false" },
-            FF3 = {"false", "false" },
+    @Alerts(FF = {"false", "false" },
             IE = {"true", "true" })
     public void testTags() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"

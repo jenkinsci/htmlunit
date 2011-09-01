@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,13 +17,12 @@ package com.gargoylesoftware.htmlunit.html;
 import java.io.IOException;
 import java.util.Map;
 
-import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.SgmlPage;
 
 /**
  * Wrapper for the HTML element "input".
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6359 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -31,8 +30,6 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
  * @author Ahmed Ashour
  */
 public class HtmlResetInput extends HtmlInput {
-
-    private static final long serialVersionUID = 1055766612574450754L;
 
     /**
      * Creates an instance.
@@ -54,18 +51,16 @@ public class HtmlResetInput extends HtmlInput {
      * requiring different behavior (like {@link HtmlSubmitInput}) will override this
      * method.
      *
-     * @param defaultPage the default page to return if the action does not
-     * load a new page.
-     * @return the page that is currently loaded after execution of this method
      * @throws IOException if an IO error occurred
      */
     @Override
-    protected Page doClickAction(final Page defaultPage) throws IOException {
+    protected void doClickAction() throws IOException {
         final HtmlForm form = getEnclosingForm();
         if (form != null) {
-            return form.reset();
+            form.reset();
+            return;
         }
-        return super.doClickAction(defaultPage);
+        super.doClickAction();
     }
 
     /**

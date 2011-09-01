@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
 /**
  * Tests for {@link ActiveXObject}.
  *
- * @version $Revision: 4540 $
+ * @version $Revision: 6205 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
@@ -85,7 +85,7 @@ public class ActiveXObjectTest extends WebTestCase {
      */
     @Test
     @Browsers(Browser.IE)
-    @Alerts("exception: Automation server can't create object")
+    @Alerts("exception: Automation server can't create object for 'InternetExplorer.Application'.")
     @NotYetImplemented
     public void activex() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
@@ -132,10 +132,10 @@ public class ActiveXObjectTest extends WebTestCase {
         client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
         final MockWebConnection webConnection = new MockWebConnection();
-        webConnection.setResponse(URL_GARGOYLE, html);
+        webConnection.setResponse(getDefaultUrl(), html);
         client.setWebConnection(webConnection);
 
-        client.getPage(URL_GARGOYLE);
+        client.getPage(getDefaultUrl());
         assertEquals(expectedAlerts, collectedAlerts);
     }
 
@@ -143,10 +143,9 @@ public class ActiveXObjectTest extends WebTestCase {
      * Returns true if Jacob is installed, so we can use {@link WebClient#setActiveXNative(boolean)}.
      * @return whether Jacob is installed or not
      */
-    @SuppressWarnings("unchecked")
     public static boolean isJacobInstalled() {
         try {
-            final Class clazz = Class.forName("com.jacob.activeX.ActiveXComponent");
+            final Class<?> clazz = Class.forName("com.jacob.activeX.ActiveXComponent");
             final Method method = clazz.getMethod("getProperty", String.class);
             final Object activXComponenet =
                 clazz.getConstructor(String.class).newInstance("InternetExplorer.Application");
@@ -158,9 +157,8 @@ public class ActiveXObjectTest extends WebTestCase {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private Object getProperty(final String activeXName, final String property) throws Exception {
-        final Class clazz = Class.forName("com.jacob.activeX.ActiveXComponent");
+        final Class<?> clazz = Class.forName("com.jacob.activeX.ActiveXComponent");
         final Method method = clazz.getMethod("getProperty", String.class);
         final Object activXComponenet = clazz.getConstructor(String.class).newInstance(activeXName);
         return method.invoke(activXComponenet, property);
@@ -198,10 +196,10 @@ public class ActiveXObjectTest extends WebTestCase {
         client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
         final MockWebConnection webConnection = new MockWebConnection();
-        webConnection.setResponse(URL_GARGOYLE, html);
+        webConnection.setResponse(getDefaultUrl(), html);
         client.setWebConnection(webConnection);
 
-        client.getPage(URL_GARGOYLE);
+        client.getPage(getDefaultUrl());
         assertEquals(expectedAlerts, collectedAlerts);
     }
 
@@ -239,10 +237,10 @@ public class ActiveXObjectTest extends WebTestCase {
         client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
         final MockWebConnection webConnection = new MockWebConnection();
-        webConnection.setResponse(URL_GARGOYLE, html);
+        webConnection.setResponse(getDefaultUrl(), html);
         client.setWebConnection(webConnection);
 
-        client.getPage(URL_GARGOYLE);
+        client.getPage(getDefaultUrl());
         assertEquals(expectedAlerts, collectedAlerts);
     }
 }

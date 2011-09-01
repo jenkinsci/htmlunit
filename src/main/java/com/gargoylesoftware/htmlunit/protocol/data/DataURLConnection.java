@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import org.apache.commons.logging.LogFactory;
 /**
  * A URLConnection for supporting data URLs.
  * @see <a href="http://www.ietf.org/rfc/rfc2397.txt">RFC2397</a>
- * @version $Revision: 4789 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  */
 public class DataURLConnection extends URLConnection {

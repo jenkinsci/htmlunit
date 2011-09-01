@@ -3,7 +3,7 @@
 
     <properties>
         <title>Welcome to HtmlUnit</title>
-        <revision>$Revision: 4904 $</revision>
+        <revision>$Revision: 6499 $</revision>
         <author email="mbowler@GargoyleSoftware.com">Mike Bowler</author>
         <author email="mguillem@users.sourceforge.net">Marc Guillemot</author>
         <author email="asashour@users.sourceforge.net">Ahmed Ashour</author>
@@ -54,10 +54,10 @@
                         <a href="http://build.canoo.com/htmlunit">Cruise Control server</a> 
                     </dd>
                     
-                    <dt>Latest stable release <date>Sep 2, 2009</date></dt>
+                    <dt>Latest release <date>Aug 9, 2011</date></dt>
                     <dd>
-                        <a href="http://sourceforge.net/project/showfiles.php?group_id=47038">
-                            version 2.6
+                        <a href="https://sourceforge.net/projects/htmlunit/files/">
+                            version 2.9
                         </a>
                     </dd>
                 </dl>
@@ -137,7 +137,7 @@
                         </ul>
                     </li>
                     <li>Proxy server support</li>
-                    <li>Support for basic and NTLM authentication</li>
+                    <li>Support for basic and <a href="ntlm.html">NTLM</a> authentication</li>
                     <li>Excellent JavaScript support (see <a href="#JavaScript_Support">the JavaScript section</a> below)</li>
                 </ul>
             </p>
@@ -162,7 +162,7 @@
                 <ul>
                     <li>jQuery 1.2.6: Full support (see unit test <a href="https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/JQuery126Test.java">here</a>)</li>
                     <li>MochiKit 1.4.1: Full support (see unit tests <a href="https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/MochiKitTest.java">here</a>)</li>
-                    <li>GWT 1.7.0: Full support (see unit test <a href="https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/GWT17Test.java">here</a>)</li>
+                    <li>GWT 2.0.0: Full support (see unit test <a href="https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/GWT20Test.java">here</a>)</li>
                     <li>Sarissa 0.9.9.3: Full support (see unit test <a href="https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/Sarissa0993Test.java">here</a>)</li>
                     <li>MooTools 1.2.1: Full support (see unit test <a href="https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/MooTools121Test.java">here</a>)</li>
                     <li>Prototype 1.6.0: Very good support (see unit test <a href="https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/Prototype160Test.java">here</a>)</li>

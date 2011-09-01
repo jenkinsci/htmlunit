@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,13 @@ package com.gargoylesoftware.htmlunit.html;
 import java.util.Map;
 
 import com.gargoylesoftware.htmlunit.SgmlPage;
+import com.gargoylesoftware.htmlunit.html.impl.SelectableTextInput;
+import com.gargoylesoftware.htmlunit.html.impl.SelectionDelegate;
 
 /**
  * Wrapper for the HTML element "input".
  *
- * @version $Revision: 4808 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -30,14 +32,16 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
  */
 public class HtmlPasswordInput extends HtmlInput implements SelectableTextInput {
 
-    private static final long serialVersionUID = -1074283471317076942L;
+    private String valueAtFocus_;
 
     private final SelectionDelegate selectionDelegate_ = new SelectionDelegate(this);
 
     private final DoTypeProcessor doTypeProcessor_ = new DoTypeProcessor() {
-        private static final long serialVersionUID = -1938284467263013958L;
         @Override
         void typeDone(final String newValue, final int newCursorPosition) {
+            if (newValue.length() > getMaxLength()) {
+                return;
+            }
             setAttribute("value", newValue);
             setSelectionStart(newCursorPosition);
             setSelectionEnd(newCursorPosition);
@@ -88,6 +92,13 @@ public class HtmlPasswordInput extends HtmlInput implements SelectableTextInput 
     /**
      * {@inheritDoc}
      */
+    public void setText(final String text) {
+        setValueAttribute(text);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     public int getSelectionStart() {
         return selectionDelegate_.getSelectionStart();
     }
@@ -122,4 +133,45 @@ public class HtmlPasswordInput extends HtmlInput implements SelectableTextInput 
             c, shiftKey, ctrlKey, altKey);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void focus() {
+        super.focus();
+        // store current value to trigger onchange when needed at focus lost
+        valueAtFocus_ = getValueAttribute();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    void removeFocus() {
+        super.removeFocus();
+        if (!valueAtFocus_.equals(getValueAttribute())) {
+            executeOnChangeHandlerIfAppropriate(this);
+        }
+        valueAtFocus_ = null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected Object clone() throws CloneNotSupportedException {
+        return new HtmlPasswordInput(getNamespaceURI(), getQualifiedName(), getPage(), getAttributesMap());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setAttributeNS(final String namespaceURI, final String qualifiedName, final String attributeValue) {
+        super.setAttributeNS(namespaceURI, qualifiedName, attributeValue);
+        if ("value".equals(qualifiedName) && getPage() instanceof HtmlPage) {
+            setSelectionStart(attributeValue.length());
+            setSelectionEnd(attributeValue.length());
+        }
+    }
 }

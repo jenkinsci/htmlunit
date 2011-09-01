@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,20 +15,22 @@
 package com.gargoylesoftware.htmlunit.html;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
 
-import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
-import com.gargoylesoftware.htmlunit.Page;
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.SgmlPage;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Wrapper for the HTML element "button".
  *
- * @version $Revision: 4789 $
+ * @version $Revision: 6359 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -37,13 +39,14 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
  * @author Ahmed Ashour
  * @author Dmitri Zoubkov
  */
-public class HtmlButton extends ClickableElement implements DisabledElement, SubmittableElement {
+public class HtmlButton extends HtmlElement implements DisabledElement, SubmittableElement, FormFieldWithNameHistory {
 
-    private static final long serialVersionUID = 4828725767615187345L;
     private static final Log LOG = LogFactory.getLog(HtmlButton.class);
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "button";
+    private String originalName_;
+    private Collection<String> previousNames_ = Collections.emptySet();
 
     /**
      * Creates a new instance.
@@ -56,6 +59,7 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
     HtmlButton(final String namespaceURI, final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
         super(namespaceURI, qualifiedName, page, attributes);
+        originalName_ = getNameAttribute();
     }
 
     /**
@@ -71,20 +75,20 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
      * {@inheritDoc}
      */
     @Override
-    protected Page doClickAction(final Page defaultPage) throws IOException {
+    protected void doClickAction() throws IOException {
         final String type = getTypeAttribute().toLowerCase();
 
         final HtmlForm form = getEnclosingForm();
         if (form != null) {
-            if (type.equals("submit")) {
-                return form.submit(this);
+            if ("submit".equals(type)) {
+                form.submit(this);
             }
-            else if (type.equals("reset")) {
-                return form.reset();
+            else if ("reset".equals(type)) {
+                form.reset();
             }
+            return;
         }
-
-        return defaultPage;
+        super.doClickAction();
     }
 
     /**
@@ -196,9 +200,9 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
      */
     public final String getTypeAttribute() {
         String type = getAttribute("type");
-        if (type == HtmlElement.ATTRIBUTE_NOT_DEFINED) {
-            final BrowserVersion browser = getPage().getWebClient().getBrowserVersion();
-            if (browser.isIE()) {
+        if (type == DomElement.ATTRIBUTE_NOT_DEFINED) {
+            if (getPage().getWebClient().getBrowserVersion()
+                    .hasFeature(BrowserVersionFeatures.BUTTON_EMPTY_TYPE_BUTTON)) {
                 type = "button";
             }
             else {
@@ -261,5 +265,33 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
      */
     public final String getOnBlurAttribute() {
         return getAttribute("onblur");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setAttributeNS(final String namespaceURI, final String qualifiedName, final String attributeValue) {
+        if ("name".equals(qualifiedName)) {
+            if (previousNames_.isEmpty()) {
+                previousNames_ = new HashSet<String>();
+            }
+            previousNames_.add(attributeValue);
+        }
+        super.setAttributeNS(namespaceURI, qualifiedName, attributeValue);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public String getOriginalName() {
+        return originalName_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public Collection<String> getPreviousNames() {
+        return previousNames_;
     }
 }

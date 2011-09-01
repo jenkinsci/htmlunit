@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,9 @@ import static org.junit.Assert.assertSame;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.HttpMethod;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.Page;
@@ -29,12 +30,14 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
 /**
  * Tests for {@link HtmlTextArea}.
  *
- * @version $Revision: 4463 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Marc Guillemot
  * @author Ahmed Ashour
  * @author Sudhan Moghe
+ * @author Amit Khanna
  */
+@RunWith(BrowserRunner.class)
 public class HtmlTextAreaTest extends WebTestCase {
 
     /**
@@ -53,6 +56,7 @@ public class HtmlTextAreaTest extends WebTestCase {
             = "<html><head><title>foo</title></head><body>\n"
             + "<form id='form1'>\n"
             + "<textarea name='textArea1'>" + textAreaText + "</textarea>\n"
+            + "<input type='submit' id='mysubmit'/>\n"
             + "</form></body></html>";
         final HtmlPage page = loadPage(content);
         final MockWebConnection webConnection = getMockConnection(page);
@@ -61,10 +65,10 @@ public class HtmlTextAreaTest extends WebTestCase {
         final HtmlTextArea textArea = form.getTextAreaByName("textArea1");
         assertNotNull(textArea);
 
-        final Page secondPage = form.submit((SubmittableElement) null);
+        final Page secondPage = page.getElementById("mysubmit").click();
 
-        assertEquals("url", URL_GARGOYLE + "?textArea1=" + expectedValue,
-                secondPage.getWebResponse().getRequestSettings().getUrl());
+        assertEquals("url", getDefaultUrl() + "?textArea1=" + expectedValue,
+                secondPage.getWebResponse().getWebRequest().getUrl());
         assertSame("method", HttpMethod.GET, webConnection.getLastMethod());
     }
 
@@ -77,6 +81,7 @@ public class HtmlTextAreaTest extends WebTestCase {
             = "<html><head><title>foo</title></head><body>\n"
             + "<form id='form1'>\n"
             + "<textarea name='textArea1'>foo</textarea>\n"
+            + "<input type='submit' id='mysubmit'/>\n"
             + "</form></body></html>";
         final HtmlPage page = loadPage(content);
         final MockWebConnection webConnection = getMockConnection(page);
@@ -84,10 +89,10 @@ public class HtmlTextAreaTest extends WebTestCase {
 
         final HtmlTextArea textArea = form.getTextAreaByName("textArea1");
         textArea.setText("Flintstone");
-        final Page secondPage = form.submit((SubmittableElement) null);
+        final Page secondPage = page.getElementById("mysubmit").click();
 
-        assertEquals("url", URL_GARGOYLE + "?textArea1=Flintstone",
-                secondPage.getWebResponse().getRequestSettings().getUrl());
+        assertEquals("url", getDefaultUrl() + "?textArea1=Flintstone",
+                secondPage.getWebResponse().getWebRequest().getUrl());
         assertSame("method", HttpMethod.GET, webConnection.getLastMethod());
     }
 
@@ -114,21 +119,27 @@ public class HtmlTextAreaTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testAsXml() throws Exception {
+    public void asXml() throws Exception {
         final String content
             = "<html><head><title>foo</title></head><body>\n"
             + "<form id='form1'>\n"
             + "<textarea name='textArea1'> foo \n bar </textarea>\n"
             + "<textarea name='textArea2'></textarea>\n"
+            + "<textarea name='textArea3'>1 &lt; 2 &amp; 3 &gt; 2</textarea>\n"
             + "</form></body></html>";
         final HtmlPage page = loadPage(content);
         final HtmlForm form = page.getHtmlElementById("form1");
 
         final HtmlTextArea textArea1 = form.getTextAreaByName("textArea1");
-        assertEquals("<textarea name=\"textArea1\"> foo \n bar </textarea>", textArea1.asXml());
+        final String expected1 = "<textarea name=\"textArea1\"> foo \n bar </textarea>";
+        assertEquals(expected1, textArea1.asXml());
+        assertTrue(form.asXml(), form.asXml().contains(expected1));
 
         final HtmlTextArea textArea2 = form.getTextAreaByName("textArea2");
         assertEquals("<textarea name=\"textArea2\"></textarea>", textArea2.asXml());
+
+        final HtmlTextArea textArea3 = form.getTextAreaByName("textArea3");
+        assertEquals("<textarea name=\"textArea3\">1 &lt; 2 &amp; 3 &gt; 2</textarea>", textArea3.asXml());
     }
 
     /**
@@ -136,11 +147,6 @@ public class HtmlTextAreaTest extends WebTestCase {
      */
     @Test
     public void testPreventDefault() throws Exception {
-        testPreventDefault(BrowserVersion.FIREFOX_2);
-        testPreventDefault(BrowserVersion.INTERNET_EXPLORER_7);
-    }
-
-    private void testPreventDefault(final BrowserVersion browserVersion) throws Exception {
         final String html =
               "<html><head><script>\n"
             + "  function handler(e) {\n"
@@ -157,7 +163,7 @@ public class HtmlTextAreaTest extends WebTestCase {
             + "<textarea id='text1'></textarea>\n"
             + "</body></html>";
 
-        final HtmlPage page = loadPage(browserVersion, html, null);
+        final HtmlPage page = loadPage(html);
         final HtmlTextArea text1 = page.getHtmlElementById("text1");
         text1.type("abcd");
         assertEquals("abc", text1.getText());
@@ -185,6 +191,28 @@ public class HtmlTextAreaTest extends WebTestCase {
         assertEquals("ab\ncd", t.getText());
         t.type("\r\nef");
         assertEquals("ab\ncd\r\nef", t.getText());
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void typeWithSelection() throws Exception {
+        final String html = "<html><head></head><body><textarea id='t'></textarea></body></html>";
+        final HtmlPage page = loadPage(html, null);
+        final HtmlTextArea t = page.getHtmlElementById("t");
+        t.type("abc");
+        assertEquals("abc", t.getText());
+
+        t.setSelectionStart(1);
+        t.setSelectionEnd(3);
+        t.type('x');
+        assertEquals("ax", t.getText());
+
+        t.setSelectionStart(0);
+        t.setSelectionEnd(0);
+        t.type('y');
+        assertEquals("yax", t.getText());
     }
 
     /**

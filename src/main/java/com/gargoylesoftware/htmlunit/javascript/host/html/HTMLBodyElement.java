@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import java.net.MalformedURLException;
 
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
@@ -26,14 +27,12 @@ import com.gargoylesoftware.htmlunit.javascript.host.css.ComputedCSSStyleDeclara
 /**
  * The JavaScript object "HTMLBodyElement".
  *
- * @version $Revision: 4608 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
  * @author Daniel Gredler
  */
 public class HTMLBodyElement extends HTMLElement {
-
-    private static final long serialVersionUID = -915040139319661419L;
 
     /**
      * Creates a new instance.
@@ -61,7 +60,7 @@ public class HTMLBodyElement extends HTMLElement {
      */
     @Override
     public void setDefaults(final ComputedCSSStyleDeclaration style) {
-        if (getBrowserVersion().isIE()) {
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_41)) {
             style.setDefaultLocalStyleAttribute("margin", "15px 10px");
             style.setDefaultLocalStyleAttribute("padding", "0px");
         }
@@ -88,7 +87,8 @@ public class HTMLBodyElement extends HTMLElement {
      */
     public String jsxGet_aLink() {
         String aLink = getDomNodeOrDie().getAttribute("aLink");
-        if (aLink == DomElement.ATTRIBUTE_NOT_DEFINED && getBrowserVersion().isFirefox()) {
+        if (aLink == DomElement.ATTRIBUTE_NOT_DEFINED
+                && getBrowserVersion().hasFeature(BrowserVersionFeatures.HTML_BODY_COLOR)) {
             aLink = "#ee0000";
         }
         return aLink;
@@ -111,7 +111,8 @@ public class HTMLBodyElement extends HTMLElement {
     public String jsxGet_background() {
         final HtmlElement node = getDomNodeOrDie();
         String background = node.getAttribute("background");
-        if (background != DomElement.ATTRIBUTE_NOT_DEFINED && getBrowserVersion().isFirefox()) {
+        if (background != DomElement.ATTRIBUTE_NOT_DEFINED
+                && getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_158)) {
             try {
                 final HtmlPage page = (HtmlPage) node.getPage();
                 background = page.getFullyQualifiedUrl(background).toExternalForm();
@@ -129,7 +130,7 @@ public class HTMLBodyElement extends HTMLElement {
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms533498.aspx">MSDN Documentation</a>
      */
     public void jsxSet_background(final String background) {
-        this.getDomNodeOrDie().setAttribute("background", background);
+        getDomNodeOrDie().setAttribute("background", background);
     }
 
     /**
@@ -139,7 +140,8 @@ public class HTMLBodyElement extends HTMLElement {
      */
     public String jsxGet_bgColor() {
         String bgColor = getDomNodeOrDie().getAttribute("bgColor");
-        if (bgColor == DomElement.ATTRIBUTE_NOT_DEFINED && getBrowserVersion().isFirefox()) {
+        if (bgColor == DomElement.ATTRIBUTE_NOT_DEFINED
+                && getBrowserVersion().hasFeature(BrowserVersionFeatures.HTML_BODY_COLOR)) {
             bgColor = "#ffffff";
         }
         return bgColor;
@@ -161,7 +163,8 @@ public class HTMLBodyElement extends HTMLElement {
      */
     public String jsxGet_link() {
         String link = getDomNodeOrDie().getAttribute("link");
-        if (link == DomElement.ATTRIBUTE_NOT_DEFINED && getBrowserVersion().isFirefox()) {
+        if (link == DomElement.ATTRIBUTE_NOT_DEFINED
+                && getBrowserVersion().hasFeature(BrowserVersionFeatures.HTML_BODY_COLOR)) {
             link = "#0000ee";
         }
         return link;
@@ -184,7 +187,8 @@ public class HTMLBodyElement extends HTMLElement {
     @Override
     public String jsxGet_text() {
         String text = getDomNodeOrDie().getAttribute("text");
-        if (text == DomElement.ATTRIBUTE_NOT_DEFINED && getBrowserVersion().isFirefox()) {
+        if (text == DomElement.ATTRIBUTE_NOT_DEFINED
+                && getBrowserVersion().hasFeature(BrowserVersionFeatures.HTML_BODY_COLOR)) {
             text = "#000000";
         }
         return text;
@@ -206,8 +210,9 @@ public class HTMLBodyElement extends HTMLElement {
      */
     public String jsxGet_vLink() {
         String vLink = getDomNodeOrDie().getAttribute("vLink");
-        if (vLink == DomElement.ATTRIBUTE_NOT_DEFINED && getBrowserVersion().isFirefox()) {
-            vLink = "#000000";
+        if (vLink == DomElement.ATTRIBUTE_NOT_DEFINED
+                && getBrowserVersion().hasFeature(BrowserVersionFeatures.HTML_BODY_COLOR)) {
+            vLink = "#551a8b";
         }
         return vLink;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,16 +23,18 @@ import java.util.List;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
-import com.gargoylesoftware.htmlunit.MockWebConnection;
-import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
 import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
+import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
+import com.gargoylesoftware.htmlunit.MockWebConnection;
+import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.html.HtmlAnchor;
 import com.gargoylesoftware.htmlunit.html.HtmlButton;
 import com.gargoylesoftware.htmlunit.html.HtmlButtonInput;
@@ -40,20 +42,19 @@ import com.gargoylesoftware.htmlunit.html.HtmlDivision;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlInput;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import com.gargoylesoftware.htmlunit.html.HtmlTextArea;
 
 /**
  * Tests that when DOM events such as "onclick" have access
  * to an {@link Event} object with context information.
  *
- * @version $Revision: 4900 $
+ * @version $Revision: 6486 $
  * @author <a href="mailto:chriseldredge@comcast.net">Chris Eldredge</a>
  * @author Ahmed Ashour
  * @author Daniel Gredler
  * @author Marc Guillemot
  */
 @RunWith(BrowserRunner.class)
-public class EventTest extends WebTestCase {
+public class EventTest extends WebDriverTestCase {
 
     /**
      * Verify the "this" object refers to the Element being clicked when an
@@ -147,8 +148,7 @@ public class EventTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts("pass")
-    @Browsers(Browser.IE)
+    @Alerts(FF = { "undefined", "false" }, IE = { "[object]", "true" })
     public void testEventSrcElementSameAsThis() throws Exception {
         final String content
             = "<html><head></head><body>\n"
@@ -156,7 +156,8 @@ public class EventTest extends WebTestCase {
             + "<script>\n"
             + "function handler(event) {\n"
             + "event = event ? event : window.event;\n"
-            + "alert(event.srcElement == this ? 'pass' : event.srcElement + '!=' + this); }\n"
+            + "alert(event.srcElement);\n"
+            + "alert(event.srcElement == this); }\n"
             + "document.getElementById('clickId').onclick = handler;</script>\n"
             + "</body></html>";
         onClickPageTest(content);
@@ -207,15 +208,15 @@ public class EventTest extends WebTestCase {
      */
     @Test
     public void testEventOnKeyDown() throws Exception {
-        final String content
+        final String html
             = "<html><head></head><body>\n"
-            + "<button type='button' id='clickId'/>\n"
+            + "<button type='button' id='clickId'>Click Me</button>\n"
             + "<script>\n"
             + "function handler(_e) {\n"
             + "  var e = _e ? _e : window.event;\n"
-            + "if (e.keyCode == 65)\n"
+            + "  if (e.keyCode == 65)\n"
             + "    alert('pass');\n"
-            + "else\n"
+            + "  else\n"
             + "    alert('fail:' + e.keyCode);\n"
             + "}\n"
             + "document.getElementById('clickId').onkeydown = handler;\n"
@@ -223,7 +224,7 @@ public class EventTest extends WebTestCase {
             + "</body></html>";
 
         final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(getBrowserVersion(), content, collectedAlerts);
+        final HtmlPage page = loadPage(getBrowserVersion(), html, collectedAlerts);
         final HtmlElement element = page.getHtmlElementById("clickId");
         element.type('A');
         element.type('B');
@@ -268,10 +269,19 @@ public class EventTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(IE = { "124A", "1A2A4AB1AB2AB4ABC" }, FF = { "123A4A", "1A2A3AB4AB1AB2AB3ABC4ABC" })
-    public void testTyping() throws Exception {
+    @Alerts(IE = { "124a", "1a2a4ab1ab2ab4abc" }, FF = { "123a4a", "1a2a3ab4ab1ab2ab3abc4abc" })
+    public void testTyping_input() throws Exception {
         testTyping("<input type='text'", "");
         testTyping("<input type='password'", "");
+        testTyping("<textarea", "</textarea>");
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(IE = { "124a", "1a2a4ab1ab2ab4abc" }, FF = { "123a4a", "1a2a3ab4ab1ab2ab3abc4abc" })
+    public void testTyping_textara() throws Exception {
         testTyping("<textarea", "</textarea>");
     }
 
@@ -289,15 +299,14 @@ public class EventTest extends WebTestCase {
             + "<div id='d' onclick='alert(x); x=\"\"'>abc</div>\n"
             + "</body></html>";
 
-        final List<String> actual = new ArrayList<String>();
-        final HtmlPage page = loadPage(getBrowserVersion(), html, actual);
-        page.<HtmlElement>getHtmlElementById("t").type('A');
-        page.<HtmlDivision>getHtmlElementById("d").click();
+        final WebDriver driver = loadPage2(html);
+        driver.findElement(By.id("t")).sendKeys("a");
+        driver.findElement(By.id("d")).click();
 
-        page.<HtmlElement>getHtmlElementById("t").type("BC");
-        page.<HtmlDivision>getHtmlElementById("d").click();
+        driver.findElement(By.id("t")).sendKeys("bc");
+        driver.findElement(By.id("d")).click();
 
-        assertEquals(getExpectedAlerts(), actual);
+        assertEquals(getExpectedAlerts(), getCollectedAlerts(driver));
     }
 
     /**
@@ -359,11 +368,11 @@ public class EventTest extends WebTestCase {
         assertEquals(expectedAlerts, collectedAlerts);
     }
 
-    private void onClickPageTest(final String content) throws Exception {
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(getBrowserVersion(), content, collectedAlerts);
-        page.<HtmlElement>getHtmlElementById("clickId").click();
-        assertEquals(getExpectedAlerts(), collectedAlerts);
+    private void onClickPageTest(final String html) throws Exception {
+        final WebDriver driver = loadPage2(html);
+        driver.findElement(By.id("clickId")).click();
+
+        assertEquals(getExpectedAlerts(), getCollectedAlerts(driver));
     }
 
     /**
@@ -383,7 +392,7 @@ public class EventTest extends WebTestCase {
             + "</script>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -419,20 +428,21 @@ public class EventTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.IE)
-    @Alerts({ "false", "false" })
+    @Alerts(FF = { "true", "exception" }, IE = { "false", "false" })
     public void testIEWindowEvent() throws Exception {
         final String html =
             "<html><head>\n"
             + "<script>\n"
             + "function test() {\n"
             + "  alert(window.event == null);\n"
-            + "  alert(event == null);\n"
+            + "  try {\n"
+            + "    alert(event == null);\n"
+            + "  } catch(e) { alert('exception'); }\n"
             + "}\n"
             + "</script>\n"
             + "</head><body onload='test()'></body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -453,7 +463,7 @@ public class EventTest extends WebTestCase {
             + "alert(2)'>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -630,14 +640,15 @@ public class EventTest extends WebTestCase {
             + "<div id='myDiv'/>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = {"object", "true" },
+    @NotYetImplemented(Browser.FF)
+    @Alerts(FF = {"object", "false" },
             IE = {"object", "undefined" })
     public void testBubbles() throws Exception {
         final String html =
@@ -648,7 +659,7 @@ public class EventTest extends WebTestCase {
             + "    }\n"
             + "</script></body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -666,7 +677,7 @@ public class EventTest extends WebTestCase {
             + "    }\n"
             + "</script></body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -717,7 +728,7 @@ public class EventTest extends WebTestCase {
             + "    }\n"
             + "</script></body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -793,7 +804,7 @@ public class EventTest extends WebTestCase {
             + "  }\n"
             + "</script></body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -801,7 +812,6 @@ public class EventTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.NONE) // TODO: use browsers to test for all
     public void testDOMContentLoaded() throws Exception {
         testHTMLFile("EventTest_DOMContentLoaded.html");
     }
@@ -810,7 +820,6 @@ public class EventTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.NONE) // TODO: use browsers to test for all
     public void testPreventDefault() throws Exception {
         testHTMLFile("EventTest_preventDefault.html");
     }
@@ -891,7 +900,7 @@ public class EventTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts({ "true", "I was here" })
+    @Alerts(FF = { "true", "I was here" }, IE = { "true", "I was here" })
     public void firedEvent_equals_original_event() throws Exception {
         final String html =
             "<html><head><title>First</title>\n"
@@ -924,7 +933,7 @@ public class EventTest extends WebTestCase {
             + "<div id='myDiv'>toti</div>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -932,28 +941,27 @@ public class EventTest extends WebTestCase {
      */
     @Test
     @Browsers(Browser.FF)
+    @Alerts("400000,1,20000000,2000,8000,40,2,80,800,800000,1000,8000000,10000000,100,400,200,80000,1000000,"
+            + "8,1,20,10,8,4,2,2000000,10000,4000000,40000,4000,4,20000,100000,200000,")
     public void constants() throws Exception {
         final String html =
-              "<html><body onload='test()'><script>\n"
-            + "  function test() {\n"
+              "<html><body>\n"
+            + "<script>\n"
             + "    var constants = [Event.ABORT, Event.ALT_MASK, Event.BACK, Event.BLUR, Event.CHANGE, Event.CLICK, "
             + "Event.CONTROL_MASK, Event.DBLCLICK, Event.DRAGDROP, Event.ERROR, Event.FOCUS, Event.FORWARD, "
             + "Event.HELP, Event.KEYDOWN, Event.KEYPRESS, Event.KEYUP, Event.LOAD, Event.LOCATE, Event.META_MASK, "
             + "Event.MOUSEDOWN, Event.MOUSEDRAG, Event.MOUSEMOVE, Event.MOUSEOUT, Event.MOUSEOVER, Event.MOUSEUP, "
             + "Event.MOVE, Event.RESET, Event.RESIZE, Event.SCROLL, Event.SELECT, Event.SHIFT_MASK, Event.SUBMIT, "
             + "Event.UNLOAD, Event.XFER_DONE];\n"
+            + "    var str = '';\n"
             + "    for (var x in constants) {\n"
-            + "      document.getElementById('myTextarea').value += constants[x].toString(16) + ',';\n"
+            + "      str += constants[x].toString(16) + ',';\n"
             + "    }\n"
-            + "  }\n"
+            + "    alert(str);\n"
             + "</script>\n"
-            + "<textarea id='myTextarea' cols='120' rows='40'></textarea>\n"
             + "</body></html>";
 
-        final HtmlPage page = loadPage(getBrowserVersion(), html, null);
-        final String value = page.<HtmlTextArea>getHtmlElementById("myTextarea").getText();
-        assertEquals("400000,1,20000000,2000,8000,40,2,80,800,800000,1000,8000000,10000000,100,400,200,80000,1000000,"
-            + "8,1,20,10,8,4,2,2000000,10000,4000000,40000,4000,4,20000,100000,200000,", value);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -971,7 +979,7 @@ public class EventTest extends WebTestCase {
             + "</script>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1001,7 +1009,40 @@ public class EventTest extends WebTestCase {
 
         final HtmlPage page = loadPageWithAlerts(html);
         final HtmlPage page2 = page.<HtmlInput>getHtmlElementById("mySubmit").click();
-        assertEquals(URL_GARGOYLE.toExternalForm(),
-                page2.getWebResponse().getRequestSettings().getUrl().toExternalForm());
+        assertEquals(getDefaultUrl(), page2.getWebResponse().getWebRequest().getUrl());
+    }
+
+    /**
+     * Regression test for bug
+     * <a href="http://sourceforge.net/tracker/?func=detail&aid=2851920&group_id=47038&atid=448266">2851920</a>.
+     * Name resolution doesn't work the same in inline handlers than in "normal" JS code!
+     * @throws Exception if the test fails
+     */
+    @Test
+    @NotYetImplemented
+    @Alerts(FF = { "form1 -> custom", "form2 -> [object HTMLFormElement]",
+            "form1: [object HTMLFormElement]", "form2: [object HTMLFormElement]",
+            "form1 -> custom", "form2 -> [object HTMLFormElement]" },
+            IE = { "form1 -> custom", "form2 -> [object]",
+            "form1: [object]", "form2: [object]",
+            "form1 -> custom", "form2 -> [object]" })
+    public void nameResolution() throws Exception {
+        final String html = "<html><head><script>\n"
+            + "var form1 = 'custom';\n"
+            + "function testFunc() {\n"
+            + " alert('form1 -> ' + form1);\n"
+            + " alert('form2 -> ' + form2);\n"
+            + "}\n"
+            + "</script></head>\n"
+            + "<body onload='testFunc()'>\n"
+            + "<form name='form1'></form>\n"
+            + "<form name='form2'></form>\n"
+            + "<button onclick=\"alert('form1: ' + form1); alert('form2: ' + form2); testFunc()\">click me</button>\n"
+            + "</body></html>";
+
+        final WebDriver driver = loadPage2(html);
+        driver.findElement(By.tagName("button")).click();
+
+        assertEquals(getExpectedAlerts(), getCollectedAlerts(driver));
     }
 }

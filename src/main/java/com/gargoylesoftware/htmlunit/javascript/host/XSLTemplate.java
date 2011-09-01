@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,21 +20,12 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
  * A JavaScript object for XSLTemplate.
  * @see <a href="http://msdn2.microsoft.com/en-us/library/ms767644.aspx">MSDN documentation</a>
  *
- * @version $Revision: 4324 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  */
 public class XSLTemplate extends SimpleScriptable {
 
-    private static final long serialVersionUID = 2820794481694666278L;
-
     private Node stylesheet_;
-
-    /**
-     * JavaScript constructor.
-     */
-    public void jsConstructor() {
-        // Empty.
-    }
 
     /**
      * Sets the Extensible Stylesheet Language (XSL) style sheet to compile into an XSL template.

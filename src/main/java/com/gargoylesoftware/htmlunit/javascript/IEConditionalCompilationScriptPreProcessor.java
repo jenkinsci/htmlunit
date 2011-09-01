@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,28 +35,41 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
  * "@_win16", "@_mac", "@_alpha", "@_mc680x0", "@_PowerPC", "@_debug", "@_fast",
  * "@_win32", "@_x86", "@_jscript", "@_jscript_version" and "@_jscript_build"
  *
- * @version $Revision: 4513 $
+ * @version $Revision: 6335 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
+ * @author Ronald Brill
  *
  * @see <a href="http://msdn2.microsoft.com/en-us/library/ahx1z4fs.aspx">Microsoft Docs</a>
  */
 public class IEConditionalCompilationScriptPreProcessor implements ScriptPreProcessor {
 
+    private static final Pattern CC_VARIABLE_PATTERN = Pattern.compile("@\\w+|'[^']*'|\"[^\"]*\"");
+    private static final Pattern SET_PATTERN = Pattern.compile("@set\\s+(@\\w+)(\\s*=\\s*[\\d\\.]+)");
+    private static final Pattern C_VARIABLE_PATTERN = Pattern.compile("(@_\\w+)|'[^']*'|\"[^\"]*\"");
+    private static final Pattern CC_PROCESS_PATTERN = Pattern.compile("/\\*@end");
+
+    private static final Pattern IF1_PATTERN = Pattern.compile("@if\\s*\\(([^\\)]+)\\)");
+    private static final Pattern IF2_PATTERN = Pattern.compile("@elif\\s*\\(([^\\)]+)\\)");
+    private static final Pattern IF3_PATTERN = Pattern.compile("@else");
+    private static final Pattern IF4_PATTERN = Pattern.compile("(/\\*)?@end");
+
     private static final String CC_VARIABLE_PREFIX = "htmlunit_cc_variable_";
+    private enum PARSING_STATUS { NORMAL, IN_MULTI_LINE_COMMENT, IN_SINGLE_LINE_COMMENT, IN_STRING, IN_REG_EXP }
+
     private final Set<String> setVariables_ = new HashSet<String>();
 
     /**
      * {@inheritDoc}
      */
     public String preProcess(final HtmlPage htmlPage, final String sourceCode,
-            final String sourceName, final HtmlElement htmlElement) {
+            final String sourceName, final int lineNumber, final HtmlElement htmlElement) {
 
-        final int startPos = sourceCode.indexOf("/*@cc_on");
+        final int startPos = indexOf(sourceCode, "/*@cc_on", 0);
         if (startPos == -1) {
             return sourceCode;
         }
-        final int endPos = sourceCode.indexOf("@*/", startPos);
+        final int endPos = indexOf(sourceCode, "@*/", startPos);
         if (endPos == -1) {
             return sourceCode;
         }
@@ -92,8 +105,13 @@ public class IEConditionalCompilationScriptPreProcessor implements ScriptPreProc
         if (body.startsWith("cc_on")) {
             body = body.substring(5);
         }
-        body = body.replaceAll("/\\*@end", "");
+        body = "@" + body;
+        //TODO: StringScriptPreProcessor.indexOf() should be used (in order to ignore string literals)
         body = processIfs(body);
+        if (body.startsWith("@")) {
+            body = body.substring(1);
+        }
+        body = CC_PROCESS_PATTERN.matcher(body).replaceAll("");
         body = replaceCompilationVariables(body, browserVersion);
         body = processSet(body);
         body = replaceCustomCompilationVariables(body);
@@ -101,8 +119,7 @@ public class IEConditionalCompilationScriptPreProcessor implements ScriptPreProc
     }
 
     private String replaceCustomCompilationVariables(final String body) {
-        final Pattern p = Pattern.compile("@\\w+|'[^']*'|\"[^\"]*\"");
-        final Matcher m = p.matcher(body);
+        final Matcher m = CC_VARIABLE_PATTERN.matcher(body);
         final StringBuffer sb = new StringBuffer();
         while (m.find()) {
             final String match = m.group();
@@ -125,8 +142,7 @@ public class IEConditionalCompilationScriptPreProcessor implements ScriptPreProc
     }
 
     private String processSet(final String body) {
-        final Pattern p = Pattern.compile("@set\\s+(@\\w+)(\\s*=\\s*[\\d\\.]+)");
-        final Matcher m = p.matcher(body);
+        final Matcher m = SET_PATTERN.matcher(body);
         final StringBuffer sb = new StringBuffer();
         while (m.find()) {
             setVariables_.add(m.group(1));
@@ -137,16 +153,16 @@ public class IEConditionalCompilationScriptPreProcessor implements ScriptPreProc
     }
 
     private static String processIfs(String code) {
-        code = code.replaceAll("@if\\s*\\(([^\\)]+)\\)", "if ($1) {");
-        code = code.replaceAll("@elif\\s*\\(([^\\)]+)\\)", "} else if ($1) {");
-        code = code.replaceAll("@else", "} else {");
-        code = code.replaceAll("@end", "}");
+        //TODO: StringScriptPreProcessor.indexOf() should be used (in order to ignore string literals)
+        code = IF1_PATTERN.matcher(code).replaceAll("if ($1) {");
+        code = IF2_PATTERN.matcher(code).replaceAll("} else if ($1) {");
+        code = IF3_PATTERN.matcher(code).replaceAll("} else {");
+        code = IF4_PATTERN.matcher(code).replaceAll("}");
         return code;
     }
 
     String replaceCompilationVariables(final String source, final BrowserVersion browserVersion) {
-        final Pattern p = Pattern.compile("(@_\\w+)|'[^']*'|\"[^\"]*\"");
-        final Matcher m = p.matcher(source);
+        final Matcher m = C_VARIABLE_PATTERN.matcher(source);
         final StringBuffer sb = new StringBuffer();
         while (m.find()) {
             final String match = m.group();
@@ -177,17 +193,115 @@ public class IEConditionalCompilationScriptPreProcessor implements ScriptPreProc
             if (browserVersion.getBrowserVersionNumeric() <= 6) {
                 return "5.6";
             }
-            return "5.7";
+            else if (browserVersion.getBrowserVersionNumeric() == 7) {
+                return "5.7";
+            }
+            return "5.8";
         }
         else if ("@_jscript_build".equals(variable)) {
             if (browserVersion.getBrowserVersionNumeric() <= 6) {
-                return "6626"; // that's what my IE6 currently returns
+                return "6626";
             }
-            return "5730";
+            if (browserVersion.getBrowserVersionNumeric() == 7) {
+                return "5730";
+            }
+            return "18702";
         }
         else if (ArrayUtils.contains(varNaN, variable)) {
             return "NaN";
         }
         return variable;
+    }
+
+    /**
+     * Returns the index within the JavaScript code of the first occurrence of the specified substring.
+     * This method searches inside multi-lines comments, but ignores the string literals and single line comments.
+     * @param sourceCode JavaScript source
+     * @param str any string
+     * @param fromIndex the index from which to start the search
+     * @return the index
+     */
+    private static int indexOf(final String sourceCode, final String str, final int fromIndex) {
+        PARSING_STATUS parsingStatus = PARSING_STATUS.NORMAL;
+        char stringChar = 0;
+        for (int i = 0; i < sourceCode.length(); i++) {
+            if ((parsingStatus == PARSING_STATUS.NORMAL || parsingStatus == PARSING_STATUS.IN_MULTI_LINE_COMMENT)
+                    && i >= fromIndex && i + str.length() <= sourceCode.length()
+                    && sourceCode.substring(i, i + str.length()).equals(str)) {
+                return i;
+            }
+            final char ch = sourceCode.charAt(i);
+            switch (ch) {
+                case '/':
+                    if (parsingStatus == PARSING_STATUS.NORMAL && i + 1 < sourceCode.length()) {
+                        final char nextCh = sourceCode.charAt(i + 1);
+                        if (nextCh == '/') {
+                            parsingStatus = PARSING_STATUS.IN_SINGLE_LINE_COMMENT;
+                        }
+                        else if (nextCh == '*') {
+                            parsingStatus = PARSING_STATUS.IN_MULTI_LINE_COMMENT;
+                        }
+                        else {
+                            stringChar = ch;
+                            parsingStatus = PARSING_STATUS.IN_REG_EXP;
+                        }
+                    }
+                    else if (parsingStatus == PARSING_STATUS.IN_REG_EXP && ch == stringChar) {
+                        stringChar = 0;
+                        parsingStatus = PARSING_STATUS.NORMAL;
+                    }
+                    break;
+
+                case '*':
+                    if (parsingStatus == PARSING_STATUS.IN_MULTI_LINE_COMMENT && i + 1 < sourceCode.length()) {
+                        final char nextCh = sourceCode.charAt(i + 1);
+                        if (nextCh == '/') {
+                            parsingStatus = PARSING_STATUS.NORMAL;
+                        }
+                    }
+                    break;
+
+                case '\n':
+                    if (parsingStatus == PARSING_STATUS.IN_SINGLE_LINE_COMMENT) {
+                        parsingStatus = PARSING_STATUS.NORMAL;
+                    }
+                    break;
+
+                case '\'':
+                case '"':
+                    if (parsingStatus == PARSING_STATUS.NORMAL) {
+                        stringChar = ch;
+                        parsingStatus = PARSING_STATUS.IN_STRING;
+                    }
+                    else if (parsingStatus == PARSING_STATUS.IN_STRING && ch == stringChar) {
+                        stringChar = 0;
+                        parsingStatus = PARSING_STATUS.NORMAL;
+                    }
+                    break;
+
+                case '\\':
+                    if (parsingStatus == PARSING_STATUS.IN_STRING) {
+                        if (i + 3 < sourceCode.length() && sourceCode.charAt(i + 1) == 'x') {
+                            final char ch1 = Character.toUpperCase(sourceCode.charAt(i + 2));
+                            final char ch2 = Character.toUpperCase(sourceCode.charAt(i + 3));
+                            if ((ch1 >= '0' && ch1 <= '9' || ch1 >= 'A' && ch1 <= 'F')
+                                    && (ch2 >= '0' && ch2 <= '9' || ch2 >= 'A' && ch2 <= 'F')) {
+                                final char character = (char) Integer.parseInt(sourceCode.substring(i + 2, i + 4), 16);
+                                if (character >= ' ') {
+                                    i += 3;
+                                    continue;
+                                }
+                            }
+                        }
+                        else if (i + 1 < sourceCode.length()) {
+                            i++;
+                            continue;
+                        }
+                    }
+
+                default:
+            }
+        }
+        return -1;
     }
 }

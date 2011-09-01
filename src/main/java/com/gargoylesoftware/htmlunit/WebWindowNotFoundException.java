@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,11 +18,10 @@ package com.gargoylesoftware.htmlunit;
  * Exception to indicate that no {@link WebWindow} could be found that matched
  * a given name.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  */
 public class WebWindowNotFoundException extends RuntimeException {
-    private static final long serialVersionUID = 2971032116624875170L;
     private final String name_;
 
     /**

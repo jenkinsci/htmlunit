@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,24 +17,21 @@ package com.gargoylesoftware.htmlunit.javascript.host.html;
 import java.io.StringReader;
 
 import org.w3c.css.sac.InputSource;
-import org.w3c.dom.css.CSSStyleSheet;
 
 import com.gargoylesoftware.htmlunit.Cache;
 import com.gargoylesoftware.htmlunit.html.HtmlStyle;
-import com.gargoylesoftware.htmlunit.javascript.host.Stylesheet;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSStyleSheet;
 
 /**
  * The JavaScript object "HTMLStyleElement".
  *
- * @version $Revision: 4859 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
  */
 public class HTMLStyleElement extends HTMLElement {
 
-    private static final long serialVersionUID = 944381786297995169L;
-
-    private Stylesheet sheet_;
+    private CSSStyleSheet sheet_;
 
     /**
      * Creates an instance.
@@ -48,27 +45,24 @@ public class HTMLStyleElement extends HTMLElement {
      * @see <a href="http://www.xulplanet.com/references/objref/HTMLStyleElement.html">Mozilla doc</a>
      * @return the sheet
      */
-    public Stylesheet jsxGet_sheet() {
+    public CSSStyleSheet jsxGet_sheet() {
         if (sheet_ != null) {
             return sheet_;
         }
 
-        String css = "";
         final HtmlStyle style = (HtmlStyle) getDomNodeOrDie();
-        if (style.getFirstChild() != null) {
-            css = style.getFirstChild().asText();
-        }
+        final String css = style.getTextContent();
 
         final Cache cache = getWindow().getWebWindow().getWebClient().getCache();
-        final CSSStyleSheet cached = cache.getCachedStyleSheet(css);
-        final String uri = getDomNodeOrDie().getPage().getWebResponse().getRequestSettings()
+        final org.w3c.dom.css.CSSStyleSheet cached = cache.getCachedStyleSheet(css);
+        final String uri = getDomNodeOrDie().getPage().getWebResponse().getWebRequest()
         .getUrl().toExternalForm();
         if (cached != null) {
-            sheet_ = new Stylesheet(this, cached, uri);
+            sheet_ = new CSSStyleSheet(this, cached, uri);
         }
         else {
             final InputSource source = new InputSource(new StringReader(css));
-            sheet_ = new Stylesheet(this, source, uri);
+            sheet_ = new CSSStyleSheet(this, source, uri);
             cache.cache(css, sheet_.getWrappedSheet());
         }
 
@@ -79,7 +73,7 @@ public class HTMLStyleElement extends HTMLElement {
      * Gets the associated sheet (IE).
      * @return the sheet
      */
-    public Stylesheet jsxGet_styleSheet() {
+    public CSSStyleSheet jsxGet_styleSheet() {
         return jsxGet_sheet();
     }
 }

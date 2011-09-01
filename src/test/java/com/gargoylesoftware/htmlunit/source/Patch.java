@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import org.apache.commons.io.FileUtils;
 /**
  * Patches utilities.
  *
- * @version $Revision: 4753 $
+ * @version $Revision: 6205 $
  * @author Ahmed Ashour
  */
 public final class Patch {
@@ -39,7 +39,6 @@ public final class Patch {
      * @param authorName the author name, e.g. "John Smith"
      * @throws Exception if an exception occurs
      */
-    @SuppressWarnings("unchecked")
     public static void checkAuthor(final String baseDir, final String patchPath, final String authorName)
         throws Exception {
         final List<String> errors = new ArrayList<String>();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,12 @@ package com.gargoylesoftware.htmlunit;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.net.URL;
 
 /**
  * An abstract page that represents some content returned from a server.
  *
- * @version $Revision: 4756 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author Marc Guillemot
@@ -54,5 +55,10 @@ public interface Page extends Serializable {
      * @return the enclosing window
      */
     WebWindow getEnclosingWindow();
-}
 
+    /**
+     * Returns the URL of this page.
+     * @return the URL of this page
+     */
+    URL getUrl();
+}

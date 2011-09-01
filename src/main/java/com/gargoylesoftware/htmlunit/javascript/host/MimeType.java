@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,13 +19,12 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 /**
  * A JavaScript object for a document.navigator.mimeTypes elements.
  *
- * @version $Revision: 4097 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  *
  * @see <a href="http://www.xulplanet.com/references/objref/MimeType.html">XUL Planet</a>
  */
 public final class MimeType extends SimpleScriptable {
-    private static final long serialVersionUID = -4673239005661544554L;
     private String description_;
     private String suffixes_;
     private String type_;

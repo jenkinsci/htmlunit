@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,21 +28,23 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.httpclient.HttpStatus;
-import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.http.HttpStatus;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Tests for {@link WebResponseData}.
  *
- * @version $Revision: 4523 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
  * @author Ahmed Ashour
  */
+@RunWith(BrowserRunner.class)
 public class WebResponseDataTest extends WebServerTestCase {
 
     private static final String GZIPPED_FILE = "testfiles/test.html.gz";
@@ -71,10 +73,10 @@ public class WebResponseDataTest extends WebServerTestCase {
      */
     @Test
     public void testNullBody() throws Exception {
-        final InputStream body = null;
+        final DownloadedContent downloadedContent = new DownloadedContent.InMemory(new byte[] {});
         final List<NameValuePair> headers = new ArrayList<NameValuePair>();
-        final WebResponseData data = new WebResponseData(body, 304, "NOT_MODIFIED", headers);
-        assertNull(data.getBody());
+        final WebResponseData data = new WebResponseData(downloadedContent, 304, "NOT_MODIFIED", headers);
+        assertEquals(0, data.getBody().length);
     }
 
     /**
@@ -83,11 +85,11 @@ public class WebResponseDataTest extends WebServerTestCase {
     @Test
     public void deflateCompression() throws Exception {
         startWebServer("src/test/resources/pjl-comp-filter", null);
-        final  WebRequestSettings settings = new WebRequestSettings(new URL("http://localhost:"
+        final  WebRequest request = new WebRequest(new URL("http://localhost:"
             + PORT + "/index.html"));
-        settings.setAdditionalHeader("Accept-Encoding", "deflate");
-        final WebClient webClient = new WebClient();
-        final HtmlPage page = webClient.getPage(settings);
+        request.setAdditionalHeader("Accept-Encoding", "deflate");
+        final WebClient webClient = getWebClient();
+        final HtmlPage page = webClient.getPage(request);
         assertEquals("Hello Compressed World!", page.asText());
     }
 
@@ -101,7 +103,7 @@ public class WebResponseDataTest extends WebServerTestCase {
         servlets.put("/folder2/page2", RedirectionServlet.class);
         startWebServer("./", null, servlets);
 
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
 
         final HtmlPage page = client.getPage("http://localhost:" + PORT + "/folder1/page1");
         assertEquals("Hello Redirected!", page.asText());
@@ -111,15 +113,12 @@ public class WebResponseDataTest extends WebServerTestCase {
      * Servlet for {@link #redirection()}.
      */
     public static class RedirectionServlet extends HttpServlet {
-
-        private static final long serialVersionUID = 2865392611660286450L;
-
         /**
          * {@inheritDoc}
          */
         @Override
         protected void doGet(final HttpServletRequest request, final HttpServletResponse response) throws IOException {
-            if (request.getRequestURI().equals("/folder1/page1")) {
+            if ("/folder1/page1".equals(request.getRequestURI())) {
                 response.setStatus(HttpServletResponse.SC_MOVED_TEMPORARILY);
                 final String location = request.getRequestURL().toString().replace("page1", "../folder2/page2");
                 response.setHeader("Location", location);
@@ -131,4 +130,18 @@ public class WebResponseDataTest extends WebServerTestCase {
             writer.close();
         }
     }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void bigContent() throws Exception {
+        final StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < 300; i++) {
+            builder.append(' ');
+        }
+        builder.append("Hello World!");
+        loadPage(builder.toString());
+    }
+
 }

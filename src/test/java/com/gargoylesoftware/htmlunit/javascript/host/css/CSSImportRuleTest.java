@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
@@ -28,12 +28,13 @@ import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
 /**
  * Tests for {@link CSSImportRule}.
  *
- * @version $Revision: 4860 $
+ * @version $Revision: 6375 $
  * @author Daniel Gredler
  * @author Marc Guillemot
+ * @author Ronald Brill
  */
 @RunWith(BrowserRunner.class)
-public class CSSImportRuleTest extends WebTestCase {
+public class CSSImportRuleTest extends WebDriverTestCase {
 
     /**
      * Regression test for bug 2658249.
@@ -71,7 +72,7 @@ public class CSSImportRuleTest extends WebTestCase {
 
         setExpectedAlerts("[object CSSImportRule]", cssRef,
             "[object MediaList]", "0", "[object CSSStyleSheet]");
-        loadPageWithAlerts(html, pageUrl, -1);
+        loadPageWithAlerts2(html, pageUrl);
     }
 
     /**
@@ -94,7 +95,7 @@ public class CSSImportRuleTest extends WebTestCase {
 
         getMockWebConnection().setResponse(URL_SECOND, css, "text/css");
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -122,6 +123,83 @@ public class CSSImportRuleTest extends WebTestCase {
         getMockWebConnection().setResponse(urlCss1, css1, "text/css");
         getMockWebConnection().setResponse(urlCss2, css2, "text/css");
 
-        loadPageWithAlerts(html, urlPage, -1);
+        loadPageWithAlerts2(html, urlPage);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts("true")
+    public void testCircularImportedStylesheets() throws Exception {
+        final String html = "<html><head>\n"
+            + "<link rel='stylesheet' type='text/css' href='dir1/dir2/file1.css'></link>\n"
+            + "<body>\n"
+            + "<div id='d'>foo</div>\n"
+            + "<script>\n"
+            + "var d = document.getElementById('d');\n"
+            + "var s = window.getComputedStyle ? window.getComputedStyle(d, null) : d.currentStyle;\n"
+            + "alert(s.color.indexOf('128') > 0);\n"
+            + "</script>\n"
+            + "</body></html>";
+        final String css1 = "@import url('file2.css');";
+        final String css2 = "@import url('file1.css');\n"
+            + "#d { color: rgb(0, 128, 0); }";
+
+        final URL urlPage = URL_FIRST;
+        final URL urlCss1 = new URL(urlPage, "dir1/dir2/file1.css");
+        final URL urlCss2 = new URL(urlPage, "dir1/dir2/file2.css");
+        getMockWebConnection().setResponse(urlCss1, css1, "text/css");
+        getMockWebConnection().setResponse(urlCss2, css2, "text/css");
+
+        loadPageWithAlerts2(html, urlPage);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts({ "true", "true", "true" })
+    public void testCircularImportedStylesheetsComplexCase() throws Exception {
+        final String html = "<html><head>\n"
+            + "<link rel='stylesheet' type='text/css' href='dir1/dir2/file1.css'></link>\n"
+            + "<body>\n"
+            + "<div id='d'>foo</div>\n"
+            + "<div id='e'>foo</div>\n"
+            + "<div id='f'>foo</div>\n"
+            + "<script>\n"
+            + "var d = document.getElementById('d');\n"
+            + "var s = window.getComputedStyle ? window.getComputedStyle(d, null) : d.currentStyle;\n"
+            + "alert(s.color.indexOf('128') > 0);\n"
+            + "var e = document.getElementById('e');\n"
+            + "s = window.getComputedStyle ? window.getComputedStyle(e, null) : e.currentStyle;\n"
+            + "alert(s.color.indexOf('127') > 0);\n"
+            + "var f = document.getElementById('f');\n"
+            + "s = window.getComputedStyle ? window.getComputedStyle(f, null) : f.currentStyle;\n"
+            + "alert(s.color.indexOf('126') > 0);\n"
+            + "</script>\n"
+            + "</body></html>";
+        final String css1 = "@import url('file2.css');";
+        final String css2 = "@import url('file3.css');\n"
+            + "@import url('file4.css');";
+        final String css3 = "#d { color: rgb(0, 128, 0); }";
+        final String css4 = "@import url('file5.css');\n"
+            + "#e { color: rgb(0, 127, 0); }";
+        final String css5 = "@import url('file2.css');\n"
+            + "#f { color: rgb(0, 126, 0); }";
+
+        final URL urlPage = URL_FIRST;
+        final URL urlCss1 = new URL(urlPage, "dir1/dir2/file1.css");
+        final URL urlCss2 = new URL(urlPage, "dir1/dir2/file2.css");
+        final URL urlCss3 = new URL(urlPage, "dir1/dir2/file3.css");
+        final URL urlCss4 = new URL(urlPage, "dir1/dir2/file4.css");
+        final URL urlCss5 = new URL(urlPage, "dir1/dir2/file5.css");
+        getMockWebConnection().setResponse(urlCss1, css1, "text/css");
+        getMockWebConnection().setResponse(urlCss2, css2, "text/css");
+        getMockWebConnection().setResponse(urlCss3, css3, "text/css");
+        getMockWebConnection().setResponse(urlCss4, css4, "text/css");
+        getMockWebConnection().setResponse(urlCss5, css5, "text/css");
+
+        loadPageWithAlerts2(html, urlPage);
     }
 }

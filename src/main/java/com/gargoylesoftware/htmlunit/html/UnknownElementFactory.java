@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
  * A factory for elements encountered in parsing the input which are not represented
  * by dedicated element classes.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
  * @author David K. Taylor

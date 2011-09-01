@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,55 +18,38 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
 
-import org.apache.commons.httpclient.Credentials;
-import org.apache.commons.httpclient.NTCredentials;
-import org.apache.commons.httpclient.UsernamePasswordCredentials;
-import org.apache.commons.httpclient.auth.AuthScheme;
-import org.apache.commons.httpclient.auth.AuthScope;
-import org.apache.commons.httpclient.auth.CredentialsNotAvailableException;
-import org.apache.commons.httpclient.auth.CredentialsProvider;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.Credentials;
+import org.apache.http.auth.NTCredentials;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
 
 /**
  * Default HtmlUnit implementation of the <tt>CredentialsProvider</tt> interface. Provides
- * credentials for both web servers and proxies. Supports NTLM authentication, Digest
+ * credentials for both web servers and proxies. Supports Digest
  * authentication, and Basic HTTP authentication.
  *
- * @version $Revision: 4789 $
+ * @see See <a href="http://htmlunit.sourceforge.net/ntlm.html">NTLM authentication</a> to use NTLM from HtlmUnit.
+ * @version $Revision: 6368 $
  * @author Daniel Gredler
  * @author Vikram Shitole
  * @author Marc Guillemot
  * @author Ahmed Ashour
+ * @author Nicolas Belisle
  */
-public class DefaultCredentialsProvider implements CredentialsProvider, Serializable  {
+public class DefaultCredentialsProvider implements CredentialsProvider, Serializable {
 
-    private static final long serialVersionUID = 1036331144926557053L;
-    private static final Log LOG = LogFactory.getLog(DefaultCredentialsProvider.class);
-
-    private final Map<AuthScopeProxy, Credentials> credentials_ = new HashMap<AuthScopeProxy, Credentials>();
-    private final Map<AuthScopeProxy, Credentials> proxyCredentials_ = new HashMap<AuthScopeProxy, Credentials>();
-    private final Set<Object> answerMarks_ = Collections.synchronizedSortedSet(new TreeSet<Object>());
-
-    /**
-     * Creates a new <tt>DefaultCredentialsProvider</tt> instance.
-     */
-    public DefaultCredentialsProvider() {
-        // nothing
-    }
+    private final HashMap<AuthScopeProxy, CredentialsFactory> credentialsMap_
+        = new HashMap<AuthScopeProxy, CredentialsFactory>();
 
     /**
      * Adds credentials for the specified username/password for any host/port/realm combination.
      * The credentials may be for any authentication scheme, including NTLM, digest and basic
      * HTTP authentication. If you are using sensitive username/password information, please do
      * NOT use this method. If you add credentials using this method, any server that requires
-     * authentication will receive the specified username and password.
+     * authentication may receive the specified username and password.
      * @param username the username for the new credentials
      * @param password the password for the new credentials
      */
@@ -86,19 +69,20 @@ public class DefaultCredentialsProvider implements CredentialsProvider, Serializ
      */
     public void addCredentials(final String username, final String password, final String host,
             final int port, final String realm) {
-        final AuthScopeProxy scope = new AuthScopeProxy(host, port, realm, AuthScope.ANY_SCHEME);
-        final Credentials c = new UsernamePasswordCredentialsExt(username, password);
-        credentials_.put(scope, c);
-        clearAnswered(); // don't need to be precise, will cause in worst case one extra request
+        final AuthScope authscope = new AuthScope(host, port, realm, AuthScope.ANY_SCHEME);
+        final Credentials credentials = new UsernamePasswordCredentials(username, password);
+        setCredentials(authscope, credentials);
     }
 
     /**
      * Adds proxy credentials for the specified username/password for any host/port/realm combination.
      * @param username the username for the new credentials
      * @param password the password for the new credentials
+     * @deprecated as of 2.8, please use {@link #addCredentials(String, String)} instead
      */
+    @Deprecated
     public void addProxyCredentials(final String username, final String password) {
-        addProxyCredentials(username, password, AuthScope.ANY_HOST, AuthScope.ANY_PORT);
+        addCredentials(username, password);
     }
 
     /**
@@ -107,12 +91,11 @@ public class DefaultCredentialsProvider implements CredentialsProvider, Serializ
      * @param password the password for the new credentials
      * @param host the host to which to the new credentials apply (<tt>null</tt> if applicable to any host)
      * @param port the port to which to the new credentials apply (negative if applicable to any port)
+     * @deprecated as of 2.8, please use {@link #addCredentials(String, String, String, int, String)} instead
      */
+    @Deprecated
     public void addProxyCredentials(final String username, final String password, final String host, final int port) {
-        final AuthScopeProxy scope = new AuthScopeProxy(host, port, AuthScope.ANY_REALM, AuthScope.ANY_SCHEME);
-        final Credentials c = new UsernamePasswordCredentialsExt(username, password);
-        proxyCredentials_.put(scope, c);
-        clearAnswered(); // don't need to be precise, will cause in worst case one extra request
+        addCredentials(username, password, host, port, AuthScope.ANY_REALM);
     }
 
     /**
@@ -122,16 +105,16 @@ public class DefaultCredentialsProvider implements CredentialsProvider, Serializ
      * @param password the password for the new credentials
      * @param host the host to which to the new credentials apply (<tt>null</tt> if applicable to any host)
      * @param port the port to which to the new credentials apply (negative if applicable to any port)
-     * @param clientHost the host the authentication request is originating from; essentially, the computer name for
-     *        this machine.
-     * @param clientDomain the domain to authenticate within
+     * @param workstation The workstation the authentication request is originating from.
+     *        Essentially, the computer name for this machine.
+     * @param domain the domain to authenticate within
+     * @see <a href="http://htmlunit.sourceforge.net/ntlm.html">How to use NTML authenticaion</a>
      */
     public void addNTLMCredentials(final String username, final String password, final String host,
-            final int port, final String clientHost, final String clientDomain) {
-        final AuthScopeProxy scope = new AuthScopeProxy(host, port, AuthScope.ANY_REALM, AuthScope.ANY_SCHEME);
-        final Credentials c = new NTCredentialsExt(username, password, clientHost, clientDomain);
-        credentials_.put(scope, c);
-        clearAnswered(); // don't need to be precise, will cause in worst case one extra request
+            final int port, final String workstation, final String domain) {
+        final AuthScope authscope = new AuthScope(host, port, AuthScope.ANY_REALM, AuthScope.ANY_SCHEME);
+        final Credentials credentials = new NTCredentials(username, password, workstation, domain);
+        setCredentials(authscope, credentials);
     }
 
     /**
@@ -141,152 +124,97 @@ public class DefaultCredentialsProvider implements CredentialsProvider, Serializ
      * @param password the password for the new credentials
      * @param host the host to which to the new credentials apply (<tt>null</tt> if applicable to any host)
      * @param port the port to which to the new credentials apply (negative if applicable to any port)
-     * @param clientHost the host the authentication request is originating from; essentially, the computer name for
+     * @param workstation the host the authentication request is originating from; essentially, the computer name for
      *        this machine
-     * @param clientDomain the domain to authenticate within
+     * @param domain the domain to authenticate within
+     * @deprecated as of 2.8,
+     *             please use {@link #addNTLMCredentials(String, String, String, int, String, String)} instead
      */
+    @Deprecated
     public void addNTLMProxyCredentials(final String username, final String password, final String host,
-            final int port, final String clientHost, final String clientDomain) {
-        final AuthScopeProxy scope = new AuthScopeProxy(host, port, AuthScope.ANY_REALM, AuthScope.ANY_SCHEME);
-        final Credentials c = new NTCredentialsExt(username, password, clientHost, clientDomain);
-        proxyCredentials_.put(scope, c);
-        clearAnswered(); // don't need to be precise, will cause in worst case one extra request
+            final int port, final String workstation, final String domain) {
+        addNTLMCredentials(username, password, host, port, workstation, domain);
     }
 
     /**
-     * Returns the credentials associated with the specified scheme, host and port.
-     * @param scheme the authentication scheme being used (basic, digest, NTLM, etc)
-     * @param host the host we are authenticating for
-     * @param port the port we are authenticating for
-     * @param proxy Whether or not we are authenticating using a proxy
-     * @return the credentials corresponding to the specified scheme, host and port or <code>null</code>
-     * if already asked for it to avoid infinite loop
-     * @throws CredentialsNotAvailableException if the specified credentials cannot be provided due to an error
-     * @see CredentialsProvider#getCredentials(AuthScheme, String, int, boolean)
+     * {@inheritDoc}
      */
-    public Credentials getCredentials(final AuthScheme scheme, final String host, final int port, final boolean proxy)
-        throws CredentialsNotAvailableException {
-
-        // It's the responsibility of the CredentialProvider to answer only once with a
-        // given Credentials to avoid infinite loop if it is incorrect:
-        // see http://issues.apache.org/bugzilla/show_bug.cgi?id=8140
-        if (alreadyAnswered(scheme, host, port, proxy)) {
-            LOG.debug("Already answered for " + buildKey(scheme, host, port, proxy) + ", returning null");
-            return null;
+    public synchronized void setCredentials(final AuthScope authscope, final Credentials credentials) {
+        if (authscope == null) {
+            throw new IllegalArgumentException("Authentication scope may not be null");
         }
-
-        final Map<AuthScopeProxy, Credentials> credentials;
-        if (proxy) {
-            credentials = proxyCredentials_;
+        final CredentialsFactory factory;
+        if (credentials instanceof UsernamePasswordCredentials) {
+            final UsernamePasswordCredentials userCredentials = (UsernamePasswordCredentials) credentials;
+            factory = new UsernamePasswordCredentialsFactory(userCredentials.getUserName(),
+                        userCredentials.getPassword());
+        }
+        else if (credentials instanceof NTCredentials) {
+            final NTCredentials ntCredentials = (NTCredentials) credentials;
+            factory = new NTCredentialsFactory(ntCredentials.getUserName(), ntCredentials.getPassword(),
+                    ntCredentials.getWorkstation(), ntCredentials.getDomain());
         }
         else {
-            credentials = credentials_;
+            throw new IllegalArgumentException("Unsupported Credential type: " + credentials.getClass().getName());
         }
+        credentialsMap_.put(new AuthScopeProxy(authscope), factory);
+    }
 
-        for (final Map.Entry<AuthScopeProxy, Credentials> entry : credentials.entrySet()) {
-            final AuthScope scope = entry.getKey().getAuthScope();
-            final Credentials c = entry.getValue();
-            if (matchScheme(scope, scheme) && matchHost(scope, host)
-                && matchPort(scope, port) && matchRealm(scope, scheme)) {
-                markAsAnswered(scheme, host, port, proxy);
-                LOG.debug("Returning " + c + " for " + buildKey(scheme, host, port, proxy));
-                return c;
+    /**
+     * Find matching {@link Credentials credentials} for the given authentication scope.
+     *
+     * @param map the credentials hash map
+     * @param authscope the {@link AuthScope authentication scope}
+     * @return the credentials
+     */
+    private static Credentials matchCredentials(final HashMap<AuthScopeProxy, CredentialsFactory> map,
+            final AuthScope authscope) {
+        final CredentialsFactory factory = map.get(new AuthScopeProxy(authscope));
+        Credentials creds = null;
+        if (factory == null) {
+            int bestMatchFactor  = -1;
+            AuthScope bestMatch  = null;
+            for (final AuthScopeProxy proxy : map.keySet()) {
+                final AuthScope current = proxy.getAuthScope();
+                final int factor = authscope.match(current);
+                if (factor > bestMatchFactor) {
+                    bestMatchFactor = factor;
+                    bestMatch = current;
+                }
+            }
+            if (bestMatch != null) {
+                creds = map.get(new AuthScopeProxy(bestMatch)).getInstance();
             }
         }
-
-        LOG.debug("No credential found for " + buildKey(scheme, host, port, proxy));
-        return null;
+        else {
+            creds = factory.getInstance();
+        }
+        return creds;
     }
 
     /**
-     * @param scheme the request scheme for which Credentials are asked
-     * @param scope the configured authorization scope
-     * @return <code>true</code> if the scope's realm matches the one of the scheme
+     * {@inheritDoc}
      */
-    protected boolean matchRealm(final AuthScope scope, final AuthScheme scheme) {
-        return scope.getRealm() == AuthScope.ANY_REALM || scope.getRealm().equals(scheme.getRealm());
+    public synchronized Credentials getCredentials(final AuthScope authscope) {
+        if (authscope == null) {
+            throw new IllegalArgumentException("Authentication scope may not be null");
+        }
+        return matchCredentials(credentialsMap_, authscope);
     }
 
     /**
-     * @param port the request port for which Credentials are asked
-     * @param scope the configured authorization scope
-     * @return <code>true</code> if the scope's port matches the provided one
+     * {@inheritDoc}
      */
-    protected boolean matchPort(final AuthScope scope, final int port) {
-        return scope.getPort() == AuthScope.ANY_PORT || scope.getPort() == port;
+    @Override
+    public String toString() {
+        return credentialsMap_.toString();
     }
 
     /**
-     * @param host the request host for which Credentials are asked
-     * @param scope the configured authorization scope
-     * @return <code>true</code> if the scope's host matches the provided one
+     * {@inheritDoc}
      */
-    protected boolean matchHost(final AuthScope scope, final String host) {
-        return scope.getHost() == AuthScope.ANY_HOST || scope.getHost().equals(host);
-    }
-
-    /**
-     * @param scheme the request scheme for which Credentials are asked
-     * @param scope the configured authorization scope
-     * @return <code>true</code> if the scope's scheme matches the provided one
-     */
-    protected boolean matchScheme(final AuthScope scope, final AuthScheme scheme) {
-        return scope.getScheme() == AuthScope.ANY_SCHEME || scope.getScheme().equals(scheme.getSchemeName());
-    }
-
-    /**
-     * Returns <tt>true</tt> if this provider has already provided an answer for the
-     * specified (scheme, host, port, proxy) combination.
-     * @param scheme the scheme
-     * @param host the server name
-     * @param port the server port
-     * @param proxy is proxy
-     * @return true if the provider has already provided an answer for this
-     */
-    protected boolean alreadyAnswered(final AuthScheme scheme, final String host, final int port, final boolean proxy) {
-        return answerMarks_.contains(buildKey(scheme, host, port, proxy));
-    }
-
-    /**
-     * Marks the specified (scheme, host, port, proxy) combination as having already been processed.
-     * @param scheme the scheme
-     * @param host the server name
-     * @param port the server port
-     * @param proxy is proxy
-     */
-    protected void markAsAnswered(final AuthScheme scheme, final String host, final int port, final boolean proxy) {
-        answerMarks_.add(buildKey(scheme, host, port, proxy));
-    }
-
-    /**
-     * Clears the cache of answered (scheme, host, port, proxy) combinations.
-     */
-    protected void clearAnswered() {
-        answerMarks_.clear();
-        LOG.debug("Flushed marked answers");
-    }
-
-    /**
-     * Builds a key with the specified data.
-     * @param scheme the scheme
-     * @param host the server name
-     * @param port the server port
-     * @param proxy is proxy
-     * @return the new key
-     */
-    protected Object buildKey(final AuthScheme scheme, final String host, final int port, final boolean proxy) {
-        return scheme.getSchemeName() + " " + scheme.getRealm() + " " + host + ":" + port + " " + proxy;
-    }
-
-    /**
-     * Clears the cache of answered credentials requests upon deserialization.
-     * @param stream the object stream containing the instance being deserialized
-     * @throws IOException if an IO error occurs
-     * @throws ClassNotFoundException if the class of a serialized object cannot be found
-     */
-    private void readObject(final ObjectInputStream stream) throws IOException, ClassNotFoundException {
-        stream.defaultReadObject();
-        answerMarks_.clear();
+    public synchronized void clear() {
+        credentialsMap_.clear();
     }
 
     /**
@@ -294,10 +222,9 @@ public class DefaultCredentialsProvider implements CredentialsProvider, Serializ
      * {@link DefaultCredentialsProvider} class can be serialized correctly.
      */
     private static class AuthScopeProxy implements Serializable {
-        private static final long serialVersionUID = 1464373861677912537L;
         private AuthScope authScope_;
-        public AuthScopeProxy(final String host, final int port, final String realm, final String scheme) {
-            authScope_ = new AuthScope(host, port, realm, scheme);
+        public AuthScopeProxy(final AuthScope authScope) {
+            authScope_ = authScope;
         }
         public AuthScope getAuthScope() {
             return authScope_;
@@ -315,57 +242,68 @@ public class DefaultCredentialsProvider implements CredentialsProvider, Serializ
             final String scheme = (String) stream.readObject();
             authScope_ = new AuthScope(host, port, realm, scheme);
         }
-    }
-
-    /**
-     * We have to extend {@link UsernamePasswordCredentials} so that the
-     * {@link DefaultCredentialsProvider} class can be serialized correctly.
-     */
-    private static class UsernamePasswordCredentialsExt
-        extends UsernamePasswordCredentials implements Serializable {
-        private static final long serialVersionUID = 6578356387067132849L;
-        public UsernamePasswordCredentialsExt(final String username, final String password) {
-            super(username, password);
+        @Override
+        public int hashCode() {
+            return authScope_.hashCode();
         }
-        private void writeObject(final ObjectOutputStream stream) throws IOException {
-            stream.writeObject(this.getUserName());
-            stream.writeObject(this.getPassword());
-        }
-        @SuppressWarnings("deprecation")
-        private void readObject(final ObjectInputStream stream) throws IOException, ClassNotFoundException {
-            final String username = (String) stream.readObject();
-            final String password = (String) stream.readObject();
-            this.setUserName(username);
-            this.setPassword(password);
+        @Override
+        public boolean equals(final Object obj) {
+            return obj instanceof AuthScopeProxy && authScope_.equals(((AuthScopeProxy) obj).getAuthScope());
         }
     }
 
     /**
-     * We have to extend {@link NTCredentials} so that the
-     * {@link DefaultCredentialsProvider} class can be serialized correctly.
+     * We have to create a factory class, so that credentials can be serialized correctly.
      */
-    private static class NTCredentialsExt extends NTCredentials implements Serializable {
-        private static final long serialVersionUID = 1390068355010421017L;
-        public NTCredentialsExt(final String username, final String password, final String host, final String domain) {
-            super(username, password, host, domain);
+    private static class UsernamePasswordCredentialsFactory implements CredentialsFactory, Serializable {
+        private String username_;
+        private String password_;
+
+        public UsernamePasswordCredentialsFactory(final String username, final String password) {
+            username_ = username;
+            password_ = password;
         }
-        private void writeObject(final ObjectOutputStream stream) throws IOException {
-            stream.writeObject(this.getUserName());
-            stream.writeObject(this.getPassword());
-            stream.writeObject(this.getHost());
-            stream.writeObject(this.getDomain());
+
+        public Credentials getInstance() {
+            return new UsernamePasswordCredentials(username_, password_);
         }
-        @SuppressWarnings("deprecation")
-        private void readObject(final ObjectInputStream stream) throws IOException, ClassNotFoundException {
-            final String username = (String) stream.readObject();
-            final String password = (String) stream.readObject();
-            final String host = (String) stream.readObject();
-            final String domain = (String) stream.readObject();
-            this.setUserName(username);
-            this.setPassword(password);
-            this.setHost(host);
-            this.setDomain(domain);
+
+        public String toString() {
+            return getInstance().toString();
         }
+    }
+
+    /**
+     * We have to create a factory class, so that credentials can be serialized correctly.
+     */
+    private static class NTCredentialsFactory implements CredentialsFactory, Serializable {
+        private String username_;
+        private String password_;
+        private String workstation_;
+        private String domain_;
+
+        public NTCredentialsFactory(final String username, final String password, final String workstation,
+                final String domain) {
+            username_ = username;
+            password_ = password;
+            workstation_ = workstation;
+            domain_ = domain;
+        }
+
+        public Credentials getInstance() {
+            return new NTCredentials(username_, password_, workstation_, domain_);
+        }
+
+        public String toString() {
+            return getInstance().toString();
+        }
+    }
+
+    /**
+     * Factory class interface
+     */
+    private interface CredentialsFactory {
+        Credentials getInstance();
     }
 
 }

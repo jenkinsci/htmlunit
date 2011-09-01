@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,15 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.html.DomAttr;
 import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.DomNode;
@@ -29,15 +33,15 @@ import com.gargoylesoftware.htmlunit.xml.XmlUtil;
 /**
  * A JavaScript object for {@link DomElement}.
  *
- * @version $Revision: 4753 $
+ * @version $Revision: 6358 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
  * @author Sudhan Moghe
  */
 public class Element extends EventNode {
 
-    private static final long serialVersionUID = 5616690634173934926L;
     private NamedNodeMap attributes_;
+    private Map<String, HTMLCollection> elementsByTagName_; // for performance and for equality (==)
 
     /**
      * Applies the specified XPath expression to this node's context and returns the generated list of matching nodes.
@@ -45,8 +49,15 @@ public class Element extends EventNode {
      * @return list of the found elements
      */
     public HTMLCollection jsxFunction_selectNodes(final String expression) {
-        final HTMLCollection collection = new HTMLCollection(this);
-        collection.init(getDomNodeOrDie(), expression);
+        final DomElement domNode = getDomNodeOrDie();
+        final boolean attributeChangeSensitive = expression.contains("@");
+        final String description = "Element.selectNodes('" + expression + "')";
+        final HTMLCollection collection = new HTMLCollection(domNode, attributeChangeSensitive, description) {
+            protected List<Object> computeElements() {
+                final List<Object> list = new ArrayList<Object>(domNode.getByXPath(expression));
+                return list;
+            }
+        };
         return collection;
     }
 
@@ -93,24 +104,38 @@ public class Element extends EventNode {
     }
 
     /**
-     * Gets the specified attribute.
+     * Returns the value of the specified attribute.
      * @param attributeName attribute name
+     * @param flags IE-specific flags (see the MSDN documentation for more info)
      * @return the value of the specified attribute, <code>null</code> if the attribute is not defined
+     * @see <a href="http://msdn.microsoft.com/en-us/library/ms536429.aspx">MSDN Documentation</a>
+     * @see <a href="http://reference.sitepoint.com/javascript/Element/getAttribute">IE Bug Documentation</a>
      */
-    public Object jsxFunction_getAttribute(String attributeName) {
+    public Object jsxFunction_getAttribute(String attributeName, final Integer flags) {
+        final boolean ie = getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_36);
         attributeName = fixAttributeName(attributeName);
-        final String value = getDomNodeOrDie().getAttribute(attributeName);
+
+        Object value;
+        if (ie && flags != null && flags == 2 && "style".equalsIgnoreCase(attributeName)) {
+            value = "";
+        }
+        else {
+            value = getDomNodeOrDie().getAttribute(attributeName);
+        }
+
         if (value == DomElement.ATTRIBUTE_NOT_DEFINED) {
-            if (getBrowserVersion().isIE()) {
+            value = null;
+            if (ie) {
                 for (Scriptable object = this; object != null; object = object.getPrototype()) {
                     final Object property = object.get(attributeName, this);
                     if (property != NOT_FOUND) {
-                        return property;
+                        value = property;
+                        break;
                     }
                 }
             }
-            return null;
         }
+
         return value;
     }
 
@@ -139,9 +164,36 @@ public class Element extends EventNode {
      * @return all the descendant elements with the specified tag name
      */
     public Object jsxFunction_getElementsByTagName(final String tagName) {
-        final DomNode domNode = getDomNodeOrDie();
-        final HTMLCollection collection = new HTMLCollection(this);
-        collection.init(domNode, ".//*[local-name()='" + tagName + "']");
+        final String tagNameLC = tagName.toLowerCase();
+
+        if (elementsByTagName_ == null) {
+            elementsByTagName_ = new HashMap<String, HTMLCollection>();
+        }
+
+        HTMLCollection collection = elementsByTagName_.get(tagNameLC);
+        if (collection != null) {
+            return collection;
+        }
+
+        final DomNode node = getDomNodeOrDie();
+        final String description = "Element.getElementsByTagName('" + tagNameLC + "')";
+        if ("*".equals(tagName)) {
+            collection = new HTMLCollection(node, false, description) {
+                protected boolean isMatching(final DomNode node) {
+                    return true;
+                }
+            };
+        }
+        else {
+            collection = new HTMLCollection(node, false, description) {
+                protected boolean isMatching(final DomNode node) {
+                    return tagNameLC.equalsIgnoreCase(node.getLocalName());
+                }
+            };
+        }
+
+        elementsByTagName_.put(tagName, collection);
+
         return collection;
     }
 
@@ -172,25 +224,25 @@ public class Element extends EventNode {
 
     private void toText(final DomNode node, final StringBuilder buffer) {
         switch (node.getNodeType()) {
-            case org.w3c.dom.Node.DOCUMENT_TYPE_NODE:
-            case org.w3c.dom.Node.NOTATION_NODE:
+            case Node.DOCUMENT_TYPE_NODE:
+            case Node.NOTATION_NODE:
                 return;
-            case org.w3c.dom.Node.TEXT_NODE:
-            case org.w3c.dom.Node.CDATA_SECTION_NODE:
-            case org.w3c.dom.Node.COMMENT_NODE:
-            case org.w3c.dom.Node.PROCESSING_INSTRUCTION_NODE:
+            case Node.TEXT_NODE:
+            case Node.CDATA_SECTION_NODE:
+            case Node.COMMENT_NODE:
+            case Node.PROCESSING_INSTRUCTION_NODE:
                 buffer.append(node.getNodeValue());
                 break;
             default:
         }
         for (final DomNode child : node.getChildren()) {
             switch (child.getNodeType()) {
-                case org.w3c.dom.Node.ELEMENT_NODE:
+                case ELEMENT_NODE:
                     toText(child, buffer);
                     break;
 
-                case org.w3c.dom.Node.TEXT_NODE:
-                case org.w3c.dom.Node.CDATA_SECTION_NODE:
+                case TEXT_NODE:
+                case CDATA_SECTION_NODE:
                     buffer.append(child.getNodeValue());
                     break;
                 default:
@@ -206,17 +258,30 @@ public class Element extends EventNode {
      * @return a live NodeList of found elements in the order they appear in the tree
      */
     public Object jsxFunction_getElementsByTagNameNS(final Object namespaceURI, final String localName) {
-        final DomNode domNode = getDomNodeOrDie();
-        final HTMLCollection collection = new HTMLCollection(this);
-        final String xpath;
-        if (namespaceURI == null || namespaceURI.equals("*")) {
-            xpath = ".//" + localName;
+        final String description = "Element.getElementsByTagNameNS('" + namespaceURI + "', '" + localName + "')";
+        final DomElement domNode = getDomNodeOrDie();
+
+        final String prefix;
+        if (namespaceURI != null && !"*".equals("*")) {
+            prefix = XmlUtil.lookupPrefix(domNode, Context.toString(namespaceURI));
         }
         else {
-            final String prefix = XmlUtil.lookupPrefix((DomElement) domNode, Context.toString(namespaceURI));
-            xpath = ".//" + prefix + ':' + localName;
+            prefix = null;
         }
-        collection.init(domNode, xpath);
+
+        final HTMLCollection collection = new HTMLCollection(domNode, false, description) {
+            @Override
+            protected boolean isMatching(final DomNode node) {
+                if (!localName.equals(node.getLocalName())) {
+                    return false;
+                }
+                if (prefix == null) {
+                    return true;
+                }
+                return true;
+            }
+        };
+
         return collection;
     }
 
@@ -235,6 +300,7 @@ public class Element extends EventNode {
      * {@inheritDoc}
      */
     @Override
+    @SuppressWarnings("unchecked")
     public DomElement getDomNodeOrDie() {
         return (DomElement) super.getDomNodeOrDie();
     }
@@ -245,7 +311,7 @@ public class Element extends EventNode {
      */
     public void jsxFunction_removeAttribute(final String name) {
         getDomNodeOrDie().removeAttribute(name);
-        if (getBrowserVersion().isIE()) {
+        if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_37)) {
             delete(name);
         }
     }

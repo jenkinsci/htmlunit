@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,19 +16,17 @@ package com.gargoylesoftware.htmlunit;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 
 /**
  * A generic page that is returned whenever an unexpected content type is
  * returned by the server.
  *
- * @version $Revision: 4756 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  */
 public class UnexpectedPage implements Page {
-
-    /** Serial version UID. */
-    private static final long serialVersionUID = -4072615208727355040L;
 
     private final WebResponse webResponse_;
     private WebWindow enclosingWindow_;
@@ -84,5 +82,12 @@ public class UnexpectedPage implements Page {
     public WebWindow getEnclosingWindow() {
         return enclosingWindow_;
     }
-}
 
+    /**
+     * Returns the URL of this page.
+     * @return the URL of this page
+     */
+    public URL getUrl() {
+        return getWebResponse().getWebRequest().getUrl();
+    }
+}

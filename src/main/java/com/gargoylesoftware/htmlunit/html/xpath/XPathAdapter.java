@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import javax.xml.transform.ErrorListener;
 import javax.xml.transform.SourceLocator;
 import javax.xml.transform.TransformerException;
 
-import org.apache.xalan.res.XSLMessages;
 import org.apache.xml.utils.DefaultErrorHandler;
 import org.apache.xml.utils.PrefixResolver;
 import org.apache.xml.utils.WrappedRuntimeException;
@@ -33,14 +32,17 @@ import org.apache.xpath.compiler.FunctionTable;
 import org.apache.xpath.compiler.XPathParser;
 import org.apache.xpath.objects.XObject;
 import org.apache.xpath.res.XPATHErrorResources;
+import org.apache.xpath.res.XPATHMessages;
 
 /**
  * XPath adapter implementation for HtmlUnit.
  *
- * @version $Revision: 4229 $
+ * @version $Revision: 6367 $
  * @author Ahmed Ashour
  */
 class XPathAdapter {
+    private static final Pattern PREPROCESS_XPATH_PATTERN = Pattern.compile("(@[a-zA-Z]+)");
+
     private Expression mainExp_;
     private FunctionTable funcTable_;
 
@@ -50,7 +52,6 @@ class XPathAdapter {
     private void initFunctionTable() {
         funcTable_ = new FunctionTable();
         funcTable_.installFunction("lower-case", LowerCaseFunction.class);
-        funcTable_.installFunction("is-descendant-of-contextual-form", IsDescendantOfContextualFormFunction.class);
     }
 
     /**
@@ -101,8 +102,7 @@ class XPathAdapter {
         processOutsideBrackets(charArray);
         xpath = new String(charArray);
 
-        final Pattern pattern = Pattern.compile("(@[a-zA-Z]+)");
-        final Matcher matcher = pattern.matcher(xpath);
+        final Matcher matcher = PREPROCESS_XPATH_PATTERN.matcher(xpath);
         while (matcher.find()) {
             final String attribute = matcher.group(1);
             xpath = xpath.replace(attribute, attribute.toLowerCase());
@@ -175,7 +175,7 @@ class XPathAdapter {
             String msg = e.getMessage();
 
             if (msg == null || msg.length() == 0) {
-                msg = XSLMessages.createXPATHMessage(XPATHErrorResources.ER_XPATH_ERROR, null);
+                msg = XPATHMessages.createXPATHMessage(XPATHErrorResources.ER_XPATH_ERROR, null);
             }
             final TransformerException te = new TransformerException(msg, mainExp_, e);
             final ErrorListener el = xpathContext.getErrorListener();

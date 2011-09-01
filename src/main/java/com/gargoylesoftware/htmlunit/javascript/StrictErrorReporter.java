@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,13 +25,12 @@ import org.apache.commons.logging.LogFactory;
 /**
  * A JavaScript error reporter that will log all warnings and errors, no matter how trivial.
  *
- * @version $Revision: 4789 $
+ * @version $Revision: 6204 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Marc Guillemot
  */
 public class StrictErrorReporter implements ErrorReporter, Serializable {
 
-    private static final long serialVersionUID = 2165290829783324770L;
     private static final Log LOG = LogFactory.getLog(StrictErrorReporter.class);
 
     /**
@@ -58,8 +57,7 @@ public class StrictErrorReporter implements ErrorReporter, Serializable {
      * @param lineSource the source code that failed
      * @param lineOffset the line offset
      */
-    public void error(
-            final String message, final String sourceName, final int line,
+    public void error(final String message, final String sourceName, final int line,
             final String lineSource, final int lineOffset) {
         LOG.error(format("error", message, sourceName, line, lineSource, lineOffset));
         throw new EvaluatorException(message, sourceName, line, lineSource, lineOffset);

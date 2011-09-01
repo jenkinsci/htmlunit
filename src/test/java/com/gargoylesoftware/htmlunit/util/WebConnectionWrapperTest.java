@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,22 +19,20 @@ import static org.junit.Assert.assertSame;
 import java.util.Collections;
 import java.util.List;
 
-import org.apache.commons.httpclient.HttpStatus;
-import org.apache.commons.httpclient.NameValuePair;
+import org.apache.http.HttpStatus;
 import org.junit.Test;
 
 import com.gargoylesoftware.htmlunit.HttpMethod;
 import com.gargoylesoftware.htmlunit.WebConnection;
-import com.gargoylesoftware.htmlunit.WebRequestSettings;
+import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.WebResponseData;
-import com.gargoylesoftware.htmlunit.WebResponseImpl;
 import com.gargoylesoftware.htmlunit.WebTestCase;
 
 /**
  * Tests for {@link WebConnectionWrapper}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  */
 public class WebConnectionWrapperTest extends WebTestCase {
@@ -46,12 +44,12 @@ public class WebConnectionWrapperTest extends WebTestCase {
     public void wrapper() throws Exception {
         final List<NameValuePair> emptyList = Collections.emptyList();
         final WebResponseData data = new WebResponseData(new byte[]{}, HttpStatus.SC_OK, "", emptyList);
-        final WebResponse response = new WebResponseImpl(data, URL_FIRST, HttpMethod.GET, 0);
-        final WebRequestSettings wrs = new WebRequestSettings(URL_FIRST);
+        final WebResponse response = new WebResponse(data, URL_FIRST, HttpMethod.GET, 0);
+        final WebRequest wrs = new WebRequest(URL_FIRST);
 
         final WebConnection realConnection = new WebConnection() {
-            public WebResponse getResponse(final WebRequestSettings settings) {
-                assertSame(wrs, settings);
+            public WebResponse getResponse(final WebRequest request) {
+                assertSame(wrs, request);
                 return response;
             }
         };

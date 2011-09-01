@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import net.sourceforge.htmlunit.corejs.javascript.Function;
 import net.sourceforge.htmlunit.corejs.javascript.FunctionObject;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -41,13 +42,11 @@ import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLHttpRequest;
  * which java class is instantiated.
  *
  * @see com.gargoylesoftware.htmlunit.WebClient
- * @version $Revision: 4806 $
+ * @version $Revision: 6265 $
  * @author <a href="mailto:bcurren@esomnie.com">Ben Curren</a>
  * @author Ahmed Ashour
  */
 public class ActiveXObject extends SimpleScriptable {
-
-    private static final long serialVersionUID = 7327032075131452226L;
 
     private static final Log LOG = LogFactory.getLog(ActiveXObject.class);
 
@@ -122,13 +121,12 @@ public class ActiveXObject extends SimpleScriptable {
                 return new ActiveXObjectImpl(activeXName);
             }
             catch (final Exception e) {
-                if (LOG.isWarnEnabled()) {
-                    LOG.warn("Error initiating Jacob", e);
-                }
+                LOG.warn("Error initiating Jacob", e);
             }
         }
 
-        throw Context.throwAsScriptRuntimeEx(new Exception("Automation server can't create object"));
+        LOG.warn("Automation server can't create object for '" + activeXName + "'.");
+        throw Context.reportRuntimeError("Automation server can't create object for '" + activeXName + "'.");
     }
 
     /**
@@ -220,6 +218,7 @@ public class ActiveXObject extends SimpleScriptable {
         addProperty(document, "xml", true, false);
 
         // the functions
+        addFunction(document, "createNode");
         addFunction(document, "createCDATASection");
         addFunction(document, "createProcessingInstruction");
         addFunction(document, "getElementsByTagName");
@@ -233,7 +232,7 @@ public class ActiveXObject extends SimpleScriptable {
         final JavaScriptConfiguration jsConfig =
             JavaScriptConfiguration.getInstance(BrowserVersion.INTERNET_EXPLORER_7);
 
-        for (String className = "Document"; className.trim().length() != 0;) {
+        for (String className = "Document"; StringUtils.isNotBlank(className);) {
             final ClassConfiguration classConfig = jsConfig.getClassConfiguration(className);
             for (final String function : classConfig.functionKeys()) {
                 addFunction(document, function);
@@ -243,7 +242,7 @@ public class ActiveXObject extends SimpleScriptable {
                         classConfig.getPropertyReadMethod(property) != null,
                         classConfig.getPropertyWriteMethod(property) != null);
             }
-            className = classConfig.getExtendedClass();
+            className = classConfig.getExtendedClassName();
 
         }
         return document;

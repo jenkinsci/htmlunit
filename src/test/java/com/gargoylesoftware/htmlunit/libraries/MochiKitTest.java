@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import org.junit.runner.RunWith;
 import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.html.HtmlDivision;
+import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 
 /**
@@ -33,13 +34,13 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
  * Note: the tests test_MochiKit-DOM-Safari.html, test_MochiKit-DragAndDrop.html and test_MochiKit-JSAN.html
  * are not run as they don't even pass in a "real" Firefox 3.
  * </p>
- * @version $Revision: 4661 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  */
 @RunWith(BrowserRunner.class)
 public class MochiKitTest extends LibraryTestCase {
 
-    private static final String BASE_FILE_PATH = "MochiKit/1.4.1";
+    private static final String BASE_FILE_PATH = "libraries/MochiKit/1.4.1";
     private WebClient webClient_;
 
     /**
@@ -162,6 +163,11 @@ public class MochiKitTest extends LibraryTestCase {
         webClient_ = getWebClient();
         final HtmlPage page = webClient_.getPage(url);
         webClient_.waitForBackgroundJavaScriptStartingBefore(2000);
+
+        // make single test results visible
+        ((HtmlElement) page.getFirstByXPath("//a[text() = 'Toggle passed tests']")).click();
+        ((HtmlElement) page.getFirstByXPath("//a[text() = 'Toggle failed tests']")).click();
+
         final String expected = loadExpectation("test-" + testName);
         final HtmlDivision div = page.getFirstByXPath("//div[@class = 'tests_report']");
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,24 +18,23 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 
 /**
  * Tests for {@link CSSValue}.
  *
- * @version $Revision: 4712 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  */
 @RunWith(BrowserRunner.class)
-public class CSSValueTest extends WebTestCase {
+public class CSSValueTest extends WebDriverTestCase {
 
     /**
      * @throws Exception on test failure
      */
     @Test
-    @Alerts(FF2 = { "[CSSValue]", "0123" },
-            FF3 = { "[object CSSValue]", "0123" },
+    @Alerts(FF = { "[object CSSValue]", "0123" },
             IE = { "exception" })
     public void test() throws Exception {
         final String html = "<html><head><title>First</title>\n"
@@ -53,6 +52,6 @@ public class CSSValueTest extends WebTestCase {
                 + "</script>\n"
                 + "</head><body onload='test()'>\n"
                 + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 }

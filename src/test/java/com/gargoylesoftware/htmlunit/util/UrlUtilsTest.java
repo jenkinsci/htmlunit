@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,10 +23,11 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
 /**
  * Tests for {@link UrlUtils}.
  *
- * @version $Revision: 4387 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
  * @author Martin Tamme
  * @author Sudhan Moghe
+ * @author Ahmed Ashour
  */
 public class UrlUtilsTest extends WebTestCase {
 
@@ -183,5 +184,14 @@ public class UrlUtilsTest extends WebTestCase {
 
         assertEquals("http://a/f.html", UrlUtils.resolveUrl("http://a/otherFile.html", "../f.html"));
         assertEquals("http://a/f.html", UrlUtils.resolveUrl("http://a/otherFile.html", "../../f.html"));
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void percent() throws Exception {
+        final URL url = new URL("http://localhost/bug%21.html");
+        assertEquals("http://localhost/bug%21.html", UrlUtils.encodeUrl(url, false).toExternalForm());
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,27 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import java.util.Collections;
+
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.openqa.selenium.By;
+import org.openqa.selenium.InvalidElementStateException;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Tests for {@link HtmlPasswordInput}.
  *
- * @version $Revision: 4808 $
+ * @version $Revision: 6479 $
  * @author Ahmed Ashour
  */
 @RunWith(BrowserRunner.class)
-public class HtmlPasswordInputTest extends WebTestCase {
+public class HtmlPasswordInputTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if the test fails
@@ -35,18 +42,18 @@ public class HtmlPasswordInputTest extends WebTestCase {
     @Test
     public void type() throws Exception {
         final String html = "<html><head></head><body><input type='password' id='p'/></body></html>";
-        final HtmlPage page = loadPageWithAlerts(html);
-        final HtmlPasswordInput p = page.getHtmlElementById("p");
-        p.type("abc");
-        assertEquals("abc", p.getValueAttribute());
-        p.type('\b');
-        assertEquals("ab", p.getValueAttribute());
-        p.type('\b');
-        assertEquals("a", p.getValueAttribute());
-        p.type('\b');
-        assertEquals("", p.getValueAttribute());
-        p.type('\b');
-        assertEquals("", p.getValueAttribute());
+        final WebDriver driver = loadPage2(html);
+        final WebElement p = driver.findElement(By.id("p"));
+        p.sendKeys("abc");
+        assertEquals("abc", p.getAttribute("value"));
+        p.sendKeys("\b");
+        assertEquals("ab", p.getAttribute("value"));
+        p.sendKeys("\b");
+        assertEquals("a", p.getAttribute("value"));
+        p.sendKeys("\b");
+        assertEquals("", p.getAttribute("value"));
+        p.sendKeys("\b");
+        assertEquals("", p.getAttribute("value"));
     }
 
     /**
@@ -55,13 +62,20 @@ public class HtmlPasswordInputTest extends WebTestCase {
     @Test
     public void typeWhileDisabled() throws Exception {
         final String html = "<html><body><input type='password' id='p' disabled='disabled'/></body></html>";
-        final HtmlPage page = loadPageWithAlerts(html);
-        final HtmlPasswordInput p = page.getHtmlElementById("p");
-        p.type("abc");
-        assertEquals("", p.getValueAttribute());
+        final WebDriver driver = loadPage2(html);
+        final WebElement p = driver.findElement(By.id("p"));
+        try {
+            p.sendKeys("abc");
+            Assert.fail();
+        }
+        catch (final InvalidElementStateException e) {
+            // as expected
+        }
+        assertEquals("", p.getAttribute("value"));
     }
 
     /**
+     * How could this test be migrated to WebDriver? How to select the field's content?
      * @throws Exception if an error occurs
      */
     @Test
@@ -91,17 +105,17 @@ public class HtmlPasswordInputTest extends WebTestCase {
             + "      return false;\n"
             + "  }\n"
             + "  function init() {\n"
-            + "    document.getElementById('x').onkeydown = handler;\n"
+            + "    document.getElementById('p').onkeydown = handler;\n"
             + "  }\n"
             + "</script></head>\n"
             + "<body onload='init()'>\n"
-            + "<input type='password' id='x'></input>\n"
+            + "<input type='password' id='p'></input>\n"
             + "</body></html>";
 
-        final HtmlPage page = loadPageWithAlerts(html);
-        final HtmlPasswordInput input = page.getHtmlElementById("x");
-        input.type("abcd");
-        assertEquals("abc", input.getValueAttribute());
+        final WebDriver driver = loadPage2(html);
+        final WebElement p = driver.findElement(By.id("p"));
+        p.sendKeys("abcd");
+        assertEquals("abc", p.getAttribute("value"));
     }
 
     /**
@@ -118,17 +132,51 @@ public class HtmlPasswordInputTest extends WebTestCase {
             + "      return false;\n"
             + "  }\n"
             + "  function init() {\n"
-            + "    document.getElementById('x').onkeypress = handler;\n"
+            + "    document.getElementById('p').onkeypress = handler;\n"
             + "  }\n"
             + "</script></head>\n"
             + "<body onload='init()'>\n"
-            + "<input type='password' id='x'></input>\n"
+            + "<input type='password' id='p'></input>\n"
             + "</body></html>";
 
-        final HtmlPage page = loadPageWithAlerts(html);
-        final HtmlPasswordInput input = page.getHtmlElementById("x");
-        input.type("abcd");
-        assertEquals("abc", input.getValueAttribute());
+        final WebDriver driver = loadPage2(html);
+        final WebElement p = driver.findElement(By.id("p"));
+        p.sendKeys("abcd");
+        assertEquals("abc", p.getAttribute("value"));
     }
 
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void typeOnChange() throws Exception {
+        final String html =
+              "<html><head></head><body>\n"
+            + "<input type='password' id='p' value='Hello world'"
+            + " onChange='alert(\"foo\");alert(event.type);'"
+            + " onBlur='alert(\"boo\");alert(event.type);'"
+            + "><br>\n"
+            + "<button id='b'>some button</button>\n"
+            + "</body></html>";
+
+        final WebDriver driver = loadPage2(html);
+        final WebElement p = driver.findElement(By.id("p"));
+        p.sendKeys("HtmlUnit");
+
+        assertEquals(Collections.emptyList(), getCollectedAlerts(driver));
+
+        // trigger lost focus
+        driver.findElement(By.id("b")).click();
+        final String[] expectedAlerts1 = {"foo", "change", "boo", "blur"};
+        assertEquals(expectedAlerts1, getCollectedAlerts(driver));
+
+        // set only the focus but change nothing
+        p.click();
+        assertEquals(expectedAlerts1, getCollectedAlerts(driver));
+
+        // trigger lost focus
+        driver.findElement(By.id("b")).click();
+        final String[] expectedAlerts2 = {"foo", "change", "boo", "blur", "boo", "blur"};
+        assertEquals(expectedAlerts2, getCollectedAlerts(driver));
+    }
 }

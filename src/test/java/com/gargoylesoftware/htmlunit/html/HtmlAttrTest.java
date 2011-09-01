@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,21 +22,24 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.WebTestCase;
 
 /**
  * Tests for {@link DomAttr}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author Denis N. Antonioli
  * @author Ahmed Ashour
  * @author David K. Taylor
  */
+@RunWith(BrowserRunner.class)
 public class HtmlAttrTest extends WebTestCase {
 
     /** Test object. */
-    private final DomAttr htmlAttr_ = new DomAttr(null, null, ENTRY_KEY, ENTRY_VALUE);
+    private final DomAttr htmlAttr_ = new DomAttr(null, null, ENTRY_KEY, ENTRY_VALUE, false);
 
     /** Single test key value. */
     private static final String ENTRY_KEY = "key";
@@ -50,8 +53,6 @@ public class HtmlAttrTest extends WebTestCase {
     static {
         final Map<String, DomAttr> emptyMap = Collections.emptyMap();
         HTML_ELEMENT = new HtmlElement(null, "dummy", null, emptyMap) {
-            private static final long serialVersionUID = -3099722791571459332L;
-
             @Override
             public HtmlPage getPage() {
                 return null;

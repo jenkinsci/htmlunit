@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,19 +18,19 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 
 /**
  * Unit tests for {@link HTMLSpanElement}.
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6204 $
  * @author Daniel Gredler
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
 @RunWith(BrowserRunner.class)
-public class HTMLSpanElementTest extends WebTestCase {
+public class HTMLSpanElementTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if an error occurs
@@ -57,14 +57,14 @@ public class HTMLSpanElementTest extends WebTestCase {
             + "  <body onload='test()'><span id='s'>abc</span></body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(IE6 = {"[object] undefined", "[object] undefined" }, IE7 = {"[object] ", "[object] undefined" },
+    @Alerts(IE6 = {"[object] undefined", "[object] undefined" }, IE = {"[object] ", "[object] undefined" },
             FF = {"[object HTMLSpanElement] undefined", "[object HTMLSpanElement] undefined" })
     public void cite() throws Exception {
         final String html =
@@ -83,6 +83,6 @@ public class HTMLSpanElementTest extends WebTestCase {
             + "  <body onload='test()'></body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 }

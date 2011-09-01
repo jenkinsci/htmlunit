@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,10 +20,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import net.sourceforge.htmlunit.corejs.javascript.Function;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
 import com.gargoylesoftware.htmlunit.ScriptResult;
 import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.html.HtmlBody;
@@ -32,18 +34,16 @@ import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 
 /**
  * Container for event listener.
- * @version $Revision: 4789 $
+ * @version $Revision: 6392 $
  * @author Marc Guillemot
  * @author Daniel Gredler
  * @author Ahmed Ashour
  */
 public class EventListenersContainer implements Serializable {
 
-    private static final long serialVersionUID = -4612648636521726975L;
     private static final Log LOG = LogFactory.getLog(EventListenersContainer.class);
 
     static class Handlers implements Serializable {
-        private static final long serialVersionUID = -5322935816539773122L;
         private final List<Function> capturingHandlers_ = new ArrayList<Function>();
         private final List<Function> bubblingHandlers_ = new ArrayList<Function>();
         private Object handler_;
@@ -80,7 +80,9 @@ public class EventListenersContainer implements Serializable {
     public boolean addEventListener(final String type, final Function listener, final boolean useCapture) {
         final List<Function> listeners = getHandlersOrCreateIt(type).getHandlers(useCapture);
         if (listeners.contains(listener)) {
-            LOG.debug(type + " listener already registered, skipping it (" + listener + ")");
+            if (LOG.isDebugEnabled()) {
+                LOG.debug(type + " listener already registered, skipping it (" + listener + ")");
+            }
             return false;
         }
         listeners.add(listener);
@@ -142,12 +144,17 @@ public class EventListenersContainer implements Serializable {
     }
 
     private ScriptResult executeEventListeners(final boolean useCapture, final Event event, final Object[] args) {
-        final boolean ie = jsNode_.getWindow().getWebWindow().getWebClient().getBrowserVersion().isIE();
+        final DomNode node = jsNode_.getDomNodeOrDie();
+        // some event don't apply on all kind of nodes, for instance "blur"
+        if (!event.applies(node)) {
+            return null;
+        }
+        final boolean ie = jsNode_.getWindow().getWebWindow().getWebClient()
+            .getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_40);
         ScriptResult allResult = null;
         final List<Function> handlers = getHandlers(event.jsxGet_type(), useCapture);
         if (handlers != null && !handlers.isEmpty()) {
             event.setCurrentTarget(jsNode_);
-            final DomNode node = jsNode_.getDomNodeOrDie();
             final HtmlPage page = (HtmlPage) node.getPage();
             // make a copy of the list as execution of an handler may (de-)register handlers
             final List<Function> handlersToExecute = new ArrayList<Function>(handlers);
@@ -163,7 +170,7 @@ public class EventListenersContainer implements Serializable {
                     else {
                         final Object eventReturnValue = event.jsxGet_returnValue();
                         if (eventReturnValue instanceof Boolean && !((Boolean) eventReturnValue).booleanValue()) {
-                            allResult = new ScriptResult(false, page);
+                            allResult = new ScriptResult(Boolean.FALSE, page);
                         }
                     }
                 }
@@ -173,12 +180,18 @@ public class EventListenersContainer implements Serializable {
     }
 
     private ScriptResult executeEventHandler(final Event event, final Object[] propHandlerArgs) {
+        final DomNode node = jsNode_.getDomNodeOrDie();
+        // some event don't apply on all kind of nodes, for instance "blur"
+        if (!event.applies(node)) {
+            return null;
+        }
         final Function handler = getEventHandler(event.jsxGet_type());
         if (handler != null) {
-            final DomNode node = jsNode_.getDomNodeOrDie();
             event.setCurrentTarget(jsNode_);
             final HtmlPage page = (HtmlPage) node.getPage();
-            LOG.debug("Executing " + event.jsxGet_type() + " handler for " + node);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Executing " + event.jsxGet_type() + " handler for " + node);
+            }
             return page.executeJavaScriptFunctionIfPossible(handler, jsNode_, propHandlerArgs, node);
         }
         return null;
@@ -196,7 +209,8 @@ public class EventListenersContainer implements Serializable {
         ScriptResult result = null;
 
         // the handler declared as property if any (not on body, as handler declared on body goes to the window)
-        if (!(jsNode_.getDomNodeOrDie() instanceof HtmlBody)) {
+        final DomNode domNode = jsNode_.getDomNodeOrDie();
+        if (!(domNode instanceof HtmlBody)) {
             result = executeEventHandler(event, propHandlerArgs);
             if (event.isPropagationStopped()) {
                 return result;
@@ -223,7 +237,7 @@ public class EventListenersContainer implements Serializable {
 
     /**
      * Gets an event handler.
-     * @param eventName the event name (ex: "click")
+     * @param eventName the event name (e.g. "click")
      * @return the handler function, <code>null</code> if the property is null or not a function
      */
     public Function getEventHandler(final String eventName) {
@@ -232,6 +246,17 @@ public class EventListenersContainer implements Serializable {
             return (Function) handler;
         }
         return null;
+    }
+
+    /**
+     * Returns <tt>true</tt> if there are any event handlers for the specified event.
+     * @param eventName the event name (e.g. "click")
+     * @return <tt>true</tt> if there are any event handlers for the specified event, <tt>false</tt> otherwise
+     */
+    public boolean hasEventHandlers(final String eventName) {
+        final Handlers h = eventHandlers_.get(eventName);
+        return (h != null
+            && (h.handler_ instanceof Function || !h.bubblingHandlers_.isEmpty() || !h.capturingHandlers_.isEmpty()));
     }
 
     /**

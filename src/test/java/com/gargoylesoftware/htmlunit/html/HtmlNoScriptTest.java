@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,30 +14,34 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
 
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 
 /**
  * Tests for elements inside {@link HtmlNoScript}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
  */
-public class HtmlNoScriptTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public class HtmlNoScriptTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts("null")
     public void testGetElementById() throws Exception {
-        final String htmlContent
+        final String html
             = "<html><head><title>foo</title>\n"
             + "<script>\n"
             + "  function test() {\n"
@@ -51,23 +55,22 @@ public class HtmlNoScriptTest extends WebTestCase {
             + "    </noscript>\n"
             + "</body></html>";
 
-        final String[] expectedAlerts = {"null"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(htmlContent, collectedAlerts);
-        assertEquals(expectedAlerts, collectedAlerts);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts(FF = { "1", "[object Text]" }, IE = { "0", "null" })
     public void testChildNodes() throws Exception {
-        final String htmlContent
+        final String html
             = "<html><head><title>foo</title>\n"
             + "<script>\n"
             + "  function test() {\n"
             + "    var noscript = document.getElementById('myDiv' ).childNodes.item(0);\n"
             + "    alert(noscript.childNodes.length);\n"
+            + "    alert(noscript.firstChild);\n"
             + "  }\n"
             + "</script>\n"
             + "</head><body onload='test()'>\n"
@@ -76,18 +79,16 @@ public class HtmlNoScriptTest extends WebTestCase {
             + "      </noscript></div>\n"
             + "</body></html>";
 
-        final String[] expectedAlerts = {"0"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(htmlContent, collectedAlerts);
-        assertEquals(expectedAlerts, collectedAlerts);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts("1")
     public void testJavaScript() throws Exception {
-        final String htmlContent
+        final String html
             = "<html><head><title>foo</title>\n"
             + "<script>\n"
             + "  alert(1);\n"
@@ -100,10 +101,7 @@ public class HtmlNoScriptTest extends WebTestCase {
             + "</head><body>\n"
             + "</body></html>";
 
-        final String[] expectedAlerts = {"1"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(htmlContent, collectedAlerts);
-        assertEquals(expectedAlerts, collectedAlerts);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -111,24 +109,22 @@ public class HtmlNoScriptTest extends WebTestCase {
      */
     @Test
     public void testFormValues() throws Exception {
-        final String htmlContent
+        final String html
             = "<html><body>\n"
             + "<form name='item' method='post'>\n"
             + "  <noscript>\n"
             + "    <input type=hidden name='__webpage_no_js__' value='1'>\n"
             + "  </noscript>\n"
             + "  <input type=hidden name='myParam' value='myValue'>\n"
-            + "  <input type='submit'>\n"
+            + "  <input type='submit' id='clickMe'>\n"
             + "</form>\n"
             + "</body></html>";
 
-        final HtmlPage firstPage = loadPage(htmlContent);
-        final HtmlForm form = firstPage.getForms().get(0);
-        final HtmlPage secondPage = (HtmlPage) form.submit((SubmittableElement) null);
+        final WebDriver webDriver = loadPage2(html);
+        webDriver.findElement(By.id("clickMe")).click();
 
-        final MockWebConnection mockWebConnection = getMockConnection(secondPage);
+        final MockWebConnection mockWebConnection = getMockWebConnection();
         assertEquals(1, mockWebConnection.getLastParameters().size());
-        assertTrue(secondPage.asXml().indexOf("__webpage_no_js__") > -1);
     }
 
     /**
@@ -136,17 +132,22 @@ public class HtmlNoScriptTest extends WebTestCase {
      */
     @Test
     public void asXml_jsEnabled() throws Exception {
-        final String htmlContent
+        final String html
             = "<html><body>\n"
             + "<noscript><div>hello</noscript>"
             + "</body></html>";
 
-        final String expected = "<body>\n"
+        final String expectedFF = "<body>\n"
             + "  <noscript>\n"
             + "    &lt;div&gt;hello\n"
             + "  </noscript>\n"
             + "</body>\n";
-        final HtmlPage page = loadPage(htmlContent);
+        final String expectedIE = "<body>\n"
+            + "  <noscript/>\n"
+            + "</body>\n";
+
+        final String expected = getBrowserVersion().isFirefox() ? expectedFF : expectedIE;
+        final HtmlPage page = loadPage(html);
         assertEquals(expected, page.getBody().asXml().replaceAll("\\r", ""));
     }
 
@@ -167,7 +168,7 @@ public class HtmlNoScriptTest extends WebTestCase {
             + "  </noscript>\n"
             + "</body>\n";
 
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
         client.setJavaScriptEnabled(false);
 
         final MockWebConnection webConnection = new MockWebConnection();
@@ -176,5 +177,42 @@ public class HtmlNoScriptTest extends WebTestCase {
 
         final HtmlPage page = client.getPage(URL_FIRST);
         assertEquals(expected, page.getBody().asXml().replaceAll("\\r", ""));
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void asText_jsEnabled() throws Exception {
+        final String htmlContent
+            = "<html><body>\n"
+            + "<noscript>hello</noscript>"
+            + "</body></html>";
+
+        final String expected = "";
+        final HtmlPage page = loadPage(htmlContent);
+        assertEquals(expected, page.getBody().asText());
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void asText_jsDisabled() throws Exception {
+        final String html = "<html><body>\n"
+            + "<noscript>hello</noscript>"
+            + "</body></html>";
+
+        final String expected = "hello";
+
+        final WebClient client = getWebClient();
+        client.setJavaScriptEnabled(false);
+
+        final MockWebConnection webConnection = new MockWebConnection();
+        webConnection.setDefaultResponse(html);
+        client.setWebConnection(webConnection);
+
+        final HtmlPage page = client.getPage(URL_FIRST);
+        assertEquals(expected, page.getBody().asText().replaceAll("\\r", ""));
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ import com.gargoylesoftware.htmlunit.html.DomNode;
 /**
  * Collection of XPath utility methods.
  *
- * @version $Revision: 4229 $
+ * @version $Revision: 6392 $
  * @author Ahmed Ashour
  */
 public final class XPathUtils {
@@ -43,7 +43,7 @@ public final class XPathUtils {
     private static ThreadLocal<Boolean> PROCESS_XPATH_ = new ThreadLocal<Boolean>() {
         @Override
         protected synchronized Boolean initialValue() {
-            return false;
+            return Boolean.FALSE;
         }
     };
 
@@ -66,7 +66,7 @@ public final class XPathUtils {
             throw new NullPointerException("Null is not a valid XPath expression");
         }
 
-        PROCESS_XPATH_.set(true);
+        PROCESS_XPATH_.set(Boolean.TRUE);
         final List<Object> list = new ArrayList<Object>();
         try {
             final XObject result = evaluateXPath(node, xpathExpr);
@@ -78,10 +78,10 @@ public final class XPathUtils {
                 }
             }
             else if (result instanceof XNumber) {
-                list.add(result.num());
+                list.add(Double.valueOf(result.num()));
             }
             else if (result instanceof XBoolean) {
-                list.add(result.bool());
+                list.add(Boolean.valueOf(result.bool()));
             }
             else if (result instanceof XString) {
                 list.add(result.str());
@@ -94,7 +94,7 @@ public final class XPathUtils {
             throw new RuntimeException("Could not retrieve XPath >" + xpathExpr + "< on " + node, e);
         }
         finally {
-            PROCESS_XPATH_.set(false);
+            PROCESS_XPATH_.set(Boolean.FALSE);
         }
         return list;
     }
@@ -104,7 +104,7 @@ public final class XPathUtils {
      * @return whether the thread is currently evaluating XPath expression or no
      */
     public static boolean isProcessingXPath() {
-        return PROCESS_XPATH_.get();
+        return PROCESS_XPATH_.get().booleanValue();
     }
 
     /**

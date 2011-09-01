@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,24 +18,31 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
 
 /**
  * Tests for {@link DocumentType}.
  *
- * @version $Revision: 4772 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
+ * @author Marc Guillemot
  */
 @RunWith(BrowserRunner.class)
-public class DocumentTypeTest extends WebTestCase {
+public class DocumentTypeTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = "null", FF = { "[object DocumentType]", "html,10,null,null,null,null",
-            "html,-//W3C//DTD XHTML 1.0 Strict//EN,http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd,,null,null" })
+    @Alerts(IE = "null",
+            FF = { "[object DocumentType]", "true", "HTML,10,null,null,null,null",
+            "HTML,-//W3C//DTD XHTML 1.0 Strict//EN,http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd,,null,null" },
+            FF3_6 = { "[object DocumentType]", "true", "HTML,10,null,null,null,null",
+            "HTML,-//W3C//DTD XHTML 1.0 Strict//EN,http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd,null,null,null" })
+    @NotYetImplemented(Browser.FF3_6)
     public void doctype() throws Exception {
         final String html = "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"\n"
             + "    \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">\n"
@@ -47,6 +54,7 @@ public class DocumentTypeTest extends WebTestCase {
             + "      var t = document.doctype;\n"
             + "      alert(t);\n"
             + "      if (t != null) {\n"
+            + "        alert(t == document.firstChild);\n"
             + "        alert(t.nodeName + ',' + t.nodeType + ',' + t.nodeValue + ',' + t.prefix "
             + "+ ',' + t.localName + ',' + t.namespaceURI);\n"
             + "        alert(t.name + ',' + t.publicId + ',' + t.systemId + ',' + t.internalSubset"
@@ -55,11 +63,11 @@ public class DocumentTypeTest extends WebTestCase {
             + "    }\n"
             + "  </script>\n"
             + "</head>\n"
-            + "<body onload='test()'>"
+            + "<body onload='test()'>\n"
             + "</body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -68,7 +76,12 @@ public class DocumentTypeTest extends WebTestCase {
     @Test
     @Alerts(IE = { "[object]", "greeting,10,null,,undefined,", "greeting,undefined,undefined,undefined,," },
         FF = {
-            "[object DocumentType]", "greeting,10,null,null,null,null", "greeting,MyIdentifier,hello.dtd,,null,null" })
+            "[object DocumentType]", "greeting,10,null,null,null,null",
+            "greeting,MyIdentifier,hello.dtd,,null,null" },
+        FF3_6 = {
+            "[object DocumentType]", "greeting,10,null,null,null,null",
+            "greeting,MyIdentifier,hello.dtd,null,null,null" })
+    @NotYetImplemented(Browser.FF3_6)
     public void doctype_xml() throws Exception {
         final String html =
               "<html>\n"
@@ -102,6 +115,6 @@ public class DocumentTypeTest extends WebTestCase {
               + "<greeting/>";
 
         getMockWebConnection().setDefaultResponse(xml, "text/xml");
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 }

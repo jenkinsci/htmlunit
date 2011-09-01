@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
 /**
  * Tests for {@link DebugFrameImpl}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 6204 $
  * @author Marc Guillemot
  */
 public class DebugFrameImplTest extends WebTestCase {
@@ -51,7 +51,7 @@ public class DebugFrameImplTest extends WebTestCase {
      * @throws Exception if an exception occurs
      */
     public DebugFrameImplTest() throws Exception {
-        client_ = new WebClient(BrowserVersion.FIREFOX_2);
+        client_ = new WebClient(BrowserVersion.FIREFOX_3);
         client_.getJavaScriptEngine().getContextFactory().setDebugger(new DebuggerImpl());
         originalLogLevel_ = loggerDebugFrameImpl_.getLevel();
         loggerDebugFrameImpl_.setLevel(Level.TRACE);
@@ -64,6 +64,7 @@ public class DebugFrameImplTest extends WebTestCase {
     @After
     public void tearDown() throws Exception {
         client_.getJavaScriptEngine().getContextFactory().setDebugger(null);
+        client_.closeAllWindows();
         loggerDebugFrameImpl_.setLevel(originalLogLevel_);
     }
 

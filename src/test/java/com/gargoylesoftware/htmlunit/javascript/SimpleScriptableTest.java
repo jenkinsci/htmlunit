@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -32,9 +31,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
-import com.gargoylesoftware.htmlunit.MockWebConnection;
-import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
@@ -47,7 +44,7 @@ import com.gargoylesoftware.htmlunit.javascript.configuration.JavaScriptConfigur
 /**
  * Tests for {@link SimpleScriptable}.
  *
- * @version $Revision: 4885 $
+ * @version $Revision: 6489 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:BarnabyCourt@users.sourceforge.net">Barnaby Court</a>
  * @author David K. Taylor
@@ -65,11 +62,9 @@ public class SimpleScriptableTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts("past focus")
     public void callInheritedFunction() throws Exception {
-        final WebClient client = getWebClient();
-        final MockWebConnection webConnection = new MockWebConnection();
-
-        final String content
+        final String html
             = "<html><head><title>foo</title><script>\n"
             + "function doTest() {\n"
             + "    document.form1.textfield1.focus();\n"
@@ -82,31 +77,21 @@ public class SimpleScriptableTest extends WebTestCase {
             + "</form>\n"
             + "</body></html>";
 
-        webConnection.setDefaultResponse(content);
-        client.setWebConnection(webConnection);
-
-        final List<String> expectedAlerts = Collections.singletonList("past focus");
-        createTestPageForRealBrowserIfNeeded(content, expectedAlerts);
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-
-        final HtmlPage page = client.getPage(URL_GARGOYLE);
+        final HtmlPage page = loadPageWithAlerts(html);
         assertEquals("foo", page.getTitleText());
-        Assert.assertEquals("focus not changed to textfield1",
+        Assert.assertSame("focus not changed to textfield1",
                      page.getFormByName("form1").getInputByName("textfield1"),
                      page.getFocusedElement());
-        assertEquals(expectedAlerts, collectedAlerts);
     }
 
     /**
      * Test.
      */
     @Test
-    @Browsers(Browser.NONE)
     public void htmlJavaScriptMapping_AllJavaScriptClassesArePresent() {
-        final Map<Class < ? extends HtmlElement>, Class < ? extends SimpleScriptable>> map =
-            JavaScriptConfiguration.getHtmlJavaScriptMapping();
+        final JavaScriptConfiguration jsConfiguration = JavaScriptConfiguration.getInstance(getBrowserVersion());
+        final Map<Class < ? extends HtmlElement>, Class < ? extends SimpleScriptable>> map
+            = jsConfiguration.getHtmlJavaScriptMapping();
         String directoryName = "../../../src/main/java/com/gargoylesoftware/htmlunit/javascript/host";
         final Set<String> names = getFileNames(directoryName.replace('/', File.separatorChar));
         directoryName = "../../../src/main/java/com/gargoylesoftware/htmlunit/javascript/host/html";
@@ -124,6 +109,8 @@ public class SimpleScriptableTest extends WebTestCase {
         names.remove("CSSStyleDeclaration");
         names.remove("CSSStyleRule");
         names.remove("Document");
+        names.remove("DocumentProxy");
+        names.remove("DOMException");
         names.remove("DOMImplementation");
         names.remove("DOMParser");
         names.remove("Enumerator");
@@ -131,6 +118,7 @@ public class SimpleScriptableTest extends WebTestCase {
         names.remove("EventNode");
         names.remove("EventHandler");
         names.remove("EventListenersContainer");
+        names.remove("External");
         names.remove("FormChild");
         names.remove("FormField");
         names.remove("History");
@@ -147,6 +135,7 @@ public class SimpleScriptableTest extends WebTestCase {
         names.remove("MimeType");
         names.remove("MimeTypeArray");
         names.remove("MouseEvent");
+        names.remove("MutationEvent");
         names.remove("Namespace");
         names.remove("NamespaceCollection");
         names.remove("Navigator");
@@ -162,7 +151,11 @@ public class SimpleScriptableTest extends WebTestCase {
         names.remove("ScoperFunctionObject");
         names.remove("Selection");
         names.remove("SimpleArray");
-        names.remove("Stylesheet");
+        names.remove("StaticNodeList");
+        names.remove("Storage");
+        names.remove("StorageImpl");
+        names.remove("StorageList");
+        names.remove("StringCustom");
         names.remove("StyleSheetList");
         names.remove("TextRange");
         names.remove("TextRectangle");
@@ -179,6 +172,16 @@ public class SimpleScriptableTest extends WebTestCase {
         names.remove("XSLTProcessor");
         names.remove("XSLTemplate");
         names.remove("XMLAttr");
+
+        if (getBrowserVersion() != BrowserVersion.FIREFOX_3_6) {
+            names.remove("HTMLAudioElement");
+            names.remove("HTMLSourceElement");
+            names.remove("HTMLVideoElement");
+
+            if (getBrowserVersion().isIE()) {
+                names.remove("HTMLCanvasElement");
+            }
+        }
 
         final Collection<String> hostClassNames = new ArrayList<String>();
         for (final Class< ? extends SimpleScriptable> clazz : map.values()) {
@@ -212,7 +215,7 @@ public class SimpleScriptableTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @NotYetImplemented({ Browser.IE, Browser.FF2 })
+    @NotYetImplemented(Browser.IE)
     @Alerts("exception")
     public void setNonWritableProperty() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
@@ -435,5 +438,25 @@ public class SimpleScriptableTest extends WebTestCase {
         createTestPageForRealBrowserIfNeeded(content, expectedAlerts);
         loadPage(content, collectedAlerts);
         assertEquals(expectedAlerts, collectedAlerts);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "true", "function", "function" })
+    public void callee() throws Exception {
+        final String html
+            = "<html><head><title>foo</title><script>\n"
+            + "function test() {\n"
+            + "  var fun = arguments.callee.toString();\n"
+            + "  alert(fun.indexOf('test()') != -1);\n"
+            + "  alert(typeof arguments.callee);\n"
+            + "  alert(typeof arguments.callee.caller);\n"
+            + "}\n"
+            + "</script></head><body onload='test()'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts(html);
     }
 }

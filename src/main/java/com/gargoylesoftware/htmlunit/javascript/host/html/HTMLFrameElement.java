@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,6 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
-import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
-
 import com.gargoylesoftware.htmlunit.html.BaseFrame;
 import com.gargoylesoftware.htmlunit.javascript.host.Window;
 import com.gargoylesoftware.htmlunit.javascript.host.WindowProxy;
@@ -23,14 +21,12 @@ import com.gargoylesoftware.htmlunit.javascript.host.WindowProxy;
 /**
  * A JavaScript object for a {@link com.gargoylesoftware.htmlunit.html.HtmlFrame}.
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 6489 $
  * @author Marc Guillemot
  * @author Chris Erskine
  * @author Ahmed Ashour
  */
 public class HTMLFrameElement extends HTMLElement {
-    private static final long serialVersionUID = 3761121622400448304L;
-
     /**
      * Creates an instance. A default constructor is required for all JavaScript objects.
      */
@@ -48,22 +44,20 @@ public class HTMLFrameElement extends HTMLElement {
     /**
      * Returns the document the frame contains, if any.
      * @return <code>null</code> if no document is contained
-     * @see <a href="http://www.mozilla.org/docs/dom/domref/dom_frame_ref4.html">
-     * Gecko DOM Reference</a>
+     * @see <a href="http://www.mozilla.org/docs/dom/domref/dom_frame_ref4.html">Gecko DOM Reference</a>
      */
-    public HTMLDocument jsxGet_contentDocument() {
+    public DocumentProxy jsxGet_contentDocument() {
         return ((Window) getFrame().getEnclosedWindow().getScriptObject()).jsxGet_document();
     }
 
     /**
      * Returns the window the frame contains, if any.
      * @return the window
-     * @see <a href="http://www.mozilla.org/docs/dom/domref/dom_frame_ref5.html">
-     * Gecko DOM Reference</a>
+     * @see <a href="http://www.mozilla.org/docs/dom/domref/dom_frame_ref5.html">Gecko DOM Reference</a>
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms533692.aspx">MSDN documentation</a>
      */
-    public Scriptable jsxGet_contentWindow() {
-        return new WindowProxy(getFrame().getEnclosedWindow());
+    public WindowProxy jsxGet_contentWindow() {
+        return Window.getProxy(getFrame().getEnclosedWindow());
     }
 
     /**
@@ -115,10 +109,7 @@ public class HTMLFrameElement extends HTMLElement {
      * @return the "border" attribute
      */
     public String jsxGet_border() {
-        String border = getDomNodeOrDie().getAttribute("border");
-        if (border == NOT_FOUND) {
-            border = "";
-        }
+        final String border = getDomNodeOrDie().getAttribute("border");
         return border;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import java.util.regex.Pattern;
+
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 
 import com.gargoylesoftware.htmlunit.BrowserVersionFeatures;
@@ -23,16 +25,17 @@ import com.gargoylesoftware.htmlunit.javascript.host.FormField;
 /**
  * The JavaScript object that represents a textarea.
  *
- * @version $Revision: 4791 $
+ * @version $Revision: 6484 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Marc Guillemot
  * @author Chris Erskine
  * @author Ahmed Ashour
  * @author Daniel Gredler
+ * @author Ronald Brill
  */
 public class HTMLTextAreaElement extends FormField {
 
-    private static final long serialVersionUID = 49352135575074390L;
+    private static final Pattern NORMALIZE_VALUE_PATTERN = Pattern.compile("([^\\r])\\n");
 
     /**
      * Creates an instance.
@@ -58,7 +61,7 @@ public class HTMLTextAreaElement extends FormField {
     public String jsxGet_value() {
         String value = ((HtmlTextArea) getDomNodeOrDie()).getText();
         if (getBrowserVersion().hasFeature(BrowserVersionFeatures.TEXTAREA_CRNL)) {
-            value = value.replaceAll("([^\\r])\\n", "$1\r\n");
+            value = NORMALIZE_VALUE_PATTERN.matcher(value).replaceAll("$1\r\n");
         }
         return value;
     }
@@ -83,7 +86,7 @@ public class HTMLTextAreaElement extends FormField {
             cols = Integer.parseInt(s);
         }
         catch (final NumberFormatException e) {
-            if (getBrowserVersion().isFirefox()) {
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_173)) {
                 cols = -1;
             }
             else {
@@ -106,12 +109,12 @@ public class HTMLTextAreaElement extends FormField {
             }
         }
         catch (final NumberFormatException e) {
-            if (getBrowserVersion().isIE()) {
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_110)) {
                 throw Context.throwAsScriptRuntimeEx(e);
             }
             i = 0;
         }
-        getDomNodeOrDie().setAttribute("cols", String.valueOf(i));
+        getDomNodeOrDie().setAttribute("cols", Integer.toString(i));
     }
 
     /**
@@ -125,7 +128,7 @@ public class HTMLTextAreaElement extends FormField {
             rows = Integer.parseInt(s);
         }
         catch (final NumberFormatException e) {
-            if (getBrowserVersion().isFirefox()) {
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_174)) {
                 rows = -1;
             }
             else {
@@ -148,12 +151,12 @@ public class HTMLTextAreaElement extends FormField {
             }
         }
         catch (final NumberFormatException e) {
-            if (getBrowserVersion().isIE()) {
+            if (getBrowserVersion().hasFeature(BrowserVersionFeatures.GENERATED_111)) {
                 throw Context.throwAsScriptRuntimeEx(e);
             }
             i = 0;
         }
-        getDomNodeOrDie().setAttribute("rows", String.valueOf(i));
+        getDomNodeOrDie().setAttribute("rows", Integer.toString(i));
     }
 
     /**
@@ -164,7 +167,7 @@ public class HTMLTextAreaElement extends FormField {
     public String jsxGet_defaultValue() {
         String value = ((HtmlTextArea) getDomNodeOrDie()).getDefaultValue();
         if (getBrowserVersion().hasFeature(BrowserVersionFeatures.TEXTAREA_CRNL)) {
-            value = value.replaceAll("([^\\r])\\n", "$1\r\n");
+            value = NORMALIZE_VALUE_PATTERN.matcher(value).replaceAll("$1\r\n");
         }
         return value;
     }
@@ -216,6 +219,16 @@ public class HTMLTextAreaElement extends FormField {
      */
     public void jsxSet_selectionEnd(final int end) {
         ((HtmlTextArea) getDomNodeOrDie()).setSelectionEnd(end);
+    }
+
+    /**
+     * Sets the selected portion of this input element.
+     * @param start the index of the first character to select
+     * @param end the index of the character after the selection
+     */
+    public void jsxFunction_setSelectionRange(final int start, final int end) {
+        jsxSet_selectionStart(start);
+        jsxSet_selectionEnd(end);
     }
 
     /**

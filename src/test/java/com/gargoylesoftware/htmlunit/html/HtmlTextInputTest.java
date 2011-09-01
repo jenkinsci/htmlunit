@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2011 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
 /**
  * Tests for {@link HtmlTextInput}.
  *
- * @version $Revision: 4802 $
+ * @version $Revision: 6204 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
  * @author Sudhan Moghe
@@ -56,6 +56,39 @@ public class HtmlTextInputTest extends WebTestCase {
         assertEquals("", t.getValueAttribute());
         t.type('\b');
         assertEquals("", t.getValueAttribute());
+    }
+
+    /**
+     * This test caused a StringIndexOutOfBoundsException as of HtmlUnit-2.7-SNAPSHOT on 27.10.2009.
+     * This came from the fact that cloneNode() uses clone() and the two HtmlTextInput instances
+     * were referencing the same DoTypeProcessor: type in second field were reflected in the first one.
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void type_StringIndexOutOfBoundsException() throws Exception {
+        type_StringIndexOutOfBoundsException("<input type='text' id='t'>");
+        type_StringIndexOutOfBoundsException("<input type='password' id='t'>");
+        type_StringIndexOutOfBoundsException("<textarea id='t'></textarea>");
+    }
+
+    void type_StringIndexOutOfBoundsException(final String tag) throws Exception {
+        final String html = "<html><head></head><body>\n"
+            + tag + "\n"
+            + "<script>\n"
+            + "function copy(node) {\n"
+            + "  e.value = '231';"
+            + "}"
+            + "var e = document.getElementById('t');\n"
+            + "e.onkeyup = copy;\n"
+            + "var c = e.cloneNode();\n"
+            + "c.id = 't2';\n"
+            + "document.body.appendChild(c);\n"
+            + "</script>\n"
+            + "</body></html>";
+        final HtmlPage page = loadPage(getBrowserVersion(), html, null);
+        final HtmlElement t = page.getElementById("t2");
+        t.type("abc");
+        assertEquals("abc", t.asText());
     }
 
     /**
@@ -158,7 +191,8 @@ public class HtmlTextInputTest extends WebTestCase {
     @Alerts(IE = { "undefined,undefined", "undefined,undefined", "3,undefined", "3,10" },
             FF = { "7,7", "11,11", "3,11", "3,10" })
     public void selection2_1() throws Exception {
-        selection2(3, 10);
+        selection2("text", 3, 10);
+        selection2("password", 3, 10);
     }
 
     /**
@@ -168,7 +202,8 @@ public class HtmlTextInputTest extends WebTestCase {
     @Alerts(IE = { "undefined,undefined", "undefined,undefined", "-3,undefined", "-3,15" },
             FF = { "7,7", "11,11", "0,11", "0,11" })
     public void selection2_2() throws Exception {
-        selection2(-3, 15);
+        selection2("text", -3, 15);
+        selection2("password", -3, 15);
     }
 
     /**
@@ -178,13 +213,14 @@ public class HtmlTextInputTest extends WebTestCase {
     @Alerts(IE = { "undefined,undefined", "undefined,undefined", "10,undefined", "10,5" },
             FF = { "7,7", "11,11", "10,11", "5,5" })
     public void selection2_3() throws Exception {
-        selection2(10, 5);
+        selection2("text", 10, 5);
+        selection2("password", 10, 5);
     }
 
-    private void selection2(final int selectionStart, final int selectionEnd) throws Exception {
+    private void selection2(final String type, final int selectionStart, final int selectionEnd) throws Exception {
         final String html = "<html>\n"
             + "<body>\n"
-            + "<input id='myTextInput' value='Bonjour'>\n"
+            + "<input id='myTextInput' value='Bonjour' type='" + type + "'>\n"
             + "<script>\n"
             + "    var input = document.getElementById('myTextInput');\n"
             + "    alert(input.selectionStart + ',' + input.selectionEnd);\n"
@@ -295,7 +331,7 @@ public class HtmlTextInputTest extends WebTestCase {
         final HtmlTextInput lastKey = page.getHtmlElementById("lastKey");
         t.type("abc");
         assertEquals("abc", t.getValueAttribute());
-        assertEquals("99", lastKey.getValueAttribute());
+        assertEquals("67", lastKey.getValueAttribute());
 
         // character in private use area E000–F8FF
         t.type("\uE014");
