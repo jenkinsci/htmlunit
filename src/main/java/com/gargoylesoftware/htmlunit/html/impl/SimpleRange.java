@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,65 +15,183 @@
 package com.gargoylesoftware.htmlunit.html.impl;
 
 import java.io.Serializable;
+import java.util.Iterator;
 
-import org.apache.commons.lang.mutable.MutableBoolean;
+import net.sourceforge.htmlunit.corejs.javascript.Context;
+
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.w3c.dom.DOMException;
 import org.w3c.dom.DocumentFragment;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.ranges.Range;
 import org.w3c.dom.ranges.RangeException;
 
-import com.gargoylesoftware.htmlunit.html.DomElement;
+import com.gargoylesoftware.htmlunit.SgmlPage;
+import com.gargoylesoftware.htmlunit.html.DomDocumentFragment;
+import com.gargoylesoftware.htmlunit.html.DomNode;
+import com.gargoylesoftware.htmlunit.html.DomNodeList;
+import com.gargoylesoftware.htmlunit.html.DomText;
 
 /**
  * Simple implementation of {@link Range}.
- * @version $Revision: 4576 $
+ *
+ * @version $Revision: 9837 $
  * @author Marc Guillemot
+ * @author Daniel Gredler
+ * @author James Phillpotts
+ * @author Ahmed Ashour
  */
 public class SimpleRange implements Range, Serializable {
 
-    private static final long serialVersionUID = 5779974839466976193L;
+    /** The start (anchor) container. */
+    private Node startContainer_;
 
-    private org.w3c.dom.Node startContainer_, endContainer_;
-    private int startOffset_, endOffset_;
+    /** The end (focus) container. */
+    private Node endContainer_;
+
+    /**
+     * The start (anchor) offset; units are chars if the start container is a text node or an
+     * input element, DOM nodes otherwise.
+     */
+    private int startOffset_;
+
+    /**
+     * The end (focus) offset; units are chars if the end container is a text node or an input
+     * element, DOM nodes otherwise.
+     */
+    private int endOffset_;
 
     /**
      * Constructs a range without any content.
      */
     public SimpleRange() {
-        // nothing
+        // Empty.
     }
 
     /**
-     * Constructs a range for the provided element.
-     * @param domElement the element for the range
+     * Constructs a range for the specified element.
+     * @param node the node for the range
      */
-    public SimpleRange(final DomElement domElement) {
-        startContainer_ = domElement;
-        endContainer_ = domElement;
+    public SimpleRange(final Node node) {
+        startContainer_ = node;
+        endContainer_ = node;
         startOffset_ = 0;
-        endOffset_ = domElement.getTextContent().length();
+        endOffset_ = getMaxOffset(node);
     }
 
-    private SimpleRange(final SimpleRange other) {
-        startContainer_ = other.getStartContainer();
-        endContainer_ = other.getEndContainer();
-        startOffset_ = other.getStartOffset();
-        endOffset_ = other.getEndOffset();
+    /**
+     * Constructs a range for the provided element and start and end offset.
+     * @param node the node for the range
+     * @param offset the start and end offset
+     */
+    public SimpleRange(final Node node, final int offset) {
+        startContainer_ = node;
+        endContainer_ = node;
+        startOffset_ = offset;
+        endOffset_ = offset;
+    }
+
+    /**
+     * Constructs a range for the provided elements and offsets.
+     * @param startNode the start node
+     * @param startOffset the start offset
+     * @param endNode the end node
+     * @param endOffset the end offset
+     */
+    public SimpleRange(final Node startNode, final int startOffset, final Node endNode, final int endOffset) {
+        startContainer_ = startNode;
+        endContainer_ = endNode;
+        startOffset_ = startOffset;
+        endOffset_ = endOffset;
+        if (startNode == endNode && startOffset > endOffset) {
+            endOffset_ = startOffset;
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    public DocumentFragment cloneContents() throws DOMException {
-        throw new RuntimeException("Not implemented!");
+    public DomDocumentFragment cloneContents() throws DOMException {
+        // Clone the common ancestor.
+        final DomNode ancestor = (DomNode) getCommonAncestorContainer();
+
+        if (ancestor == null) {
+            return new DomDocumentFragment(null);
+        }
+        final DomNode ancestorClone = ancestor.cloneNode(true);
+
+        // Find the start container and end container clones.
+        DomNode startClone = null;
+        DomNode endClone = null;
+        final DomNode start = (DomNode) startContainer_;
+        final DomNode end = (DomNode) endContainer_;
+        if (start == ancestor) {
+            startClone = ancestorClone;
+        }
+        if (end == ancestor) {
+            endClone = ancestorClone;
+        }
+        final Iterable<DomNode> descendants = ancestor.getDescendants();
+        if (startClone == null || endClone == null) {
+            final Iterator<DomNode> i = descendants.iterator();
+            final Iterator<DomNode> ci = ancestorClone.getDescendants().iterator();
+            while (i.hasNext()) {
+                final DomNode e = i.next();
+                final DomNode ce = ci.next();
+                if (start == e) {
+                    startClone = ce;
+                }
+                else if (end == e) {
+                    endClone = ce;
+                    break;
+                }
+            }
+        }
+
+        // Do remove from end first so that it can't affect the offset values
+
+        // Remove everything following the selection end from the clones.
+        if (endClone == null) {
+            throw Context.reportRuntimeError("Unable to find end node clone.");
+        }
+        deleteAfter(endClone, endOffset_);
+        for (DomNode n = endClone; n != null; n = n.getParentNode()) {
+            while (n.getNextSibling() != null) {
+                n.getNextSibling().remove();
+            }
+        }
+
+        // Remove everything prior to the selection start from the clones.
+        if (startClone == null) {
+            throw Context.reportRuntimeError("Unable to find start node clone.");
+        }
+        deleteBefore(startClone, startOffset_);
+        for (DomNode n = startClone; n != null; n = n.getParentNode()) {
+            while (n.getPreviousSibling() != null) {
+                n.getPreviousSibling().remove();
+            }
+        }
+
+        final SgmlPage page = ancestor.getPage();
+        final DomDocumentFragment fragment = new DomDocumentFragment(page);
+        if (start == end) {
+            fragment.appendChild(ancestorClone);
+        }
+        else {
+            for (final DomNode n : ancestorClone.getChildNodes()) {
+                fragment.appendChild(n);
+            }
+        }
+        return fragment;
     }
 
     /**
      * {@inheritDoc}
      */
     public Range cloneRange() throws DOMException {
-        return new SimpleRange(this);
+        return new SimpleRange(startContainer_, startOffset_, endContainer_, endOffset_);
     }
 
     /**
@@ -101,7 +219,57 @@ public class SimpleRange implements Range, Serializable {
      * {@inheritDoc}
      */
     public void deleteContents() throws DOMException {
-        throw new RuntimeException("Not implemented!");
+        final DomNode ancestor = (DomNode) getCommonAncestorContainer();
+        if (ancestor != null) {
+            deleteContents(ancestor);
+        }
+    }
+
+    private void deleteContents(final DomNode ancestor) {
+        final DomNode start;
+        final DomNode end;
+        if (isOffsetChars(startContainer_)) {
+            start = (DomNode) startContainer_;
+            String text = getText(start);
+            text = text.substring(0, startOffset_);
+            setText(start, text);
+        }
+        else if (startContainer_.getChildNodes().getLength() > startOffset_) {
+            start = (DomNode) startContainer_.getChildNodes().item(startOffset_);
+        }
+        else {
+            start = (DomNode) startContainer_.getNextSibling();
+        }
+        if (isOffsetChars(endContainer_)) {
+            end = (DomNode) endContainer_;
+            String text = getText(end);
+            text = text.substring(endOffset_);
+            setText(end, text);
+        }
+        else if (endContainer_.getChildNodes().getLength() > endOffset_) {
+            end = (DomNode) endContainer_.getChildNodes().item(endOffset_);
+        }
+        else {
+            end = (DomNode) endContainer_.getNextSibling();
+        }
+        boolean foundStart = false;
+        boolean started = false;
+        final Iterator<DomNode> i = ancestor.getDescendants().iterator();
+        while (i.hasNext()) {
+            final DomNode n = i.next();
+            if (n == end) {
+                break;
+            }
+            if (n == start) {
+                foundStart = true;
+            }
+            if (foundStart && (n != start || !isOffsetChars(startContainer_))) {
+                started = true;
+            }
+            if (started && !n.isAncestorOf(end)) {
+                i.remove();
+            }
+        }
     }
 
     /**
@@ -114,8 +282,14 @@ public class SimpleRange implements Range, Serializable {
     /**
      * {@inheritDoc}
      */
-    public DocumentFragment extractContents() throws DOMException {
-        throw new RuntimeException("Not implemented!");
+    public DomDocumentFragment extractContents() throws DOMException {
+        final DomDocumentFragment fragment = cloneContents();
+
+        // Remove everything inside the range from the original nodes.
+        deleteContents();
+
+        // Build the document fragment using the cloned nodes, and return it.
+        return fragment;
     }
 
     /**
@@ -128,10 +302,10 @@ public class SimpleRange implements Range, Serializable {
     /**
      * {@inheritDoc}
      */
-    public org.w3c.dom.Node getCommonAncestorContainer() throws DOMException {
+    public Node getCommonAncestorContainer() throws DOMException {
         if (startContainer_ != null && endContainer_ != null) {
-            for (org.w3c.dom.Node p1 = startContainer_; p1 != null; p1 = p1.getParentNode()) {
-                for (org.w3c.dom.Node p2 = endContainer_; p2 != null; p2 = p2.getParentNode()) {
+            for (Node p1 = startContainer_; p1 != null; p1 = p1.getParentNode()) {
+                for (Node p2 = endContainer_; p2 != null; p2 = p2.getParentNode()) {
                     if (p1 == p2) {
                         return p1;
                     }
@@ -144,7 +318,7 @@ public class SimpleRange implements Range, Serializable {
     /**
      * {@inheritDoc}
      */
-    public org.w3c.dom.Node getEndContainer() throws DOMException {
+    public Node getEndContainer() throws DOMException {
         return endContainer_;
     }
 
@@ -158,7 +332,7 @@ public class SimpleRange implements Range, Serializable {
     /**
      * {@inheritDoc}
      */
-    public org.w3c.dom.Node getStartContainer() throws DOMException {
+    public Node getStartContainer() throws DOMException {
         return startContainer_;
     }
 
@@ -172,34 +346,64 @@ public class SimpleRange implements Range, Serializable {
     /**
      * {@inheritDoc}
      */
-    public void insertNode(final org.w3c.dom.Node newNode) throws DOMException, RangeException {
-        throw new RuntimeException("Not implemented!");
+    public void insertNode(final Node newNode) throws DOMException, RangeException {
+        if (isOffsetChars(startContainer_)) {
+            final Node split = startContainer_.cloneNode(false);
+            String text = getText(startContainer_);
+            text = text.substring(0, startOffset_);
+            setText(startContainer_, text);
+            text = getText(split);
+            text = text.substring(startOffset_);
+            setText(split, text);
+            insertNodeOrDocFragment(startContainer_.getParentNode(), split, startContainer_.getNextSibling());
+            insertNodeOrDocFragment(startContainer_.getParentNode(), newNode, split);
+        }
+        else {
+            insertNodeOrDocFragment(startContainer_, newNode, startContainer_.getChildNodes().item(startOffset_));
+        }
+
+        setStart(newNode, 0);
+    }
+
+    private static void insertNodeOrDocFragment(final Node parent, final Node newNode, final Node refNode) {
+        if (newNode instanceof DocumentFragment) {
+            final DocumentFragment fragment = (DocumentFragment) newNode;
+
+            final NodeList childNodes = fragment.getChildNodes();
+            while (childNodes.getLength() > 0) {
+                final Node item = childNodes.item(0);
+                parent.insertBefore(item, refNode);
+            }
+        }
+        else {
+            parent.insertBefore(newNode, refNode);
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    public void selectNode(final org.w3c.dom.Node refNode) throws RangeException, DOMException {
-        startContainer_ = refNode;
+    public void selectNode(final Node node) throws RangeException, DOMException {
+        startContainer_ = node;
         startOffset_ = 0;
-        endContainer_ = refNode;
-        endOffset_ = refNode.getTextContent().length();
+        endContainer_ = node;
+        endOffset_ = getMaxOffset(node);
     }
 
     /**
      * {@inheritDoc}
      */
-    public void selectNodeContents(final org.w3c.dom.Node refNode) throws RangeException, DOMException {
-        startContainer_ = refNode.getFirstChild();
+    public void selectNodeContents(final Node node) throws RangeException, DOMException {
+        startContainer_ = node.getFirstChild();
         startOffset_ = 0;
-        endContainer_ = refNode.getLastChild();
-        endOffset_ = refNode.getLastChild().getTextContent().length();
+        endContainer_ = node.getLastChild();
+        endOffset_ = getMaxOffset(node.getLastChild());
     }
 
     /**
      * {@inheritDoc}
      */
-    public void setEnd(final org.w3c.dom.Node refNode, final int offset) throws RangeException, DOMException {
+    public void setEnd(final Node refNode, final int offset) throws RangeException, DOMException {
         endContainer_ = refNode;
         endOffset_ = offset;
     }
@@ -207,21 +411,21 @@ public class SimpleRange implements Range, Serializable {
     /**
      * {@inheritDoc}
      */
-    public void setEndAfter(final org.w3c.dom.Node refNode) throws RangeException, DOMException {
+    public void setEndAfter(final Node refNode) throws RangeException, DOMException {
         throw new RuntimeException("Not implemented!");
     }
 
     /**
      * {@inheritDoc}
      */
-    public void setEndBefore(final org.w3c.dom.Node refNode) throws RangeException, DOMException {
+    public void setEndBefore(final Node refNode) throws RangeException, DOMException {
         throw new RuntimeException("Not implemented!");
     }
 
     /**
      * {@inheritDoc}
      */
-    public void setStart(final org.w3c.dom.Node refNode, final int offset) throws RangeException, DOMException {
+    public void setStart(final Node refNode, final int offset) throws RangeException, DOMException {
         startContainer_ = refNode;
         startOffset_ = offset;
     }
@@ -229,74 +433,128 @@ public class SimpleRange implements Range, Serializable {
     /**
      * {@inheritDoc}
      */
-    public void setStartAfter(final org.w3c.dom.Node refNode) throws RangeException, DOMException {
+    public void setStartAfter(final Node refNode) throws RangeException, DOMException {
         throw new RuntimeException("Not implemented!");
     }
 
     /**
      * {@inheritDoc}
      */
-    public void setStartBefore(final org.w3c.dom.Node refNode) throws RangeException, DOMException {
+    public void setStartBefore(final Node refNode) throws RangeException, DOMException {
         throw new RuntimeException("Not implemented!");
     }
 
     /**
      * {@inheritDoc}
      */
-    public void surroundContents(final org.w3c.dom.Node newParent) throws DOMException, RangeException {
-        throw new RuntimeException("Not implemented!");
+    public void surroundContents(final Node newParent) throws DOMException, RangeException {
+        newParent.appendChild(extractContents());
+        insertNode(newParent);
+        setStart(newParent, 0);
+        setEnd(newParent, getMaxOffset(newParent));
     }
 
     /**
-     * Provides information of the text representation of the range.
-     * @return a text representation
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean equals(final Object obj) {
+        if (!(obj instanceof SimpleRange)) {
+            return false;
+        }
+        final SimpleRange other = (SimpleRange) obj;
+        return new EqualsBuilder()
+            .append(startContainer_, other.startContainer_)
+            .append(endContainer_, other.endContainer_)
+            .append(startOffset_, other.startOffset_)
+            .append(endOffset_, other.endOffset_).isEquals();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int hashCode() {
+        return new HashCodeBuilder()
+            .append(startContainer_)
+            .append(endContainer_)
+            .append(startOffset_)
+            .append(endOffset_).toHashCode();
+    }
+
+    /**
+     * {@inheritDoc}
      */
     @Override
     public String toString() {
-        final org.w3c.dom.Node ancestor = getCommonAncestorContainer();
-        final StringBuilder sb = new StringBuilder();
-        if (ancestor != null) {
-            getText(ancestor, sb, new MutableBoolean(false));
+        final DomDocumentFragment fragment = cloneContents();
+        if (fragment.getPage() != null) {
+            return fragment.asText();
         }
-        return sb.toString();
+        return "";
     }
 
-    private boolean getText(final org.w3c.dom.Node node, final StringBuilder sb, final MutableBoolean started) {
-        final NodeList children = node.getChildNodes();
-        for (int i = 0; i < children.getLength(); i++) {
-            final org.w3c.dom.Node child = children.item(i);
-            if (started.booleanValue()) {
-                if (child == endContainer_) {
-                    // We're finished getting text.
-                    sb.append(endContainer_.getTextContent().substring(0, endOffset_));
-                    return true;
-                }
-                // We're in the middle of getting text.
-                if (child.hasChildNodes()) {
-                    final boolean stop = getText(child, sb, started);
-                    if (stop) {
-                        return true;
-                    }
-                }
-                else {
-                    sb.append(child.getTextContent());
-                }
+    private static boolean isOffsetChars(final Node node) {
+        return node instanceof DomText || node instanceof SelectableTextInput;
+    }
+
+    private static String getText(final Node node) {
+        if (node instanceof SelectableTextInput) {
+            return ((SelectableTextInput) node).getText();
+        }
+        return node.getTextContent();
+    }
+
+    private static void setText(final Node node, final String text) {
+        if (node instanceof SelectableTextInput) {
+            ((SelectableTextInput) node).setText(text);
+        }
+        else {
+            node.setTextContent(text);
+        }
+    }
+
+    private static void deleteBefore(final DomNode node, int offset) {
+        if (isOffsetChars(node)) {
+            String text = getText(node);
+            if (offset < text.length()) {
+                text = text.substring(offset);
             }
             else {
-                started.setValue(child == startContainer_);
-                if (started.booleanValue()) {
-                    // We're starting to get text.
-                    sb.append(startContainer_.getTextContent().substring(startOffset_));
-                }
-                else {
-                    // We're still haven't started getting text.
-                    final boolean stop = getText(child, sb, started);
-                    if (stop) {
-                        return true;
-                    }
-                }
+                text = "";
+            }
+            setText(node, text);
+        }
+        else {
+            final DomNodeList<DomNode> children = node.getChildNodes();
+            for (int i = 0; i < offset && i < children.getLength(); i++) {
+                final DomNode child = children.get(i);
+                child.remove();
+                i--;
+                offset--;
             }
         }
-        return false;
+    }
+
+    private static void deleteAfter(final DomNode node, final int offset) {
+        if (isOffsetChars(node)) {
+            String text = getText(node);
+            if (offset < text.length()) {
+                text = text.substring(0, offset);
+                setText(node, text);
+            }
+        }
+        else {
+            final DomNodeList<DomNode> children = node.getChildNodes();
+            for (int i = offset; i < children.getLength(); i++) {
+                final DomNode child = children.get(i);
+                child.remove();
+                i--;
+            }
+        }
+    }
+
+    private static int getMaxOffset(final Node node) {
+        return isOffsetChars(node) ? getText(node).length() : node.getChildNodes().getLength();
     }
 }

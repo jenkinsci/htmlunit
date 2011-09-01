@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,21 @@
  */
 package com.gargoylesoftware.htmlunit.libraries;
 
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.CHROME;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.IE;
+
 import java.util.Iterator;
 
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebServerTestCase;
-import com.gargoylesoftware.htmlunit.html.DomNode;
+import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 
@@ -30,12 +36,16 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
  * Tests for compatibility with version 1.0.2 of the <a href="http://dojotoolkit.org/">Dojo
  * JavaScript library</a>.
  *
+ * Timeout was changed in: /util/doh/runner.js, line # 682
+ *
  * TODO: add tests for IE6 and IE7
  *
- * @version $Revision: 4343 $
+ * @version $Revision: 10077 $
  * @author Ahmed Ashour
  * @author Daniel Gredler
+ * @author Ronald Brill
  */
+@RunWith(BrowserRunner.class)
 public class Dojo102Test extends WebServerTestCase {
 
     private WebClient client_;
@@ -43,38 +53,33 @@ public class Dojo102Test extends WebServerTestCase {
     private static final String GROUP_DELIMITER = "------------------------------------------------------------";
 
     /**
-     * Constructor.
+     * Performs pre-test construction.
      * @throws Exception if an error occurs
      */
-    public Dojo102Test() throws Exception {
-        startWebServer("src/test/resources/dojo/1.0.2");
+    @Before
+    public void setUp() throws Exception {
+        startWebServer("src/test/resources/libraries/dojo/1.0.2");
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
+    @NotYetImplemented({ IE, CHROME })
     public void dojo() throws Exception {
-        client_ = new WebClient(BrowserVersion.FIREFOX_2);
+        client_ = getWebClient();
         final String url = "http://localhost:" + PORT + "/util/doh/runner.html";
 
         final HtmlPage page = client_.getPage(url);
-        client_.waitForBackgroundJavaScript(10000);
+        client_.waitForBackgroundJavaScript(DEFAULT_WAIT_TIME);
 
-        final HtmlElement logBody = page.getHtmlElementById("logBody");
-        DomNode lastChild = logBody.getLastChild();
-        while (true) {
-            Thread.sleep(10000);
-            final DomNode newLastChild = logBody.getLastChild();
-            if (lastChild != newLastChild) {
-                lastChild = newLastChild;
-            }
-            else {
-                break;
-            }
+        final HtmlElement status = page.getHtmlElementById("runningStatus");
+        while (!"Stopped".equals(status.asText())) {
+            client_.waitForBackgroundJavaScript(DEFAULT_WAIT_TIME);
         }
 
-        final Iterator<HtmlElement> logs = logBody.getChildElements().iterator();
+        final HtmlElement logBody = page.getHtmlElementById("logBody");
+        final Iterator<DomElement> logs = logBody.getChildElements().iterator();
         eq("345 tests to run in 41 groups", logs);
         eq(GROUP_DELIMITER, logs);
 
@@ -776,10 +781,8 @@ public class Dojo102Test extends WebServerTestCase {
         eq("GROUP \"t\" has 3 tests to run", logs);
         eq("PASSED test: ../../dojo/tests/io/script.html::t::ioScriptSimple", logs);
         eq("PASSED test: ../../dojo/tests/io/script.html::t::ioScriptJsonp", logs);
-        // TODO: this test fails in FF as well... seems to be normal
-        logs.next(); // eq("PASSED test: ../../dojo/tests/io/script.html::t::ioScriptJsonpTimeout", logs);
-        logs.next();
-        logs.next();
+        // ioScriptJsonpTimeout passes when using a single thread for all background JS tasks.
+        eq("PASSED test: ../../dojo/tests/io/script.html::t::ioScriptJsonpTimeout", logs);
         eq("PASSED test: ../../dojo/tests/io/script.html", logs);
         eq(GROUP_DELIMITER, logs);
 
@@ -796,7 +799,7 @@ public class Dojo102Test extends WebServerTestCase {
         eq(GROUP_DELIMITER, logs);
     }
 
-    private void eq(final String expected, final Iterator<HtmlElement> i) {
+    private void eq(final String expected, final Iterator<DomElement> i) {
         assertEquals(expected, i.next().asText().trim());
     }
 
@@ -808,6 +811,6 @@ public class Dojo102Test extends WebServerTestCase {
     @Override
     public void tearDown() throws Exception {
         super.tearDown();
-        client_.closeAllWindows();
+        client_.close();
     }
 }

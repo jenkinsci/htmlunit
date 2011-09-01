@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,26 +14,25 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.CSS_FRAMESET_INLINE;
+
+import java.net.URL;
 import java.util.Map;
 
-import org.apache.commons.httpclient.Cookie;
-import org.apache.commons.httpclient.util.DateParseException;
-import org.apache.commons.httpclient.util.DateUtil;
-import org.apache.commons.lang.StringUtils;
-
 import com.gargoylesoftware.htmlunit.SgmlPage;
+import com.gargoylesoftware.htmlunit.WebClient;
 
 /**
  * Wrapper for the HTML element "meta".
  *
- * @version $Revision: 4463 $
+ * @version $Revision: 10206 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
+ * @author Frank Danek
+ * @author Ronald Brill
  */
 public class HtmlMeta extends HtmlElement {
-
-    private static final long serialVersionUID = 7408601325303605790L;
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "meta";
@@ -41,14 +40,13 @@ public class HtmlMeta extends HtmlElement {
     /**
      * Creates an instance of HtmlMeta
      *
-     * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the HtmlPage that contains this element
      * @param attributes the initial attributes
      */
-    HtmlMeta(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    HtmlMeta(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
+        super(qualifiedName, page, attributes);
 
         if ("set-cookie".equalsIgnoreCase(getHttpEquivAttribute())) {
             performSetCookie();
@@ -60,31 +58,18 @@ public class HtmlMeta extends HtmlElement {
      * like <tt>&lt;meta http-equiv='set-cookie' content='webm=none; path=/;'&gt;</tt>.
      */
     protected void performSetCookie() {
-        final String[] parts = getContentAttribute().split("\\s*;\\s*");
-        final String name = StringUtils.substringBefore(parts[0], "=");
-        final String value = StringUtils.substringAfter(parts[0], "=");
-        final Cookie cookie = new Cookie(getPage().getWebResponse().getRequestSettings().getUrl().getHost(),
-                name, value);
-        for (int i = 1; i < parts.length; i++) {
-            final String partName = StringUtils.substringBefore(parts[i], "=").trim().toLowerCase();
-            final String partValue = StringUtils.substringAfter(parts[i], "=").trim();
-            if ("path".equals(partName)) {
-                cookie.setPath(partValue);
-            }
-            else if ("expires".equals(partName)) {
-                try {
-                    cookie.setExpiryDate(DateUtil.parseDate(partValue));
-                }
-                catch (final DateParseException e) {
-                    notifyIncorrectness("set-cookie http-equiv meta tag: can't parse expiration date >"
-                            + partValue + "<.");
-                }
-            }
-            else {
-                notifyIncorrectness("set-cookie http-equiv meta tag: unknown attribute >" + partName + "<");
-            }
-            getPage().getWebClient().getCookieManager().addCookie(cookie);
-        }
+        final SgmlPage page = getPage();
+        final WebClient client = page.getWebClient();
+        final URL url = page.getUrl();
+        client.addCookie(getContentAttribute(), url, this);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean mayBeDisplayed() {
+        return false;
     }
 
     /**
@@ -133,5 +118,16 @@ public class HtmlMeta extends HtmlElement {
      */
     public final String getSchemeAttribute() {
         return getAttribute("scheme");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public DisplayStyle getDefaultStyleDisplay() {
+        if (hasFeature(CSS_FRAMESET_INLINE)) {
+            return DisplayStyle.INLINE;
+        }
+        return DisplayStyle.NONE;
     }
 }

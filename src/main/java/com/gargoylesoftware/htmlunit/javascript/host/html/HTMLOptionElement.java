@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,57 +14,61 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
-import java.util.HashSet;
-import java.util.Set;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.HTMLOPTION_UNSELECT_SELECTS_FIRST;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_OPTION_CONSTRUCTOR_IGNORES_LABEL;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_OPTION_USE_TEXT_AS_VALUE_IF_NOT_DEFINED;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+import net.sourceforge.htmlunit.corejs.javascript.Context;
 
 import org.xml.sax.helpers.AttributesImpl;
 
 import com.gargoylesoftware.htmlunit.html.DomElement;
+import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.html.DomText;
 import com.gargoylesoftware.htmlunit.html.HTMLParser;
 import com.gargoylesoftware.htmlunit.html.HtmlOption;
+import com.gargoylesoftware.htmlunit.html.HtmlOptionGroup;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import com.gargoylesoftware.htmlunit.javascript.host.Attr;
-import com.gargoylesoftware.htmlunit.javascript.host.FormChild;
+import com.gargoylesoftware.htmlunit.html.HtmlSelect;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
 
 /**
  * The JavaScript object that represents an option.
  *
- * @version $Revision: 4649 $
+ * @version $Revision: 10530 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author Chris Erskine
  * @author Marc Guillemot
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Frank Danek
  */
+@JsxClasses({
+        @JsxClass(domClass = HtmlOption.class,
+                browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(domClass = HtmlOption.class, isJSObject = false,
+                browsers = @WebBrowser(value = IE, maxVersion = 8)),
+        @JsxClass(domClass = HtmlOptionGroup.class, isJSObject = false,
+                browsers = @WebBrowser(value = IE, maxVersion = 8))
+    })
 public class HTMLOptionElement extends FormChild {
 
-    private static final long serialVersionUID = 947015932373556314L;
-
-    private static final Set<String> namesIEAttributeAlwaysAvailable_ = new HashSet<String>();
-
-    static {
-        final String[] names = {"id", "value", "selected"};
-        for (final String name : names) {
-            namesIEAttributeAlwaysAvailable_.add(name);
-        }
-    }
-
     /**
-     * Creates an instance.
-     */
-    public HTMLOptionElement() {
-        // Empty.
-    }
-
-    /**
-     * JavaScript constructor. This must be declared in every JavaScript file because
-     * the rhino engine won't walk up the hierarchy looking for constructors.
+     * JavaScript constructor.
      * @param newText the text
      * @param newValue the value
      * @param defaultSelected Whether the option is initially selected
      * @param selected the current selection state of the option
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
     public void jsConstructor(final String newText, final String newValue,
             final boolean defaultSelected, final boolean selected) {
         final HtmlPage page = (HtmlPage) getWindow().getWebWindow().getEnclosedPage();
@@ -79,10 +83,13 @@ public class HTMLOptionElement extends FormChild {
         htmlOption.setSelected(selected);
         setDomNode(htmlOption);
 
-        if (newText != null && !newText.equals("undefined")) {
+        if (!"undefined".equals(newText)) {
             htmlOption.appendChild(new DomText(page, newText));
+            if (!getBrowserVersion().hasFeature(JS_OPTION_CONSTRUCTOR_IGNORES_LABEL)) {
+                htmlOption.setLabelAttribute(newText);
+            }
         }
-        if (newValue != null && !newValue.equals("undefined")) {
+        if (!"undefined".equals(newValue)) {
             htmlOption.setValueAttribute(newValue);
         }
     }
@@ -91,10 +98,12 @@ public class HTMLOptionElement extends FormChild {
      * Returns the value of the "value" property.
      * @return the value property
      */
-    public String jsxGet_value() {
+    @JsxGetter
+    public String getValue() {
         String value = getDomNodeOrNull().getAttribute("value");
-        if (value == DomElement.ATTRIBUTE_NOT_DEFINED && getBrowserVersion().isFirefox()) {
-            value = getDomNodeOrNull().getText();
+        if (value == DomElement.ATTRIBUTE_NOT_DEFINED
+                && getBrowserVersion().hasFeature(JS_OPTION_USE_TEXT_AS_VALUE_IF_NOT_DEFINED)) {
+            value = ((HtmlOption) getDomNodeOrNull()).getText();
         }
         return value;
     }
@@ -103,8 +112,11 @@ public class HTMLOptionElement extends FormChild {
      * Sets the value of the "value" property.
      * @param newValue the value property
      */
-    public void jsxSet_value(final String newValue) {
-        getDomNodeOrNull().setValueAttribute(newValue);
+    @JsxSetter
+    public void setValue(final String newValue) {
+        if (getDomNodeOrNull() instanceof HtmlOption) {
+            ((HtmlOption) getDomNodeOrNull()).setValueAttribute(newValue);
+        }
     }
 
     /**
@@ -112,81 +124,167 @@ public class HTMLOptionElement extends FormChild {
      * @return the text property
      */
     @Override
-    public String jsxGet_text() {
-        return getDomNodeOrNull().getText();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public HtmlOption getDomNodeOrNull() {
-        return (HtmlOption) super.getDomNodeOrNull();
+    @JsxGetter
+    public String getText() {
+        if (getDomNodeOrNull() instanceof HtmlOption) {
+            return ((HtmlOption) getDomNodeOrNull()).getText();
+        }
+        return null;
     }
 
     /**
      * Sets the value of the "text" property.
      * @param newText the text property
      */
-    public void jsxSet_text(final String newText) {
-        getDomNodeOrNull().setText(newText);
+    @JsxSetter
+    public void setText(final String newText) {
+        if (getDomNodeOrNull() instanceof HtmlOption) {
+            ((HtmlOption) getDomNodeOrNull()).setText(newText);
+        }
     }
 
     /**
      * Returns the value of the "selected" property.
      * @return the text property
      */
-    public boolean jsxGet_selected() {
-        return getDomNodeOrNull().isSelected();
+    @JsxGetter
+    public boolean getSelected() {
+        if (getDomNodeOrNull() instanceof HtmlOption) {
+            return ((HtmlOption) getDomNodeOrNull()).isSelected();
+        }
+        return false;
     }
 
     /**
      * Sets the value of the "selected" property.
      * @param selected the new selected property
      */
-    public void jsxSet_selected(final boolean selected) {
-        getDomNodeOrNull().setSelected(selected);
+    @JsxSetter
+    public void setSelected(final boolean selected) {
+        final HtmlOption optionNode = (HtmlOption) getDomNodeOrNull();
+        final HtmlSelect enclosingSelect = optionNode.getEnclosingSelect();
+        if (!selected && optionNode.isSelected()
+                && enclosingSelect != null && !enclosingSelect.isMultipleSelectEnabled()) {
+
+            // un-selecting selected option has no effect in IE and selects first option in FF
+            if (getBrowserVersion().hasFeature(HTMLOPTION_UNSELECT_SELECTS_FIRST)) {
+                enclosingSelect.getOption(0).setSelected(true, false);
+            }
+        }
+        else {
+            optionNode.setSelected(selected, false);
+        }
     }
 
     /**
      * Returns the value of the "defaultSelected" property.
      * @return the text property
      */
-    public boolean jsxGet_defaultSelected() {
-        return getDomNodeOrNull().isDefaultSelected();
+    @JsxGetter
+    public boolean getDefaultSelected() {
+        if (getDomNodeOrNull() instanceof HtmlOption) {
+            return ((HtmlOption) getDomNodeOrNull()).isDefaultSelected();
+        }
+        return false;
     }
 
     /**
      * Returns the value of the "label" property.
      * @return the label property
      */
-    public String jsxGet_label() {
-        return getDomNodeOrNull().getLabelAttribute();
+    @JsxGetter
+    public String getLabel() {
+        final DomNode domNode = getDomNodeOrNull();
+        if (domNode instanceof HtmlOption) {
+            return ((HtmlOption) domNode).getLabelAttribute();
+        }
+        return ((HtmlOptionGroup) domNode).getLabelAttribute();
     }
 
     /**
      * Sets the value of the "label" property.
      * @param label the new label property
      */
-    public void jsxSet_label(final String label) {
-        getDomNodeOrNull().setLabelAttribute(label);
+    @JsxSetter
+    public void setLabel(final String label) {
+        final DomNode domNode = getDomNodeOrNull();
+        if (domNode instanceof HtmlOption) {
+            ((HtmlOption) domNode).setLabelAttribute(label);
+        }
+        else {
+            ((HtmlOptionGroup) domNode).setLabelAttribute(label);
+        }
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritDoc} Overridden to modify browser configurations.
      */
     @Override
-    public Object jsxFunction_getAttributeNode(final String attributeName) {
-        final Object response = super.jsxFunction_getAttributeNode(attributeName);
-        if (response == null && getBrowserVersion().isIE()
-            && namesIEAttributeAlwaysAvailable_.contains(attributeName)) {
-            final Attr att = new Attr();
-            att.setPrototype(getPrototype(Attr.class));
-            att.setParentScope(getWindow());
-            att.init(attributeName, getDomNodeOrDie());
-            return att;
-        }
+    @JsxGetter
+    public boolean getDisabled() {
+        return super.getDisabled();
+    }
 
-        return response;
+    /**
+     * {@inheritDoc} Overridden to modify browser configurations.
+     */
+    @Override
+    @JsxSetter
+    public void setDisabled(final boolean disabled) {
+        super.setDisabled(disabled);
+    }
+
+    /**
+     * Returns the {@code dataFld} attribute.
+     * @return the {@code dataFld} attribute
+     */
+    @JsxGetter(@WebBrowser(value = IE, maxVersion = 8))
+    public String getDataFld() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code dataFld} attribute.
+     * @param dataFld {@code dataFld} attribute
+     */
+    @JsxSetter(@WebBrowser(value = IE, maxVersion = 8))
+    public void setDataFld(final String dataFld) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code dataFormatAs} attribute.
+     * @return the {@code dataFormatAs} attribute
+     */
+    @JsxGetter(@WebBrowser(value = IE, maxVersion = 8))
+    public String getDataFormatAs() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code dataFormatAs} attribute.
+     * @param dataFormatAs {@code dataFormatAs} attribute
+     */
+    @JsxSetter(@WebBrowser(value = IE, maxVersion = 8))
+    public void setDataFormatAs(final String dataFormatAs) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code dataSrc} attribute.
+     * @return the {@code dataSrc} attribute
+     */
+    @JsxGetter(@WebBrowser(value = IE, maxVersion = 8))
+    public String getDataSrc() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code dataSrc} attribute.
+     * @param dataSrc {@code dataSrc} attribute
+     */
+    @JsxSetter(@WebBrowser(value = IE, maxVersion = 8))
+    public void setDataSrc(final String dataSrc) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
     }
 }

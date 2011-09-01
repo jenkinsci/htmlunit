@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,42 +14,40 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
-import static org.junit.Assert.assertSame;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.CHROME;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.FF;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.IE11;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.IE8;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.net.URL;
 
+import org.apache.commons.lang3.StringUtils;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.openqa.selenium.By;
+import org.openqa.selenium.NoSuchWindowException;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
-import com.gargoylesoftware.htmlunit.MockWebConnection;
-import com.gargoylesoftware.htmlunit.Page;
-import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
-import com.gargoylesoftware.htmlunit.html.HtmlAnchor;
-import com.gargoylesoftware.htmlunit.html.HtmlButton;
-import com.gargoylesoftware.htmlunit.html.HtmlElement;
-import com.gargoylesoftware.htmlunit.html.HtmlFileInput;
-import com.gargoylesoftware.htmlunit.html.HtmlForm;
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import com.gargoylesoftware.htmlunit.html.HtmlSubmitInput;
+import com.gargoylesoftware.htmlunit.MockWebConnection;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Tests for {@link HTMLFormElement}.
  *
- * @version $Revision: 4900 $
+ * @version $Revision: 10157 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author Marc Guillemot
  * @author Chris Erskine
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Frank Danek
  */
 @RunWith(BrowserRunner.class)
 public class HTMLFormElementTest extends WebDriverTestCase {
@@ -62,7 +60,7 @@ public class HTMLFormElementTest extends WebDriverTestCase {
             "radio1", "radio1",
             "select1", "select2", "password1", "reset1",
             "reset2", "submit1", "submit2", "textInput1", "textarea1" })
-    public void testElementsAccessor() throws Exception {
+    public void elementsAccessor() throws Exception {
         final String html
             = "<html><head><title>foo</title><script>\n"
             + "function doTest(){\n"
@@ -109,7 +107,7 @@ public class HTMLFormElementTest extends WebDriverTestCase {
      */
     @Test
     @Alerts({ "undefined", "undefined" })
-    public void testElementsAccessorOutOfBound() throws Exception {
+    public void elementsAccessorOutOfBound() throws Exception {
         final String html
             = "<html><head><title>foo</title><script>\n"
             + "function doTest(){\n"
@@ -131,7 +129,7 @@ public class HTMLFormElementTest extends WebDriverTestCase {
      */
     @Test
     @Alerts({ "3", "1", "2", "3" })
-    public void testRadioButtonArray() throws Exception {
+    public void radioButtonArray() throws Exception {
         final String html
             = "<html><head><title>foo</title><script>\n"
             + "function doTest(){\n"
@@ -162,7 +160,7 @@ public class HTMLFormElementTest extends WebDriverTestCase {
      */
     @Test
     @Alerts("1")
-    public void testRadioButton_OnlyOne() throws Exception {
+    public void radioButton_OnlyOne() throws Exception {
         final String html
             = "<html><head><title>foo</title><script>\n"
             + "function doTest(){\n"
@@ -182,274 +180,98 @@ public class HTMLFormElementTest extends WebDriverTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testActionProperty() throws Exception {
-        final String jsProperty = "action";
-        final String htmlProperty = "action";
-        final String oldValue = "http://foo.com";
-        final String newValue = "mailto:me@bar.com";
-
-        final HtmlForm form = doTestProperty(jsProperty, htmlProperty, oldValue, newValue);
-        assertEquals(newValue, form.getActionAttribute());
+    @Alerts({ "http://foo.com/", "mailto:me@bar.com", "mailto:me@bar.com" })
+    public void actionProperty() throws Exception {
+        doTestProperty("action", "action", "http://foo.com/", "mailto:me@bar.com");
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    public void testNameProperty() throws Exception {
-        final String jsProperty = "name";
-        final String htmlProperty = "name";
-        final String oldValue = "myForm";
-        final String newValue = "testForm";
-
-        final HtmlForm form = doTestProperty(jsProperty, htmlProperty, oldValue, newValue);
-        assertEquals(newValue, form.getNameAttribute());
+    @Alerts({ "myForm", "testForm", "testForm" })
+    public void nameProperty() throws Exception {
+        doTestProperty("name", "name", "myForm", "testForm");
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    public void testEncodingProperty() throws Exception {
-        final String jsProperty = "encoding";
-        final String htmlProperty = "enctype";
-        final String oldValue = "myEncoding";
-        final String newValue = "newEncoding";
-
-        final HtmlForm form = doTestProperty(jsProperty, htmlProperty, oldValue, newValue);
-        assertEquals(newValue, form.getEnctypeAttribute());
+    @Alerts("application/x-www-form-urlencoded")
+    public void defaultEnctype() throws Exception {
+        enctype(null);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    public void testMethodProperty() throws Exception {
-        final String jsProperty = "method";
-        final String htmlProperty = "method";
-        final String oldValue = "get";
-        final String newValue = "post";
-
-        final HtmlForm form = doTestProperty(jsProperty, htmlProperty, oldValue, newValue);
-        assertEquals(newValue, form.getMethodAttribute());
+    @Alerts("application/x-www-form-urlencoded")
+    public void emptyEnctype() throws Exception {
+        enctype("");
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    public void testTargetProperty() throws Exception {
-        final String jsProperty = "target";
-        final String htmlProperty = "target";
-        final String oldValue = "_top";
-        final String newValue = "_parent";
-
-        final HtmlForm form = doTestProperty(jsProperty, htmlProperty, oldValue, newValue);
-        assertEquals(newValue, form.getTargetAttribute());
+    @Alerts("application/x-www-form-urlencoded")
+    public void blankEnctype() throws Exception {
+        enctype(" ");
     }
 
-    private HtmlForm doTestProperty(
-            final String jsProperty,
-            final String htmlProperty,
-            final String oldValue,
-            final String newValue)
-        throws
-            Exception {
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("application/x-www-form-urlencoded")
+    public void unknownEnctype() throws Exception {
+        enctype("unknown");
+    }
 
-        final String html
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("application/x-www-form-urlencoded")
+    public void urlencodedEnctype() throws Exception {
+        enctype("application/x-www-form-urlencoded");
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("multipart/form-data")
+    public void multipartEnctype() throws Exception {
+        enctype("multipart/form-data");
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("text/plain")
+    public void plainEnctype() throws Exception {
+        enctype("text/plain");
+    }
+
+    private void enctype(final String encoding) throws Exception {
+        String html
             = "<html><head><title>foo</title><script>\n"
             + "function doTest(){\n"
-            + "    alert(document.forms[0]." + jsProperty + ");\n"
-            + "    document.forms[0]." + jsProperty + "='" + newValue + "'\n"
-            + "    alert(document.forms[0]." + jsProperty + ");\n"
+            + "    alert(document.forms[0].encoding);\n"
             + "}\n"
             + "</script></head><body onload='doTest()'>\n"
-            + "<p>hello world</p>\n"
-            + "<form " + htmlProperty + "='" + oldValue + "'>\n"
-            + "    <input type='button' name='button1' />\n"
+            + "<form name='testForm'";
+        if (null != encoding) {
+            html = html + " enctype='" + encoding + "'";
+        }
+        html = html + ">\n"
+            + "    <input type='submit' name='submit1'/>\n"
             + "</form>\n"
             + "</body></html>";
-
-        setExpectedAlerts(oldValue, newValue);
-        final HtmlPage page = loadPageWithAlerts(html);
-
-        return page.getForms().get(0);
-    }
-
-    /**
-     * Tests form reset and input default values while emulating IE.
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testFormReset() throws Exception {
-        // As tested with IE 6.0 on Win2k; note that refreshing the page will get you different results;
-        // you need to open a new browser instance each time you test this.
-        final String[] expectedIE = {
-            "before setting default values",               /* Before setting default values. */
-            "text: initial1 initial1 false false",
-            "file:   false false",
-            "image: initial3 initial3 false false",
-            "radio: initial4 initial4 true true",
-            "reset: initial5 initial5 false false",
-            "hidden: initial6 initial6 false false",
-            "button: initial7 initial7 false false",
-            "submit: initial8 initial8 false false",
-            "password: initial9 initial9 false false",
-            "checkbox: initial10 initial10 true true",
-            "textarea: initial11 initial11 undefined undefined",
-            "after setting default values",                /* After setting default values. */
-            "text: initial1 default1 false false",
-            "file:  default2 false false",
-            "image: default3 default3 false false",
-            "radio: default4 default4 true false",
-            "reset: initial5 default5 false false",
-            "hidden: initial6 default6 false false",
-            "button: initial7 default7 false false",
-            "submit: initial8 default8 false false",
-            "password: initial9 default9 false false",
-            "checkbox: default10 default10 true false",
-            "textarea: initial11 default11 undefined undefined",
-            "after resetting the form",                    /* After resetting the form. */
-            "text: default1 default1 false false",
-            "file:  default2 false false",
-            "image: default3 default3 false false",
-            "radio: default4 default4 false false",
-            "reset: initial5 default5 false false",
-            "hidden: default6 default6 false false",
-            "button: initial7 default7 false false",
-            "submit: initial8 default8 false false",
-            "password: default9 default9 false false",
-            "checkbox: default10 default10 false false",
-            "textarea: default11 default11 undefined undefined" };
-
-        // As tested with Firefox 2.0.20 and 3.0.13 on Linux.
-        final String[] expectedFF = {
-            "before setting default values",               /* Before setting default values. */
-            "text: initial1 initial1 false false",
-            "file:  initial2 false false",                 // THIS LINE DIFFERS FROM IE; see HtmlFileInput constructor.
-            "image: initial3 initial3 false false",
-            "radio: initial4 initial4 true true",
-            "reset: initial5 initial5 false false",
-            "hidden: initial6 initial6 false false",
-            "button: initial7 initial7 false false",
-            "submit: initial8 initial8 false false",
-            "password: initial9 initial9 false false",
-            "checkbox: initial10 initial10 true true",
-            "textarea: initial11 initial11 undefined undefined",
-            "after setting default values",                /* After setting default values. */
-            "text: default1 default1 false false",       // DIFFERS FROM IE; see HtmlInput.setDefaultValue()
-            "file:  default2 false false",
-            "image: default3 default3 false false",
-            "radio: default4 default4 false false",    // DIFFERS FROM IE; see HtmlRadioButtonInput.setDefaultChecked()
-            "reset: default5 default5 false false",      // DIFFERS FROM IE; see HtmlInput.setDefaultValue()
-            "hidden: default6 default6 false false",     // DIFFERS FROM IE; see HtmlInput.setDefaultValue()
-            "button: default7 default7 false false",     // DIFFERS FROM IE; see HtmlInput.setDefaultValue()
-            "submit: default8 default8 false false",     // DIFFERS FROM IE; see HtmlInput.setDefaultValue()
-            "password: default9 default9 false false",   // DIFFERS FROM IE; see HtmlInput.setDefaultValue()
-            "checkbox: default10 default10 false false", // DIFFERS FROM IE; see HtmlCheckBoxInput.setDefaultChecked()
-            "textarea: default11 default11 undefined undefined",
-            "after resetting the form",                    /* After resetting the form. */
-            "text: default1 default1 false false",
-            "file:  default2 false false",
-            "image: default3 default3 false false",
-            "radio: default4 default4 false false",
-            "reset: default5 default5 false false",        // DIFFERS FROM IE; see HtmlInput.setDefaultValue()
-            "hidden: default6 default6 false false",
-            "button: default7 default7 false false",       // DIFFERS FROM IE; see HtmlInput.setDefaultValue()
-            "submit: default8 default8 false false",       // DIFFERS FROM IE; see HtmlInput.setDefaultValue()
-            "password: default9 default9 false false",
-            "checkbox: default10 default10 false false",
-            "textarea: default11 default11 undefined undefined" };
-
-        final String[] expectedAlerts = getBrowserVersion().isFirefox() ? expectedFF : expectedIE;
-        setExpectedAlerts(expectedAlerts);
-
-        final String html = "<html>\n"
-            + "  <head>\n"
-            + "    <title>Reset Test</title>\n"
-            + "    <script>\n"
-            + "      var form1;\n"
-            + "      var text1;\n"
-            + "      var file1;\n"
-            + "      var image1;\n"
-            + "      var radio1;\n"
-            + "      var reset1;\n"
-            + "      var hidden1;\n"
-            + "      var button1;\n"
-            + "      var submit1;\n"
-            + "      var password1;\n"
-            + "      var checkbox1;\n"
-            + "      var textarea1;\n"
-            + "      function test() {\n"
-            + "        // --- initialize local variables, verify the initial default values --- //\n"
-            + "        form1 = document.getElementById('form1');\n"
-            + "        text1 = document.getElementById('text1');\n"
-            + "        file1 = document.getElementById('file1');\n"
-            + "        image1 = document.getElementById('image1');\n"
-            + "        radio1 = document.getElementById('radio1');\n"
-            + "        reset1 = document.getElementById('reset1');\n"
-            + "        hidden1 = document.getElementById('hidden1');\n"
-            + "        button1 = document.getElementById('button1');\n"
-            + "        submit1 = document.getElementById('submit1');\n"
-            + "        password1 = document.getElementById('password1');\n"
-            + "        checkbox1 = document.getElementById('checkbox1');\n"
-            + "        textarea1 = document.getElementById('textarea1');\n"
-            + "        alerts('before setting default values');\n"
-            + "        // --- change default values around, verify the new default values --- //\n"
-            + "        text1.defaultValue = 'default1';\n"
-            + "        file1.defaultValue = 'default2';\n"
-            + "        image1.defaultValue = 'default3';\n"
-            + "        radio1.defaultValue = 'default4';\n"
-            + "        radio1.defaultChecked = false;\n"
-            + "        reset1.defaultValue = 'default5';\n"
-            + "        hidden1.defaultValue = 'default6';\n"
-            + "        button1.defaultValue = 'default7';\n"
-            + "        submit1.defaultValue = 'default8';\n"
-            + "        password1.defaultValue = 'default9';\n"
-            + "        checkbox1.defaultValue = 'default10';\n"
-            + "        checkbox1.defaultChecked = false;\n"
-            + "        textarea1.defaultValue = 'default11';\n"
-            + "        alerts('after setting default values');\n"
-            + "        // --- reset the form, verify the input values were reset as appropriate --- //\n"
-            + "        form1.reset();\n"
-            + "        alerts('after resetting the form');\n"
-            + "      }\n"
-            + "      function alerts(caption) {\n"
-            + "        alert(caption);\n"
-            + "        alertOne('text', text1);\n"
-            + "        alertOne('file', file1);\n"
-            + "        alertOne('image', image1);\n"
-            + "        alertOne('radio', radio1);\n"
-            + "        alertOne('reset', reset1);\n"
-            + "        alertOne('hidden', hidden1);\n"
-            + "        alertOne('button', button1);\n"
-            + "        alertOne('submit', submit1);\n"
-            + "        alertOne('password', password1);\n"
-            + "        alertOne('checkbox', checkbox1);\n"
-            + "        alertOne('textarea', textarea1);\n"
-            + "      }\n"
-            + "      function alertOne(text, field) {\n"
-            + "        alert(text + ': ' + field.value + ' ' + field.defaultValue "
-            + "          + ' ' + field.checked + ' ' + field.defaultChecked);\n"
-            + "      }\n"
-            + "    </script>\n"
-            + "  </head>\n"
-            + "  <body onload='test()'>\n"
-            + "    <form id='form1' name='form1'>\n"
-            + "      <input type='text' id='text1' name='text1' value='initial1' />\n"
-            + "      <input type='file' id='file1' name='file1' value='initial2' />\n"
-            + "      <input type='image' id='image1' name='image1' value='initial3' />\n"
-            + "      <input type='radio' id='radio1' name='radio1' value='initial4' checked='checked' />\n"
-            + "      <input type='reset' id='reset1' name='reset1' value='initial5' />\n"
-            + "      <input type='hidden' id='hidden1' name='hidden1' value='initial6' />\n"
-            + "      <input type='button' id='button1' name='button1' value='initial7' />\n"
-            + "      <input type='submit' id='submit1' name='submit1' value='initial8' />\n"
-            + "      <input type='password' id='password1' name='password1' value='initial9' />\n"
-            + "      <input type='checkbox' id='checkbox1' name='checkbox1' value='initial10' checked='checked' />\n"
-            + "      <textarea id='textarea1' name='textarea1'>initial11</textarea>\n"
-            + "    </form>\n"
-            + "  </body>\n"
-            + "</html>";
 
         loadPageWithAlerts2(html);
     }
@@ -458,99 +280,76 @@ public class HTMLFormElementTest extends WebDriverTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testFormSubmit() throws Exception {
+    @Alerts({ "multipart/form-data", "application/x-www-form-urlencoded", "application/x-www-form-urlencoded" })
+    public void encodingProperty() throws Exception {
+        doTestProperty("encoding", "enctype", "multipart/form-data", "application/x-www-form-urlencoded");
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "text/plain", "application/x-www-form-urlencoded", "newEncoding" },
+            IE = { "text/plain", "exception" })
+    public void encodingProperty_textPlain() throws Exception {
+        doTestProperty("encoding", "enctype", "text/plain", "newEncoding");
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "application/x-www-form-urlencoded", "application/x-www-form-urlencoded", "newEncoding" },
+            IE = { "application/x-www-form-urlencoded", "exception" })
+    public void encodingProperty_dummyValues() throws Exception {
+        doTestProperty("encoding", "enctype", "myEncoding", "newEncoding");
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "get", "post", "post" })
+    public void methodProperty() throws Exception {
+        doTestProperty("method", "method", "get", "post");
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "_top", "_parent", "_parent" })
+    public void targetProperty() throws Exception {
+        doTestProperty("target", "target", "_top", "_parent");
+    }
+
+    private void doTestProperty(final String jsProperty, final String htmlProperty,
+            final String oldValue, final String newValue) throws Exception {
+
         final String html
-            = "<html><head><title>first</title></head><body>\n"
+            = "<html><head><title>foo</title><script>\n"
+            + "function doTest(){\n"
+            + "    alert(document.forms[0]." + jsProperty + ");\n"
+            + "    try {\n"
+            + "      document.forms[0]." + jsProperty + "='" + newValue + "';\n"
+            + "      alert(document.forms[0]." + jsProperty + ");\n"
+            + "      alert(document.forms[0].getAttribute('" + htmlProperty + "'));\n"
+            + "    } catch(e) { alert('exception'); }\n"
+            + "}\n"
+            + "</script></head><body onload='doTest()'>\n"
             + "<p>hello world</p>\n"
-            + "<form name='form1' method='get' action='" + URL_SECOND + "'>\n"
+            + "<form " + htmlProperty + "='" + oldValue + "'>\n"
             + "    <input type='button' name='button1' />\n"
-            + "    <input type='button' name='button2' />\n"
-            + "</form>\n"
-            + "</body></html>";
-        final String secondContent
-            = "<html><head><title>second</title></head><body>\n"
-            + "<p>hello world</p>\n"
-            + "</body></html>";
-
-        getMockWebConnection().setDefaultResponse(secondContent);
-        final HtmlPage page = loadPageWithAlerts(html);
-
-        final HtmlPage secondPage =
-            (HtmlPage) page.executeJavaScript("document.form1.submit()").getNewPage();
-        assertEquals("second", secondPage.getTitleText());
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testOnSubmitChangesAction() throws Exception {
-        final String html
-            = "<html><body>\n"
-            + "<form name='form1' action='" + URL_SECOND + "' onsubmit='this.action=\"" + URL_THIRD + "\"' "
-            + "method='post'>\n"
-            + "    <input type='submit' id='button1' />\n"
             + "</form>\n"
             + "</body></html>";
 
-        getMockWebConnection().setDefaultResponse("<html></html>");
+        final WebDriver wd = loadPageWithAlerts2(html);
 
-        final HtmlPage page = loadPageWithAlerts(html);
-        final Page page2 = page.<HtmlElement>getHtmlElementById("button1").click();
-
-        assertEquals(URL_THIRD.toExternalForm(), page2.getWebResponse().getRequestSettings().getUrl());
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testFormSubmit_target() throws Exception {
-        final String html
-            = "<html><head><title>first</title></head><body>\n"
-            + "<p>hello world</p>\n"
-            + "<form name='form1' method='get' action='" + URL_SECOND + "' target='MyNewWindow'>\n"
-            + "    <input type='button' name='button1' />\n"
-            + "</form>\n"
-            + "</body></html>";
-        final String secondContent
-            = "<html><head><title>second</title></head><body>\n"
-            + "<p>hello world</p>\n"
-            + "</body></html>";
-
-        getMockWebConnection().setDefaultResponse(secondContent);
-
-        final HtmlPage page = loadPageWithAlerts(html);
-
-        final HtmlPage secondPage
-            = (HtmlPage) page.executeJavaScript("document.form1.submit()").getNewPage();
-        assertEquals("second", secondPage.getTitleText());
-        assertEquals("MyNewWindow", secondPage.getEnclosingWindow().getName());
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testFormSubmitDoesntCallOnSubmit() throws Exception {
-        final String html
-            = "<html><head><title>first</title></head><body>\n"
-            + "<form name='form1' method='get' action='" + URL_SECOND + "' onsubmit=\"this.action = 'foo.html'\">\n"
-            + "    <input type='submit' />\n"
-            + "</form>\n"
-            + "<a href='javascript:document.form1.submit()' id='link1'>Click me</a>\n"
-            + "</body></html>";
-        final String secondContent
-            = "<html><head><title>second</title></head><body>\n"
-            + "<p>hello world</p>\n"
-            + "</body></html>";
-
-        getMockWebConnection().setDefaultResponse(secondContent);
-
-        final HtmlPage page = loadPageWithAlerts(html);
-        final HtmlAnchor link = page.getHtmlElementById("link1");
-        final HtmlPage page2 = link.click();
-        assertEquals("second", page2.getTitleText());
+        final WebElement form = wd.findElement(By.xpath("//form"));
+        if (wd instanceof HtmlUnitDriver && getExpectedAlerts().length >= 3) {
+            // form.getAttribute("enctype") returns form.getAttribute("encoding") with the FF driver. Bug or feature?
+            assertEquals(getExpectedAlerts()[2], form.getAttribute(htmlProperty));
+        }
     }
 
     /**
@@ -558,7 +357,7 @@ public class HTMLFormElementTest extends WebDriverTestCase {
      */
     @Test
     @Alerts({ "id2", "foo" })
-    public void testInputNamedId() throws Exception {
+    public void inputNamedId() throws Exception {
         doTestInputWithName("id");
     }
 
@@ -567,7 +366,7 @@ public class HTMLFormElementTest extends WebDriverTestCase {
      */
     @Test
     @Alerts({ "action2", "foo" })
-    public void testInputNamedAction() throws Exception {
+    public void inputNamedAction() throws Exception {
         doTestInputWithName("action");
     }
 
@@ -595,7 +394,7 @@ public class HTMLFormElementTest extends WebDriverTestCase {
      */
     @Test
     @Alerts("value = 2")
-    public void testAccessingRadioButtonArrayByName_Regression() throws Exception {
+    public void accessingRadioButtonArrayByName_Regression() throws Exception {
         final String html
             = "<html><head><title>Button Test</title></head><body><form name='whatsnew'>\n"
             + "<input type='radio' name='second' value='1'>\n"
@@ -625,7 +424,7 @@ public class HTMLFormElementTest extends WebDriverTestCase {
      */
     @Test
     @Alerts("foo")
-    public void testFindInputWithoutTypeDefined() throws Exception {
+    public void findInputWithoutTypeDefined() throws Exception {
         final String html
             = "<html><head><title>foo</title></head>\n"
             + "<body onload='alert(document.simple_form.login.value);'>\n"
@@ -641,42 +440,13 @@ public class HTMLFormElementTest extends WebDriverTestCase {
     }
 
     /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testFormSubmit_MultipleButtons() throws Exception {
-        final String html
-            = "<html><head><title>first</title></head><body>\n"
-            + "<p>hello world</p>\n"
-            + "<form name='form1' method='get' action='" + URL_SECOND + "'>\n"
-            + "    <button type='submit' name='button1' id='button1'/>\n"
-            + "    <button type='submit' name='button2' />\n"
-            + "</form>\n"
-            + "</body></html>";
-        final String secondContent
-            = "<html><head><title>second</title></head><body>\n"
-            + "<p>hello world</p>\n"
-            + "</body></html>";
-
-        getMockWebConnection().setDefaultResponse(secondContent);
-
-        final HtmlPage page = loadPageWithAlerts(html);
-        assertEquals("first", page.getTitleText());
-
-        final HtmlButton button = page.getHtmlElementById("button1");
-        final HtmlPage secondPage = button.click();
-        assertEquals("second", secondPage.getTitleText());
-        assertEquals(URL_SECOND + "?button1=", secondPage.getWebResponse().getRequestSettings().getUrl());
-    }
-
-    /**
      * Test form.length - This method does not count the type=image
      * input tags.
      * @throws Exception if the test fails
      */
     @Test
     @Alerts("2")
-    public void testLength() throws Exception {
+    public void length() throws Exception {
         final String html
             = "<html><head><title>foo</title><script>\n"
             + "function doTest(){\n"
@@ -698,7 +468,7 @@ public class HTMLFormElementTest extends WebDriverTestCase {
      */
     @Test
     @Alerts("button1")
-    public void testGet() throws Exception {
+    public void get() throws Exception {
         final String html
             = "<html><head><title>foo</title><script>\n"
             + "function doTest(){\n"
@@ -715,58 +485,12 @@ public class HTMLFormElementTest extends WebDriverTestCase {
     }
 
     /**
-    * @throws Exception if the test fails
-    */
-    @Test
-    public void testLostFunction() throws Exception {
-        final String content
-            = "<html><head><title>foo</title><script>\n"
-            + " function onSubmit() { alert('hi!'); return false; }\n"
-            + "</script></head><body>\n"
-            + "<form onsubmit='return onSubmit();'>\n"
-            + " <input type='submit' id='clickMe' />\n"
-            + "</form>\n"
-            + "</body></html>";
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(content, collectedAlerts);
-        final HtmlSubmitInput button = page.getHtmlElementById("clickMe");
-        button.click();
-        final String[] expectedAlerts = {"hi!"};
-        assertEquals(expectedAlerts, collectedAlerts);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testAssignedOnsubmit() throws Exception {
-        final String content
-            = "<html><head><title>foo</title><script>\n"
-            + " function onSubmit() { alert('hi!'); return false; }\n"
-            + " function init() { document.myForm.onsubmit = onSubmit; }\n"
-            + " window.onload = init;\n"
-            + "</script></head><body>\n"
-            + "<form name='myForm'>\n"
-            + " <input type='submit' id='clickMe' />\n"
-            + "</form>\n"
-            + "</body></html>";
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(content, collectedAlerts);
-        final HtmlSubmitInput button = page.getHtmlElementById("clickMe");
-        button.click();
-        final String[] expectedAlerts = {"hi!"};
-        assertEquals(expectedAlerts, collectedAlerts);
-    }
-
-    /**
      * Test that the elements collection is live.
     * @throws Exception if the test fails
     */
     @Test
     @Alerts({ "0", "1", "1", "true" })
-    public void testElementsLive() throws Exception {
+    public void elementsLive() throws Exception {
         final String html = "<html>\n"
             + "<body>\n"
             + "<form name='myForm'>\n"
@@ -791,7 +515,9 @@ public class HTMLFormElementTest extends WebDriverTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testGetFormFromFormsById() throws Exception {
+    @Alerts(DEFAULT = "§§URL§§foo.html",
+            IE8 = "foo.html")
+    public void getFormFromFormsById() throws Exception {
         final String html =
             "<html>\n"
             + "<head></head>\n"
@@ -801,13 +527,6 @@ public class HTMLFormElementTest extends WebDriverTestCase {
             + "</body>\n"
             + "</html>";
 
-        if (getBrowserVersion().isFirefox()) {
-            setExpectedAlerts(URL_FIRST + "foo.html");
-        }
-        else {
-            setExpectedAlerts("foo.html");
-        }
-
         loadPageWithAlerts2(html);
     }
 
@@ -816,7 +535,7 @@ public class HTMLFormElementTest extends WebDriverTestCase {
      */
     @Test
     @Alerts("text")
-    public void testGetFieldNamedLikeForm() throws Exception {
+    public void getFieldNamedLikeForm() throws Exception {
         final String html =
             "<html>\n"
             + "<head></head>\n"
@@ -836,18 +555,18 @@ public class HTMLFormElementTest extends WebDriverTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testFieldNamedSubmit() throws Exception {
-        testFieldNamedSubmit("<input type='text' name='submit'>\n", "INPUT");
-        testFieldNamedSubmit("<input type='password' name='submit'>\n", "INPUT");
-        testFieldNamedSubmit("<input type='submit' name='submit'>\n", "INPUT");
-        testFieldNamedSubmit("<input type='radio' name='submit'>\n", "INPUT");
-        testFieldNamedSubmit("<input type='checkbox' name='submit'>\n", "INPUT");
-        testFieldNamedSubmit("<input type='button' name='submit'>\n", "INPUT");
-        testFieldNamedSubmit("<button type='submit' name='submit'>\n", "BUTTON");
-        testFieldNamedSubmit("<textarea name='submit'></textarea>\n", "TEXTAREA");
-        testFieldNamedSubmit("<select name='submit'></select>\n", "SELECT");
-        testFieldNamedSubmit("<input type='image' name='submit'>\n", "function");
-        testFieldNamedSubmit("<input type='IMAGE' name='submit'>\n", "function");
+    public void fieldNamedSubmit() throws Exception {
+        fieldNamedSubmit("<input type='text' name='submit'>\n", "INPUT");
+        fieldNamedSubmit("<input type='password' name='submit'>\n", "INPUT");
+        fieldNamedSubmit("<input type='submit' name='submit'>\n", "INPUT");
+        fieldNamedSubmit("<input type='radio' name='submit'>\n", "INPUT");
+        fieldNamedSubmit("<input type='checkbox' name='submit'>\n", "INPUT");
+        fieldNamedSubmit("<input type='button' name='submit'>\n", "INPUT");
+        fieldNamedSubmit("<button type='submit' name='submit'>\n", "BUTTON");
+        fieldNamedSubmit("<textarea name='submit'></textarea>\n", "TEXTAREA");
+        fieldNamedSubmit("<select name='submit'></select>\n", "SELECT");
+        fieldNamedSubmit("<input type='image' name='submit'>\n", "function");
+        fieldNamedSubmit("<input type='IMAGE' name='submit'>\n", "function");
     }
 
     /**
@@ -855,7 +574,7 @@ public class HTMLFormElementTest extends WebDriverTestCase {
      * @param expected the expected alert
      * @throws Exception if the test fails
      */
-    private void testFieldNamedSubmit(final String htmlSnippet, final String expected) throws Exception {
+    private void fieldNamedSubmit(final String htmlSnippet, final String expected) throws Exception {
         final String html =
             "<html>\n"
             + "<head>\n"
@@ -884,7 +603,7 @@ public class HTMLFormElementTest extends WebDriverTestCase {
      */
     @Test
     @Alerts({ "before", "2" })
-    public void testFieldFoundWithID() throws Exception {
+    public void fieldFoundWithID() throws Exception {
         final String html = "<html><head>\n"
             + "<script>\n"
             + "function test() {\n"
@@ -912,7 +631,7 @@ public class HTMLFormElementTest extends WebDriverTestCase {
      */
     @Test
     @Alerts({ "INPUT", "idImg1", "img2", "true" })
-    public void testNonFieldChildFound() throws Exception {
+    public void nonFieldChildFound() throws Exception {
         final String html = "<html><head>\n"
             + "<script>\n"
             + "function test() {\n"
@@ -945,7 +664,7 @@ public class HTMLFormElementTest extends WebDriverTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testFormIsNotAConstructor() throws Exception {
+    public void formIsNotAConstructor() throws Exception {
         final String html = "<html><head>\n"
             + "<script>\n"
             + "var Form = {};\n"
@@ -965,12 +684,12 @@ public class HTMLFormElementTest extends WebDriverTestCase {
     /**
      * Test that the form from the right page is returned after browsing.
      * Regression test for
-     * http://sourceforge.net/tracker/index.php?func=detail&aid=1627983&group_id=47038&atid=448266
+     * http://sourceforge.net/p/htmlunit/bugs/417/
      * @throws Exception if the test fails
      */
     @Test
     @Alerts({ "page 1: formPage1", "page 2: formPage2" })
-    public void testFormAccessAfterBrowsing() throws Exception {
+    public void formAccessAfterBrowsing() throws Exception {
         final String html = "<html><head><title>first</title>\n"
             + "<script>\n"
             + "function test() {\n"
@@ -999,73 +718,13 @@ public class HTMLFormElementTest extends WebDriverTestCase {
     }
 
     /**
-     * Verifies that the event object is correctly made available.
-     * Regression test for https://sf.net/tracker/index.php?func=detail&aid=1648014&group_id=47038&atid=448266.
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(FF = { "srcElement null: true", "srcElement==form: false", "target null: false", "target==form: true" },
-        IE = { "srcElement null: false", "srcElement==form: true", "target null: true", "target==form: false" })
-    public void testOnSubmitEvent() throws Exception {
-        final WebClient client = getWebClient();
-        final MockWebConnection webConnection = getMockWebConnection();
-
-        final String html = "<html><head><title>first</title>\n"
-            + "<script>\n"
-            + "function test(_event) {\n"
-            + "  var oEvent = _event ? _event : window.event;\n"
-            + "  alert('srcElement null: ' + (oEvent.srcElement == null));\n"
-            + "  alert('srcElement==form: ' + (oEvent.srcElement == document.forms[0]));\n"
-            + "  alert('target null: ' + (oEvent.target == null));\n"
-            + "  alert('target==form: ' + (oEvent.target == document.forms[0]));\n"
-            + "}\n"
-            + "</script>\n"
-            + "</head><body>\n"
-            + "<form name='formPage1' action='about:blank' onsubmit='test(event)'>\n"
-            + "<input type='submit' id='theButton'>\n"
-            + "</form>\n"
-            + "</body></html>";
-
-        webConnection.setResponse(URL_FIRST, html);
-        client.setWebConnection(webConnection);
-        final List<String> collectedAlerts = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-
-        final HtmlPage page = client.getPage(URL_FIRST);
-        page.<HtmlElement>getHtmlElementById("theButton").click();
-
-        assertEquals(getExpectedAlerts(), collectedAlerts);
-    }
-
-    /**
-     * In action "this" should be the window and not the form.
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testThisInJavascriptAction() throws Exception {
-        final String content
-            = "<html>\n"
-            + "<body>\n"
-            + "<form action='javascript:alert(this == window)'>\n"
-            + "<input type='submit' id='theButton'>\n"
-            + "</form>\n"
-            + "</body></html>";
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final String[] expectedAlerts = {"true"};
-        final HtmlPage page1 = loadPage(getBrowserVersion(), content, collectedAlerts);
-        final Page page2 = page1.<HtmlElement>getHtmlElementById("theButton").click();
-
-        assertEquals(expectedAlerts, collectedAlerts);
-        assertSame(page1, page2);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    @Alerts({ "function handler() {}", "null" })
-    public void testOnsubmitNull() throws Exception {
+    @Alerts(DEFAULT = { "function handler() {}", "null", "null" },
+            IE8 = { "function handler() {}", "null", "exception" })
+    @NotYetImplemented(IE8)
+    public void onsubmitNull() throws Exception {
         final String html =
             "<html><head>\n"
             + "<script>\n"
@@ -1076,6 +735,10 @@ public class HTMLFormElementTest extends WebDriverTestCase {
             + "    alert(String(form.onsubmit).replace(/\\n/g, ''));\n"
             + "    form.onsubmit = null;\n"
             + "    alert(form.onsubmit);\n"
+            + "    try {\n"
+            + "      form.onsubmit = undefined;\n"
+            + "      alert(form.onsubmit);\n"
+            + "    } catch(e) { alert('exception'); }\n"
             + "  }\n"
             + "</script>\n"
             + "<body onload=test()>\n"
@@ -1089,35 +752,17 @@ public class HTMLFormElementTest extends WebDriverTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void fileInput_fireOnChange() throws Exception {
-        final String html = "<html><head></head><body>\n"
-            + "<form>\n"
-            + "  <input type='file' name='myFile' id='myFile' onchange='alert(this.value)'/>\n"
-            + "</form>\n"
-            + "</body>\n"
-            + "</html>";
-
-        final String[] expectedAlerts = {"dummy.txt"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(getBrowserVersion(), html, collectedAlerts);
-        final HtmlFileInput fileInput = page.getHtmlElementById("myFile");
-        fileInput.focus();
-        fileInput.setAttribute("value", "dummy.txt");
-        assertEquals(Collections.EMPTY_LIST, collectedAlerts);
-        // remove focus to trigger onchange
-        page.setFocusedElement(null);
-        assertEquals(expectedAlerts, collectedAlerts);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
+    @Alerts(DEFAULT = { "page1.html", "page2.html", "page1.html", "page1.html" },
+            IE11 = { "page1.html", "page1.html", "page1.html", "page1.html" })
+    @NotYetImplemented(IE11)
     public void changeFormActionAfterSubmit() throws Exception {
-        changeFormActionAfterSubmit("input type='button' value='Test'", "page1.html");
-        changeFormActionAfterSubmit("input type='submit' value='Test'", "page2.html");
-        changeFormActionAfterSubmit("input type='text' value='Test'", "page1.html");
-        changeFormActionAfterSubmit("div", "page1.html");
+        final String[] expectedFiles = getExpectedAlerts();
+        setExpectedAlerts();
+
+        changeFormActionAfterSubmit("input type='button' value='Test'", expectedFiles[0]);
+        changeFormActionAfterSubmit("input type='submit' value='Test'", expectedFiles[1]);
+        changeFormActionAfterSubmit("input type='text' value='Test'", expectedFiles[2]);
+        changeFormActionAfterSubmit("div", expectedFiles[3]);
     }
 
     private void changeFormActionAfterSubmit(final String clickable, final String expectedFile) throws Exception {
@@ -1132,24 +777,24 @@ public class HTMLFormElementTest extends WebDriverTestCase {
             + "</head>\n"
             + "<body>\n"
             + "  <form action='page1.html' name='myForm'>\n"
-            + "    <" + clickable + " id='x' onclick='submitForm();'>\n"
+            + "    <" + clickable + " id='x' onclick='submitForm();'>foo\n"
             + "  </form>\n"
             + "</body>\n"
             + "</html>";
 
-        final HtmlPage page = loadPage(getBrowserVersion(), html, null);
-        final HtmlElement element = page.getHtmlElementById("x");
-        final HtmlPage secondPage = element.click();
+        getMockWebConnection().setDefaultResponse("");
+        final WebDriver driver = loadPageWithAlerts2(html);
+        driver.findElement(By.id("x")).click();
         // caution: IE7 doesn't put a trailing "?"
-        assertEquals(getDefaultUrl() + expectedFile,
-                secondPage.getWebResponse().getRequestSettings().getUrl().toExternalForm().replaceAll("\\?", ""));
+        assertEquals(getDefaultUrl() + expectedFile, driver.getCurrentUrl().replaceAll("\\?", ""));
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(FF = "exception", IE = "radio")
+    @Alerts(DEFAULT = "exception",
+            IE = "radio")
     public void item() throws Exception {
         final String html = "<html>\n"
             + "<head>\n"
@@ -1175,7 +820,8 @@ public class HTMLFormElementTest extends WebDriverTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(FF = "exception", IE = "2")
+    @Alerts(DEFAULT = "exception",
+            IE = "2")
     public void item_many() throws Exception {
         final String html = "<html>\n"
             + "<head>\n"
@@ -1202,7 +848,8 @@ public class HTMLFormElementTest extends WebDriverTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(FF = "exception", IE = "radio2")
+    @Alerts(DEFAULT = "exception",
+            IE = "radio2")
     public void item_many_subindex() throws Exception {
         final String html = "<html>\n"
             + "<head>\n"
@@ -1229,7 +876,8 @@ public class HTMLFormElementTest extends WebDriverTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(FF = "exception", IE = "radio2")
+    @Alerts(DEFAULT = "exception",
+            IE = "radio2")
     public void item_integer() throws Exception {
         final String html = "<html>\n"
             + "<head>\n"
@@ -1258,50 +906,397 @@ public class HTMLFormElementTest extends WebDriverTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @NotYetImplemented
-    public void changes_after_call_to_submit() throws Exception {
-        changes_after_call_to_submit("inputSubmitReturnTrue", "page4.html?f1=v1&f2=v2");
-        changes_after_call_to_submit("inputSubmitVoid", "page4.html?f1=v1&f2=v2");
+    @Alerts(DEFAULT = { "page4.html?f1=v1&f2=v2", "page4.html?f1=v1&f2=v2", "page3.html?f1=v1", "page3.html?f1=v1" },
+            IE11 = { "page3.html?f1=v1", "page3.html?f1=v1", "page3.html?f1=v1", "page3.html?f1=v1" })
+    @NotYetImplemented(IE11)
+    public void changesAfterCallToSubmit() throws Exception {
+        final String[] expectedUrlSuffixes = getExpectedAlerts();
+        setExpectedAlerts();
 
-        changes_after_call_to_submit("inputSubmitReturnFalse", "page3.html?f1=v1");
-        changes_after_call_to_submit("link", "page3.html?f1=v1");
+        changesAfterCallToSubmit("inputSubmitReturnTrue", expectedUrlSuffixes[0]);
+        changesAfterCallToSubmit("inputSubmitVoid", expectedUrlSuffixes[1]);
+
+        changesAfterCallToSubmit("inputSubmitReturnFalse", expectedUrlSuffixes[2]);
+        changesAfterCallToSubmit("link", expectedUrlSuffixes[3]);
     }
 
-    private void changes_after_call_to_submit(final String id, final String expectedUrlSuffix) throws Exception {
-        final String html = "<html><head><script>"
-            + "function submitForm() {"
-            + "  var f = document.forms[0];"
-            + "  f.action = 'page3.html';"
-            + "  "
-            + "  var h = document.createElement('input');"
-            + "  h.name = 'f1';"
-            + "  h.value = 'v1';"
-            + "  f.appendChild(h);"
-            + "  "
-            + "  f.submit();"
-            + "  "
-            + "  f.action = 'page4.html';"
-            + "  var h = document.createElement('input');"
-            + "  h.name = 'f2';"
-            + "  h.value = 'v2';"
-            + "  f.appendChild(h);"
-            + "  return false;"
-            + "}"
-            + "</script></head><body>"
-            + "<form action='page1.html' name='myForm'>"
+    private void changesAfterCallToSubmit(final String id, final String expectedUrlSuffix) throws Exception {
+        final String html = "<html><head><script>\n"
+            + "function submitForm() {\n"
+            + "  var f = document.forms[0];\n"
+            + "  f.action = 'page3.html';\n"
+            + "\n"
+            + "  var h = document.createElement('input');\n"
+            + "  h.name = 'f1';\n"
+            + "  h.value = 'v1';\n"
+            + "  f.appendChild(h);\n"
+            + "\n"
+            + "  f.submit();\n"
+            + "\n"
+            + "  f.action = 'page4.html';\n"
+            + "  var h = document.createElement('input');\n"
+            + "  h.name = 'f2';\n"
+            + "  h.value = 'v2';\n"
+            + "  f.appendChild(h);\n"
+            + "  return false;\n"
+            + "}\n"
+            + "</script></head><body>\n"
+            + "<form action='page1.html' name='myForm'>\n"
             + "  <input type='submit' id='inputSubmitReturnTrue' value='With on click on the button, return true' "
-            + "onclick='submitForm(); return true'>"
+            + "onclick='submitForm(); return true'>\n"
             + "  <input type='submit' id='inputSubmitReturnFalse' value='With on click on the button, return false' "
-            + "onclick='submitForm(); return false'>"
+            + "onclick='submitForm(); return false'>\n"
             + "  <input type='submit' id='inputSubmitVoid' value='With on click on the button, no return' "
-            + "onclick='submitForm();'>"
+            + "onclick='submitForm();'>\n"
             + "  <a id='link' href='#'  onclick='return submitForm()'><input type='submit' "
-            + "value='With on click on the link'></a>"
+            + "value='With on click on the link'></a>\n"
             + "</form></body></html>";
 
         getMockWebConnection().setDefaultResponse("");
         final WebDriver wd = loadPageWithAlerts2(html);
         wd.findElement(By.id(id)).click();
         assertEquals(URL_FIRST + expectedUrlSuffix, wd.getCurrentUrl());
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "2",
+            IE = "3")
+    public void submit_twice() throws Exception {
+        final String html = "<html>\n"
+            + "<head>\n"
+            + "<script>\n"
+            + "  function test() {\n"
+            + "    var f = document.forms[0];\n"
+            + "    f.submit();\n"
+            + "    f.submit();\n"
+            + "  }\n"
+            + "</script></head>\n"
+            + "<body onload='test()'>\n"
+            + "  <form action='page1.html' name='myForm'>\n"
+            + "    <input name='myField' value='some value'>\n"
+            + "  </form>\n"
+            + "</body></html>";
+
+        getMockWebConnection().setDefaultResponse("");
+        loadPage2(html);
+        Thread.sleep(100);
+
+        assertEquals(Integer.parseInt(getExpectedAlerts()[0]), getMockWebConnection().getRequestCount());
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("foo1")
+    public void targetChangedAfterSubmitCall() throws Exception {
+        final String html = "<html><head><script>\n"
+            + "function test() {\n"
+            + "  var f = document.forms[0];\n"
+            + "  f.submit();\n"
+            + "  f.target = 'foo2';\n"
+            + "}\n"
+            + "</script></head><body>\n"
+            + "<form action='page1.html' name='myForm' target='foo1'>\n"
+            + "  <input name='myField' value='some value'>\n"
+            + "</form>\n"
+            + "<div id='clickMe' onclick='test()'>click me</div></body></html>";
+
+        getMockWebConnection().setDefaultResponse("<html><head><script>alert(window.name)</script></head></html>");
+        final WebDriver driver = loadPage2(html);
+        driver.findElement(By.id("clickMe")).click();
+
+        try {
+            driver.switchTo().window("foo2");
+            Assert.fail("Window foo2 found");
+        }
+        catch (final NoSuchWindowException e) {
+            // ok
+        }
+        driver.switchTo().window("foo1");
+        assertEquals(getExpectedAlerts(), getCollectedAlerts(driver));
+    }
+
+    /**
+     * Verify Content-Type header sent with form submission.
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void enctype() throws Exception {
+        enctypeTest("", "post", "application/x-www-form-urlencoded");
+        enctypeTest("application/x-www-form-urlencoded", "post", "application/x-www-form-urlencoded");
+        enctypeTest("multipart/form-data", "post", "multipart/form-data");
+
+        // for GET, no Content-Type header should be sent
+        enctypeTest("", "get", null);
+        enctypeTest("application/x-www-form-urlencoded", "get", null);
+        enctypeTest("multipart/form-data", "get", null);
+    }
+
+    /**
+     * Regression test for bug
+     * <a href="http://sf.net/suppor/tracker.php?aid=2860721">2860721</a>: incorrect enctype form attribute
+     * should be ignored.
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void enctype_incorrect() throws Exception {
+        enctypeTest("text/html", "post", "application/x-www-form-urlencoded");
+        enctypeTest("text/html", "get", null);
+    }
+
+    /**
+     * Verify the default value of enctype for a newly created form element.
+     * A similar test is used by jQuery-1.9.1 in its "feature support" detection.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("application/x-www-form-urlencoded")
+    public void enctype_defaultValue() throws Exception {
+        final String html = "<html><body><script>\n"
+            + "alert(document.createElement('form').enctype)\n"
+            + "</script></body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    private void enctypeTest(final String enctype, final String method, final String expectedCntType) throws Exception {
+        final String html = "<html><head><script>\n"
+            + "function test() {\n"
+            + "  var f = document.forms[0];\n"
+            + "  f.submit();\n"
+            + "}\n"
+            + "</script></head><body onload='test()'>\n"
+            + "<form action='foo.html' enctype='" + enctype + "' method='" + method + "'>\n"
+            + "  <input name='myField' value='some value'>\n"
+            + "</form></body></html>";
+
+        getMockWebConnection().setDefaultResponse("");
+        loadPageWithAlerts2(html);
+        String headerValue = getMockWebConnection().getLastWebRequest().getAdditionalHeaders()
+            .get("Content-Type");
+        // Can't test equality for multipart/form-data as it will have the form:
+        // multipart/form-data; boundary=---------------------------42937861433140731107235900
+        headerValue = StringUtils.substringBefore(headerValue, ";");
+        assertEquals(expectedCntType, headerValue);
+    }
+
+    /**
+     * Ensure that Multipart form text fields are correctly encoded.
+     * This was a regression introduced in 2.12-SNAPSHOT after upgrading to HttpClient to 4.3.
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void submitMultipartTextFieldWithRightEncoding() throws Exception {
+        final String html = "<html><body onload='document.forms[0].submit()'>\n"
+            + "<form action='foo.html' enctype='multipart/form-data' method='post'>\n"
+            + "  <input name='myField' value='éèêäöü'>\n"
+            + "</form></body></html>";
+
+        getMockWebConnection().setDefaultResponse("");
+        loadPage2(html);
+        final String body = getMockWebConnection().getLastWebRequest().getRequestBody();
+        final String expected = "Content-Disposition: form-data; name=\"myField\"\r\n"
+            + "\r\n"
+            + "éèêäöü";
+
+        assertTrue("Body: " + body, body.contains(expected));
+    }
+
+    /**
+     * Failed as of HtmlUnit-2.7-SNAPSHOT 01.12.2009 as the '#' from the
+     * link together with the fact that submission occurs to the same url
+     * let HtmlUnit think that it as just navigation to an anchor.
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void submitToSameUrlFromLinkOnclick_post() throws Exception {
+        submitToSameUrlFromLinkOnclick("post");
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void submitToSameUrlFromLinkOnclick_get() throws Exception {
+        submitToSameUrlFromLinkOnclick("get");
+    }
+
+    private void submitToSameUrlFromLinkOnclick(final String method) throws Exception {
+        final String html
+            = "<html><head><title>foo</title></head><body>\n"
+            + "<form id='form1' method='" + method + "'>\n"
+            + "<input name='foo'>\n"
+            + "<a href='#' onclick='document.forms[0].submit()' id='clickMe'>submit it</a>\n"
+            + "</form></body></html>";
+
+        final WebDriver driver = loadPage2(html);
+        driver.findElement(By.id("clickMe")).click();
+        driver.findElement(By.id("clickMe")).click(); // a second time to be sure to have same resulting Url
+
+        assertEquals(3, getMockWebConnection().getRequestCount());
+    }
+
+    /**
+     * For IE8: calling form.submit() immediately triggers a request but only the
+     * last response for a page is parsed.
+     * For FF10+ and Chrome: only one request, the last one.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "", "foo4", "script4.js" },
+            IE = { "", "foo0", "foo1", "foo2", "foo3", "foo4", "script4.js" })
+    @NotYetImplemented({ FF, CHROME })
+    public void submitTriggersRequestNotParsed() throws Exception {
+        final String html = "<html><head><script>\n"
+            + "function test() {\n"
+            + "  var f = document.forms[0];\n"
+            + "  for (var i=0; i<5; ++i) {\n"
+            + "    f.action = 'foo' + i;\n"
+            + "    f.submit();\n"
+            + "  }\n"
+            + "}\n"
+            + "</script></head><body onload='test()'>\n"
+            + "<form>\n"
+            + "<input name='foo'>\n"
+            + "</form></body></html>";
+
+        final MockWebConnection connection = getMockWebConnection();
+        for (int i = 0; i < 5; ++i) {
+            final String htmlX = "<html><head>\n"
+                + "<title>Page " + i + "</title>\n"
+                + "<script src='script" + i + ".js'></script>\n"
+                + "<script>alert('page" + i + "');</script>\n"
+                + "</head></html>";
+            connection.setResponse(new URL(getDefaultUrl(), "foo" + i), htmlX);
+            connection.setResponse(new URL(getDefaultUrl(), "script" + i + ".js"), "", JAVASCRIPT_MIME_TYPE);
+        }
+        final String[] expectedRequests = getExpectedAlerts();
+
+        setExpectedAlerts("page4");
+        final WebDriver driver = loadPageWithAlerts2(html); // forces to wait, what is needed for FFdriver
+
+        // NB: comparing the sequence order here is not 100% safe with a real browser
+        assertEquals(expectedRequests, getMockWebConnection().getRequestedUrls(getDefaultUrl()));
+
+        assertEquals("Page 4", driver.getTitle());
+    }
+
+    /**
+     * When the name of a form field changes... it is still reachable through the original name!
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "[object HTMLInputElement]", "undefined",
+                        "[object HTMLInputElement]", "[object HTMLInputElement]",
+                        "[object HTMLInputElement]", "[object HTMLInputElement]", "[object HTMLInputElement]" },
+            IE = { "[object]", "undefined",
+                    "[object]", "undefined",
+                    "[object]", "undefined", "undefined" },
+            IE11 = { "[object HTMLInputElement]", "undefined",
+                        "undefined", "[object HTMLInputElement]",
+                        "undefined", "undefined", "[object HTMLInputElement]" })
+    public void accessByNameAfterNameChange() throws Exception {
+        final String html
+            = "<html><head><title>foo</title><script>\n"
+            + "function go() {\n"
+            + "   var field = document.simple_form.originalName;\n"
+            + "   alert(document.simple_form.originalName);\n"
+            + "   alert(document.simple_form.newName);\n"
+
+            + "   field.name = 'newName';\n"
+            + "   alert(document.simple_form.originalName);\n"
+            + "   alert(document.simple_form.newName);\n"
+
+            + "   field.name = 'brandNewName';\n"
+            + "   alert(document.simple_form.originalName);\n"
+            + "   alert(document.simple_form.newName);\n"
+            + "   alert(document.simple_form.brandNewName);\n"
+            + "}\n"
+            + "</script></head>\n"
+            + "<body onload='go()'>\n"
+            + "<form name='simple_form'>\n"
+            + "   <input name='originalName'>\n"
+            + "</form>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Regression test for bug 2995968: lost children should be accessible per name from HTMLFormElement.elements.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "[object HTMLInputElement]", "[object HTMLInputElement]" },
+            IE8 = { "[object]", "[object]" })
+    public void lostChildrenFromElements() throws Exception {
+        final String html
+            = "<html><body>\n"
+            + "<div><form name='form1' >\n"
+            + "</div>\n"
+            + "<input name='b'/>\n"
+            + "</form><script>\n"
+            + "  alert(document.form1['b']);\n"
+            + "  alert(document.form1.elements['b']);\n"
+            + "</script>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "function",
+            IE8 = "string")
+    public void onchangeHandler() throws Exception {
+        final String html
+            = "<html><head><title>foo</title><script>\n"
+            + "function test() {\n"
+            + " var form = document.getElementsByTagName('form')[0];\n"
+            + " alert(typeof form.onchange);\n"
+            + "}\n"
+            + "</script></head><body onload='test()'>\n"
+            + "<form onchange='cat=true'></form>"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(DEFAULT = { "in listener", "page2 loaded" },
+            CHROME = "in listener",
+            IE = "exception",
+            IE11 = "in listener")
+    public void dispatchEventSubmitTriggersHandlers() throws Exception {
+        // use an iframe to capture alerts among 2 pages
+        final String container = "<html><body><iframe src='page1'></iframe></body></html>\n";
+        final String page1 = "<html><body>\n"
+            + "<form action='page2' id='theForm'><span id='foo'/></form>\n"
+            + "<script>\n"
+            + "function listener(e) {\n"
+            + "  alert('in listener');\n"
+            + "}\n"
+            + "try {\n"
+            + "  document.forms[0].addEventListener('submit', listener, true);\n"
+            + "  var e = document.createEvent('HTMLEvents');\n"
+            + "  e.initEvent('submit', true, false);\n"
+            + "  document.getElementById('theForm').dispatchEvent(e);\n"
+            + "} catch(e) { alert('exception'); }\n"
+            + "</script></body></html>";
+
+        final String page2 = "<html><body><script>alert('page2 loaded');</script></body></html>";
+
+        getMockWebConnection().setResponse(new URL(getDefaultUrl() + "page1"), page1);
+        getMockWebConnection().setResponse(new URL(getDefaultUrl() + "page2"), page2);
+        loadPageWithAlerts2(container);
     }
 }

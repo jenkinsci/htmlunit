@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import com.gargoylesoftware.htmlunit.RefreshHandler;
  * A handler for page refreshes that logs the refreshes but doesn't actually
  * perform any refreshes.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 9842 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Daniel Gredler
  */
@@ -47,6 +47,6 @@ public class LoggingRefreshHandler implements RefreshHandler {
     public void handleRefresh(final Page page, final URL url, final int seconds) {
         list_.add(((HtmlPage) page).getTitleText());
         list_.add(url);
-        list_.add(new Integer(seconds));
+        list_.add(Integer.valueOf(seconds));
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,18 +22,21 @@ import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 
 import com.gargoylesoftware.htmlunit.javascript.ScriptableWithFallbackGetter;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxFunction;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
 
 /**
  * A JavaScript object for simple array allowing access per key and index (like {@link MimeTypeArray}).
  *
- * @version $Revision: 4402 $
+ * @version $Revision: 10000 $
  * @author Marc Guillemot
  *
  * @see <a href="http://www.xulplanet.com/references/objref/MimeTypeArray.html">XUL Planet</a>
  */
+@JsxClass(isJSObject = false, isDefinedInStandardsMode = false)
 public class SimpleArray extends SimpleScriptable implements ScriptableWithFallbackGetter {
-    private static final long serialVersionUID = 8025124211062703153L;
-    private final List<Object> elements_ = new ArrayList<Object>();
+    private final List<Object> elements_ = new ArrayList<>();
 
     /**
      * Creates an instance. JavaScript objects must have a default constructor.
@@ -47,7 +50,8 @@ public class SimpleArray extends SimpleScriptable implements ScriptableWithFallb
      * @param index the index
      * @return the item at the given position
      */
-    public Object jsxFunction_item(final int index) {
+    @JsxFunction
+    public Object item(final int index) {
         return elements_.get(index);
     }
 
@@ -55,7 +59,7 @@ public class SimpleArray extends SimpleScriptable implements ScriptableWithFallb
      * {@inheritDoc}
      */
     public Object getWithFallback(final String name) {
-        final Object response = jsxFunction_namedItem(name);
+        final Object response = namedItem(name);
         if (response != null) {
             return response;
         }
@@ -83,7 +87,8 @@ public class SimpleArray extends SimpleScriptable implements ScriptableWithFallb
      * @param name the item name
      * @return the item with the given name
      */
-    public Object jsxFunction_namedItem(final String name) {
+    @JsxFunction
+    public Object namedItem(final String name) {
         for (final Object element : elements_) {
             if (name.equals(getItemName(element))) {
                 return element;
@@ -106,7 +111,8 @@ public class SimpleArray extends SimpleScriptable implements ScriptableWithFallb
      * Gets the array size.
      * @return the number elements
      */
-    public int jsxGet_length() {
+    @JsxGetter
+    public int getLength() {
         return elements_.size();
     }
 

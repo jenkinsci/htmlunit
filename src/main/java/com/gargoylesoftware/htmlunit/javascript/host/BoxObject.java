@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,18 +14,22 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
 
 /**
  * A JavaScript object for a BoxObject.
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 10000 $
  * @author <a href="mailto:sam@redspr.com">Sam Hough</a>
  */
+@JsxClass(browsers = @WebBrowser(value = FF, maxVersion = 24))
 public class BoxObject extends SimpleScriptable {
-
-    private static final long serialVersionUID = -6650009325965623469L;
 
     /** The element to which this box object corresponds. */
     private final HTMLElement element_;
@@ -49,7 +53,8 @@ public class BoxObject extends SimpleScriptable {
      * Returns the element to which this box object corresponds.
      * @return the element to which this box object corresponds
      */
-    public HTMLElement jsxGet_element() {
+    @JsxGetter
+    public HTMLElement getElement() {
         return element_;
     }
 
@@ -57,39 +62,44 @@ public class BoxObject extends SimpleScriptable {
      * Returns this box object's element's first child.
      * @return this box object's element's first child
      */
-    public Object jsxGet_firstChild() {
-        return element_.jsxGet_firstChild();
+    @JsxGetter
+    public Object getFirstChild() {
+        return element_.getFirstChild();
     }
 
     /**
      * Returns this box object's element's last child.
      * @return this box object's element's last child
      */
-    public Object jsxGet_lastChild() {
-        return element_.jsxGet_lastChild();
+    @JsxGetter
+    public Object getLastChild() {
+        return element_.getLastChild();
     }
 
     /**
      * Returns this box object's element's next sibling.
      * @return this box object's element's next sibling
      */
-    public Object jsxGet_nextSibling() {
-        return element_.jsxGet_nextSibling();
+    @JsxGetter
+    public Object getNextSibling() {
+        return element_.getNextSibling();
     }
 
     /**
      * Returns this box object's element's previous sibling.
      * @return this box object's element's previous sibling
      */
-    public Object jsxGet_previousSibling() {
-        return element_.jsxGet_previousSibling();
+    @JsxGetter
+    public Object getPreviousSibling() {
+        return element_.getPreviousSibling();
     }
 
     /**
      * Returns the X position of this box object's element.
      * @return the X position of this box object's element
      */
-    public int jsxGet_x() {
+    @JsxGetter
+    public int getX() {
         return element_.getPosX();
     }
 
@@ -97,7 +107,8 @@ public class BoxObject extends SimpleScriptable {
      * Returns the Y position of this box object's element.
      * @return the Y position of this box object's element
      */
-    public int jsxGet_y() {
+    @JsxGetter
+    public int getY() {
         return element_.getPosY();
     }
 
@@ -107,8 +118,9 @@ public class BoxObject extends SimpleScriptable {
      *
      * @return the <tt>screenX</tt> property
      */
-    public int jsxGet_screenX() {
-        return jsxGet_x();
+    @JsxGetter
+    public int getScreenX() {
+        return getX();
     }
 
     /**
@@ -118,24 +130,27 @@ public class BoxObject extends SimpleScriptable {
      *
      * @return the <tt>screenY</tt> property
      */
-    public int jsxGet_screenY() {
-        return jsxGet_y() + 121;
+    @JsxGetter
+    public int getScreenY() {
+        return getY() + 121;
     }
 
     /**
      * Returns the width of this box object's element, including padding, excluding margin and border.
      * @return the width of this box object's element, including padding, excluding margin and border
      */
-    public int jsxGet_width() {
-        return element_.jsxGet_clientWidth();
+    @JsxGetter
+    public int getWidth() {
+        return element_.getClientWidth();
     }
 
     /**
      * Returns the height of this box object's element, including padding, excluding margin and border.
      * @return the height of this box object's element, including padding, excluding margin and border
      */
-    public int jsxGet_height() {
-        return element_.jsxGet_clientHeight();
+    @JsxGetter
+    public int getHeight() {
+        return element_.getClientHeight();
     }
 
 }

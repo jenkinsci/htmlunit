@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,23 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.HTMLTEXTAREA_REMOVE_NEWLINE_FROM_TEXT;
+
 import java.util.Iterator;
 import java.util.List;
+import java.util.regex.Pattern;
+
+import org.apache.commons.lang3.StringUtils;
+
+import com.gargoylesoftware.htmlunit.BrowserVersion;
 
 /**
  * Utility to handle conversion from HTML code to string.
  * TODO: simplify it (it is just copied from what was available in DomNode and subclasses).
- * @version $Revision: 4794 $
+ * @version $Revision: 10205 $
  * @author Marc Guillemot
+ * @author Ahmed Ashour
+ * @author Ronald Brill
  */
 class HtmlSerializer {
     private final StringBuilder buffer_ = new StringBuilder();
@@ -33,6 +42,11 @@ class HtmlSerializer {
     protected static final String AS_TEXT_BLANK = "§blank§";
     /** Indicates a tab. */
     protected static final String AS_TEXT_TAB = "§tab§";
+
+    private static final Pattern CLEAN_UP_PATTERN = Pattern.compile("(?:" + AS_TEXT_BLOCK_SEPARATOR + ")+");
+    private static final Pattern REDUCE_WHITESPACE_PATTERN = Pattern.compile("\\s*" + AS_TEXT_BLOCK_SEPARATOR + "\\s*");
+    private static final Pattern TEXT_AREA_PATTERN = Pattern.compile("\r?\n");
+
     private boolean appletEnabled_;
     private boolean ignoreMaskedElements_ = true;
 
@@ -42,7 +56,7 @@ class HtmlSerializer {
      * @return the text representation according to the setting of this serializer
      */
     public String asText(final DomNode node) {
-        appletEnabled_ = node.getPage().getWebClient().isAppletEnabled();
+        appletEnabled_ = node.getPage().getWebClient().getOptions().isAppletEnabled();
         buffer_.setLength(0);
         appendNode(node);
         final String response = buffer_.toString();
@@ -52,13 +66,13 @@ class HtmlSerializer {
 
     private String cleanUp(String text) {
         // ignore <br/> at the end of a block
-        text = text.replaceAll(AS_TEXT_NEW_LINE + AS_TEXT_BLOCK_SEPARATOR, AS_TEXT_BLOCK_SEPARATOR);
+        text = StringUtils.replace(text, AS_TEXT_NEW_LINE + AS_TEXT_BLOCK_SEPARATOR, AS_TEXT_BLOCK_SEPARATOR);
         text = reduceWhitespace(text);
-        text = text.replaceAll(AS_TEXT_BLANK, " ");
+        text = StringUtils.replace(text, AS_TEXT_BLANK, " ");
         final String ls = System.getProperty("line.separator");
-        text = text.replaceAll(AS_TEXT_NEW_LINE, ls);
-        text = text.replaceAll("(?:" + AS_TEXT_BLOCK_SEPARATOR + ")+", ls); // many block sep => 1 new line
-        text = text.replaceAll(AS_TEXT_TAB, "\t");
+        text = StringUtils.replace(text, AS_TEXT_NEW_LINE, ls);
+        text = CLEAN_UP_PATTERN.matcher(text).replaceAll(ls); // many block sep => 1 new line
+        text = StringUtils.replace(text, AS_TEXT_TAB, "\t");
 
         return text;
     }
@@ -67,7 +81,7 @@ class HtmlSerializer {
         text = text.trim();
 
         // remove white spaces before or after block separators
-        text = text.replaceAll("\\s*" + AS_TEXT_BLOCK_SEPARATOR + "\\s*", AS_TEXT_BLOCK_SEPARATOR);
+        text = REDUCE_WHITESPACE_PATTERN.matcher(text).replaceAll(AS_TEXT_BLOCK_SEPARATOR);
 
         // remove leading block separators
         while (text.startsWith(AS_TEXT_BLOCK_SEPARATOR)) {
@@ -116,7 +130,7 @@ class HtmlSerializer {
             appendText((DomText) node);
         }
         else if (node instanceof DomComment) {
-            appendComment((DomComment) node);
+            // nothing to do
         }
         else if ((node instanceof HtmlApplet) && appletEnabled_) {
             // nothing
@@ -126,7 +140,8 @@ class HtmlSerializer {
         }
         else if (node instanceof HtmlHiddenInput
                 || node instanceof HtmlScript
-                || node instanceof HtmlStyle) {
+                || node instanceof HtmlStyle
+                || node instanceof HtmlNoFrames) {
             // nothing
         }
         else if (node instanceof HtmlTextArea) {
@@ -144,13 +159,7 @@ class HtmlSerializer {
         else if (node instanceof HtmlSubmitInput) {
             appendHtmlSubmitInput((HtmlSubmitInput) node);
         }
-        else if (node instanceof HtmlInput) {
-            doAppend(((HtmlInput) node).getValueAttribute());
-        }
-        else if (node instanceof HtmlTable) {
-            appendHtmlTable((HtmlTable) node);
-        }
-        else if (node instanceof HtmlCheckBoxInput || node instanceof HtmlRadioButtonInput) {
+        else if (node instanceof HtmlCheckBoxInput) {
             final String str;
             if (((HtmlCheckBoxInput) node).isChecked()) {
                 str = "checked";
@@ -160,11 +169,33 @@ class HtmlSerializer {
             }
             doAppend(str);
         }
+        else if (node instanceof HtmlRadioButtonInput) {
+            final String str;
+            if (((HtmlRadioButtonInput) node).isChecked()) {
+                str = "checked";
+            }
+            else {
+                str = "unchecked";
+            }
+            doAppend(str);
+        }
+        else if (node instanceof HtmlInput) {
+            doAppend(((HtmlInput) node).getValueAttribute());
+        }
+        else if (node instanceof HtmlTable) {
+            appendHtmlTable((HtmlTable) node);
+        }
         else if (node instanceof HtmlOrderedList) {
             appendHtmlOrderedList((HtmlOrderedList) node);
         }
         else if (node instanceof HtmlUnorderedList) {
             appendHtmlUnorderedList((HtmlUnorderedList) node);
+        }
+        else if (node instanceof HtmlPreformattedText) {
+            appendHtmlPreformattedText((HtmlPreformattedText) node);
+        }
+        else if (node instanceof HtmlNoScript && node.getPage().getWebClient().getOptions().isJavaScriptEnabled()) {
+            return;
         }
         else {
             final boolean block = node.isBlock();
@@ -198,21 +229,26 @@ class HtmlSerializer {
         doAppendBlockSeparator();
         boolean first = true;
         for (final DomNode item : htmlUnorderedList.getChildren()) {
-            if (!(item instanceof HtmlListItem)) {
-                continue;
-            }
             if (!first) {
                 doAppendBlockSeparator();
             }
             first = false;
-            appendChildren(item);
+            appendNode(item);
         }
         doAppendBlockSeparator();
     }
 
     private void appendHtmlTitle(final HtmlTitle htmlTitle) {
-        appendChildren(htmlTitle);
-        doAppendBlockSeparator();
+        // optimized version
+        // for the title there is no need to check the visibility
+        // of the containing dom text;
+        // this optimization defers the load of the style sheets
+        final DomNode child = htmlTitle.getFirstChild();
+        if (child instanceof DomText) {
+            doAppend(((DomText) child).getData());
+            doAppendBlockSeparator();
+            return;
+        }
     }
 
     private void appendChildren(final DomNode node) {
@@ -237,9 +273,19 @@ class HtmlSerializer {
     private void appendHtmlTextArea(final HtmlTextArea htmlTextArea) {
         if (isVisible(htmlTextArea)) {
             String text = htmlTextArea.getText();
-            text = text.replaceAll(" ", AS_TEXT_BLANK);
-            text = text.replaceAll("\r?\n", AS_TEXT_NEW_LINE);
-            text = text.replaceAll("\r", AS_TEXT_NEW_LINE);
+
+            final BrowserVersion browser = htmlTextArea.getPage().getWebClient().getBrowserVersion();
+            if (browser.hasFeature(HTMLTEXTAREA_REMOVE_NEWLINE_FROM_TEXT)) {
+                text = TEXT_AREA_PATTERN.matcher(text).replaceAll("");
+                text = StringUtils.replace(text, "\r", "");
+                text = StringUtils.normalizeSpace(text);
+            }
+            else {
+                text = StringUtils.stripEnd(text, null);
+                text = TEXT_AREA_PATTERN.matcher(text).replaceAll(AS_TEXT_NEW_LINE);
+                text = StringUtils.replace(text, "\r", AS_TEXT_NEW_LINE);
+            }
+            text = StringUtils.replace(text, " ", AS_TEXT_BLANK);
             doAppend(text);
         }
     }
@@ -251,20 +297,43 @@ class HtmlSerializer {
             doAppend(caption);
             doAppendBlockSeparator();
         }
+
         boolean first = true;
-        for (final HtmlTableRow row : htmlTable.getRows()) {
+
+        // first thead has to be displayed first and first tfoot has to be displayed last
+        final HtmlTableHeader tableHeader = htmlTable.getHeader();
+        if (tableHeader != null) {
+            first = appendHtmlTableRows(tableHeader.getRows(), true, null, null);
+        }
+        final HtmlTableFooter tableFooter = htmlTable.getFooter();
+
+        first = appendHtmlTableRows(htmlTable.getRows(), first, tableHeader, tableFooter);
+
+        if (tableFooter != null) {
+            first = appendHtmlTableRows(tableFooter.getRows(), first, null, null);
+        }
+
+        doAppendBlockSeparator();
+    }
+
+    private boolean appendHtmlTableRows(final List<HtmlTableRow> rows, boolean first, final TableRowGroup skipParent1,
+            final TableRowGroup skipParent2) {
+        for (final HtmlTableRow row : rows) {
+            if (row.getParentNode() == skipParent1 || row.getParentNode() == skipParent2) {
+                continue;
+            }
             if (!first) {
                 doAppendBlockSeparator();
             }
             first = false;
             appendHtmlTableRow(row);
         }
-        doAppendBlockSeparator();
+        return first;
     }
 
     private void appendHtmlSubmitInput(final HtmlSubmitInput htmlSubmitInput) {
         String value = htmlSubmitInput.getValueAttribute();
-        if (value == HtmlOption.ATTRIBUTE_NOT_DEFINED) {
+        if (value == DomElement.ATTRIBUTE_NOT_DEFINED) {
             value = "Submit Query";
         }
 
@@ -308,21 +377,31 @@ class HtmlSerializer {
                 doAppendBlockSeparator();
             }
             first = false;
-            doAppend(String.valueOf(i++));
+            doAppend(Integer.toString(i++));
             doAppend(". ");
             appendChildren(item);
         }
         doAppendBlockSeparator();
     }
 
-    private void appendText(final DomText domText) {
-        if (isVisible(domText.getParentNode())) {
-            append(domText.getData());
+    private void appendHtmlPreformattedText(final HtmlPreformattedText htmlPreformattedText) {
+        if (isVisible(htmlPreformattedText)) {
+            doAppendBlockSeparator();
+            String text = htmlPreformattedText.getTextContent();
+            text = StringUtils.replace(text, "\t", AS_TEXT_TAB);
+            text = StringUtils.replace(text, " ", AS_TEXT_BLANK);
+            text = TEXT_AREA_PATTERN.matcher(text).replaceAll(AS_TEXT_NEW_LINE);
+            text = StringUtils.replace(text, "\r", AS_TEXT_NEW_LINE);
+            doAppend(text);
+            doAppendBlockSeparator();
         }
     }
 
-    private void appendComment(final DomComment child) {
-        // nothing to do
+    private void appendText(final DomText domText) {
+        final DomNode parent = domText.getParentNode();
+        if (parent == null || parent instanceof HtmlTitle || isVisible(parent)) {
+            append(domText.getData());
+        }
     }
 
     private boolean isVisible(final DomNode node) {

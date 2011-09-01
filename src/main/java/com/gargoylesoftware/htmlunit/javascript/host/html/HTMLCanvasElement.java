@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,22 +14,39 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
-import com.gargoylesoftware.htmlunit.html.DomElement;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_CANVAS_DATA_URL_IE_PNG;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+import net.sourceforge.htmlunit.corejs.javascript.Undefined;
+
+import com.gargoylesoftware.htmlunit.html.HtmlCanvas;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxFunction;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
 import com.gargoylesoftware.htmlunit.javascript.host.canvas.CanvasRenderingContext2D;
 
 /**
- * A JavaScript object for {@link com.gargoylesoftware.htmlunit.html.HtmlCanvas}.
+ * A JavaScript object for {@link HtmlCanvas}.
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 10343 $
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Frank Danek
  */
+@JsxClass(domClass = HtmlCanvas.class, browsers = { @WebBrowser(FF), @WebBrowser(CHROME),
+        @WebBrowser(value = IE, minVersion = 11) })
 public class HTMLCanvasElement extends HTMLElement {
 
-    private static final long serialVersionUID = 2198667710163712419L;
+    private Object context_;
 
     /**
      * Creates an instance.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
     public HTMLCanvasElement() {
     }
 
@@ -37,40 +54,59 @@ public class HTMLCanvasElement extends HTMLElement {
      * Returns the "width" property.
      * @return the "width" property
      */
-    public String jsxGet_width() {
-        String width = getDomNodeOrDie().getAttribute("width");
-        if (width == DomElement.ATTRIBUTE_NOT_DEFINED) {
-            width = "300";
+    @Override
+    @JsxGetter
+    public int getWidth() {
+        final String value = getDomNodeOrDie().getAttribute("width");
+        final Integer intValue = getValue(value);
+        if (intValue != null) {
+            return intValue;
         }
-        return width;
+        return 300;
+    }
+
+    private static Integer getValue(final String value) {
+        int index = -1;
+        while (index + 1 < value.length() && Character.isDigit(value.charAt(index + 1))) {
+            index++;
+        }
+        if (index != -1) {
+            return Integer.parseInt(value.substring(0, index + 1));
+        }
+        return null;
     }
 
     /**
      * Sets the "width" property.
      * @param width the "width" property
      */
-    public void jsxSet_width(final String width) {
-        getDomNodeOrDie().setAttribute("width", width);
+    @JsxSetter
+    public void setWidth(final int width) {
+        getDomNodeOrDie().setAttribute("width", Integer.toString(width));
     }
 
     /**
      * Returns the "height" property.
      * @return the "height" property
      */
-    public String jsxGet_height() {
-        String height = getDomNodeOrDie().getAttribute("height");
-        if (height == DomElement.ATTRIBUTE_NOT_DEFINED) {
-            height = "150";
+    @Override
+    @JsxGetter
+    public int getHeight() {
+        final String value = getDomNodeOrDie().getAttribute("height");
+        final Integer intValue = getValue(value);
+        if (intValue != null) {
+            return intValue;
         }
-        return height;
+        return 150;
     }
 
     /**
      * Sets the "height" property.
      * @param height the "height" property
      */
-    public void jsxSet_height(final String height) {
-        getDomNodeOrDie().setAttribute("height", height);
+    @JsxSetter
+    public void setHeight(final int height) {
+        getDomNodeOrDie().setAttribute("height", Integer.toString(height));
     }
 
     /**
@@ -79,13 +115,44 @@ public class HTMLCanvasElement extends HTMLElement {
      * @return Returns an object that exposes an API for drawing on the canvas,
      * or null if the given context ID is not supported
      */
-    public Object jsxFunction_getContext(final String contextId) {
-        if (contextId.equals("2d")) {
-            final CanvasRenderingContext2D context = new CanvasRenderingContext2D();
+    @JsxFunction
+    public Object getContext(final String contextId) {
+        if ("2d".equals(contextId)) {
+            final CanvasRenderingContext2D context = new CanvasRenderingContext2D(this);
             context.setParentScope(getParentScope());
             context.setPrototype(getPrototype(context.getClass()));
+            context_ = context;
             return context;
         }
         return null;
+    }
+
+    /**
+     * Get the data: URL representation of the Canvas element.
+     * Here we return an empty image.
+     * @param type the type (optional)
+     * @return the data URL
+     */
+    @JsxFunction
+    public String toDataURL(final Object type) {
+        if (context_ instanceof CanvasRenderingContext2D) {
+            String typeInUse = type.toString();
+            if (type == Undefined.instance) {
+                typeInUse = null;
+            }
+            return ((CanvasRenderingContext2D) context_).toDataURL(typeInUse);
+        }
+        if (getBrowserVersion().hasFeature(JS_CANVAS_DATA_URL_IE_PNG)) {
+            return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASwAAACWCAYAAABkW7XSAAAAAXNSR0IArs4c6QAAAARnQU1BAA"
+                + "Cxjwv8YQUAAADGSURBVHhe7cExAQAAAMKg9U9tCF8gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAONUAv9QAAcDhjokAAAAASUV"
+                + "ORK5CYII=";
+        }
+
+        return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASwAAACWCAYAAABkW7XSAAAAxUlEQVR4nO3BMQEAAADCoPVPbQhf"
+            + "oAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            + "AAAAAAAAAAAAAAAAAAAAAAAAAAAOA1v9QAATX68/0AAAAASUVORK5CYII=";
     }
 }

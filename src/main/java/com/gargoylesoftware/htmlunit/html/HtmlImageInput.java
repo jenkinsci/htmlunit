@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,30 +14,33 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.HTMLIMAGE_NAME_VALUE_PARAMS;
+
 import java.io.IOException;
 import java.util.Map;
 
-import org.apache.commons.httpclient.NameValuePair;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import com.gargoylesoftware.htmlunit.ElementNotFoundException;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.SgmlPage;
+import com.gargoylesoftware.htmlunit.javascript.host.event.Event;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Wrapper for the HTML element "input".
  *
- * @version $Revision: 4791 $
+ * @version $Revision: 10580 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Marc Guillemot
  * @author Daniel Gredler
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Frank Danek
  */
 public class HtmlImageInput extends HtmlInput {
-
-    private static final long serialVersionUID = -2955826367201282767L;
 
     // For click with x, y position.
     private boolean wasPositionSpecified_;
@@ -47,14 +50,13 @@ public class HtmlImageInput extends HtmlInput {
     /**
      * Creates an instance.
      *
-     * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the page that contains this element
      * @param attributes the initial attributes
      */
-    HtmlImageInput(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    HtmlImageInput(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
+        super(qualifiedName, page, attributes);
     }
 
     /**
@@ -73,9 +75,10 @@ public class HtmlImageInput extends HtmlInput {
         }
 
         if (wasPositionSpecified_) {
-            final NameValuePair valueX = new NameValuePair(prefix + 'x', String.valueOf(xPosition_));
-            final NameValuePair valueY = new NameValuePair(prefix + 'y', String.valueOf(yPosition_));
-            if (prefix.length() > 0 && getPage().getWebClient().getBrowserVersion().isFirefox()) {
+            final NameValuePair valueX = new NameValuePair(prefix + 'x', Integer.toString(xPosition_));
+            final NameValuePair valueY = new NameValuePair(prefix + 'y', Integer.toString(yPosition_));
+            if (prefix.length() > 0 && hasFeature(HTMLIMAGE_NAME_VALUE_PARAMS)
+                    && getValueAttribute().length() > 0) {
                 return new NameValuePair[] {valueX, valueY,
                     new NameValuePair(getNameAttribute(), getValueAttribute()) };
             }
@@ -99,24 +102,18 @@ public class HtmlImageInput extends HtmlInput {
     }
 
     /**
-     * This method will be called if there either wasn't an onclick handler or there was
-     * but the result of that handler was true. This is the default behavior of clicking
-     * the element. The default implementation returns the current page - subclasses
-     * requiring different behavior (like {@link HtmlSubmitInput}) will override this
-     * method.
-     *
-     * @param defaultPage the default page to return if the action does not
-     * load a new page.
-     * @return the page that is currently loaded after execution of this method
+     * {@inheritDoc}
      * @throws IOException if an IO error occurred
      */
     @Override
-    protected Page doClickAction(final Page defaultPage) throws IOException {
+    protected boolean doClickStateUpdate() throws IOException {
         final HtmlForm form = getEnclosingForm();
         if (form != null) {
-            return form.submit(this);
+            form.submit(this);
+            return false;
         }
-        return super.doClickAction(defaultPage);
+        super.doClickStateUpdate();
+        return false;
     }
 
     /**
@@ -131,12 +128,31 @@ public class HtmlImageInput extends HtmlInput {
      * @exception ElementNotFoundException If a particular XML element could not be found in the DOM model
      */
     @Override
-    @SuppressWarnings("unchecked")
     public <P extends Page> P click(final int x, final int y) throws IOException, ElementNotFoundException {
         wasPositionSpecified_ = true;
         xPosition_ = x;
         yPosition_ = y;
-        return (P) super.click();
+        return super.click();
+    }
+
+    /**
+     * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
+     *
+     * Simulates clicking on this element, returning the page in the window that has the focus
+     * after the element has been clicked. Note that the returned page may or may not be the same
+     * as the original page, depending on the type of element being clicked, the presence of JavaScript
+     * action listeners, etc.
+     *
+     * @param event the click event used
+     * @param <P> the page type
+     * @return the page contained in the current window as returned by
+     *         {@link com.gargoylesoftware.htmlunit.WebClient#getCurrentWindow()}
+     * @exception IOException if an IO error occurs
+     */
+    @Override
+    public <P extends Page> P click(final Event event) throws IOException {
+        wasPositionSpecified_ = true;
+        return super.click(event);
     }
 
     /**
@@ -147,5 +163,16 @@ public class HtmlImageInput extends HtmlInput {
     public void setDefaultValue(final String defaultValue) {
         super.setDefaultValue(defaultValue);
         setValueAttribute(defaultValue);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setAttributeNS(final String namespaceURI, final String qualifiedName, final String attributeValue) {
+        if ("value".equals(qualifiedName)) {
+            setDefaultValue(attributeValue, false);
+        }
+        super.setAttributeNS(namespaceURI, qualifiedName, attributeValue);
     }
 }

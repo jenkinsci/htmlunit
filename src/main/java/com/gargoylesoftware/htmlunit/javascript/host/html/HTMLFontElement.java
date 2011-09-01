@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,30 +14,47 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
+
+import com.gargoylesoftware.htmlunit.html.HtmlFont;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
 
 /**
  * The JavaScript object "HTMLFontElement".
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 10429 $
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
+@JsxClasses({
+        @JsxClass(domClass = HtmlFont.class,
+                browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(domClass = HtmlFont.class,
+            isJSObject = false, browsers = @WebBrowser(value = IE, maxVersion = 8))
+    })
 public class HTMLFontElement extends HTMLElement {
-
-    private static final long serialVersionUID = 2438742206022221826L;
 
     /**
      * Creates an instance.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
     public HTMLFontElement() {
-        // Empty.
     }
 
     /**
      * Gets the "color" attribute.
      * @return the "color" attribute
      */
-    public String jsxGet_color() {
+    @JsxGetter
+    public String getColor() {
         return getDomNodeOrDie().getAttribute("color");
     }
 
@@ -45,7 +62,8 @@ public class HTMLFontElement extends HTMLElement {
      * Sets the "color" attribute.
      * @param color the "color" attribute
      */
-    public void jsxSet_color(final String color) {
+    @JsxSetter
+    public void setColor(final String color) {
         getDomNodeOrDie().setAttribute("color", color);
     }
 
@@ -53,7 +71,8 @@ public class HTMLFontElement extends HTMLElement {
      * Gets the typeface family.
      * @return the typeface family
      */
-    public String jsxGet_face() {
+    @JsxGetter
+    public String getFace() {
         return getDomNodeOrDie().getAttribute("face");
     }
 
@@ -61,7 +80,8 @@ public class HTMLFontElement extends HTMLElement {
      * Sets the typeface family.
      * @param face the typeface family
      */
-    public void jsxSet_face(final String face) {
+    @JsxSetter
+    public void setFace(final String face) {
         getDomNodeOrDie().setAttribute("face", face);
     }
 
@@ -69,7 +89,8 @@ public class HTMLFontElement extends HTMLElement {
      * Gets the "size" attribute.
      * @return the "size" attribute
      */
-    public int jsxGet_size() {
+    @JsxGetter
+    public int getSize() {
         return (int) Context.toNumber(getDomNodeOrDie().getAttribute("size"));
     }
 
@@ -77,7 +98,8 @@ public class HTMLFontElement extends HTMLElement {
      * Sets the "size" attribute.
      * @param size the "size" attribute
      */
-    public void jsxSet_size(final int size) {
+    @JsxSetter
+    public void setSize(final int size) {
         getDomNodeOrDie().setAttribute("size", Context.toString(size));
     }
 }

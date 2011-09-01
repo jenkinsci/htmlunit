@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,19 +23,17 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Representation of a CDATA node in the HTML DOM.
  *
- * @version $Revision: 4752 $
+ * @version $Revision: 9837 $
  * @author Marc Guillemot
  * @author David K. Taylor
  */
 public class DomCDataSection extends DomText implements CDATASection {
 
-    private static final long serialVersionUID = 4941214369614888520L;
-
     /** The symbolic node name. */
     public static final String NODE_NAME = "#cdata-section";
 
     /**
-     * Creates an instance of DomText.
+     * Creates a new instance.
      *
      * @param page the Page that contains this element
      * @param data the string data held by this node

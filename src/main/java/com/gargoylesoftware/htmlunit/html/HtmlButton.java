@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,21 +14,26 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.BUTTON_EMPTY_TYPE_BUTTON;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.BUTTON_UNKNOWN_TYPE_DOES_NOT_SUBMIT;
+
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
 
-import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
-import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.SgmlPage;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Wrapper for the HTML element "button".
  *
- * @version $Revision: 4789 $
+ * @version $Revision: 10601 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
@@ -36,26 +41,34 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
  * @author Daniel Gredler
  * @author Ahmed Ashour
  * @author Dmitri Zoubkov
+ * @author Ronald Brill
+ * @author Frank Danek
  */
-public class HtmlButton extends ClickableElement implements DisabledElement, SubmittableElement {
+public class HtmlButton extends HtmlElement implements DisabledElement, SubmittableElement, FormFieldWithNameHistory {
 
-    private static final long serialVersionUID = 4828725767615187345L;
     private static final Log LOG = LogFactory.getLog(HtmlButton.class);
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "button";
+    private String originalName_;
+    private Collection<String> newNames_ = Collections.emptySet();
 
     /**
      * Creates a new instance.
      *
-     * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the page that contains this element
      * @param attributes the initial attributes
      */
-    HtmlButton(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    HtmlButton(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
+        super(qualifiedName, page, attributes);
+        originalName_ = getNameAttribute();
+        if ((attributes == null || !attributes.containsKey("type"))
+                && hasFeature(BUTTON_EMPTY_TYPE_BUTTON)
+                && page instanceof HtmlPage && !((HtmlPage) page).isQuirksMode()) {
+            setAttribute("type", "submit");
+        }
     }
 
     /**
@@ -71,25 +84,39 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
      * {@inheritDoc}
      */
     @Override
-    protected Page doClickAction(final Page defaultPage) throws IOException {
-        final String type = getTypeAttribute().toLowerCase();
+    protected boolean doClickStateUpdate() throws IOException {
+        final String type = getTypeAttribute().toLowerCase(Locale.ENGLISH);
 
         final HtmlForm form = getEnclosingForm();
         if (form != null) {
-            if (type.equals("submit")) {
-                return form.submit(this);
+            if ("button".equals(type)) {
+                return false;
             }
-            else if (type.equals("reset")) {
-                return form.reset();
-            }
-        }
 
-        return defaultPage;
+            if ("submit".equals(type)) {
+                form.submit(this);
+                return false;
+            }
+
+            if ("reset".equals(type)) {
+                form.reset();
+                return false;
+            }
+            if (hasFeature(BUTTON_UNKNOWN_TYPE_DOES_NOT_SUBMIT)) {
+                return false;
+            }
+
+            form.submit(this);
+            return false;
+        }
+        super.doClickStateUpdate();
+        return false;
     }
 
     /**
      * {@inheritDoc}
      */
+    @Override
     public final boolean isDisabled() {
         return hasAttribute("disabled");
     }
@@ -97,6 +124,7 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
     /**
      * {@inheritDoc}
      */
+    @Override
     public NameValuePair[] getSubmitKeyValuePairs() {
         return new NameValuePair[]{new NameValuePair(getNameAttribute(), getValueAttribute())};
     }
@@ -106,6 +134,7 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
      *
      * @see SubmittableElement#reset()
      */
+    @Override
     public void reset() {
         if (LOG.isDebugEnabled()) {
             LOG.debug("reset() not implemented for this element");
@@ -117,6 +146,7 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
      *
      * @see SubmittableElement#setDefaultValue(String)
      */
+    @Override
     public void setDefaultValue(final String defaultValue) {
         if (LOG.isDebugEnabled()) {
             LOG.debug("setDefaultValue() not implemented for this element");
@@ -128,6 +158,7 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
      *
      * @see SubmittableElement#getDefaultValue()
      */
+    @Override
     public String getDefaultValue() {
         if (LOG.isDebugEnabled()) {
             LOG.debug("getDefaultValue() not implemented for this element");
@@ -145,6 +176,7 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
      * @see HtmlRadioButtonInput#setDefaultChecked(boolean)
      * @see HtmlCheckBoxInput#setDefaultChecked(boolean)
      */
+    @Override
     public void setDefaultChecked(final boolean defaultChecked) {
         // Empty.
     }
@@ -159,6 +191,7 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
      * @see HtmlRadioButtonInput#isDefaultChecked()
      * @see HtmlCheckBoxInput#isDefaultChecked()
      */
+    @Override
     public boolean isDefaultChecked() {
         return false;
     }
@@ -186,19 +219,19 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
     }
 
     /**
-     * Returns the value of the attribute "type". Refer to the
-     * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
-     * documentation for details on the use of this attribute. Note that Internet
-     * Explorer doesn't follow the spec when the type isn't specified. It will return
-     * "button" rather than the "submit" specified in the spec.
+     * Overwritten, because Internet Explorer doesn't follow the spec
+     * when the type isn't specified. It will return
+     * button" rather than the "submit" specified in the spec.
      *
-     * @return the value of the attribute "type" or the default value if that attribute isn't defined
+     * @param attributeName the name of the attribute
+     * @return the value of the attribute or {@link #ATTRIBUTE_NOT_DEFINED} or {@link #ATTRIBUTE_VALUE_EMPTY}
      */
-    public final String getTypeAttribute() {
-        String type = getAttribute("type");
-        if (type == HtmlElement.ATTRIBUTE_NOT_DEFINED) {
-            final BrowserVersion browser = getPage().getWebClient().getBrowserVersion();
-            if (browser.isIE()) {
+    @Override
+    public String getAttribute(final String attributeName) {
+        String type = super.getAttribute(attributeName);
+
+        if (type == DomElement.ATTRIBUTE_NOT_DEFINED && "type".equalsIgnoreCase(attributeName)) {
+            if (hasFeature(BUTTON_EMPTY_TYPE_BUTTON)) {
                 type = "button";
             }
             else {
@@ -206,6 +239,17 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
             }
         }
         return type;
+    }
+
+    /**
+     * Returns the value of the attribute "type". Refer to the
+     * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
+     * documentation for details on the use of this attribute.
+     *
+     * @return the value of the attribute "type" or the default value if that attribute isn't defined
+     */
+    public final String getTypeAttribute() {
+        return getAttribute("type");
     }
 
     /**
@@ -261,5 +305,41 @@ public class HtmlButton extends ClickableElement implements DisabledElement, Sub
      */
     public final String getOnBlurAttribute() {
         return getAttribute("onblur");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setAttributeNS(final String namespaceURI, final String qualifiedName, final String attributeValue) {
+        if ("name".equals(qualifiedName)) {
+            if (newNames_.isEmpty()) {
+                newNames_ = new HashSet<>();
+            }
+            newNames_.add(attributeValue);
+        }
+        super.setAttributeNS(namespaceURI, qualifiedName, attributeValue);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public String getOriginalName() {
+        return originalName_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public Collection<String> getNewNames() {
+        return newNames_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public DisplayStyle getDefaultStyleDisplay() {
+        return DisplayStyle.INLINE_BLOCK;
     }
 }

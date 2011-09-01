@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,14 +22,11 @@ import org.w3c.css.sac.ErrorHandler;
 /**
  * Implementation of {@link ErrorHandler} which ignores all CSS problems.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 9837 $
  * @author Daniel Gredler
  * @see DefaultCssErrorHandler
  */
 public class SilentCssErrorHandler implements ErrorHandler, Serializable {
-
-    /** Serial version UID. */
-    private static final long serialVersionUID = -1338175203288447931L;
 
     /**
      * {@inheritDoc}

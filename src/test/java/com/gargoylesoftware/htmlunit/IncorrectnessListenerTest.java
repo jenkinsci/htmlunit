@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,24 +23,28 @@ import org.junit.runner.RunWith;
 /**
  * Tests for {@link IncorrectnessListener}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 10103 $
  * @author Marc Guillemot
+ * @author Ronald Brill
  */
 @RunWith(BrowserRunner.class)
-public final class IncorrectnessListenerTest extends WebTestCase {
+public final class IncorrectnessListenerTest extends SimpleWebTestCase {
+
     /**
      * @throws Exception if the test fails
      */
     @Test
     public void testNotification() throws Exception {
         final String html = "<html><head>\n"
-                + "<meta http-equiv='set-cookie' content='webm=none; path=/; expires=abcdef;'>\n"
+                + "  <script src='script.js'></script>\n"
                 + "</head>\n"
-                + "<body></body>\n"
+                + "<body>\n"
+                + "</body>\n"
                 + "</html>";
 
         final WebClient webClient = getWebClient();
-        final List<String> collectedIncorrectness = new ArrayList<String>();
+
+        final List<String> collectedIncorrectness = new ArrayList<>();
         final IncorrectnessListener listener = new IncorrectnessListener() {
             public void notify(final String message, final Object origin) {
                 collectedIncorrectness.add(message);
@@ -50,11 +54,12 @@ public final class IncorrectnessListenerTest extends WebTestCase {
 
         final MockWebConnection webConnection = new MockWebConnection();
         webClient.setWebConnection(webConnection);
-        webConnection.setDefaultResponse(html);
+        webConnection.setResponse(URL_FIRST, html);
+        webConnection.setDefaultResponse("alert('Hello');", "application/x-javascript");
         webClient.getPage(URL_FIRST);
 
         final String[] expectedIncorrectness = {
-            "set-cookie http-equiv meta tag: can't parse expiration date >abcdef<."
+            "Obsolete content type encountered: 'application/x-javascript'."
         };
         assertEquals(expectedIncorrectness, collectedIncorrectness);
     }

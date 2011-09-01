@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,29 +14,33 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.HTMLINPUT_SET_VALUE_UPDATES_DEFAULT_VALUE;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.SUBMITINPUT_DEFAULT_VALUE_IF_VALUE_NOT_DEFINED;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.SUBMITINPUT_DEFAULT_VALUE_UNDEFINED;
+
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Map;
 
-import org.apache.commons.httpclient.NameValuePair;
-import org.apache.commons.lang.StringEscapeUtils;
-
-import com.gargoylesoftware.htmlunit.Page;
+import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.gargoylesoftware.htmlunit.SgmlPage;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
+import com.gargoylesoftware.htmlunit.util.StringUtils;
 
 /**
  * Wrapper for the HTML element "input".
  *
- * @version $Revision: 4794 $
+ * @version $Revision: 9837 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Daniel Gredler
  * @author Ahmed Ashour
+ * @author Marc Guillemot
+ * @author Ronald Brill
+ * @author Frank Danek
  */
 public class HtmlSubmitInput extends HtmlInput {
-
-    private static final long serialVersionUID = -615974535731910492L;
 
     /**
      * Value to use if no specified <tt>value</tt> attribute.
@@ -46,42 +50,57 @@ public class HtmlSubmitInput extends HtmlInput {
     /**
      * Creates an instance.
      *
-     * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the page that contains this element
      * @param attributes the initial attributes
      */
-    HtmlSubmitInput(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    HtmlSubmitInput(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
-        if (getPage().getWebClient().getBrowserVersion().isIE() && !hasAttribute("value")) {
-            setAttribute("value", DEFAULT_VALUE);
+        super(qualifiedName, page, addValueIfNeeded(page, attributes));
+
+        // fix the default value in case we have set it
+        if (hasFeature(SUBMITINPUT_DEFAULT_VALUE_UNDEFINED)
+                && getAttribute("value") == DEFAULT_VALUE) {
+            setDefaultValue(ATTRIBUTE_NOT_DEFINED, false);
         }
     }
 
     /**
-     * This method will be called if there either wasn't an onclick handler or there was
-     * but the result of that handler was true. This is the default behavior of clicking
-     * the element. The default implementation returns the current page - subclasses
-     * requiring different behavior (like {@link HtmlSubmitInput}) will override this
-     * method.
-     *
-     * @param defaultPage the default page to return if the action does not
-     * load a new page.
-     * @return the page that is currently loaded after execution of this method
-     * @throws IOException if an IO error occurred
+     * Add missing attribute if needed by fixing attribute map rather to add it afterwards as this second option
+     * triggers the instantiation of the script object at a time where the DOM node has not yet been added to its
+     * parent.
+     */
+    private static Map<String, DomAttr> addValueIfNeeded(final SgmlPage page,
+            final Map<String, DomAttr> attributes) {
+
+        final BrowserVersion browserVersion = page.getWebClient().getBrowserVersion();
+        if (browserVersion.hasFeature(SUBMITINPUT_DEFAULT_VALUE_IF_VALUE_NOT_DEFINED)) {
+            for (final String key : attributes.keySet()) {
+                if ("value".equalsIgnoreCase(key)) {
+                    return attributes; // value attribute was specified
+                }
+            }
+
+            // value attribute was not specified, add it
+            final DomAttr newAttr = new DomAttr(page, null, "value", DEFAULT_VALUE, true);
+            attributes.put("value", newAttr);
+        }
+
+        return attributes;
+    }
+
+    /**
+     * {@inheritDoc}
      */
     @Override
-    protected Page doClickAction(final Page defaultPage) throws IOException {
-        final HtmlPage page = (HtmlPage) getPage();
-        if (page != defaultPage) {
-            return defaultPage;
-        }
+    protected boolean doClickStateUpdate() throws IOException {
         final HtmlForm form = getEnclosingForm();
         if (form != null) {
-            return form.submit(this);
+            form.submit(this);
+            return false;
         }
-        return super.doClickAction(defaultPage);
+        super.doClickStateUpdate();
+        return false;
     }
 
     /**
@@ -114,12 +133,13 @@ public class HtmlSubmitInput extends HtmlInput {
         printWriter.print(getTagName());
 
         for (final DomAttr attribute : getAttributesMap().values()) {
-            if (!attribute.getNodeName().equals("value") || !attribute.getValue().equals(DEFAULT_VALUE)) {
+            final String name = attribute.getNodeName();
+            final String value = attribute.getValue();
+            if (!"value".equals(name) || !DEFAULT_VALUE.equals(value)) {
                 printWriter.print(" ");
-                final String name = attribute.getNodeName();
                 printWriter.print(name);
                 printWriter.print("=\"");
-                printWriter.print(StringEscapeUtils.escapeXml(attribute.getNodeValue()));
+                printWriter.print(StringUtils.escapeXmlAttributeValue(value));
                 printWriter.print("\"");
             }
         }
@@ -132,9 +152,28 @@ public class HtmlSubmitInput extends HtmlInput {
      */
     @Override
     public NameValuePair[] getSubmitKeyValuePairs() {
-        if (getNameAttribute().length() != 0 && !hasAttribute("value")) {
+        if (!getNameAttribute().isEmpty() && !hasAttribute("value")) {
             return new NameValuePair[]{new NameValuePair(getNameAttribute(), DEFAULT_VALUE)};
         }
         return super.getSubmitKeyValuePairs();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setAttributeNS(final String namespaceURI, final String qualifiedName, final String attributeValue) {
+        if (hasFeature(HTMLINPUT_SET_VALUE_UPDATES_DEFAULT_VALUE) && "value".equals(qualifiedName)) {
+            setDefaultValue(attributeValue, false);
+        }
+        super.setAttributeNS(namespaceURI, qualifiedName, attributeValue);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected boolean propagateClickStateUpdateToParent() {
+        return true;
     }
 }

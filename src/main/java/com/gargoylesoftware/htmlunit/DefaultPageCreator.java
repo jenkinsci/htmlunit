@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,13 @@
 package com.gargoylesoftware.htmlunit;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.Serializable;
+import java.util.Locale;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.HTMLParser;
@@ -65,17 +71,65 @@ import com.gargoylesoftware.htmlunit.xml.XmlPage;
  *    </tr>
  *  </table>
  *
- * @version $Revision: 4580 $
+ * @version $Revision: 9837 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author <a href="mailto:yourgod@users.sourceforge.net">Brad Clarke</a>
  * @author Marc Guillemot
  * @author Ahmed Ashour
  * @author Daniel Gredler
+ * @author Ronald Brill
  */
-public class DefaultPageCreator implements PageCreator, Serializable  {
+public class DefaultPageCreator implements PageCreator, Serializable {
 
-    private static final long serialVersionUID = -4420355214574495577L;
+    /**
+     * The different supported page types.
+     */
+    public enum PageType {
+        /** html. */
+        HTML,
+        /** javascript. */
+        JAVASCRIPT,
+        /** xml. */
+        XML,
+        /** text. */
+        TEXT,
+        /** unknown. */
+        UNKNOWN
+    }
+
+    /**
+     * Determines the kind of page to create from the content type.
+     * @param contentType the content type to evaluate
+     * @return "xml", "html", "javascript", "text" or "unknown"
+     */
+    public static PageType determinePageType(final String contentType) {
+        if (null == contentType) {
+            return PageType.UNKNOWN;
+        }
+
+        if ("text/html".equals(contentType)) {
+            return PageType.HTML;
+        }
+
+        if ("text/javascript".equals(contentType) || "application/x-javascript".equals(contentType)
+                || "application/javascript".equals(contentType)) {
+            return PageType.JAVASCRIPT;
+        }
+
+        if ("text/xml".equals(contentType)
+            || "application/xml".equals(contentType)
+            || "text/vnd.wap.wml".equals(contentType)
+            || contentType.endsWith("+xml")) {
+            return PageType.XML;
+        }
+
+        if (contentType.startsWith("text/")) {
+            return PageType.TEXT;
+        }
+
+        return PageType.UNKNOWN;
+    }
 
     /**
      * Creates an instance.
@@ -93,33 +147,113 @@ public class DefaultPageCreator implements PageCreator, Serializable  {
      * @return the new page object
      */
     public Page createPage(final WebResponse webResponse, final WebWindow webWindow) throws IOException {
-        final String contentType = webResponse.getContentType().toLowerCase();
-        final Page newPage;
+        final String contentType = determineContentType(webResponse.getContentType().toLowerCase(Locale.ENGLISH),
+            webResponse.getContentAsStream());
 
-        final String pageType = determinePageType(contentType);
-        if (pageType.equals("html")) {
-            newPage = createHtmlPage(webResponse, webWindow);
+        final PageType pageType = determinePageType(contentType);
+        switch (pageType) {
+            case HTML:
+                return createHtmlPage(webResponse, webWindow);
+
+            case JAVASCRIPT:
+                return createJavaScriptPage(webResponse, webWindow);
+
+            case XML:
+                final XmlPage xml = createXmlPage(webResponse, webWindow);
+                final DomElement doc = xml.getDocumentElement();
+                if (doc != null && HTMLParser.XHTML_NAMESPACE.equals(doc.getNamespaceURI())) {
+                    return createXHtmlPage(webResponse, webWindow);
+                }
+                return xml;
+
+            case TEXT:
+                return createTextPage(webResponse, webWindow);
+
+            default:
+                return createUnexpectedPage(webResponse, webWindow);
         }
-        else if (pageType.equals("javascript")) {
-            newPage = createJavaScriptPage(webResponse, webWindow);
-        }
-        else if (pageType.equals("xml")) {
-            final XmlPage xml = createXmlPage(webResponse, webWindow);
-            final DomElement doc = xml.getDocumentElement();
-            if (doc != null && HTMLParser.XHTML_NAMESPACE.equals(doc.getNamespaceURI())) {
-                newPage = createXHtmlPage(webResponse, webWindow);
+    }
+
+    /**
+     * Tries to determine the content type.
+     * TODO: implement a content type sniffer based on the
+     * <a href="http://tools.ietf.org/html/draft-abarth-mime-sniff-05">Content-Type Processing Model</a>
+     * @param contentType the contentType header if any
+     * @param contentAsStream stream allowing to read the downloaded content
+     * @return the sniffed mime type
+     * @exception IOException if an IO problem occurs
+     */
+    protected String determineContentType(final String contentType, final InputStream contentAsStream)
+        throws IOException {
+        final byte[] markerUTF8 = {(byte) 0xef, (byte) 0xbb, (byte) 0xbf};
+        final byte[] markerUTF16BE = {(byte) 0xfe, (byte) 0xff};
+        final byte[] markerUTF16LE = {(byte) 0xff, (byte) 0xfe};
+
+        try {
+            if (!StringUtils.isEmpty(contentType)) {
+                return contentType;
             }
-            else {
-                newPage = xml;
+
+            final byte[] bytes = read(contentAsStream, 500);
+            if (bytes.length == 0) {
+                return "text/plain";
+            }
+
+            final String asAsciiString = new String(bytes, "ASCII").toUpperCase(Locale.ENGLISH);
+            if (asAsciiString.contains("<HTML")) {
+                return "text/html";
+            }
+            else if (startsWith(bytes, markerUTF8) || startsWith(bytes, markerUTF16BE)
+                    || startsWith(bytes, markerUTF16LE)) {
+                return "text/plain";
+            }
+            else if (isBinary(bytes)) {
+                return "application/octet-stream";
             }
         }
-        else if (pageType.equals("text")) {
-            newPage = createTextPage(webResponse, webWindow);
+        finally {
+            IOUtils.closeQuietly(contentAsStream);
         }
-        else {
-            newPage = createUnexpectedPage(webResponse, webWindow);
+        return "text/plain";
+    }
+
+    /**
+     * See http://tools.ietf.org/html/draft-abarth-mime-sniff-05#section-4
+     * @param bytes the bytes to check
+     */
+    private boolean isBinary(final byte[] bytes) {
+        for (byte b : bytes) {
+            if (b < 0x08
+                || b == 0x0B
+                || (b >= 0x0E && b <= 0x1A)
+                || (b >= 0x1C && b <= 0x1F)) {
+                return true;
+            }
         }
-        return newPage;
+        return false;
+    }
+
+    private boolean startsWith(final byte[] bytes, final byte[] lookFor) {
+        if (bytes.length < lookFor.length) {
+            return false;
+        }
+
+        for (int i = 0; i < lookFor.length; ++i) {
+            if (bytes[i] != lookFor[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private byte[] read(final InputStream stream, final int maxNb) throws IOException {
+        final byte[] buffer = new byte[maxNb];
+        final int nbRead = stream.read(buffer);
+        if (nbRead == buffer.length) {
+            return buffer;
+        }
+        return ArrayUtils.subarray(buffer, 0, nbRead);
     }
 
     /**
@@ -197,31 +331,5 @@ public class DefaultPageCreator implements PageCreator, Serializable  {
         final XmlPage newPage = new XmlPage(webResponse, webWindow);
         webWindow.setEnclosedPage(newPage);
         return newPage;
-    }
-
-    /**
-     * Determines the kind of page to create from the content type.
-     * @param contentType the content type to evaluate
-     * @return "xml", "html", "javascript", "text" or "unknown"
-     */
-    protected String determinePageType(final String contentType) {
-        if (contentType.equals("text/html") || contentType.equals("")) {
-            return "html";
-        }
-        else if (contentType.equals("text/javascript") || contentType.equals("application/x-javascript")) {
-            return "javascript";
-        }
-        else if (contentType.equals("text/xml")
-                || contentType.equals("application/xml")
-                || contentType.equals("text/vnd.wap.wml")
-                || contentType.matches(".*\\+xml")) {
-            return "xml";
-        }
-        else if (contentType.startsWith("text/")) {
-            return "text";
-        }
-        else {
-            return "unknown";
-        }
     }
 }

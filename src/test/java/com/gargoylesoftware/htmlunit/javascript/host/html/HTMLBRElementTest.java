@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,26 +18,29 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Tests for {@link HTMLBRElement}.
  *
- * @version $Revision: 4569 $
+ * @version $Revision: 9843 $
  * @author Daniel Gredler
+ * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Frank Danek
  */
 @RunWith(BrowserRunner.class)
-public class HTMLBRElementTest extends WebTestCase {
+public class HTMLBRElementTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(
-        IE = { "", "left", "all", "right", "none", "", "", "!", "!", "!", "left", "none", "right", "all", "none",
-               "", "" },
-        FF = { "", "left", "all", "right", "none", "2", "foo", "left", "none", "right", "all", "2", "abc", "8" })
+    @Alerts(DEFAULT = { "", "left", "all", "right", "none", "2", "foo", "left",
+                        "none", "right", "all", "2", "abc", "8" },
+            IE = { "", "left", "all", "right", "none", "", "", "!", "!", "!", "left", "none", "right", "all", "none",
+                   "", "" })
     public void clear() throws Exception {
         final String html
             = "<html><body>\n"
@@ -85,7 +88,25 @@ public class HTMLBRElementTest extends WebTestCase {
             + "alert(br6.clear);\n"
             + "alert(br7.clear);\n"
             + "</script></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "<br id=\"myId\">",
+            IE8 = "<BR id=myId>")
+    public void outerHTML() throws Exception {
+        final String html
+            = "<html><head><title>foo</title><script>\n"
+            + "function doTest(){\n"
+            + "    alert(document.getElementById('myId').outerHTML);\n"
+            + "}\n"
+            + "</script></head><body onload='doTest()'>\n"
+            + "  <br id='myId'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
 }

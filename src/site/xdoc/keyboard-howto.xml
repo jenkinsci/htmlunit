@@ -4,7 +4,7 @@
     <properties>
         <title>Keyboard Navigation Tutorial</title>
         <author email="mbowler@GargoyleSoftware.com">Mike Bowler</author>
-        <revision>$Revision: 2827 $</revision>
+        <revision>$Revision: 7533 $</revision>
     </properties>
 
     <body>
@@ -38,6 +38,9 @@
             <p>
                 Access keys, often called keyboard mnemonics, can be simulated with the method
                 HtmlPage.pressAccessKey(char).
+            </p>
+            <p>
+                To use special keys, you can use htmlElement.type(int) with KeyboardEvent.DOM_VK_PAGE_DOWN.
             </p>
             <p>
                 Finally, there is an assertion for testing that will verify that every tabbable element

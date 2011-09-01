@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,20 +19,17 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.httpclient.NameValuePair;
-
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebConnection;
-import com.gargoylesoftware.htmlunit.WebRequestSettings;
+import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.WebResponseData;
-import com.gargoylesoftware.htmlunit.WebResponseImpl;
 
 /**
  * Extension of {@link WebConnectionWrapper} providing facility methods to deliver something other than
  * what the wrapped connection would deliver.
  *
- * @version $Revision: 4463 $
+ * @version $Revision: 9868 $
  * @author Marc Guillemot
  */
 public abstract class FalsifyingWebConnection extends WebConnectionWrapper {
@@ -57,17 +54,17 @@ public abstract class FalsifyingWebConnection extends WebConnectionWrapper {
 
     /**
      * Delivers the content for an alternate URL as if it comes from the requested URL.
-     * @param webRequestSettings the original web request settings
+     * @param webRequest the original web request
      * @param url the URL from which the content should be retrieved
      * @return the response
      * @throws IOException if a problem occurred
      */
-    protected WebResponse deliverFromAlternateUrl(final WebRequestSettings webRequestSettings, final URL url)
+    protected WebResponse deliverFromAlternateUrl(final WebRequest webRequest, final URL url)
         throws IOException {
-        final URL originalUrl = webRequestSettings.getUrl();
-        webRequestSettings.setUrl(url);
-        final WebResponse resp = super.getResponse(webRequestSettings);
-        resp.getRequestSettings().setUrl(originalUrl);
+        final URL originalUrl = webRequest.getUrl();
+        webRequest.setUrl(url);
+        final WebResponse resp = super.getResponse(webRequest);
+        resp.getWebRequest().setUrl(originalUrl);
         return resp;
     }
 
@@ -82,7 +79,7 @@ public abstract class FalsifyingWebConnection extends WebConnectionWrapper {
         final byte[] body = newContent.getBytes(wr.getContentCharset());
         final WebResponseData wrd = new WebResponseData(body, wr.getStatusCode(), wr.getStatusMessage(),
             wr.getResponseHeaders());
-        return new WebResponseImpl(wrd, wr.getRequestSettings().getUrl(), wr.getRequestSettings().getHttpMethod(),
+        return new WebResponse(wrd, wr.getWebRequest().getUrl(), wr.getWebRequest().getHttpMethod(),
                 wr.getLoadTime());
     }
 
@@ -94,7 +91,7 @@ public abstract class FalsifyingWebConnection extends WebConnectionWrapper {
      * @return a web response with the provided content
      * @throws IOException if an encoding problem occurred
      */
-    protected WebResponse createWebResponse(final WebRequestSettings wr, final String content,
+    protected WebResponse createWebResponse(final WebRequest wr, final String content,
             final String contentType) throws IOException {
         return createWebResponse(wr, content, contentType, 200, "OK");
     }
@@ -109,13 +106,13 @@ public abstract class FalsifyingWebConnection extends WebConnectionWrapper {
      * @return a web response with the provided content
      * @throws IOException if an encoding problem occurred
      */
-    protected WebResponse createWebResponse(final WebRequestSettings wr, final String content,
+    protected WebResponse createWebResponse(final WebRequest wr, final String content,
             final String contentType, final int responseCode, final String responseMessage) throws IOException {
-        final List<NameValuePair> headers = new ArrayList<NameValuePair>();
+        final List<NameValuePair> headers = new ArrayList<>();
         final String encoding = "UTF-8";
         headers.add(new NameValuePair("content-type", contentType + "; charset=" + encoding));
         final byte[] body = content.getBytes(encoding);
         final WebResponseData wrd = new WebResponseData(body, responseCode, responseMessage, headers);
-        return new WebResponseImpl(wrd, wr.getUrl(), wr.getHttpMethod(), 0);
+        return new WebResponse(wrd, wr.getUrl(), wr.getHttpMethod(), 0);
     }
 }

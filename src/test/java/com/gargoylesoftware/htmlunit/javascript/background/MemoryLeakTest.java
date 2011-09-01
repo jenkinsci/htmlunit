@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,8 @@ package com.gargoylesoftware.htmlunit.javascript.background;
 import org.junit.Test;
 
 import com.gargoylesoftware.htmlunit.MockWebConnection;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.util.MemoryLeakDetector;
 
 /**
@@ -38,10 +38,10 @@ import com.gargoylesoftware.htmlunit.util.MemoryLeakDetector;
  * eliminated. Once you have a fix, repeat the above steps in order to verify that the
  * fix works.</p>
  *
- * @version $Revision: 4023 $
+ * @version $Revision: 10077 $
  * @author Daniel Gredler
  */
-public class MemoryLeakTest extends WebTestCase {
+public class MemoryLeakTest extends SimpleWebTestCase {
 
     /**
      * Empty test which keeps Maven/JUnit from complaining about a test class with no tests. This test
@@ -56,26 +56,23 @@ public class MemoryLeakTest extends WebTestCase {
     /**
      * Verifies that windows don't get leaked, especially when there are long-running background JS tasks
      * scheduled via <tt>setTimeout</tt> or <tt>setInterval</tt>. See the following bugs:
-     *    https://sourceforge.net/tracker/index.php?func=detail&aid=2003396&group_id=47038&atid=448266
-     *    https://sourceforge.net/tracker/index.php?func=detail&aid=2014629&group_id=47038&atid=448266
+     *    http://sourceforge.net/p/htmlunit/bugs/639/
+     *    http://sourceforge.net/p/htmlunit/bugs/648/
      *
      * @throws Exception if an error occurs
      */
     protected void windowLeaks() throws Exception {
         final MemoryLeakDetector detector = new MemoryLeakDetector();
 
-        WebClient client = new WebClient();
-        detector.register("w", client.getCurrentWindow());
+        try (final WebClient client = new WebClient()) {
+            detector.register("w", client.getCurrentWindow());
 
-        MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, "<html><body><script>setInterval('alert(1)',5000)</script></body></html>");
-        client.setWebConnection(conn);
+            final MockWebConnection conn = new MockWebConnection();
+            conn.setResponse(URL_FIRST, "<html><body><script>setInterval('alert(1)',5000)</script></body></html>");
+            client.setWebConnection(conn);
 
-        client.getPage(URL_FIRST);
-
-        client = null;
-        conn = null;
-
+            client.getPage(URL_FIRST);
+        }
         assertTrue("Window can't be garbage collected.", detector.canBeGCed("w"));
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+
 import com.gargoylesoftware.htmlunit.History;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.WebClient;
@@ -25,20 +27,25 @@ import com.gargoylesoftware.htmlunit.html.HtmlHtml;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 import com.gargoylesoftware.htmlunit.javascript.background.JavaScriptJobManager;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxFunction;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLDocument;
 
 /**
  * A JavaScript object for IE's Popup.
  *
- * @version $Revision: 4756 $
+ * @version $Revision: 10000 $
  * @author Marc Guillemot
  * @author David K. Taylor
  * @author Ahmed Ashour
+ * @author Ronald Brill
  * @see <a href="http://msdn.microsoft.com/en-us/library/ms535882.aspx">MSDN documentation</a>
  */
+@JsxClass(isJSObject = false, isDefinedInStandardsMode = false, browsers = @WebBrowser(value = IE, maxVersion = 8))
 public class Popup extends SimpleScriptable {
 
-    private static final long serialVersionUID = 2016351591254223906L;
     private boolean opened_;
     private HTMLDocument document_;
 
@@ -78,7 +85,8 @@ public class Popup extends SimpleScriptable {
      * Returns the HTML document element in the popup.
      * @return the HTML document element in the popup
      */
-    public Object jsxGet_document() {
+    @JsxGetter
+    public Object getDocument() {
         return document_;
     }
 
@@ -86,21 +94,24 @@ public class Popup extends SimpleScriptable {
      * Indicates if the popup is opened.
      * @return <code>true</code> if opened
      */
-    public boolean jsxGet_isOpen() {
+    @JsxGetter
+    public boolean getIsOpen() {
         return opened_;
     }
 
     /**
      * Hides the popup.
      */
-    public void jsxFunction_hide() {
+    @JsxFunction
+    public void hide() {
         opened_ = false;
     }
 
     /**
      * Shows the popup.
      */
-    public void jsxFunction_show() {
+    @JsxFunction
+    public void show() {
         opened_ = true;
     }
 }
@@ -111,12 +122,14 @@ public class Popup extends SimpleScriptable {
  */
 class PopupPseudoWebWindow implements WebWindow {
 
-    /** Serial version UID. */
-    private static final long serialVersionUID = 8592029101424531167L;
-
     private final WebClient webClient_;
     private Object scriptObject_;
     private Page enclosedPage_;
+
+    private int innerHeight_ = 605;
+    private int outerHeight_ = innerHeight_ + 150;
+    private int innerWidth_ = 1256;
+    private int outerWidth_ = innerWidth_ + 8;
 
     PopupPseudoWebWindow(final WebClient webClient) {
         webClient_ = webClient;
@@ -184,6 +197,7 @@ class PopupPseudoWebWindow implements WebWindow {
      */
     public void setEnclosedPage(final Page page) {
         enclosedPage_ = page;
+        webClient_.initialize(page);
     }
 
     /**
@@ -199,4 +213,76 @@ class PopupPseudoWebWindow implements WebWindow {
     public void setScriptObject(final Object scriptObject) {
         scriptObject_ = scriptObject;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    public boolean isClosed() {
+        return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getInnerWidth() {
+        return innerWidth_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setInnerWidth(final int innerWidth) {
+        innerWidth_ = innerWidth;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getOuterWidth() {
+        return outerWidth_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setOuterWidth(final int outerWidth) {
+        outerWidth_ = outerWidth;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getInnerHeight() {
+        return innerHeight_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setInnerHeight(final int innerHeight) {
+        innerHeight_ = innerHeight;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getOuterHeight() {
+        return outerHeight_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setOuterHeight(final int outerHeight) {
+        outerHeight_ = outerHeight;
+    }
+
 }

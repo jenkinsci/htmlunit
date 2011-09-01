@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,161 +14,398 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
-import static com.gargoylesoftware.htmlunit.BrowserVersion.INTERNET_EXPLORER_6;
-import static com.gargoylesoftware.htmlunit.BrowserVersion.INTERNET_EXPLORER_7;
-import static com.gargoylesoftware.htmlunit.html.IEConditionalCommentExpressionEvaluator.evaluate;
-import static org.junit.Assert.assertEquals;
-
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Tests for {@link IEConditionalCommentExpressionEvaluator}.
  * Due to current implementation, conditional comment expressions get evaluated only when the simulated browser is IE.
- * @version $Revision: 4079 $
+ *
+ * @version $Revision: 9842 $
  * @author Marc Guillemot
+ * @author Ahmed Ashour
+ * @author Frank Danek
  */
-public class IEConditionalCommentExpressionEvaluatorTest {
+@RunWith(BrowserRunner.class)
+public class IEConditionalCommentExpressionEvaluatorTest extends WebDriverTestCase {
 
     /**
      * Test for expression [if IE].
+     * @throws Exception if the test fails
      */
     @Test
-    public void IE() {
-        doTest("IE", true, true);
+    @Alerts(DEFAULT = "done",
+            IE8 = { "cond", "done" })
+    public void IE() throws Exception {
+        doTest("IE");
     }
 
     /**
-     * Test for expressions like [if IE 7].
+     * Test for expression [if IE 5].
+     * @throws Exception if the test fails
      */
     @Test
-    public void IE_X() {
-        doTest("IE 5", false, false);
-        doTest("IE 6", true, false);
-        doTest("IE 7", false, true);
-        doTest("IE 8", false, false);
+    @Alerts("done")
+    public void IE_5() throws Exception {
+        doTest("IE 5");
+    }
+
+    /**
+     * Test for expression [if IE 6].
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("done")
+    public void IE_6() throws Exception {
+        doTest("IE 6");
+    }
+
+    /**
+     * Test for expression [if IE 7].
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("done")
+    public void IE_7() throws Exception {
+        doTest("IE 7");
+    }
+
+    /**
+     * Test for expression [if IE 8].
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "done",
+            IE8 = { "cond", "done" })
+    public void IE_8() throws Exception {
+        doTest("IE 8");
     }
 
     /**
      * Test for expression [if !IE].
+     * @throws Exception if the test fails
      */
     @Test
-    public void notIE() {
-        doTest("!IE", false, false);
+    @Alerts("done")
+    public void notIE() throws Exception {
+        doTest("!IE");
     }
 
     /**
-     * Test for expressions like [if lt IE 5.5].
+     * Test for expression [if lt IE 5.5].
+     * @throws Exception if the test fails
      */
     @Test
-    public void lt_IE_X() {
-        doTest("lt IE 5.5", false, false);
-        doTest("lt IE 6", false, false);
-        doTest("lt IE 7", true, false);
-        doTest("lt IE 8", true, true);
+    @Alerts("done")
+    public void lt_IE_5_5() throws Exception {
+        doTest("lt IE 5.5");
     }
 
     /**
-     * Test for expressions like [if lte IE 6].
+     * Test for expression [if lt IE 6].
+     * @throws Exception if the test fails
      */
     @Test
-    public void lte_IE_X() {
-        doTest("lte IE 5.5", false, false);
-        doTest("lte IE 6", true, false);
-        doTest("lte IE 7", true, true);
-        doTest("lte IE 8", true, true);
+    @Alerts("done")
+    public void lt_IE_6() throws Exception {
+        doTest("lt IE 6");
     }
 
     /**
-     * Test for expressions like [if gt IE 5].
+     * Test for expression [if lt IE 7].
+     * @throws Exception if the test fails
      */
     @Test
-    public void gt_IE_X() {
-        doTest("gt IE 5.5", true, true);
-        doTest("gt IE 6", false, true);
-        doTest("gt IE 7", false, false);
-        doTest("gt IE 8", false, false);
+    @Alerts("done")
+    public void lt_IE_7() throws Exception {
+        doTest("lt IE 7");
     }
 
     /**
-     * Test for expressions like [if gte IE 7].
+     * Test for expressions [if lt IE 8].
+     * @throws Exception if the test fails
      */
     @Test
-    public void gte_IE_X() {
-        doTest("gte IE 5.5", true, true);
-        doTest("gte IE 6", true, true);
-        doTest("gte IE 7", false, true);
-        doTest("gte IE 8", false, false);
+    @Alerts("done")
+    public void lt_IE_8() throws Exception {
+        doTest("lt IE 8");
     }
 
     /**
-     * Test for expressions like [if !(IE 7)].
+     * Test for expression [if lt IE 9].
+     * @throws Exception if the test fails
      */
     @Test
-    public void parenthese() {
-        doTest("!(IE 5)", true, true);
-        doTest("!(IE 6)", false, true);
-        doTest("!(IE 7)", true, false);
-        doTest("!(IE 8)", true, true);
+    @Alerts(DEFAULT = "done",
+            IE8 = { "cond", "done" })
+    public void lt_IE_9() throws Exception {
+        doTest("lt IE 9");
     }
 
     /**
-     * Test for expressions like if [(gt IE 5)&(lt IE 7)].
+     * Test for expression [if gt IE 5.5].
+     * @throws Exception if the test fails
      */
     @Test
-    public void and() {
-        doTest("(gt IE 5)&(lt IE 7)", true, false);
-        doTest("(gt IE 6)&(lt IE 8)", false, true);
+    @Alerts(DEFAULT = "done",
+            IE8 = { "cond", "done" })
+    public void gt_IE_5_5() throws Exception {
+        doTest("gt IE 5.5");
     }
 
     /**
-     * Test for expressions like if [if (IE 6)|(IE 7)].
+     * Test for expression [if gt IE 6].
+     * @throws Exception if the test fails
      */
     @Test
-    public void or() {
-        doTest("(IE 6)|(IE 7)", true, true);
-        doTest("(IE 5)|(IE 7)", false, true);
+    @Alerts(DEFAULT = "done",
+            IE8 = { "cond", "done" })
+    public void gt_IE_6() throws Exception {
+        doTest("gt IE 6");
     }
 
     /**
-     * Test for expressions like if [if true].
+     * Test for expression [if gt IE 7].
+     * @throws Exception if the test fails
      */
     @Test
-    public void true_false() {
-        doTest("true", true, true);
-        doTest("false", false, false);
+    @Alerts(DEFAULT = "done",
+            IE8 = { "cond", "done" })
+    public void gt_IE_7() throws Exception {
+        doTest("gt IE 7");
+    }
+
+    /**
+     * Test for expression [if gt IE 8].
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("done")
+    public void gt_IE_8() throws Exception {
+        doTest("gt IE 8");
+    }
+
+    /**
+     * Test for expression [if gte IE 5.5].
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "done",
+            IE8 = { "cond", "done" })
+    public void gte_IE_5_5() throws Exception {
+        doTest("gte IE 5.5");
+    }
+
+    /**
+     * Test for expression [if gte IE 6].
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "done",
+            IE8 = { "cond", "done" })
+    public void gte_IE_6() throws Exception {
+        doTest("gte IE 6");
+    }
+
+    /**
+     * Test for expressions [if gte IE 7].
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "done",
+            IE8 = { "cond", "done" })
+    public void gte_IE_7() throws Exception {
+        doTest("gte IE 7");
+    }
+
+    /**
+     * Test for expressions [if gte IE 8].
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "done",
+            IE8 = { "cond", "done" })
+    public void gte_IE_8() throws Exception {
+        doTest("gte IE 8");
+    }
+
+    /**
+     * Test for expressions [if !(IE 5)].
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "done",
+            IE8 = { "cond", "done" })
+    public void parenthese_5() throws Exception {
+        doTest("!(IE 5)");
+    }
+
+    /**
+     * Test for expressions [if !(IE 6)].
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "done",
+            IE8 = { "cond", "done" })
+    public void parenthese_6() throws Exception {
+        doTest("!(IE 6)");
+    }
+
+    /**
+     * Test for expressions [if !(IE 7)].
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "done",
+            IE8 = { "cond", "done" })
+    public void parenthese_7() throws Exception {
+        doTest("!(IE 7)");
+    }
+
+    /**
+     * Test for expressions [if !(IE 8)].
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("done")
+    public void parenthese_8() throws Exception {
+        doTest("!(IE 8)");
+    }
+
+    /**
+     * Test for expressions [(gt IE 6)&(lt IE 8)].
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("done")
+    public void and() throws Exception {
+        doTest("(gt IE 6)&(lt IE 8)");
+    }
+
+    /**
+     * Test for expressions [if (IE 6)|(IE 7)].
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("done")
+    public void or() throws Exception {
+        doTest("(IE 6)|(IE 7)");
+    }
+
+    /**
+     * Test for expressions [if true].
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "done",
+            IE8 = { "cond", "done" })
+    public void true_() throws Exception {
+        doTest("true");
+    }
+
+    /**
+     * Test for expressions [if false].
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("done")
+    public void false_() throws Exception {
+        doTest("false");
     }
 
     /**
      * Test for expressions with "mso" (HTML code generated by MS Office).
+     * @throws Exception if the test fails
      */
     @Test
-    public void mso() {
-        doTest("mso 9", false, false);
-        doTest("gte mso 9", false, false);
-        doTest("gt mso 9", false, false);
-        doTest("lt mso 9", true, true);
-        doTest("lt mso 1", true, true);
+    @Alerts("done")
+    public void mso_1() throws Exception {
+        doTest("mso 9");
+    }
+
+    /**
+     * Test for expressions with "mso" (HTML code generated by MS Office).
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("done")
+    public void mso_2() throws Exception {
+        doTest("gte mso 9");
+    }
+
+    /**
+     * Test for expressions with "mso" (HTML code generated by MS Office).
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "done",
+            IE8 = { "cond", "done" })
+    public void mso_3() throws Exception {
+        doTest("lt mso 9");
+    }
+
+    /**
+     * Test for expressions with "mso" (HTML code generated by MS Office).
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "done",
+            IE8 = { "cond", "done" })
+    public void mso_4() throws Exception {
+        doTest("lt mso 1");
     }
 
     /**
      * Test for expressions with unexpected identifier.
+     * @throws Exception if the test fails
      */
     @Test
-    public void unknown() {
-        doTest("foo 1", false, false);
-        doTest("gte foo 1", false, false);
-        doTest("gt foo 1", false, false);
-        doTest("lt foo 1", true, true);
+    @Alerts("done")
+    public void unknown_1() throws Exception {
+        doTest("foo 1");
     }
 
-    private void doTest(final String expression, final boolean expectedIE6, final boolean expectedIE7) {
-        doTest(expectedIE6, expression, INTERNET_EXPLORER_6);
-        doTest(expectedIE7, expression, INTERNET_EXPLORER_7);
+    /**
+     * Test for expressions with unexpected identifier.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("done")
+    public void unknown_2() throws Exception {
+        doTest("gte foo 1");
     }
 
-    private void doTest(final boolean b, final String expression, final BrowserVersion browserVersion) {
-        assertEquals(expression + " for " + browserVersion.getNickname(), b, evaluate(expression, browserVersion));
+    /**
+     * Test for expressions with unexpected identifier.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("done")
+    public void unknown_3() throws Exception {
+        doTest("gt foo 1");
+    }
+
+    /**
+     * Test for expressions with unexpected identifier.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "done",
+            IE8 = { "cond", "done" })
+    public void unknown_4() throws Exception {
+        doTest("lt foo 1");
+    }
+
+    private void doTest(final String expression) throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_
+            + "<html><head>"
+            + "<!--[if " + expression + "]><script>alert('cond');</script><![endif]-->\n"
+            + "<script>alert('done');</script>\n"
+            + "</head><body></body></html>";
+        loadPageWithAlerts2(html);
     }
 }

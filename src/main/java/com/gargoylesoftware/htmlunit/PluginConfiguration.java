@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,18 +22,16 @@ import java.util.Set;
  * Contains information about a plugin as available in JavaScript via <tt>document.navigator.plugins</tt>,
  * as well as the associated mime types (for Firefox browser simulation).
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 9871 $
  * @author Marc Guillemot
  * @see <a href="http://www.xulplanet.com/references/objref/Plugin.html">XUL Planet Documentation</a>
  */
-public class PluginConfiguration implements Serializable {
-
-    private static final long serialVersionUID = -3160049910272683027L;
+public class PluginConfiguration implements Serializable, Cloneable {
 
     private final String description_;
     private final String filename_;
     private final String name_;
-    private final Set<PluginConfiguration.MimeType> mimeTypes_ = new HashSet<PluginConfiguration.MimeType>();
+    private final Set<PluginConfiguration.MimeType> mimeTypes_ = new HashSet<>();
 
     /**
      * Creates a new instance.
@@ -97,15 +95,26 @@ public class PluginConfiguration implements Serializable {
             return false;
         }
         final PluginConfiguration other = (PluginConfiguration) o;
-        return this.name_.equals(other.name_);
+        return name_.equals(other.name_);
+    }
+
+    /**
+     * Creates and return a copy of this object. Current instance and cloned
+     * object can be modified independently.
+     * @return a clone of this instance.
+     */
+    @Override
+    public PluginConfiguration clone() {
+        final PluginConfiguration clone = new PluginConfiguration(getName(), getDescription(), getFilename());
+        clone.getMimeTypes().addAll(getMimeTypes());
+
+        return clone;
     }
 
     /**
      * Holds information about a single mime type associated with a plugin.
      */
     public static class MimeType implements Serializable {
-
-        private static final long serialVersionUID = 3775313058008352464L;
 
         private final String description_;
         private final String suffixes_;
@@ -165,7 +174,7 @@ public class PluginConfiguration implements Serializable {
                 return false;
             }
             final PluginConfiguration.MimeType other = (PluginConfiguration.MimeType) o;
-            return this.type_.equals(other.type_);
+            return type_.equals(other.type_);
         }
     }
 

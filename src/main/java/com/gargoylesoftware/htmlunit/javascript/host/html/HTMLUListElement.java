@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,21 +14,60 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+
+import com.gargoylesoftware.htmlunit.html.HtmlDirectory;
+import com.gargoylesoftware.htmlunit.html.HtmlMenu;
+import com.gargoylesoftware.htmlunit.html.HtmlUnorderedList;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
+
 /**
  * The JavaScript object "HTMLUListElement".
  *
- * @version $Revision: 4774 $
+ * @version $Revision: 10126 $
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
+@JsxClasses({
+    @JsxClass(domClass = HtmlDirectory.class, isJSObject = false,
+        browsers = { @WebBrowser(value = IE, maxVersion = 8) }),
+    @JsxClass(domClass = HtmlUnorderedList.class,
+        browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+    @JsxClass(domClass = HtmlUnorderedList.class,
+        isJSObject = false, browsers = @WebBrowser(value = IE, maxVersion = 8)),
+    @JsxClass(domClass = HtmlMenu.class,  isJSObject = false,
+        browsers = { @WebBrowser(value = IE, maxVersion = 8) }) })
 public class HTMLUListElement extends HTMLListElement {
-
-    private static final long serialVersionUID = 5693185995604704981L;
 
     /**
      * Creates an instance.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
     public HTMLUListElement() {
-        // Empty.
     }
 
+    /**
+     * Returns the value of the <tt>type</tt> attribute.
+     * @return the value of the <tt>type</tt> attribute
+     */
+    @JsxGetter
+    public String getType() {
+        return super.getType();
+    }
+
+    /**
+     * Sets the value of the <tt>type</tt> attribute.
+     * @param type the value of the <tt>type</tt> attribute
+     */
+    @JsxSetter
+    public void setType(final String type) {
+        super.setType(type);
+    }
 }

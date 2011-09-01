@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,29 +21,27 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * An abstract cell that provides the implementation for HtmlTableDataCell and HtmlTableHeaderCell.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 10214 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
+ * @author Frank Danek
  * @see HtmlTableDataCell
  * @see HtmlTableHeaderCell
  */
-public abstract class HtmlTableCell extends ClickableElement {
-
-    private static final long serialVersionUID = -6362606593038086865L;
+public abstract class HtmlTableCell extends HtmlElement {
 
     /**
      * Creates an instance.
      *
-     * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the page that this element is contained within
      * @param attributes the initial attributes
      */
-    protected HtmlTableCell(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    protected HtmlTableCell(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
+        super(qualifiedName, page, attributes);
     }
 
     /**
@@ -52,7 +50,7 @@ public abstract class HtmlTableCell extends ClickableElement {
      */
     public int getColumnSpan() {
         final String spanString = getAttribute("colspan");
-        if (spanString == null || spanString.length() == 0) {
+        if (spanString == null || spanString.isEmpty()) {
             return 1;
         }
         return Integer.parseInt(spanString);
@@ -64,7 +62,7 @@ public abstract class HtmlTableCell extends ClickableElement {
      */
     public int getRowSpan() {
         final String spanString = getAttribute("rowspan");
-        if (spanString == null || spanString.length() == 0) {
+        if (spanString == null || spanString.isEmpty()) {
             return 1;
         }
         return Integer.parseInt(spanString);
@@ -78,4 +76,11 @@ public abstract class HtmlTableCell extends ClickableElement {
         return (HtmlTableRow) getEnclosingElement("tr");
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public DisplayStyle getDefaultStyleDisplay() {
+        return DisplayStyle.TABLE_CELL;
+    }
 }

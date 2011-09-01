@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,18 +18,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 
 /**
  * Tests for {@link HtmlLabel}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 9868 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
-public class HtmlLabelTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public class HtmlLabelTest extends SimpleWebTestCase {
 
     /**
      * Verifies that a checkbox is toggled when the related label is clicked.
@@ -43,7 +45,7 @@ public class HtmlLabelTest extends WebTestCase {
             + " <input type='checkbox' name='checkbox' id='testCheckbox' onclick='alert(\"checkbox\")'/>\n"
             + " <label for='testCheckbox' id='testLabel' onclick='alert(\"label\")'>Check me</label>\n"
             + "</form></body></html>";
-        final List<String> collectedAlerts = new ArrayList<String>();
+        final List<String> collectedAlerts = new ArrayList<>();
         final HtmlPage page = loadPage(htmlContent, collectedAlerts);
         final HtmlCheckBoxInput checkBox = page.getHtmlElementById("testCheckbox");
 
@@ -69,7 +71,7 @@ public class HtmlLabelTest extends WebTestCase {
             + " <label for='testCheckbox' id='testLabel1'>Check me</label>\n"
             + " <label for='notExisting' id='testLabel2'>Check me too</label>\n"
             + "</form></body></html>";
-        final List<String> collectedAlerts = new ArrayList<String>();
+        final List<String> collectedAlerts = new ArrayList<>();
         final HtmlPage page = loadPage(htmlContent, collectedAlerts);
         final HtmlCheckBoxInput checkBox = page.getHtmlElementById("testCheckbox");
 
@@ -77,27 +79,5 @@ public class HtmlLabelTest extends WebTestCase {
         assertTrue(checkBox == label.getReferencedElement());
         final HtmlLabel label2 = page.getHtmlElementById("testLabel2");
         assertNull(label2.getReferencedElement());
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testSimpleScriptable() throws Exception {
-        final String html = "<html><head>\n"
-            + "<script>\n"
-            + "  function test() {\n"
-            + "    alert(document.getElementById('myId'));\n"
-            + "  }\n"
-            + "</script>\n"
-            + "</head><body onload='test()'>\n"
-            + "<label id='myId'>Item</label>\n"
-            + "</body></html>";
-
-        final String[] expectedAlerts = {"[object HTMLLabelElement]"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(BrowserVersion.FIREFOX_2, html, collectedAlerts);
-        assertTrue(HtmlLabel.class.isInstance(page.getHtmlElementById("myId")));
-        assertEquals(expectedAlerts, collectedAlerts);
     }
 }

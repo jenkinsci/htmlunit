@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,20 @@ package com.gargoylesoftware.htmlunit.html;
 
 import static org.junit.Assert.assertNotNull;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.Writer;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLDecoder;
+import java.nio.charset.Charset;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.servlet.Servlet;
 import javax.servlet.ServletException;
@@ -36,28 +41,37 @@ import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.FileUploadBase;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
-import org.apache.commons.httpclient.HttpClient;
-import org.apache.commons.httpclient.methods.PostMethod;
-import org.apache.commons.httpclient.methods.multipart.FilePart;
-import org.apache.commons.httpclient.methods.multipart.MultipartRequestEntity;
-import org.apache.commons.httpclient.methods.multipart.Part;
+import org.apache.commons.io.IOUtils;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.mime.HttpMultipartMode;
+import org.apache.http.entity.mime.MultipartEntityBuilder;
+import org.apache.http.entity.mime.content.FileBody;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.BrowserVersion;
-import com.gargoylesoftware.htmlunit.KeyDataPair;
+import com.gargoylesoftware.htmlunit.HttpWebConnection;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebServerTestCase;
-import com.gargoylesoftware.htmlunit.util.ServletContentWrapper;
+import com.gargoylesoftware.htmlunit.util.KeyDataPair;
 
 /**
  * Tests for {@link HtmlFileInput}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 9868 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
+@RunWith(BrowserRunner.class)
 public class HtmlFileInputTest extends WebServerTestCase {
 
     /**
@@ -84,20 +98,48 @@ public class HtmlFileInputTest extends WebServerTestCase {
         testFileInput("file:///" + path);
     }
 
+    private void testFileInput(final String fileURL) throws Exception {
+        final String firstContent = "<html><head></head><body>\n"
+            + "<form enctype='multipart/form-data' action='" + URL_SECOND + "' method='POST'>\n"
+            + "  <input type='file' name='image'>\n"
+            + "  <input type='submit' id='clickMe'>\n"
+            + "</form>\n"
+            + "</body>\n"
+            + "</html>";
+        final String secondContent = "<html><head><title>second</title></head></html>";
+        final WebClient client = getWebClient();
+
+        final MockWebConnection webConnection = new MockWebConnection();
+        webConnection.setResponse(URL_FIRST, firstContent);
+        webConnection.setResponse(URL_SECOND, secondContent);
+
+        client.setWebConnection(webConnection);
+
+        final HtmlPage firstPage = client.getPage(URL_FIRST);
+        final HtmlForm f = firstPage.getForms().get(0);
+        final HtmlFileInput fileInput = f.getInputByName("image");
+        fileInput.setValueAttribute(fileURL);
+        firstPage.getHtmlElementById("clickMe").click();
+        final KeyDataPair pair = (KeyDataPair) webConnection.getLastParameters().get(0);
+        assertNotNull(pair.getFile());
+        assertTrue(pair.getFile().length() != 0);
+    }
+
     /**
      * Tests setData method.
      * @throws Exception if the test fails
      */
     @Test
-    public void testSetData() throws Exception {
+    public void setValueAttributeAndSetDataDummyFile() throws Exception {
         final String firstContent = "<html><head></head><body>\n"
             + "<form enctype='multipart/form-data' action='" + URL_SECOND + "' method='POST'>\n"
-            + "  <input type='file' name='image' />\n"
+            + "  <input type='file' name='image'>\n"
+            + "  <input type='submit' id='mySubmit'>\n"
             + "</form>\n"
             + "</body>\n"
             + "</html>";
         final String secondContent = "<html><head><title>second</title></head></html>";
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
@@ -111,21 +153,41 @@ public class HtmlFileInputTest extends WebServerTestCase {
         fileInput.setValueAttribute("dummy.txt");
         fileInput.setContentType("text/csv");
         fileInput.setData("My file data".getBytes());
-        f.submit((SubmittableElement) null);
+        firstPage.getHtmlElementById("mySubmit").click();
         final KeyDataPair pair = (KeyDataPair) webConnection.getLastParameters().get(0);
+
         assertNotNull(pair.getData());
-        assertTrue(pair.getData().length != 0);
+        assertTrue(pair.getData().length > 10);
+
+        final Method makeHttpMethod = HttpWebConnection.class.getDeclaredMethod("makeHttpMethod", WebRequest.class);
+        makeHttpMethod.setAccessible(true);
+        final HttpPost httpPost = (HttpPost) makeHttpMethod
+            .invoke(new HttpWebConnection(client), webConnection.getLastWebRequest());
+        final HttpEntity httpEntity = httpPost.getEntity();
+
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        httpEntity.writeTo(out);
+        out.close();
+
+        Assert.assertTrue(
+                out.toString().contains("Content-Disposition: form-data; name=\"image\"; filename=\"dummy.txt\""));
     }
 
-    private void testFileInput(final String fileURL) throws Exception {
+    /**
+     * Tests setData method.
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void setValueAttributeAndSetDataRealFile() throws Exception {
         final String firstContent = "<html><head></head><body>\n"
             + "<form enctype='multipart/form-data' action='" + URL_SECOND + "' method='POST'>\n"
-            + "  <input type='file' name='image' />\n"
+            + "  <input type='file' name='image'>\n"
+            + "  <input type='submit' id='mySubmit'>\n"
             + "</form>\n"
             + "</body>\n"
             + "</html>";
         final String secondContent = "<html><head><title>second</title></head></html>";
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
@@ -136,11 +198,81 @@ public class HtmlFileInputTest extends WebServerTestCase {
         final HtmlPage firstPage = client.getPage(URL_FIRST);
         final HtmlForm f = firstPage.getForms().get(0);
         final HtmlFileInput fileInput = f.getInputByName("image");
-        fileInput.setValueAttribute(fileURL);
-        f.submit((SubmittableElement) null);
+        final String path = getClass().getClassLoader().getResource("testfiles/" + "tiny-png.img").toExternalForm();
+        fileInput.setValueAttribute(path);
+        fileInput.setData("My file data".getBytes());
+        firstPage.getHtmlElementById("mySubmit").click();
         final KeyDataPair pair = (KeyDataPair) webConnection.getLastParameters().get(0);
-        assertNotNull(pair.getFile());
-        assertTrue(pair.getFile().length() != 0);
+
+        assertNotNull(pair.getData());
+        assertTrue(pair.getData().length > 10);
+
+        final Method makeHttpMethod = HttpWebConnection.class.getDeclaredMethod("makeHttpMethod", WebRequest.class);
+        makeHttpMethod.setAccessible(true);
+        final HttpPost httpPost = (HttpPost) makeHttpMethod
+            .invoke(new HttpWebConnection(client), webConnection.getLastWebRequest());
+        final HttpEntity httpEntity = httpPost.getEntity();
+
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        httpEntity.writeTo(out);
+        out.close();
+
+        if (getBrowserVersion().isIE() && BrowserVersion.INTERNET_EXPLORER_11 != getBrowserVersion()) {
+            final Pattern pattern = Pattern
+                .compile("Content-Disposition: form-data; name=\"image\";"
+                        + " filename=\".*testfiles[\\\\/]tiny-png\\.img\"");
+            final Matcher matcher = pattern.matcher(out.toString());
+            assertTrue(matcher.find());
+        }
+        else if (getBrowserVersion().isFirefox()) {
+            assertTrue(out.toString()
+                    .contains("Content-Disposition: form-data; name=\"image\"; filename=\"tiny-png.img\""));
+        }
+    }
+
+    /**
+     * Tests setData method.
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void setDataOnly() throws Exception {
+        final String firstContent = "<html><head></head><body>\n"
+            + "<form enctype='multipart/form-data' action='" + URL_SECOND + "' method='POST'>\n"
+            + "  <input type='file' name='image'>\n"
+            + "  <input type='submit' id='mySubmit'>\n"
+            + "</form>\n"
+            + "</body>\n"
+            + "</html>";
+        final String secondContent = "<html><head><title>second</title></head></html>";
+        final WebClient client = getWebClient();
+
+        final MockWebConnection webConnection = new MockWebConnection();
+        webConnection.setResponse(URL_FIRST, firstContent);
+        webConnection.setResponse(URL_SECOND, secondContent);
+
+        client.setWebConnection(webConnection);
+
+        final HtmlPage firstPage = client.getPage(URL_FIRST);
+        final HtmlForm f = firstPage.getForms().get(0);
+        final HtmlFileInput fileInput = f.getInputByName("image");
+        fileInput.setData("My file data".getBytes());
+        firstPage.getHtmlElementById("mySubmit").click();
+        final KeyDataPair pair = (KeyDataPair) webConnection.getLastParameters().get(0);
+
+        assertNull(pair.getData());
+
+        final Method makeHttpMethod = HttpWebConnection.class.getDeclaredMethod("makeHttpMethod", WebRequest.class);
+        makeHttpMethod.setAccessible(true);
+        final HttpPost httpPost = (HttpPost) makeHttpMethod
+            .invoke(new HttpWebConnection(client), webConnection.getLastWebRequest());
+        final HttpEntity httpEntity = httpPost.getEntity();
+
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        httpEntity.writeTo(out);
+        out.close();
+
+        assertTrue(out.toString()
+                .contains("Content-Disposition: form-data; name=\"image\"; filename=\"\""));
     }
 
     /**
@@ -152,11 +284,12 @@ public class HtmlFileInputTest extends WebServerTestCase {
         final String firstContent = "<html><head></head><body>\n"
             + "<form enctype='multipart/form-data' action='" + URL_SECOND + "' method='POST'>\n"
             + "  <input type='file' name='image' />\n"
+            + "  <input type='submit' id='clickMe'>\n"
             + "</form>\n"
             + "</body>\n"
             + "</html>";
         final String secondContent = "<html><head><title>second</title></head></html>";
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
@@ -165,8 +298,7 @@ public class HtmlFileInputTest extends WebServerTestCase {
         client.setWebConnection(webConnection);
 
         final HtmlPage firstPage = client.getPage(URL_FIRST);
-        final HtmlForm f = firstPage.getForms().get(0);
-        f.submit(null);
+        firstPage.getHtmlElementById("clickMe").click();
         final KeyDataPair pair = (KeyDataPair) webConnection.getLastParameters().get(0);
         assertEquals("image", pair.getName());
         assertNull(pair.getFile());
@@ -180,11 +312,12 @@ public class HtmlFileInputTest extends WebServerTestCase {
         final String firstContent = "<html><head></head><body>\n"
             + "<form enctype='multipart/form-data' action='" + URL_SECOND + "' method='POST'>\n"
             + "  <input type='file' name='image' />\n"
+            + "  <input type='submit' name='mysubmit'/>\n"
             + "</form>\n"
             + "</body>\n"
             + "</html>";
         final String secondContent = "<html><head><title>second</title></head></html>";
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
@@ -199,80 +332,81 @@ public class HtmlFileInputTest extends WebServerTestCase {
         final URL fileURL = getClass().getClassLoader().getResource("testfiles/empty.png");
 
         fileInput.setValueAttribute(fileURL.toExternalForm());
-        f.submit((SubmittableElement) null);
+        f.getInputByName("mysubmit").click();
         final KeyDataPair pair = (KeyDataPair) webConnection.getLastParameters().get(0);
         assertNotNull(pair.getFile());
-        Assert.assertFalse("Content type: " + pair.getContentType(), "text/webtest".equals(pair.getContentType()));
+        Assert.assertFalse("Content type: " + pair.getMimeType(), "text/webtest".equals(pair.getMimeType()));
 
         fileInput.setContentType("text/webtest");
-        f.submit((SubmittableElement) null);
+        f.getInputByName("mysubmit").click();
         final KeyDataPair pair2 = (KeyDataPair) webConnection.getLastParameters().get(0);
         assertNotNull(pair2.getFile());
-        assertEquals("text/webtest", pair2.getContentType());
+        assertEquals("text/webtest", pair2.getMimeType());
     }
 
     /**
      * Test HttpClient for uploading a file with non-ASCII name, if it works it means HttpClient has fixed its bug.
      *
      * Test for http://issues.apache.org/jira/browse/HTTPCLIENT-293,
-     * which is related to http://sourceforge.net/tracker/index.php?func=detail&aid=1818569&group_id=47038&atid=448266
+     * which is related to http://sourceforge.net/p/htmlunit/bugs/535/
      *
      * @throws Exception if the test fails
      */
     @Test
-    public void testUploadFileWithNonASCIIName_HttpClient() throws Exception {
-        if (notYetImplemented()) {
-            return;
-        }
-
+    public void uploadFileWithNonASCIIName_HttpClient() throws Exception {
         final String filename = "\u6A94\u6848\uD30C\uC77C\u30D5\u30A1\u30A4\u30EB\u0645\u0644\u0641.txt";
         final String path = getClass().getClassLoader().getResource(filename).toExternalForm();
         final File file = new File(new URI(path));
         assertTrue(file.exists());
 
-        final Map<String, Class< ? extends Servlet>> servlets = new HashMap<String, Class< ? extends Servlet>>();
+        final Map<String, Class<? extends Servlet>> servlets = new HashMap<>();
         servlets.put("/upload2", Upload2Servlet.class);
 
         startWebServer("./", null, servlets);
-        final PostMethod filePost = new PostMethod("http://localhost:" + PORT + "/upload2");
+        final HttpPost filePost = new HttpPost("http://localhost:" + PORT + "/upload2");
 
-        final FilePart part = new FilePart("myInput", file);
-        part.setCharSet("UTF-8");
+        final MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+        builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE)
+            .setCharset(Charset.forName("UTF-8"));
+        builder.addPart("myInput", new FileBody(file, ContentType.APPLICATION_OCTET_STREAM));
 
-        filePost.setRequestEntity(new MultipartRequestEntity(new Part[] {part}, filePost.getParams()));
-        final HttpClient client = new HttpClient();
-        client.executeMethod(filePost);
+        filePost.setEntity(builder.build());
 
-        final String response = filePost.getResponseBodyAsString();
-        //this is the value with ASCII encoding
-        assertFalse("3F 3F 3F 3F 3F 3F 3F 3F 3F 3F 3F 2E 74 78 74 <br>myInput".equals(response));
+        final HttpClientBuilder clientBuilder = HttpClientBuilder.create();
+        final HttpResponse httpResponse = clientBuilder.build().execute(filePost);
+
+        InputStream content = null;
+        try {
+            content = httpResponse.getEntity().getContent();
+            final String response = new String(IOUtils.toByteArray(content));
+            //this is the value with ASCII encoding
+            assertFalse("3F 3F 3F 3F 3F 3F 3F 3F 3F 3F 3F 2E 74 78 74 <br>myInput".equals(response));
+        }
+        finally {
+            IOUtils.closeQuietly(content);
+        }
     }
 
     /**
      * Test uploading a file with non-ASCII name.
      *
-     * Test for http://sourceforge.net/tracker/index.php?func=detail&aid=1818569&group_id=47038&atid=448266
+     * Test for http://sourceforge.net/p/htmlunit/bugs/535/
      *
      * @throws Exception if the test fails
      */
     @Test
     public void testUploadFileWithNonASCIIName() throws Exception {
-        final Map<String, Class< ? extends Servlet>> servlets = new HashMap<String, Class< ? extends Servlet>>();
+        final Map<String, Class<? extends Servlet>> servlets = new HashMap<>();
         servlets.put("/upload1", Upload1Servlet.class);
         servlets.put("/upload2", Upload2Servlet.class);
         startWebServer("./", null, servlets);
 
-        testUploadFileWithNonASCIIName(BrowserVersion.FIREFOX_2);
-        testUploadFileWithNonASCIIName(BrowserVersion.INTERNET_EXPLORER_7);
-    }
-
-    private void testUploadFileWithNonASCIIName(final BrowserVersion browserVersion) throws Exception {
         final String filename = "\u6A94\u6848\uD30C\uC77C\u30D5\u30A1\u30A4\u30EB\u0645\u0644\u0641.txt";
         final String path = getClass().getClassLoader().getResource(filename).toExternalForm();
         final File file = new File(new URI(path));
         assertTrue(file.exists());
 
-        final WebClient client = new WebClient(browserVersion);
+        final WebClient client = getWebClient();
         final HtmlPage firstPage = client.getPage("http://localhost:" + PORT + "/upload1");
 
         final HtmlForm form = firstPage.getForms().get(0);
@@ -287,33 +421,28 @@ public class HtmlFileInputTest extends WebServerTestCase {
         //this is the value with UTF-8 encoding
         final String expectedResponse = "6A94 6848 D30C C77C 30D5 30A1 30A4 30EB 645 644 641 2E 74 78 74 <br>myInput";
 
-        assertTrue("Invalid Response: " + response, response.contains(expectedResponse));
-
-        if (browserVersion.isIE()) {
-            assertTrue(expectedResponse.length() < response.length());
-        }
-        else {
-            assertEquals(expectedResponse.length(), response.length());
-        }
+        assertTrue("Invalid Response: " + response, response.endsWith(expectedResponse));
     }
 
     /**
      * Servlet for '/upload1'.
      */
-    public static class Upload1Servlet extends ServletContentWrapper {
-
-        private static final long serialVersionUID = 6693252829875297263L;
+    public static class Upload1Servlet extends HttpServlet {
 
         /**
-         * Creates an instance.
+         * {@inheritDoc}
          */
-        public Upload1Servlet() {
-            super("<html><head><meta http-equiv='Content-Type' content='text/html; charset=utf-8'/></head>\n"
-            + "<form action='upload2' method='post' enctype='multipart/form-data'>\n"
-            + "Name: <input name='myInput' type='file'><br>\n"
-            + "Name 2 (should stay empty): <input name='myInput2' type='file'><br>\n"
-            + "<input type='submit' value='Upload' id='mySubmit'>\n"
-            + "</form>\n");
+        @Override
+        protected void doGet(final HttpServletRequest request, final HttpServletResponse response)
+            throws ServletException, IOException {
+            response.setCharacterEncoding("UTF-8");
+            response.setContentType("text/html");
+            response.getWriter().write("<html>"
+                + "<body><form action='upload2' method='post' enctype='multipart/form-data'>\n"
+                + "Name: <input name='myInput' type='file'><br>\n"
+                + "Name 2 (should stay empty): <input name='myInput2' type='file'><br>\n"
+                + "<input type='submit' value='Upload' id='mySubmit'>\n"
+                + "</form></body></html>\n");
         }
     }
 
@@ -322,13 +451,10 @@ public class HtmlFileInputTest extends WebServerTestCase {
      */
     public static class Upload2Servlet extends HttpServlet {
 
-        private static final long serialVersionUID = -1350878755076138012L;
-
         /**
          * {@inheritDoc}
          */
         @Override
-        @SuppressWarnings("unchecked")
         protected void doPost(final HttpServletRequest request, final HttpServletResponse response)
             throws ServletException, IOException {
             request.setCharacterEncoding("UTF-8");
@@ -337,7 +463,7 @@ public class HtmlFileInputTest extends WebServerTestCase {
             if (ServletFileUpload.isMultipartContent(request)) {
                 try {
                     final ServletFileUpload upload = new ServletFileUpload(new DiskFileItemFactory());
-                    for (final FileItem item : (List<FileItem>) upload.parseRequest(request)) {
+                    for (final FileItem item : upload.parseRequest(request)) {
                         if ("myInput".equals(item.getFieldName())) {
                             final String path = item.getName();
                             for (final char ch : path.toCharArray()) {
@@ -356,6 +482,65 @@ public class HtmlFileInputTest extends WebServerTestCase {
                 }
             }
             writer.close();
+        }
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void mutiple() throws Exception {
+        final Map<String, Class<? extends Servlet>> servlets = new HashMap<>();
+        servlets.put("/upload1", Multiple1Servlet.class);
+        servlets.put("/upload2", HtmlFileInput2Test.PrintRequestServlet.class);
+        startWebServer("./", null, servlets);
+
+        final String filename1 = "HtmlFileInputTest_one.txt";
+        final String path1 = getClass().getResource(filename1).toExternalForm();
+        final File file1 = new File(new URI(path1));
+        assertTrue(file1.exists());
+
+        final String filename2 = "HtmlFileInputTest_two.txt";
+        final String path2 = getClass().getResource(filename2).toExternalForm();
+        final File file2 = new File(new URI(path2));
+        assertTrue(file2.exists());
+
+        final WebClient client = getWebClient();
+        final HtmlPage firstPage = client.getPage("http://localhost:" + PORT + "/upload1");
+
+        final HtmlForm form = firstPage.getForms().get(0);
+        final HtmlFileInput fileInput = form.getInputByName("myInput");
+        fileInput.setValueAttribute(new String[] {path1, path2});
+
+        final HtmlSubmitInput submitInput = form.getInputByValue("Upload");
+        final HtmlPage secondPage = submitInput.click();
+
+        final String response = secondPage.getWebResponse().getContentAsString();
+
+        assertTrue(response.contains("HtmlFileInputTest_one.txt"));
+        assertTrue(response.contains("First"));
+        assertTrue(response.contains("HtmlFileInputTest_two.txt"));
+        assertTrue(response.contains("Second"));
+    }
+
+    /**
+     * Servlet for '/upload1'.
+     */
+    public static class Multiple1Servlet extends HttpServlet {
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        protected void doGet(final HttpServletRequest request, final HttpServletResponse response)
+            throws ServletException, IOException {
+            response.setCharacterEncoding("UTF-8");
+            response.setContentType("text/html");
+            response.getWriter().write("<html>"
+                + "<body><form action='upload2' method='post' enctype='multipart/form-data'>\n"
+                + "Name: <input name='myInput' type='file' multiple><br>\n"
+                + "<input type='submit' value='Upload' id='mySubmit'>\n"
+                + "</form></body></html>\n");
         }
     }
 }

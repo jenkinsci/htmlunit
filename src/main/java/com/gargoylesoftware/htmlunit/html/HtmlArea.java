@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
-import static com.gargoylesoftware.htmlunit.protocol.javascript.JavaScriptURLConnection.JAVASCRIPT_PREFIX;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.CSS_DISPLAY_BLOCK;
 
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.GeneralPath;
@@ -22,30 +22,29 @@ import java.awt.geom.Rectangle2D;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Locale;
 import java.util.Map;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
-import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.SgmlPage;
-import com.gargoylesoftware.htmlunit.TextUtil;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebRequestSettings;
+import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebWindow;
+import com.gargoylesoftware.htmlunit.protocol.javascript.JavaScriptURLConnection;
 
 /**
  * Wrapper for the HTML element "area".
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 10214 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Marc Guillemot
  * @author Ahmed Ashour
+ * @author Frank Danek
  */
-public class HtmlArea extends ClickableElement {
-
-    private static final long serialVersionUID = 8933911141016200386L;
+public class HtmlArea extends HtmlElement {
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "area";
@@ -53,30 +52,30 @@ public class HtmlArea extends ClickableElement {
     /**
      * Creates a new instance.
      *
-     * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the page that contains this element
      * @param attributes the initial attributes
      */
-    HtmlArea(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    HtmlArea(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
+        super(qualifiedName, page, attributes);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    protected Page doClickAction(final Page defaultPage) throws IOException {
+    protected boolean doClickStateUpdate() throws IOException {
         final HtmlPage enclosingPage = (HtmlPage) getPage();
         final WebClient webClient = enclosingPage.getWebClient();
 
-        final String href = getHrefAttribute();
-        if (href != null && href.length() > 0) {
+        final String href = getHrefAttribute().trim();
+        if (href.length() > 0) {
             final HtmlPage page = (HtmlPage) getPage();
-            if (TextUtil.startsWithIgnoreCase(href, JAVASCRIPT_PREFIX)) {
-                return page.executeJavaScriptIfPossible(
-                    href, "javascript url", getStartLineNumber()).getNewPage();
+            if (StringUtils.startsWithIgnoreCase(href, JavaScriptURLConnection.JAVASCRIPT_PREFIX)) {
+                page.executeJavaScriptIfPossible(
+                    href, "javascript url", getStartLineNumber());
+                return false;
             }
             final URL url;
             try {
@@ -86,14 +85,15 @@ public class HtmlArea extends ClickableElement {
                 throw new IllegalStateException(
                         "Not a valid url: " + getHrefAttribute());
             }
-            final WebRequestSettings settings = new WebRequestSettings(url);
+            final WebRequest request = new WebRequest(url);
+            request.setAdditionalHeader("Referer", page.getUrl().toExternalForm());
             final WebWindow webWindow = enclosingPage.getEnclosingWindow();
-            return webClient.getPage(
+            webClient.getPage(
                     webWindow,
                     enclosingPage.getResolvedTarget(getTargetAttribute()),
-                    settings);
+                    request);
         }
-        return defaultPage;
+        return false;
     }
 
     /**
@@ -213,57 +213,130 @@ public class HtmlArea extends ClickableElement {
      * @return <code>true</code> if the point is contained in this area
      */
     boolean containsPoint(final int x, final int y) {
-        final String shape = StringUtils.defaultIfEmpty(getShapeAttribute(), "rect").toLowerCase();
+        final String shape = StringUtils.defaultIfEmpty(getShapeAttribute(), "rect").toLowerCase(Locale.ENGLISH);
 
         if ("default".equals(shape) && getCoordsAttribute() != null) {
             return true;
         }
-        else if ("rect".equals(shape) && getCoordsAttribute() != null) {
-            final String[] coords = getCoordsAttribute().split(",");
-            final double leftX = Double.parseDouble(coords[0].trim());
-            final double topY = Double.parseDouble(coords[1].trim());
-            final double rightX = Double.parseDouble(coords[2].trim());
-            final double bottomY = Double.parseDouble(coords[3].trim());
-            final Rectangle2D rectangle = new Rectangle2D.Double(leftX, topY,
-                    rightX - leftX + 1, bottomY - topY + 1);
-            if (rectangle.contains(x, y)) {
-                return true;
-            }
-        }
-        else if ("circle".equals(shape) && getCoordsAttribute() != null) {
-            final String[] coords = getCoordsAttribute().split(",");
-            final double centerX = Double.parseDouble(coords[0].trim());
-            final double centerY = Double.parseDouble(coords[1].trim());
-            final String radiusString = coords[2].trim();
 
-            final int radius;
-            try {
-                radius = Integer.parseInt(radiusString);
+        if ("rect".equals(shape) && getCoordsAttribute() != null) {
+            final Rectangle2D rectangle = parseRect();
+            return rectangle.contains(x, y);
+        }
+
+        if ("circle".equals(shape) && getCoordsAttribute() != null) {
+            final Ellipse2D ellipse = parseCircle();
+            return ellipse.contains(x, y);
+        }
+
+        if ("poly".equals(shape) && getCoordsAttribute() != null) {
+            final GeneralPath path = parsePoly();
+            return path.contains(x, y);
+        }
+
+        return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public DisplayStyle getDefaultStyleDisplay() {
+        if (hasFeature(CSS_DISPLAY_BLOCK)) {
+            return DisplayStyle.NONE;
+        }
+        return DisplayStyle.INLINE;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isDisplayed() {
+        final DomNode parent = getParentNode();
+        if (null != parent && parent instanceof HtmlMap && parent.isDisplayed()) {
+            return !isEmpty();
+        }
+        return false;
+    }
+
+    private Rectangle2D parseRect() {
+        final String[] coords = StringUtils.split(getCoordsAttribute(), ',');
+
+        double leftX = 0;
+        if (coords.length > 0) {
+            leftX = Double.parseDouble(coords[0].trim());
+        }
+        double topY = 0;
+        if (coords.length > 1) {
+            topY = Double.parseDouble(coords[1].trim());
+        }
+        double rightX = 0;
+        if (coords.length > 2) {
+            rightX = Double.parseDouble(coords[2].trim());
+        }
+        double bottomY = 0;
+        if (coords.length > 3) {
+            bottomY = Double.parseDouble(coords[3].trim());
+        }
+        final Rectangle2D rectangle = new Rectangle2D.Double(leftX, topY,
+                rightX - leftX, bottomY - topY);
+        return rectangle;
+    }
+
+    private Ellipse2D parseCircle() {
+        final String[] coords = StringUtils.split(getCoordsAttribute(), ',');
+        final String radiusString = coords[2].trim();
+
+        final int radius;
+        try {
+            radius = Integer.parseInt(radiusString);
+        }
+        catch (final NumberFormatException nfe) {
+            throw new NumberFormatException("Circle radius of " + radiusString + " is not yet implemented.");
+        }
+
+        final double centerX = Double.parseDouble(coords[0].trim());
+        final double centerY = Double.parseDouble(coords[1].trim());
+        final Ellipse2D ellipse = new Ellipse2D.Double(centerX - (double) radius / 2, centerY - (double) radius / 2,
+                radius, radius);
+        return ellipse;
+    }
+
+    private GeneralPath parsePoly() {
+        final String[] coords = StringUtils.split(getCoordsAttribute(), ',');
+        final GeneralPath path = new GeneralPath();
+        for (int i = 0; i + 1 < coords.length; i += 2) {
+            if (i == 0) {
+                path.moveTo(Float.parseFloat(coords[i]), Float.parseFloat(coords[i + 1]));
             }
-            catch (final NumberFormatException nfe) {
-                throw new NumberFormatException("Circle radius of " + radiusString + " is not yet implemented.");
-            }
-            final Ellipse2D ellipse = new Ellipse2D.Double(centerX - radius / 2, centerY - radius / 2,
-                    radius, radius);
-            if (ellipse.contains(x, y)) {
-                return true;
+            else {
+                path.lineTo(Float.parseFloat(coords[i]), Float.parseFloat(coords[i + 1]));
             }
         }
-        else if ("poly".equals(shape) && getCoordsAttribute() != null) {
-            final String[] coords = getCoordsAttribute().split(",");
-            final GeneralPath path = new GeneralPath();
-            for (int i = 0; i + 1 < coords.length; i += 2) {
-                if (i == 0) {
-                    path.moveTo(Float.parseFloat(coords[i]), Float.parseFloat(coords[i + 1]));
-                }
-                else {
-                    path.lineTo(Float.parseFloat(coords[i]), Float.parseFloat(coords[i + 1]));
-                }
-            }
-            path.closePath();
-            if (path.contains(x, y)) {
-                return true;
-            }
+        path.closePath();
+        return path;
+    }
+
+    private boolean isEmpty() {
+        final String shape = StringUtils.defaultIfEmpty(getShapeAttribute(), "rect").toLowerCase(Locale.ENGLISH);
+
+        if ("default".equals(shape) && getCoordsAttribute() != null) {
+            return false;
+        }
+
+        if ("rect".equals(shape) && getCoordsAttribute() != null) {
+            final Rectangle2D rectangle = parseRect();
+            return rectangle.isEmpty();
+        }
+
+        if ("circle".equals(shape) && getCoordsAttribute() != null) {
+            final Ellipse2D ellipse = parseCircle();
+            return ellipse.isEmpty();
+        }
+
+        if ("poly".equals(shape) && getCoordsAttribute() != null) {
+            return false;
         }
 
         return false;

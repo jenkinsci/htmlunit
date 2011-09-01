@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,31 +14,30 @@
  */
 package com.gargoylesoftware.htmlunit.protocol.data;
 
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.CHROME;
 import static com.gargoylesoftware.htmlunit.protocol.data.DataUrlDecoder.decodeDataURL;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 
 /**
  * Tests for {@link DataUrlDecoder}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 10050 $
  * @author Marc Guillemot
  */
 @RunWith(BrowserRunner.class)
-public class DataURLDecoderTest extends WebTestCase {
+public class DataURLDecoderTest extends SimpleWebTestCase {
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.NONE)
     public void testDecodeDataURL() throws Exception {
         DataUrlDecoder decoder = decodeDataURL("data:text/javascript,d1%20%3D%20'one'%3B");
         assertEquals("d1 = 'one';", decoder.getDataAsString());
@@ -65,6 +64,7 @@ public class DataURLDecoderTest extends WebTestCase {
     @Test
     @Alerts(FF = { "one", "two", "three", "four", "five's" },
             IE = { "undefined", "undefined", "undefined", "undefined", "undefined" })
+    @NotYetImplemented(CHROME)
     public void testDataProtocol() throws Exception {
         final String html = "<html><head><title>foo</title>"
             + "<script>"

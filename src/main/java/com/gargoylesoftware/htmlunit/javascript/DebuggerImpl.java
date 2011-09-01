@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ import net.sourceforge.htmlunit.corejs.javascript.debug.DebuggableScript;
  * an instance of this class, and make sure your loggers are configured to output <tt>TRACE</tt> level log messages.
  * </p>
  *
- * @version $Revision: 4417 $
+ * @version $Revision: 9837 $
  * @author Daniel Gredler
  * @see DebugFrameImpl
  * @see HtmlUnitContextFactory#setDebugger(net.sourceforge.htmlunit.corejs.javascript.debug.Debugger)

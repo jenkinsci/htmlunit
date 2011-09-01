@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,87 +14,137 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_SCREEN_SETTER_THROWS_ERROR;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+import net.sourceforge.htmlunit.corejs.javascript.Context;
+
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
 
 /**
- * A JavaScript object for a Screen. Combines properties from both Mozilla's DOM
- * and IE's DOM.
+ * A JavaScript object for a Screen. Combines properties from both Mozilla's DOM and IE's DOM.
  *
- * @version $Revision: 4097 $
+ * @version $Revision: 10430 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Daniel Gredler
  * @author Chris Erskine
+ * @author Ronald Brill
+ * @author Ahmed Ashour
  *
  * @see <a href="http://msdn.microsoft.com/en-us/library/ms535868.aspx">
  * MSDN documentation</a>
  * @see <a href="http://www.mozilla.org/docs/dom/domref/dom_window_ref.html">Mozilla documentation</a>
  */
+@JsxClasses({
+        @JsxClass(browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(isJSObject = false, browsers = @WebBrowser(value = IE, maxVersion = 8))
+    })
 public class Screen extends SimpleScriptable {
 
-    private static final long serialVersionUID = 7775024295042666245L;
-
-    private int left_;
-    private int top_;
-    private int width_;
-    private int height_;
-    private int colorDepth_;
     private int bufferDepth_;
-    private int dpi_;
-    private boolean fontSmoothingEnabled_;
-    private int updateInterval_;
 
     /**
-     * Creates an instance. JavaScript objects must have a default constructor.
+     * Creates an instance.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
     public Screen() {
-        left_ = 0;
-        top_ = 0;
-        width_ = 1024;
-        height_ = 768;
-        colorDepth_ = 24;
-        bufferDepth_ = 24;
-        dpi_ = 96;
-        fontSmoothingEnabled_ = true;
-        updateInterval_ = 0;
+        bufferDepth_ = 0;
     }
 
     /**
      * Returns the <tt>availHeight</tt> property.
      * @return the <tt>availHeight</tt> property
      */
-    public int jsxGet_availHeight() {
-        return height_;
+    @JsxGetter
+    public int getAvailHeight() {
+        return 768;
+    }
+
+    /**
+     * Sets the <tt>availHeight</tt> property.
+     * @param availHeight the <tt>availHeight</tt> property
+     */
+    @JsxSetter
+    public void setAvailHeight(final int availHeight) {
+        if (getBrowserVersion().hasFeature(JS_SCREEN_SETTER_THROWS_ERROR)) {
+            throw Context.reportRuntimeError("screen.availHeight is read only");
+        }
+        // otherwise ignore
     }
 
     /**
      * Returns the <tt>availLeft</tt> property.
      * @return the <tt>availLeft</tt> property
      */
-    public int jsxGet_availLeft() {
-        return left_;
+    @JsxGetter({ @WebBrowser(FF), @WebBrowser(CHROME) })
+    public int getAvailLeft() {
+        return 0;
+    }
+
+    /**
+     * Sets the <tt>availLeft</tt> property.
+     * @param availLeft the <tt>availLeft</tt> property
+     */
+    @JsxSetter({ @WebBrowser(FF), @WebBrowser(CHROME) })
+    public void setAvailLeft(final int availLeft) {
+        // otherwise ignore
     }
 
     /**
      * Returns the <tt>availTop</tt> property.
      * @return the <tt>availTop</tt> property
      */
-    public int jsxGet_availTop() {
-        return top_;
+    @JsxGetter({ @WebBrowser(FF), @WebBrowser(CHROME) })
+    public int getAvailTop() {
+        return 0;
+    }
+
+    /**
+     * Sets the <tt>availTop</tt> property.
+     * @param availTop the <tt>availTop</tt> property
+     */
+    @JsxSetter({ @WebBrowser(FF), @WebBrowser(CHROME) })
+    public void setAvailTop(final int availTop) {
+        if (getBrowserVersion().hasFeature(JS_SCREEN_SETTER_THROWS_ERROR)) {
+            throw Context.reportRuntimeError("screen.availTop is read only");
+        }
+        // otherwise ignore
     }
 
     /**
      * Returns the <tt>availWidth</tt> property.
      * @return the <tt>availWidth</tt> property
      */
-    public int jsxGet_availWidth() {
-        return width_;
+    @JsxGetter
+    public int getAvailWidth() {
+        return 1024;
+    }
+
+    /**
+     * Sets the <tt>availWidth</tt> property.
+     * @param availWidth the <tt>availWidth</tt> property
+     */
+    @JsxSetter
+    public void setAvailWidth(final int availWidth) {
+        if (getBrowserVersion().hasFeature(JS_SCREEN_SETTER_THROWS_ERROR)) {
+            throw Context.reportRuntimeError("screen.availWidth is read only");
+        }
+        // otherwise ignore
     }
 
     /**
      * Returns the <tt>bufferDepth</tt> property.
      * @return the <tt>bufferDepth</tt> property
      */
-    public int jsxGet_bufferDepth() {
+    @JsxGetter(@WebBrowser(IE))
+    public int getBufferDepth() {
         return bufferDepth_;
     }
 
@@ -102,127 +152,284 @@ public class Screen extends SimpleScriptable {
      * Sets the <tt>bufferDepth</tt> property.
      * @param bufferDepth the <tt>bufferDepth</tt> property
      */
-    public void jsxSet_bufferDepth(final int bufferDepth) {
-        bufferDepth_ = bufferDepth;
+    @JsxSetter(@WebBrowser(IE))
+    public void setBufferDepth(final int bufferDepth) {
+        if (getBrowserVersion().hasFeature(JS_SCREEN_SETTER_THROWS_ERROR)) {
+            bufferDepth_ = -1;
+        }
+        // otherwise ignore
     }
 
     /**
      * Returns the <tt>colorDepth</tt> property.
      * @return the <tt>colorDepth</tt> property
      */
-    public int jsxGet_colorDepth() {
-        return colorDepth_;
+    @JsxGetter
+    public int getColorDepth() {
+        return 24;
+    }
+
+    /**
+     * Sets the <tt>colorDepth</tt> property.
+     * @param colorDepth the <tt>colorDepth</tt> property
+     */
+    @JsxSetter
+    public void setColorDepth(final int colorDepth) {
+        if (getBrowserVersion().hasFeature(JS_SCREEN_SETTER_THROWS_ERROR)) {
+            throw Context.reportRuntimeError("screen.colorDepth is read only");
+        }
+        // otherwise ignore
     }
 
     /**
      * Returns the <tt>deviceXDPI</tt> property.
      * @return the <tt>deviceXDPI</tt> property
      */
-    public int jsxGet_deviceXDPI() {
-        return dpi_;
+    @JsxGetter(@WebBrowser(IE))
+    public int getDeviceXDPI() {
+        return 96;
+    }
+
+    /**
+     * Sets the <tt>deviceXDPI</tt> property.
+     * @param deviceXDPI the <tt>deviceXDPI</tt> property
+     */
+    @JsxSetter(@WebBrowser(IE))
+    public void setDeviceXDPI(final int deviceXDPI) {
+        if (getBrowserVersion().hasFeature(JS_SCREEN_SETTER_THROWS_ERROR)) {
+            throw Context.reportRuntimeError("screen.deviceXDPI is read only");
+        }
+        // otherwise ignore
     }
 
     /**
      * Returns the <tt>deviceYDPI</tt> property.
      * @return the <tt>deviceYDPI</tt> property
      */
-    public int jsxGet_deviceYDPI() {
-        return dpi_;
+    @JsxGetter(@WebBrowser(IE))
+    public int getDeviceYDPI() {
+        return 96;
+    }
+
+    /**
+     * Sets the <tt>deviceYDPI</tt> property.
+     * @param deviceYDPI the <tt>deviceYDPI</tt> property
+     */
+    @JsxSetter(@WebBrowser(IE))
+    public void setDeviceYDPI(final int deviceYDPI) {
+        if (getBrowserVersion().hasFeature(JS_SCREEN_SETTER_THROWS_ERROR)) {
+            throw Context.reportRuntimeError("screen.deviceYDPI is read only");
+        }
+        // otherwise ignore
     }
 
     /**
      * Returns the <tt>fontSmoothingEnabled</tt> property.
      * @return the <tt>fontSmoothingEnabled</tt> property
      */
-    public boolean jsxGet_fontSmoothingEnabled() {
-        return fontSmoothingEnabled_;
+    @JsxGetter(@WebBrowser(IE))
+    public boolean getFontSmoothingEnabled() {
+        return true;
+    }
+
+    /**
+     * Sets the <tt>fontSmoothingEnabled</tt> property.
+     * @param fontSmoothingEnabled the <tt>fontSmoothingEnabled</tt> property
+     */
+    @JsxSetter(@WebBrowser(IE))
+    public void setFontSmoothingEnabled(final boolean fontSmoothingEnabled) {
+        if (getBrowserVersion().hasFeature(JS_SCREEN_SETTER_THROWS_ERROR)) {
+            throw Context.reportRuntimeError("screen.fontSmoothingEnabled is read only");
+        }
+        // otherwise ignore
     }
 
     /**
      * Returns the <tt>height</tt> property.
      * @return the <tt>height</tt> property
      */
-    public int jsxGet_height() {
-        return height_;
+    @JsxGetter
+    public int getHeight() {
+        return 768;
+    }
+
+    /**
+     * Sets the <tt>height</tt> property.
+     * @param height the <tt>height</tt> property
+     */
+    @JsxSetter
+    public void setHeight(final int height) {
+        if (getBrowserVersion().hasFeature(JS_SCREEN_SETTER_THROWS_ERROR)) {
+            throw Context.reportRuntimeError("screen.height is read only");
+        }
+        // otherwise ignore
     }
 
     /**
      * Returns the <tt>left</tt> property.
      * @return the <tt>left</tt> property
      */
-    public int jsxGet_left() {
-        return left_;
+    @JsxGetter(@WebBrowser(FF))
+    public int getLeft() {
+        return 0;
     }
 
     /**
      * Sets the <tt>left</tt> property.
      * @param left the <tt>left</tt> property
      */
-    public void jsxSet_left(final int left) {
-        left_ = left;
+    @JsxSetter(@WebBrowser(FF))
+    public void setLeft(final int left) {
+        // ignore
     }
 
     /**
      * Returns the <tt>logicalXDPI</tt> property.
      * @return the <tt>logicalXDPI</tt> property
      */
-    public int jsxGet_logicalXDPI() {
-        return dpi_;
+    @JsxGetter(@WebBrowser(IE))
+    public int getLogicalXDPI() {
+        return 96;
+    }
+
+    /**
+     * Sets the <tt>logicalXDPI</tt> property.
+     * @param logicalXDPI the <tt>logicalXDPI</tt> property
+     */
+    @JsxSetter(@WebBrowser(IE))
+    public void setLogicalXDPI(final int logicalXDPI) {
+        if (getBrowserVersion().hasFeature(JS_SCREEN_SETTER_THROWS_ERROR)) {
+            throw Context.reportRuntimeError("screen.logicalXDPI is read only");
+        }
+        // otherwise ignore
     }
 
     /**
      * Returns the <tt>logicalYDPI</tt> property.
      * @return the <tt>logicalYDPI</tt> property
      */
-    public int jsxGet_logicalYDPI() {
-        return dpi_;
+    @JsxGetter(@WebBrowser(IE))
+    public int getLogicalYDPI() {
+        return 96;
+    }
+
+    /**
+     * Sets the <tt>logicalYDPI</tt> property.
+     * @param logicalYDPI the <tt>logicalYDPI</tt> property
+     */
+    @JsxSetter(@WebBrowser(IE))
+    public void setLogicalYDPI(final int logicalYDPI) {
+        if (getBrowserVersion().hasFeature(JS_SCREEN_SETTER_THROWS_ERROR)) {
+            throw Context.reportRuntimeError("screen.logicalYDPI is read only");
+        }
+        // otherwise ignore
     }
 
     /**
      * Returns the <tt>pixelDepth</tt> property.
      * @return the <tt>pixelDepth</tt> property
      */
-    public int jsxGet_pixelDepth() {
-        return colorDepth_;
+    @JsxGetter
+    public int getPixelDepth() {
+        return 24;
+    }
+
+    /**
+     * Sets the <tt>pixelDepth</tt> property.
+     * @param pixelDepth the <tt>pixelDepth</tt> property
+     */
+    @JsxSetter
+    public void setPixelDepth(final int pixelDepth) {
+        // ignore
+    }
+
+    /**
+     * Returns the <tt>systemXDPI</tt> property.
+     * @return the <tt>systemXDPI</tt> property
+     */
+    @JsxGetter(@WebBrowser(IE))
+    public int getSystemXDPI() {
+        return 96;
+    }
+
+    /**
+     * Sets the <tt>systemXDPI</tt> property.
+     * @param systemXDPI the <tt>systemXDPI</tt> property
+     */
+    @JsxSetter(@WebBrowser(IE))
+    public void setSystemXDPI(final int systemXDPI) {
+        if (getBrowserVersion().hasFeature(JS_SCREEN_SETTER_THROWS_ERROR)) {
+            throw Context.reportRuntimeError("screen.systemYDPI is read only");
+        }
+        // otherwise ignore
+    }
+
+    /**
+     * Returns the <tt>systemYDPI</tt> property.
+     * @return the <tt>systemYDPI</tt> property
+     */
+    @JsxGetter(@WebBrowser(IE))
+    public int getSystemYDPI() {
+        return 96;
+    }
+
+    /**
+     * Sets the <tt>systemYDPI</tt> property.
+     * @param systemYDPI the <tt>systemYDPI</tt> property
+     */
+    @JsxSetter(@WebBrowser(IE))
+    public void setSystemYDPI(final int systemYDPI) {
+        if (getBrowserVersion().hasFeature(JS_SCREEN_SETTER_THROWS_ERROR)) {
+            throw Context.reportRuntimeError("screen.systemYDPI is read only");
+        }
+        // otherwise ignore
     }
 
     /**
      * Returns the <tt>top</tt> property.
      * @return the <tt>top</tt> property
      */
-    public int jsxGet_top() {
-        return top_;
+    @JsxGetter(@WebBrowser(FF))
+    public int getTop() {
+        return 0;
     }
 
     /**
      * Sets the <tt>top</tt> property.
      * @param top the <tt>top</tt> property
      */
-    public void jsxSet_top(final int top) {
-        top_ = top;
+    @JsxSetter(@WebBrowser(FF))
+    public void setTop(final int top) {
+        // ignore
     }
 
     /**
      * Returns the <tt>updateInterval</tt> property.
      * @return the <tt>updateInterval</tt> property
      */
-    public int jsxGet_updateInterval() {
-        return updateInterval_;
-    }
-
-    /**
-     * Sets the <tt>updateInterval</tt> property.
-     * @param updateInterval the <tt>updateInterval</tt> property
-     */
-    public void jsxSet_updateInterval(final int updateInterval) {
-        updateInterval_ = updateInterval;
+    @JsxGetter(@WebBrowser(value = IE, maxVersion = 8))
+    public int getUpdateInterval() {
+        return 0;
     }
 
     /**
      * Returns the <tt>width</tt> property.
      * @return the <tt>width</tt> property
      */
-    public int jsxGet_width() {
-        return width_;
+    @JsxGetter
+    public int getWidth() {
+        return 1024;
+    }
+
+    /**
+     * Sets the <tt>width</tt> property.
+     * @param width the <tt>width</tt> property
+     */
+    @JsxSetter
+    public void setWidth(final int width) {
+        if (getBrowserVersion().hasFeature(JS_SCREEN_SETTER_THROWS_ERROR)) {
+            throw Context.reportRuntimeError("screen.width is read only");
+        }
+        // otherwise ignore
     }
 }

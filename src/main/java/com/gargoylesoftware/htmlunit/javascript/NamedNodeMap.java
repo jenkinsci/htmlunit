@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,35 +14,56 @@
  */
 package com.gargoylesoftware.htmlunit.javascript;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_ATTRIBUTES_BY_NAME_CASE_SENSITIVE;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_ATTRIBUTES_CONTAINS_EMPTY_ATTR_FOR_PROPERTIES;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 
+import com.gargoylesoftware.htmlunit.html.DomAttr;
 import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
-import com.gargoylesoftware.htmlunit.javascript.host.Attr;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxFunction;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.Attr;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.Node;
 
 /**
  * A collection of nodes that can be accessed by name. String comparisons in this class are case-insensitive when
- * used with an {@link com.gargoylesoftware.htmlunit.html.HtmlElement},
+ * used with an {@link HtmlElement},
  * but case-sensitive when used with a {@link DomElement}.
  *
- * @version $Revision: 4529 $
+ * @version $Revision: 10466 $
  * @author Daniel Gredler
  * @author Ahmed Ashour
  * @author Marc Guillemot
+ * @author Ronald Brill
+ * @author Frank Danek
  * @see <a href="http://www.w3.org/TR/DOM-Level-2-Core/core.html#ID-1780488922">DOM Level 2 Core Spec</a>
  * @see <a href="http://msdn2.microsoft.com/en-us/library/ms763824.aspx">IXMLDOMNamedNodeMap</a>
  */
+@JsxClasses({
+        @JsxClass(browsers = { @WebBrowser(CHROME), @WebBrowser(value = IE, minVersion = 11),
+            @WebBrowser(value = FF, minVersion = 38) }),
+        @JsxClass(isJSObject = false, isDefinedInStandardsMode = false,
+            browsers = @WebBrowser(value = FF, maxVersion = 31)),
+        @JsxClass(isJSObject = false, browsers = @WebBrowser(value = IE, maxVersion = 8))
+    })
 public class NamedNodeMap extends SimpleScriptable implements ScriptableWithFallbackGetter {
-
-    private static final long serialVersionUID = -1910087049570242560L;
 
     private final org.w3c.dom.NamedNodeMap attributes_;
 
     /**
      * We need default constructors to build the prototype instance.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(value = FF, minVersion = 38) })
     public NamedNodeMap() {
         attributes_ = null;
     }
@@ -68,7 +89,7 @@ public class NamedNodeMap extends SimpleScriptable implements ScriptableWithFall
     @Override
     public final Object get(final int index, final Scriptable start) {
         final NamedNodeMap startMap = (NamedNodeMap) start;
-        final Object response = startMap.jsxFunction_item(index);
+        final Object response = startMap.item(index);
         if (response != null) {
             return response;
         }
@@ -81,11 +102,19 @@ public class NamedNodeMap extends SimpleScriptable implements ScriptableWithFall
      * {@inheritDoc}
      */
     public Object getWithFallback(final String name) {
-        final Object response = jsxFunction_getNamedItem(name);
+        final Object response = getNamedItem(name);
         if (response != null) {
-            return response;
+            if (response instanceof Attr && getBrowserVersion().hasFeature(JS_ATTRIBUTES_BY_NAME_CASE_SENSITIVE)) {
+                final Attr attr = (Attr) response;
+                if (attr.getName().equals(name)) {
+                    return response;
+                }
+            }
+            else {
+                return response;
+            }
         }
-        if (useRecursiveAttributeForIE() && isRecursiveAttribute(name)) {
+        if (getDomNodeOrNull() != null && useRecursiveAttributeForIE() && isRecursiveAttribute(name)) {
             return getUnspecifiedAttributeNode(name);
         }
 
@@ -93,19 +122,64 @@ public class NamedNodeMap extends SimpleScriptable implements ScriptableWithFall
     }
 
     /**
+     * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
+     *
+     * Gets the specified attribute but does not handle the synthetic class attribute for IE.
+     * @see #getNamedItem(String)
+     *
+     * @param name attribute name
+     * @return the attribute node, <code>null</code> if the attribute is not defined
+     */
+    public Object getNamedItemWithoutSytheticClassAttr(final String name) {
+        if (attributes_ != null) {
+            final DomNode attr = (DomNode) attributes_.getNamedItem(name);
+            if (attr != null) {
+                return attr.getScriptObject();
+            }
+            if (!"className".equals(name) && useRecursiveAttributeForIE() && isRecursiveAttribute(name)) {
+                return getUnspecifiedAttributeNode(name);
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Gets the specified attribute.
      * @param name attribute name
      * @return the attribute node, <code>null</code> if the attribute is not defined
      */
-    public Object jsxFunction_getNamedItem(final String name) {
-        final DomNode attr = (DomNode) attributes_.getNamedItem(name);
-        if (attr != null) {
-            return attr.getScriptObject();
+    @JsxFunction
+    public Object getNamedItem(final String name) {
+        final Object attr = getNamedItemWithoutSytheticClassAttr(name);
+        if (null != attr) {
+            return attr;
         }
-        if (!name.equals("className") && useRecursiveAttributeForIE() && isRecursiveAttribute(name)) {
+
+        // for IE we have to add the synthetic class attribute
+        if ("class".equals(name) && useRecursiveAttributeForIE()) {
             return getUnspecifiedAttributeNode(name);
         }
+
         return null;
+    }
+
+    /**
+     * Sets the specified attribute.
+     * @param node the attribute
+     */
+    @JsxFunction
+    public void setNamedItem(final Node node) {
+        attributes_.setNamedItem(node.getDomNodeOrDie());
+    }
+
+    /**
+     * Removes the specified attribute.
+     * @param name the name of the item to remove
+     */
+    @JsxFunction
+    public void removeNamedItem(final String name) {
+        attributes_.removeNamedItem(name);
     }
 
     /**
@@ -113,7 +187,8 @@ public class NamedNodeMap extends SimpleScriptable implements ScriptableWithFall
      * @param index the index
      * @return the item at the specified index
      */
-    public Object jsxFunction_item(int index) {
+    @JsxFunction
+    public Object item(int index) {
         final DomNode attr = (DomNode) attributes_.item(index);
         if (attr != null) {
             return attr.getScriptObject();
@@ -129,7 +204,8 @@ public class NamedNodeMap extends SimpleScriptable implements ScriptableWithFall
     }
 
     private boolean useRecursiveAttributeForIE() {
-        return getBrowserVersion().isIE() && getDomNodeOrDie() instanceof HtmlElement;
+        return getBrowserVersion().hasFeature(JS_ATTRIBUTES_CONTAINS_EMPTY_ATTR_FOR_PROPERTIES)
+            && getDomNodeOrDie() instanceof HtmlElement;
     }
 
     /**
@@ -137,18 +213,19 @@ public class NamedNodeMap extends SimpleScriptable implements ScriptableWithFall
      * @return a new unspecified attribute node
      */
     private Attr getUnspecifiedAttributeNode(final String attrName) {
-        final Attr attribute = new Attr();
-        attribute.setParentScope(this);
-        attribute.setPrototype(getPrototype(attribute.getClass()));
-        attribute.init(attrName, (DomElement) getDomNodeOrDie());
-        return attribute;
+        final HtmlElement domNode = (HtmlElement) getDomNodeOrDie();
+
+        final DomAttr attr = domNode.getPage().createAttribute(attrName);
+        domNode.setAttributeNode(attr);
+        return (Attr) attr.getScriptObject();
     }
 
     /**
      * Returns the number of attributes in this named node map.
      * @return the number of attributes in this named node map
      */
-    public int jsxGet_length() {
+    @JsxGetter
+    public int getLength() {
         int length = attributes_.getLength();
         if (useRecursiveAttributeForIE()) {
             length += getRecursiveAttributesLength();
@@ -157,7 +234,8 @@ public class NamedNodeMap extends SimpleScriptable implements ScriptableWithFall
     }
 
     private boolean isRecursiveAttribute(final String name) {
-        for (Scriptable object = getDomNodeOrDie().getScriptObject(); object != null; object = object.getPrototype()) {
+        for (Scriptable object = getDomNodeOrDie().getScriptObject(); object != null;
+            object = object.getPrototype()) {
             for (final Object id : object.getIds()) {
                 if (name.equals(Context.toString(id))) {
                     return true;
@@ -169,7 +247,8 @@ public class NamedNodeMap extends SimpleScriptable implements ScriptableWithFall
 
     private int getRecursiveAttributesLength() {
         int length = 0;
-        for (Scriptable object = getDomNodeOrDie().getScriptObject(); object != null; object = object.getPrototype()) {
+        for (Scriptable object = getDomNodeOrDie().getScriptObject(); object != null;
+            object = object.getPrototype()) {
             length += object.getIds().length;
         }
         return length;
@@ -177,7 +256,8 @@ public class NamedNodeMap extends SimpleScriptable implements ScriptableWithFall
 
     private String getRecusiveAttributeNameAt(final int index) {
         int i = 0;
-        for (Scriptable object = getDomNodeOrDie().getScriptObject(); object != null; object = object.getPrototype()) {
+        for (Scriptable object = getDomNodeOrDie().getScriptObject(); object != null;
+            object = object.getPrototype()) {
             for (final Object id : object.getIds()) {
                 if (i == index) {
                     return Context.toString(id);
@@ -186,5 +266,13 @@ public class NamedNodeMap extends SimpleScriptable implements ScriptableWithFall
             }
         }
         return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean has(final int index, final Scriptable start) {
+        return index >= 0 && index < getLength();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,24 +14,35 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
+
 /**
  * A JavaScript object for a document.navigator.plugins.
- * @version $Revision: 4002 $
+ *
+ * @version $Revision: 10088 $
  * @author Marc Guillemot
+ * @author Ahmed Ashour
  *
  * @see <a href="http://www.xulplanet.com/references/objref/MimeTypeArray.html">XUL Planet</a>
  */
+@JsxClass(browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) })
 public class Plugin extends SimpleArray {
-    private static final long serialVersionUID = -6829501824595761156L;
     private String description_;
     private String filename_;
     private String name_;
 
     /**
-     * Creates an instance. JavaScript objects must have a default constructor.
+     * Creates an instance.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(value = FF, minVersion = 31) })
     public Plugin() {
-        // nothing
     }
 
     /**
@@ -53,14 +64,15 @@ public class Plugin extends SimpleArray {
      */
     @Override
     protected String getItemName(final Object element) {
-        return ((MimeType) element).jsxGet_type();
+        return ((MimeType) element).getType();
     }
 
     /**
      * Gets the plugin's description.
      * @return the description
      */
-    public String jsxGet_description() {
+    @JsxGetter
+    public String getDescription() {
         return description_;
     }
 
@@ -68,7 +80,8 @@ public class Plugin extends SimpleArray {
      * Gets the plugin's file name.
      * @return the file name
      */
-    public String jsxGet_filename() {
+    @JsxGetter
+    public String getFilename() {
         return filename_;
     }
 
@@ -76,7 +89,8 @@ public class Plugin extends SimpleArray {
      * Gets the plugin's name.
      * @return the name
      */
-    public String jsxGet_name() {
+    @JsxGetter
+    public String getName() {
         return name_;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import com.gargoylesoftware.htmlunit.xml.XmlPage;
 /**
  * Custom {@link PrefixResolverDefault} extension.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 9837 $
  * @author Ahmed Ashour
  */
 final class HtmlUnitPrefixResolver extends PrefixResolverDefault {
@@ -62,10 +62,14 @@ final class HtmlUnitPrefixResolver extends PrefixResolverDefault {
 
     private String getNamespace(final DomElement element, final String prefix) {
         final Map<String, DomAttr> attributes = element.getAttributesMap();
-        for (final String name : attributes.keySet()) {
-            if (name.startsWith("xmlns:")) {
-                if (name.substring("xmlns:".length()).equals(prefix)) {
-                    return attributes.get(name).getValue();
+        final String xmlns = "xmlns:";
+        final int xmlnsLength = xmlns.length();
+
+        for (final Map.Entry<String, DomAttr> entry : attributes.entrySet()) {
+            final String name = entry.getKey();
+            if (name.startsWith(xmlns)) {
+                if (name.regionMatches(xmlnsLength, prefix, 0, prefix.length())) {
+                    return entry.getValue().getValue();
                 }
             }
         }

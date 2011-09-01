@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,31 +14,47 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+import net.sourceforge.htmlunit.corejs.javascript.Context;
+
 import com.gargoylesoftware.htmlunit.html.HtmlLabel;
-import com.gargoylesoftware.htmlunit.javascript.host.FormChild;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
 
 /**
  * A JavaScript object for a Label.
  *
- * @version $Revision: 4649 $
+ * @version $Revision: 10429 $
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
+@JsxClasses({
+        @JsxClass(domClass = HtmlLabel.class,
+                browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(domClass = HtmlLabel.class,
+            isJSObject = false, browsers = @WebBrowser(value = IE, maxVersion = 8))
+    })
 public class HTMLLabelElement extends FormChild {
 
-    private static final long serialVersionUID = -7412506443200373632L;
-
     /**
-     * Creates an instance. JavaScript objects must have a default constructor.
+     * Creates an instance.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
     public HTMLLabelElement() {
-        // Empty.
     }
 
     /**
      * Retrieves the object to which the given label object is assigned.
      * @return the identifier of the element to which the label element is assigned
      */
-    public String jsxGet_htmlFor() {
+    @JsxGetter
+    public String getHtmlFor() {
         return ((HtmlLabel) getDomNodeOrDie()).getForAttribute();
     }
 
@@ -47,7 +63,62 @@ public class HTMLLabelElement extends FormChild {
      * @param id Specifies the identifier of the element to which the label element is assigned
      * @see <a href="http://msdn2.microsoft.com/en-us/library/ms533872.aspx">MSDN Documentation</a>
      */
-    public void jsxSet_htmlFor(final String id) {
+    @JsxSetter
+    public void setHtmlFor(final String id) {
         ((HtmlLabel) getDomNodeOrDie()).setAttribute("for", id);
+    }
+
+    /**
+     * Returns the {@code dataFld} attribute.
+     * @return the {@code dataFld} attribute
+     */
+    @JsxGetter(@WebBrowser(value = IE, maxVersion = 8))
+    public String getDataFld() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code dataFld} attribute.
+     * @param dataFld {@code dataFld} attribute
+     */
+    @JsxSetter(@WebBrowser(value = IE, maxVersion = 8))
+    public void setDataFld(final String dataFld) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code dataFormatAs} attribute.
+     * @return the {@code dataFormatAs} attribute
+     */
+    @JsxGetter(@WebBrowser(value = IE, maxVersion = 8))
+    public String getDataFormatAs() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code dataFormatAs} attribute.
+     * @param dataFormatAs {@code dataFormatAs} attribute
+     */
+    @JsxSetter(@WebBrowser(value = IE, maxVersion = 8))
+    public void setDataFormatAs(final String dataFormatAs) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code dataSrc} attribute.
+     * @return the {@code dataSrc} attribute
+     */
+    @JsxGetter(@WebBrowser(value = IE, maxVersion = 8))
+    public String getDataSrc() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code dataSrc} attribute.
+     * @param dataSrc {@code dataSrc} attribute
+     */
+    @JsxSetter(@WebBrowser(value = IE, maxVersion = 8))
+    public void setDataSrc(final String dataSrc) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,25 +16,22 @@ package com.gargoylesoftware.htmlunit.html;
 
 import java.util.Map;
 
-import org.apache.commons.httpclient.NameValuePair;
-
 import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.WebAssert;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
- * Wrapper for the HTML element "isindex". Note that this element has been
- * deprecated in the HTML spec.
+ * Wrapper for the HTML element "isindex". Note that this element has been deprecated in the HTML spec.
  *
- * @version $Revision: 4097 $
+ * @version $Revision: 10403 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Daniel Gredler
  * @author Ahmed Ashour
+ * @author Frank Danek
  */
-public class HtmlIsIndex extends StyledElement implements SubmittableElement {
-
-    private static final long serialVersionUID = -7566440323983487259L;
+public class HtmlIsIndex extends HtmlElement implements SubmittableElement {
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "isindex";
@@ -44,14 +41,13 @@ public class HtmlIsIndex extends StyledElement implements SubmittableElement {
     /**
      * Creates an instance of HtmlIsIndex
      *
-     * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the HtmlPage that contains this element
      * @param attributes the initial attributes
      */
-    HtmlIsIndex(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    HtmlIsIndex(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
+        super(qualifiedName, page, attributes);
     }
 
     /**
@@ -136,5 +132,13 @@ public class HtmlIsIndex extends StyledElement implements SubmittableElement {
      */
     public final String getPromptAttribute() {
         return getAttribute("prompt");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public DisplayStyle getDefaultStyleDisplay() {
+        return DisplayStyle.INLINE;
     }
 }

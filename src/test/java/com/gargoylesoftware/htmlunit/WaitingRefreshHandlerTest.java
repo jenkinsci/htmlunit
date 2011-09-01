@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,16 +15,18 @@
 package com.gargoylesoftware.htmlunit;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 
 /**
  * Tests for {@link WaitingRefreshHandlerTest}.
  *
- * @version $Revision: 4343 $
+ * @version $Revision: 9838 $
  * @author Brad Clarke
  */
-public final class WaitingRefreshHandlerTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public final class WaitingRefreshHandlerTest extends SimpleWebTestCase {
 
     /**
      * Trying to cause an interrupt on a JavaScript thread due to meta redirect navigation.
@@ -40,7 +42,7 @@ public final class WaitingRefreshHandlerTest extends WebTestCase {
             + "}\n"
             + "</script>\n"
             + "</head>\n"
-            + "<body onload='setTimeout(\"doRedirect()\", 1);'>first page body</body>\n"
+            + "<body onload='setTimeout(doRedirect, 1);'>first page body</body>\n"
             + "</html>";
         final String secondContent = "<html>\n"
             + "<head><title>Meta Redirect Page</title>\n"
@@ -53,12 +55,11 @@ public final class WaitingRefreshHandlerTest extends WebTestCase {
             + "<body>Success!</body>\n"
             + "</html>";
 
-        final WebClient client = new WebClient();
-        final MockWebConnection conn = new MockWebConnection();
+        final WebClient client = getWebClientWithMockWebConnection();
+        final MockWebConnection conn = getMockWebConnection();
         conn.setResponse(URL_FIRST, firstContent);
         conn.setResponse(URL_SECOND, secondContent);
         conn.setResponse(URL_THIRD, thirdContent);
-        client.setWebConnection(conn);
         client.setRefreshHandler(new WaitingRefreshHandler(0));
 
         client.getPage(URL_FIRST);

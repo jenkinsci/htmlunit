@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,35 +14,64 @@
  */
 package com.gargoylesoftware.htmlunit;
 
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.CHROME;
+
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Field;
+import java.io.Writer;
 import java.lang.reflect.Method;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import org.apache.commons.httpclient.HttpClient;
-import org.apache.commons.httpclient.HttpMethodBase;
-import org.apache.commons.httpclient.HttpStatus;
-import org.apache.commons.httpclient.StatusLine;
-import org.apache.commons.httpclient.methods.GetMethod;
-import org.apache.commons.httpclient.methods.multipart.FilePart;
+import javax.servlet.Servlet;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
+import org.apache.http.ProtocolVersion;
+import org.apache.http.StatusLine;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.entity.mime.MultipartEntityBuilder;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.message.BasicHttpResponse;
+import org.apache.http.message.BasicStatusLine;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
+import com.gargoylesoftware.htmlunit.DefaultCredentialsProvider2Test.InMemoryAppender;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.util.KeyDataPair;
+import com.gargoylesoftware.htmlunit.util.ServletContentWrapper;
 
 /**
  * Tests methods in {@link HttpWebConnection}.
  *
- * @version $Revision: 4848 $
+ * @version $Revision: 10426 $
  * @author David D. Kilzer
  * @author Marc Guillemot
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Carsten Steul
  */
+@RunWith(BrowserRunner.class)
 public class HttpWebConnectionTest extends WebServerTestCase {
 
     /**
@@ -51,17 +80,7 @@ public class HttpWebConnectionTest extends WebServerTestCase {
      * @param actual the actual value
      */
     public static void assertEquals(final byte[] expected, final byte[] actual) {
-        assertEquals(null, expected, actual);
-    }
-
-    /**
-     * Assert that the two byte arrays are equal.
-     * @param message the message to display on failure
-     * @param expected the expected value
-     * @param actual the actual value
-     */
-    public static void assertEquals(final String message, final byte[] expected, final byte[] actual) {
-        assertEquals(message, expected, actual, expected.length);
+        assertEquals(null, expected, actual, expected.length);
     }
 
     /**
@@ -171,38 +190,32 @@ public class HttpWebConnectionTest extends WebServerTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testMakeWebResponse() throws Exception {
+    public void makeWebResponse() throws Exception {
         final URL url = new URL("http://htmlunit.sourceforge.net/");
         final String content = "<html><head></head><body></body></html>";
+        final DownloadedContent downloadedContent = new DownloadedContent.InMemory(content.getBytes());
         final int httpStatus = HttpStatus.SC_OK;
         final long loadTime = 500L;
 
-        final HttpMethodBase httpMethod = new GetMethod(url.toString());
-        final Field responseBodyField = HttpMethodBase.class.getDeclaredField("responseBody");
-        responseBodyField.setAccessible(true);
-        responseBodyField.set(httpMethod, content.getBytes());
+        final ProtocolVersion protocolVersion = new ProtocolVersion("HTTP", 1, 0);
+        final StatusLine statusLine = new BasicStatusLine(protocolVersion, HttpStatus.SC_OK, null);
+        final HttpResponse httpResponse = new BasicHttpResponse(statusLine);
 
-        final StatusLine statusLine = new StatusLine("HTTP/1.0 200 OK");
-        final Field statusLineField = HttpMethodBase.class.getDeclaredField("statusLine");
-        statusLineField.setAccessible(true);
-        statusLineField.set(httpMethod, statusLine);
+        final HttpEntity responseEntity = new StringEntity(content);
+        httpResponse.setEntity(responseEntity);
 
-        final HttpWebConnection connection = new HttpWebConnection(new WebClient());
-        final Method method =
-                connection.getClass().getDeclaredMethod("makeWebResponse", new Class[]{
-                    int.class, HttpMethodBase.class, WebRequestSettings.class, long.class});
+        final HttpWebConnection connection = new HttpWebConnection(getWebClient());
+        final Method method = connection.getClass().getDeclaredMethod("makeWebResponse",
+                HttpResponse.class, WebRequest.class, DownloadedContent.class, long.class);
         method.setAccessible(true);
-
-        final WebResponse response =
-                (WebResponse) method.invoke(connection, new Object[]{
-                    new Integer(httpStatus), httpMethod, new WebRequestSettings(url),
-                    new Long(loadTime)});
+        final WebResponse response = (WebResponse) method.invoke(connection,
+                httpResponse, new WebRequest(url), downloadedContent, new Long(loadTime));
 
         Assert.assertEquals(httpStatus, response.getStatusCode());
-        Assert.assertEquals(url, response.getRequestSettings().getUrl());
+        Assert.assertEquals(url, response.getWebRequest().getUrl());
         Assert.assertEquals(loadTime, response.getLoadTime());
         Assert.assertEquals(content, response.getContentAsString());
-        assertEquals(content.getBytes(), response.getContentAsBytes());
+        assertEquals(content.getBytes(), IOUtils.toByteArray(response.getContentAsStream()));
         assertEquals(new ByteArrayInputStream(content.getBytes()), response.getContentAsStream());
     }
 
@@ -211,10 +224,10 @@ public class HttpWebConnectionTest extends WebServerTestCase {
      * @throws Exception on failure
      */
     @Test
-    public void testJettyProofOfConcept() throws Exception {
+    public void jettyProofOfConcept() throws Exception {
         startWebServer("./");
 
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
         final Page page = client.getPage("http://localhost:" + PORT + "/src/test/resources/event_coordinates.html");
         final WebConnection defaultConnection = client.getWebConnection();
         Assert.assertTrue(
@@ -228,16 +241,16 @@ public class HttpWebConnectionTest extends WebServerTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testDesignedForExtension() throws Exception {
+    public void designedForExtension() throws Exception {
         startWebServer("./");
 
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
         final boolean[] tabCalled = {false};
         final WebConnection myWebConnection = new HttpWebConnection(webClient) {
             @Override
-            protected HttpClient createHttpClient() {
+            protected HttpClientBuilder createHttpClient() {
                 tabCalled[0] = true;
-                return new HttpClient();
+                return HttpClientBuilder.create();
             }
         };
 
@@ -247,24 +260,43 @@ public class HttpWebConnectionTest extends WebServerTestCase {
     }
 
     /**
+     * Test that the HttpClient is reinitialised after being shutdown.
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void reinitialiseAfterShutdown() throws Exception {
+        startWebServer("./");
+
+        final WebClient webClient = getWebClient();
+        final HttpWebConnection webConnection = new HttpWebConnection(webClient);
+
+        webClient.setWebConnection(webConnection);
+        webClient.getPage("http://localhost:" + PORT + "/LICENSE.txt");
+        webConnection.shutdown();
+        webClient.getPage("http://localhost:" + PORT + "/pom.xml");
+    }
+
+    /**
      * Test that the right file part is built for a file that doesn't exist.
      * @throws Exception if the test fails
      */
     @Test
-    public void testBuildFilePart() throws Exception {
+    public void buildFilePart() throws Exception {
         final String encoding = "ISO8859-1";
         final KeyDataPair pair = new KeyDataPair("myFile", new File("this/doesnt_exist.txt"), "text/plain", encoding);
-        final FilePart part = new HttpWebConnection(new WebClient()).buildFilePart(pair, encoding);
+        final MultipartEntityBuilder builder = MultipartEntityBuilder.create().setLaxMode();
+        new HttpWebConnection(getWebClient()).buildFilePart(pair, builder);
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        part.send(baos);
+        builder.build().writeTo(baos);
+        final String part = baos.toString(encoding);
 
-        final String expected = "------------------314159265358979323846\r\n"
-            + "Content-Disposition: form-data; name=\"myFile\"; filename=\"doesnt_exist.txt\"\r\n"
-            + "Content-Type: text/plain\r\n"
-            + "Content-Transfer-Encoding: binary\r\n"
-            + "\r\n"
-            + "\r\n";
-        Assert.assertEquals(expected, baos.toString(encoding));
+        final String expected = "--(.*)\r\n"
+                + "Content-Disposition: form-data; name=\"myFile\"; filename=\"doesnt_exist.txt\"\r\n"
+                + "Content-Type: text/plain\r\n"
+                + "\r\n"
+                + "\r\n"
+                + "--\\1--\r\n";
+        Assert.assertTrue(part, part.matches(expected));
     }
 
     /**
@@ -273,9 +305,339 @@ public class HttpWebConnectionTest extends WebServerTestCase {
     @Test
     public void unicode() throws Exception {
         startWebServer("./");
-
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
         client.getPage("http://localhost:" + PORT + "/src/test/resources/event_coordinates.html?param=\u00F6");
     }
 
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void emptyPut() throws Exception {
+        final Map<String, Class<? extends Servlet>> servlets = new HashMap<>();
+        servlets.put("/test", EmptyPutServlet.class);
+        startWebServer("./", null, servlets);
+
+        final String[] expectedAlerts = {"1"};
+        final WebClient client = getWebClient();
+        client.setAjaxController(new NicelyResynchronizingAjaxController());
+        final List<String> collectedAlerts = new ArrayList<>();
+        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
+
+        assertEquals(0, client.getCookieManager().getCookies().size());
+        client.getPage("http://localhost:" + PORT + "/test");
+        assertEquals(expectedAlerts, collectedAlerts);
+        assertEquals(1, client.getCookieManager().getCookies().size());
+    }
+
+    /**
+     * Servlet for {@link #emptyPut()}.
+     */
+    public static class EmptyPutServlet extends ServletContentWrapper {
+        /** Constructor. */
+        public EmptyPutServlet() {
+            super("<html>\n"
+                + "<head>\n"
+                + "  <script>\n"
+                + "    function test() {\n"
+                + "      var xhr = window.ActiveXObject?new ActiveXObject('Microsoft.XMLHTTP'):new XMLHttpRequest();\n"
+                + "      xhr.open('PUT', '" + "http://localhost:" + PORT + "/test" + "', true);\n"
+                + "      xhr.send();\n"
+                + "      alert(1);\n"
+                + "    }\n"
+                + "  </script>\n"
+                + "</head>\n"
+                + "<body onload='test()'></body>\n"
+                + "</html>");
+        }
+
+        @Override
+        protected void doGet(final HttpServletRequest request,
+                final HttpServletResponse response)
+            throws ServletException, IOException {
+            request.getSession().setAttribute("trigger", "session");
+            super.doGet(request, response);
+        }
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(DEFAULT = {"Host", "User-Agent" }, IE = { })
+    @NotYetImplemented(CHROME)
+    public void hostHeaderFirst() throws Exception {
+        final Logger logger = Logger.getLogger("org.apache.http.headers");
+        final Level oldLevel = logger.getLevel();
+        logger.setLevel(Level.DEBUG);
+
+        final InMemoryAppender appender = new InMemoryAppender();
+        logger.addAppender(appender);
+        try {
+            startWebServer("./");
+
+            final WebClient webClient = getWebClient();
+            webClient.getPage("http://localhost:" + PORT + "/LICENSE.txt");
+            for (int i = 0; i < getExpectedAlerts().length; i++) {
+                assertTrue(appender.getMessages().get(i + 1).contains(getExpectedAlerts()[i]));
+            }
+        }
+        finally {
+            logger.removeAppender(appender);
+            logger.setLevel(oldLevel);
+        }
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void cookiesEnabledAfterDisable() throws Exception {
+        final Map<String, Class<? extends Servlet>> servlets = new HashMap<>();
+        servlets.put("/test1", Cookie1Servlet.class);
+        servlets.put("/test2", Cookie2Servlet.class);
+        startWebServer("./", null, servlets);
+
+        final WebClient client = getWebClient();
+
+        client.getCookieManager().setCookiesEnabled(false);
+        HtmlPage page = client.getPage("http://localhost:" + PORT + "/test1");
+        assertTrue(page.asText().contains("No Cookies"));
+
+        client.getCookieManager().setCookiesEnabled(true);
+        page = client.getPage("http://localhost:" + PORT + "/test1");
+        assertTrue(page.asText().contains("key1=value1"));
+    }
+
+    /**
+     * Servlet for {@link #cookiesEnabledAfterDisable()}.
+     */
+    public static class Cookie1Servlet extends HttpServlet {
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        protected void doGet(final HttpServletRequest request, final HttpServletResponse response) throws IOException {
+            response.addCookie(new javax.servlet.http.Cookie("key1", "value1"));
+            response.setStatus(HttpServletResponse.SC_MOVED_TEMPORARILY);
+            final String location = request.getRequestURL().toString().replace("test1", "test2");
+            response.setHeader("Location", location);
+        }
+    }
+
+    /**
+     * Servlet for {@link #cookiesEnabledAfterDisable()}.
+     */
+    public static class Cookie2Servlet extends HttpServlet {
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        protected void doGet(final HttpServletRequest request, final HttpServletResponse response) throws IOException {
+            response.setContentType("text/html");
+            final Writer writer = response.getWriter();
+            if (request.getCookies() == null || request.getCookies().length == 0) {
+                writer.write("No Cookies");
+            }
+            else {
+                for (javax.servlet.http.Cookie c : request.getCookies()) {
+                    writer.write(c.getName() + '=' + c.getValue());
+                }
+            }
+            writer.close();
+        }
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void remotePort() throws Exception {
+        final Map<String, Class<? extends Servlet>> servlets = new HashMap<>();
+        servlets.put("/test", RemotePortServlet.class);
+        startWebServer("./", null, servlets);
+
+        final WebClient client = getWebClient();
+
+        String firstPort = null;
+
+        for (int i = 0; i < 5; i++) {
+            final HtmlPage page = client.getPage("http://localhost:" + PORT + "/test");
+            final String port = page.asText();
+            if (firstPort == null) {
+                firstPort = port;
+            }
+            assertEquals(firstPort, port);
+        }
+    }
+
+    /**
+     * Servlet for {@link #remotePort()}.
+     */
+    public static class RemotePortServlet extends HttpServlet {
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        protected void doGet(final HttpServletRequest request, final HttpServletResponse response) throws IOException {
+            response.setContentType("text/html");
+            response.getWriter().write(String.valueOf(request.getRemotePort()));
+        }
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void contentLengthSmallerThanContent() throws Exception {
+        final Map<String, Class<? extends Servlet>> servlets = new HashMap<>();
+        servlets.put("/contentLengthSmallerThanContent", ContentLengthSmallerThanContentServlet.class);
+        startWebServer("./", null, servlets);
+
+        final WebClient client = getWebClient();
+        final HtmlPage page = client.getPage("http://localhost:" + PORT + "/contentLengthSmallerThanContent");
+        assertEquals("visible text", page.asText());
+    }
+
+    /**
+     * Servlet for {@link #contentLengthSmallerThanContent()}.
+     */
+    public static class ContentLengthSmallerThanContentServlet extends ServletContentWrapper {
+
+        /** Constructor. */
+        public ContentLengthSmallerThanContentServlet() {
+            super("<html>\n"
+                + "<body>\n"
+                + "  <p>visible text</p>\n"
+                + "  <p>missing text</p>\n"
+                + "</body>\n"
+                + "</html>");
+        }
+
+        @Override
+        protected void doGet(final HttpServletRequest request, final HttpServletResponse response)
+            throws IOException, ServletException {
+            response.setContentLength(getContent().indexOf("<p>missing text</p>"));
+            super.doGet(request, response);
+        }
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void contentLengthSmallerThanContentLargeContent() throws Exception {
+        final Map<String, Class<? extends Servlet>> servlets = new HashMap<>();
+        servlets.put("/contentLengthSmallerThanContent", ContentLengthSmallerThanContentLargeContentServlet.class);
+        startWebServer("./", null, servlets);
+
+        final WebClient client = getWebClient();
+        final HtmlPage page = client.getPage("http://localhost:" + PORT + "/contentLengthSmallerThanContent");
+        assertTrue(page.asText(), page.asText().endsWith("visible text"));
+    }
+
+    /**
+     * Servlet for {@link #contentLengthSmallerThanContentLargeContent()}.
+     */
+    public static class ContentLengthSmallerThanContentLargeContentServlet extends ServletContentWrapper {
+
+        /** Constructor. */
+        public ContentLengthSmallerThanContentLargeContentServlet() {
+            super("<html>\n"
+                + "<body>\n"
+                + "  <p>"
+                + StringUtils.repeat("HtmlUnit  ", 1024 * 1024)
+                + "</p>\n"
+                + "  <p>visible text</p>\n"
+                + "  <p>missing text</p>\n"
+                + "</body>\n"
+                + "</html>");
+        }
+
+        @Override
+        protected void doGet(final HttpServletRequest request, final HttpServletResponse response)
+            throws IOException, ServletException {
+            response.setContentLength(getContent().indexOf("<p>missing text</p>"));
+            super.doGet(request, response);
+        }
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void contentLengthLargerThanContent() throws Exception {
+        final Map<String, Class<? extends Servlet>> servlets = new HashMap<>();
+        servlets.put("/contentLengthLargerThanContent", ContentLengthLargerThanContentServlet.class);
+        startWebServer("./", null, servlets);
+
+        final WebClient client = getWebClient();
+        final HtmlPage page = client.getPage("http://localhost:" + PORT + "/contentLengthLargerThanContent");
+        assertEquals("visible text", page.asText());
+    }
+
+    /**
+     * Servlet for {@link #contentLengthLargerThanContent()}.
+     */
+    public static class ContentLengthLargerThanContentServlet extends ServletContentWrapper {
+
+        /** Constructor. */
+        public ContentLengthLargerThanContentServlet() {
+            super("<html>\n"
+                + "<body>\n"
+                + "  <p>visible text</p>\n"
+                + "</body>\n"
+                + "</html>");
+        }
+
+        @Override
+        protected void doGet(final HttpServletRequest request, final HttpServletResponse response)
+            throws IOException, ServletException {
+            response.setContentLength(getContentLength() + 42);
+            super.doGet(request, response);
+        }
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void contentLengthLargerThanContentLargeContent() throws Exception {
+        final Map<String, Class<? extends Servlet>> servlets = new HashMap<>();
+        servlets.put("/contentLengthLargerThanContent", ContentLengthLargerThanContentServlet.class);
+        startWebServer("./", null, servlets);
+
+        final WebClient client = getWebClient();
+        final HtmlPage page = client.getPage("http://localhost:" + PORT + "/contentLengthLargerThanContent");
+        assertEquals("visible text", page.asText());
+    }
+
+    /**
+     * Servlet for {@link #contentLengthLargerThanContentLargeContent()}.
+     */
+    public static class ContentLengthLargerThanContentLargeContentServlet extends ServletContentWrapper {
+
+        /** Constructor. */
+        public ContentLengthLargerThanContentLargeContentServlet() {
+            super("<html>\n"
+                    + "<body>\n"
+                    + "  <p>"
+                    + StringUtils.repeat("HtmlUnit  ", 1024 * 1024)
+                    + "</p>\n"
+                    + "  <p>visible text</p>\n"
+                    + "  <p>missing text</p>\n"
+                    + "</body>\n"
+                    + "</html>");
+        }
+
+        @Override
+        protected void doGet(final HttpServletRequest request, final HttpServletResponse response)
+            throws IOException, ServletException {
+            response.setContentLength(getContentLength() + 2000);
+            super.doGet(request, response);
+        }
+    }
 }

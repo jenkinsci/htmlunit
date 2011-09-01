@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,28 +19,32 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.httpclient.NameValuePair;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.HttpWebConnectionTest;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.Page;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 import com.gargoylesoftware.htmlunit.TextPage;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebResponse;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.html.HtmlAnchor;
+import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Tests for {@link Attachment}.
  *
- * @version $Revision: 4463 $
+ * @version $Revision: 9868 $
  * @author Bruce Chapman
  * @author Sudhan Moghe
  * @author Daniel Gredler
  */
-public class AttachmentTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public class AttachmentTest extends SimpleWebTestCase {
 
     /**
      * Tests attachment callbacks and the contents of attachments.
@@ -56,11 +60,11 @@ public class AttachmentTest extends WebTestCase {
             + "</body></html>";
         final String content2 = "download file contents";
 
-        final WebClient client = new WebClient();
-        final List<Attachment> attachments = new ArrayList<Attachment>();
+        final WebClient client = getWebClient();
+        final List<Attachment> attachments = new ArrayList<>();
         client.setAttachmentHandler(new CollectingAttachmentHandler(attachments));
 
-        final List<NameValuePair> headers = new ArrayList<NameValuePair>();
+        final List<NameValuePair> headers = new ArrayList<>();
         headers.add(new NameValuePair("Content-Disposition", "attachment"));
 
         final MockWebConnection conn = new MockWebConnection();
@@ -83,7 +87,7 @@ public class AttachmentTest extends WebTestCase {
         HttpWebConnectionTest.assertEquals(new ByteArrayInputStream(content2.getBytes()), attachmentStream);
         assertEquals("text/html", attachmentResponse.getContentType());
         assertEquals(200, attachmentResponse.getStatusCode());
-        assertEquals(URL_SECOND, attachmentResponse.getRequestSettings().getUrl());
+        assertEquals(URL_SECOND, attachmentResponse.getWebRequest().getUrl());
     }
 
     /**
@@ -94,13 +98,13 @@ public class AttachmentTest extends WebTestCase {
     public void filename() throws Exception {
         final String content = "<html>But is it really?</html>";
 
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
         final MockWebConnection conn = new MockWebConnection();
         client.setWebConnection(conn);
-        final List<Attachment> attachments = new ArrayList<Attachment>();
+        final List<Attachment> attachments = new ArrayList<>();
         client.setAttachmentHandler(new CollectingAttachmentHandler(attachments));
 
-        final List<NameValuePair> headers1 = new ArrayList<NameValuePair>();
+        final List<NameValuePair> headers1 = new ArrayList<>();
         headers1.add(new NameValuePair("Content-Disposition", "attachment;filename=\"hello.html\""));
         conn.setResponse(URL_FIRST, content, 200, "OK", "text/html", headers1);
         client.getPage(URL_FIRST);
@@ -108,7 +112,7 @@ public class AttachmentTest extends WebTestCase {
         assertEquals(result.getSuggestedFilename(), "hello.html");
         attachments.clear();
 
-        final List<NameValuePair> headers2 = new ArrayList<NameValuePair>();
+        final List<NameValuePair> headers2 = new ArrayList<>();
         headers2.add(new NameValuePair("Content-Disposition", "attachment; filename=hello2.html; something=else"));
         conn.setResponse(URL_SECOND, content, 200, "OK", "text/plain", headers2);
         client.getPage(URL_SECOND);
@@ -117,7 +121,7 @@ public class AttachmentTest extends WebTestCase {
         assertEquals(content, ((TextPage) result2.getPage()).getContent());
         attachments.clear();
 
-        final List<NameValuePair> headers3 = new ArrayList<NameValuePair>();
+        final List<NameValuePair> headers3 = new ArrayList<>();
         headers3.add(new NameValuePair("Content-Disposition", "attachment"));
         final byte[] contentb = new byte[] {(byte) 0xCA, (byte) 0xFE, (byte) 0xBA, (byte) 0xBE};
         conn.setResponse(URL_THIRD, contentb, 200, "OK", "application/x-rubbish", headers3);
@@ -130,4 +134,37 @@ public class AttachmentTest extends WebTestCase {
         attachments.clear();
     }
 
+    /**
+     * This was causing a ClassCastException in Location.setHref as of 2013-10-08 because the TextPage
+     * used for the attachment was wrongly associated to the HTMLDocument of the first page.
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void jsChangeLocationAfterReceptionOfAttachment() throws Exception {
+        final String html = "<html><body>\n"
+            + "<form action='action'>\n"
+            + "<input type='submit' onclick='window.location=\"foo\"; return false'>\n"
+            + "</form>\n"
+            + "<a href='" + URL_SECOND + "'>download</a>\n"
+            + "</body></html>";
+
+        final WebClient client = getWebClient();
+        final List<Attachment> attachments = new ArrayList<>();
+        client.setAttachmentHandler(new CollectingAttachmentHandler(attachments));
+
+        final List<NameValuePair> headers = new ArrayList<>();
+        headers.add(new NameValuePair("Content-Disposition", "attachment"));
+
+        final MockWebConnection conn = getMockWebConnection();
+        conn.setDefaultResponse("");
+        conn.setResponse(URL_SECOND, "some text", 200, "OK", "text/plain", headers);
+
+        final HtmlPage page = loadPage(html);
+        // download text attachment
+        page.getAnchors().get(0).click();
+        assertEquals(1, attachments.size());
+
+        final HtmlElement htmlElement = (HtmlElement) page.getFirstByXPath("//input");
+        htmlElement.click(); // exception was occurring here
+    }
 }

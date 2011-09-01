@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,12 +21,10 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * A DOM object for DocumentFragment.
  *
- * @version $Revision: 4753 $
+ * @version $Revision: 9837 $
  * @author Ahmed Ashour
  */
 public class DomDocumentFragment extends DomNode implements DocumentFragment {
-
-    private static final long serialVersionUID = 7073670645099705230L;
 
     /** The symbolic node name. */
     public static final String NODE_NAME = "#document-fragment";
@@ -62,6 +60,20 @@ public class DomDocumentFragment extends DomNode implements DocumentFragment {
      */
     @Override
     public String asXml() {
-        return getFirstChild().asXml();
+        final StringBuilder sb = new StringBuilder();
+        for (final DomNode node : getChildren()) {
+            sb.append(node.asXml());
+        }
+        return sb.toString();
+    }
+
+    /**
+     * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
+     *
+     * @return <code>false</code>
+     */
+    @Override
+    public boolean isDirectlyAttachedToPage() {
+        return false;
     }
 }

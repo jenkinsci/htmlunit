@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,28 +14,37 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
 
 /**
  * A JavaScript object for a document.navigator.mimeTypes elements.
  *
- * @version $Revision: 4097 $
+ * @version $Revision: 10380 $
  * @author Marc Guillemot
+ * @author Ahmed Ashour
  *
  * @see <a href="http://www.xulplanet.com/references/objref/MimeType.html">XUL Planet</a>
  */
-public final class MimeType extends SimpleScriptable {
-    private static final long serialVersionUID = -4673239005661544554L;
+@JsxClass(browsers = { @WebBrowser(FF), @WebBrowser(CHROME), @WebBrowser(value = IE, minVersion = 11) })
+public class MimeType extends SimpleScriptable {
     private String description_;
     private String suffixes_;
     private String type_;
     private Plugin enabledPlugin_;
 
     /**
-     * Creates an instance. JavaScript objects must have a default constructor.
+     * Creates an instance.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(value = FF, minVersion = 31) })
     public MimeType() {
-        // nothing
     }
 
     /**
@@ -56,7 +65,8 @@ public final class MimeType extends SimpleScriptable {
      * Returns the mime type's description.
      * @return the description
      */
-    public String jsxGet_description() {
+    @JsxGetter
+    public String getDescription() {
         return description_;
     }
 
@@ -64,7 +74,8 @@ public final class MimeType extends SimpleScriptable {
      * Returns the mime type's suffixes.
      * @return the suffixes
      */
-    public String jsxGet_suffixes() {
+    @JsxGetter
+    public String getSuffixes() {
         return suffixes_;
     }
 
@@ -72,7 +83,8 @@ public final class MimeType extends SimpleScriptable {
      * Returns the mime type's suffixes.
      * @return the suffixes
      */
-    public String jsxGet_type() {
+    @JsxGetter
+    public String getType() {
         return type_;
     }
 
@@ -80,7 +92,8 @@ public final class MimeType extends SimpleScriptable {
      * Returns the mime type's associated plugin.
      * @return the plugin
      */
-    public Object jsxGet_enabledPlugin() {
+    @JsxGetter
+    public Object getEnabledPlugin() {
         return enabledPlugin_;
     }
 }

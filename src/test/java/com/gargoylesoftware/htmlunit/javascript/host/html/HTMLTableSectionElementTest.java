@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,27 +14,33 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.CHROME;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.FF;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.IE8;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Tests for {@link HTMLTableSectionElement}.
  *
- * @version $Revision: 4698 $
+ * @version $Revision: 9953 $
  * @author Daniel Gredler
+ * @author Frank Danek
  */
 @RunWith(BrowserRunner.class)
-public class HTMLTableSectionElementTest extends WebTestCase {
+public class HTMLTableSectionElementTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = {"left", "hello", "left", "hi", "right" },
+    @Alerts(DEFAULT = {"", "hello", "left", "hi", "right" },
             IE = {"", "error", "", "left", "error", "left", "right" })
     public void align_thead() throws Exception {
         align("th");
@@ -44,7 +50,7 @@ public class HTMLTableSectionElementTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = {"left", "hello", "left", "hi", "right" },
+    @Alerts(DEFAULT = {"", "hello", "left", "hi", "right" },
             IE = {"", "error", "", "left", "error", "left", "right" })
     public void align_tbody() throws Exception {
         align("tb");
@@ -54,7 +60,7 @@ public class HTMLTableSectionElementTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = {"left", "hello", "left", "hi", "right" },
+    @Alerts(DEFAULT = {"", "hello", "left", "hi", "right" },
             IE = {"", "error", "", "left", "error", "left", "right" })
     public void align_tfoot() throws Exception {
         align("tf");
@@ -94,15 +100,16 @@ public class HTMLTableSectionElementTest extends WebTestCase {
             + "    </table>\n"
             + "  </body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = { "top", "baseline", "3", "middle", "8", "bottom" },
+    @Alerts(DEFAULT = { "top", "baseline", "3", "middle", "8", "BOTtom" },
             IE = { "top", "baseline", "top", "error", "middle", "baseline", "bottom" })
+    @NotYetImplemented({ FF, CHROME })
     public void vAlign_thead() throws Exception {
         vAlign("th");
     }
@@ -111,8 +118,9 @@ public class HTMLTableSectionElementTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = { "top", "baseline", "3", "middle", "8", "bottom" },
+    @Alerts(DEFAULT = { "top", "baseline", "3", "middle", "8", "BOTtom" },
             IE = { "top", "baseline", "top", "error", "middle", "baseline", "bottom" })
+    @NotYetImplemented({ FF, CHROME })
     public void vAlign_tbody() throws Exception {
         vAlign("tb");
     }
@@ -121,8 +129,9 @@ public class HTMLTableSectionElementTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = { "top", "baseline", "3", "middle", "8", "bottom" },
+    @Alerts(DEFAULT = { "top", "baseline", "3", "middle", "8", "BOTtom" },
             IE = { "top", "baseline", "top", "error", "middle", "baseline", "bottom" })
+    @NotYetImplemented({ FF, CHROME })
     public void vAlign_tfoot() throws Exception {
         vAlign("tf");
     }
@@ -173,14 +182,15 @@ public class HTMLTableSectionElementTest extends WebTestCase {
             + "    </table>\n"
             + "  </body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = { "p", "po", ".", "u", "8", "U8" }, IE = { "", "", "", "u", "8", "U8" })
+    @Alerts(DEFAULT = { "p", "po", "", "u", "8", "U8" },
+            IE8 = { "", "", "", "u", "8", "U8" })
     public void ch_thead() throws Exception {
         ch("th");
     }
@@ -189,7 +199,8 @@ public class HTMLTableSectionElementTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = { "p", "po", ".", "u", "8", "U8" }, IE = { "", "", "", "u", "8", "U8" })
+    @Alerts(DEFAULT = { "p", "po", "", "u", "8", "U8" },
+            IE8 = { "", "", "", "u", "8", "U8" })
     public void ch_tbody() throws Exception {
         ch("tb");
     }
@@ -198,7 +209,8 @@ public class HTMLTableSectionElementTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = { "p", "po", ".", "u", "8", "U8" }, IE = { "", "", "", "u", "8", "U8" })
+    @Alerts(DEFAULT = { "p", "po", "", "u", "8", "U8" },
+            IE8 = { "", "", "", "u", "8", "U8" })
     public void ch_tfoot() throws Exception {
         ch("tf");
     }
@@ -249,14 +261,15 @@ public class HTMLTableSectionElementTest extends WebTestCase {
             + "    </table>\n"
             + "  </body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = { "0", "4", "", "5", "0", "abc" }, IE = { "", "", "", "5.2", "-3", "abc" })
+    @Alerts(DEFAULT = { "0", "4", "", "5.2", "-3", "abc" },
+            IE8 = { "", "", "", "5.2", "-3", "abc" })
     public void chOff_thead() throws Exception {
         chOff("th");
     }
@@ -265,7 +278,8 @@ public class HTMLTableSectionElementTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = { "0", "4", "", "5", "0", "abc" }, IE = { "", "", "", "5.2", "-3", "abc" })
+    @Alerts(DEFAULT = { "0", "4", "", "5.2", "-3", "abc" },
+            IE8 = { "", "", "", "5.2", "-3", "abc" })
     public void chOff_tbody() throws Exception {
         chOff("tb");
     }
@@ -274,7 +288,8 @@ public class HTMLTableSectionElementTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = { "0", "4", "", "5", "0", "abc" }, IE = { "", "", "", "5.2", "-3", "abc" })
+    @Alerts(DEFAULT = { "0", "4", "", "5.2", "-3", "abc" },
+            IE8 = { "", "", "", "5.2", "-3", "abc" })
     public void chOff_tfoot() throws Exception {
         chOff("tf");
     }
@@ -325,14 +340,16 @@ public class HTMLTableSectionElementTest extends WebTestCase {
             + "    </table>\n"
             + "  </body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(FF = "<tr><td>world</td></tr>", IE = { "exception", "<tr><td>hello</td></tr>" })
+    @Alerts(DEFAULT = "<tr><td>world</td></tr>",
+            IE8 = { "exception", "<tr>\r\n<td>hello</td></tr>" })
+    @NotYetImplemented(IE8)
     public void TBODY_innerHTML() throws Exception {
         final String html = "<html><head>\n"
             + "<script>\n"
@@ -349,6 +366,154 @@ public class HTMLTableSectionElementTest extends WebTestCase {
             + "    <tbody id='myId'><tr><td>hello</td></tr></tbody>\n"
             + "  </table>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "undefined", "[object HTMLTableRowElement]", "abc", "[object HTMLTableRowElement]", "" },
+            CHROME = {"cell1", "[object HTMLTableRowElement]",
+                        "ex", "cell1", "[object HTMLTableRowElement]", "ex", "cell1" },
+            IE8 = { "cell1", "[object]", "abc", "[object]", "" },
+            IE11 = { "cell1", "[object HTMLTableRowElement]", "abc", "[object Text]", "" })
+    public void innerText_body() throws Exception {
+        final String html
+            = "<html><body>\n"
+            + "  <table>\n"
+            + "    <tbody id='tab_row'><tr><td>cell1</td></tr></tbody>\n"
+            + "  </table>\n"
+            + "<script>\n"
+            + "  var node = document.getElementById('tab_row');\n"
+            + "  alert(node.innerText);\n"
+            + "  alert(node.firstChild);\n"
+
+            + "  try { node.innerText = 'abc'; } catch(e) {alert('ex');}\n"
+            + "  alert(node.innerText);\n"
+            + "  alert(node.firstChild);\n"
+
+            + "  try { node.innerText = ''; } catch(e) {alert('ex');}\n"
+            + "  alert(node.innerText);\n"
+            + "</script></body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "undefined", "[object HTMLTableRowElement]", "abc", "[object HTMLTableRowElement]", "" },
+            CHROME = {"cell1", "[object HTMLTableRowElement]",
+                        "ex", "cell1", "[object HTMLTableRowElement]", "ex", "cell1" },
+            IE8 = { "cell1", "[object]", "abc", "[object]", "" },
+            IE11 = { "cell1", "[object HTMLTableRowElement]", "abc", "[object Text]", "" })
+    public void innerText_header() throws Exception {
+        final String html
+            = "<html><body>\n"
+            + "  <table>\n"
+            + "    <thead id='tab_row'><tr><td>cell1</td></tr></thead>\n"
+            + "  </table>\n"
+            + "<script>\n"
+            + "  var node = document.getElementById('tab_row');\n"
+            + "  alert(node.innerText);\n"
+            + "  alert(node.firstChild);\n"
+
+            + "  try { node.innerText = 'abc'; } catch(e) {alert('ex');}\n"
+            + "  alert(node.innerText);\n"
+            + "  alert(node.firstChild);\n"
+
+            + "  try { node.innerText = ''; } catch(e) {alert('ex');}\n"
+            + "  alert(node.innerText);\n"
+            + "</script></body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "undefined", "[object HTMLTableRowElement]", "abc", "[object HTMLTableRowElement]", "" },
+            CHROME = {"cell1", "[object HTMLTableRowElement]",
+                        "ex", "cell1", "[object HTMLTableRowElement]", "ex", "cell1" },
+            IE8 = { "cell1", "[object]", "abc", "[object]", "" },
+            IE11 = { "cell1", "[object HTMLTableRowElement]", "abc", "[object Text]", "" })
+    public void innerText_footer() throws Exception {
+        final String html
+            = "<html><body>\n"
+            + "  <table>\n"
+            + "    <tfoot id='tab_row'><tr><td>cell1</td></tr></tfoot>\n"
+            + "  </table>\n"
+            + "<script>\n"
+            + "  var node = document.getElementById('tab_row');\n"
+            + "  alert(node.innerText);\n"
+            + "  alert(node.firstChild);\n"
+
+            + "  try { node.innerText = 'abc'; } catch(e) {alert('ex');}\n"
+            + "  alert(node.innerText);\n"
+            + "  alert(node.firstChild);\n"
+
+            + "  try { node.innerText = ''; } catch(e) {alert('ex');}\n"
+            + "  alert(node.innerText);\n"
+            + "</script></body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(DEFAULT = { "undefined", "#0000aa", "x" },
+            IE = { "", "#0000aa", "#000000" },
+            IE11 = { "", "#0000aa", "#0" })
+    public void bgColorFooter() throws Exception {
+        final String html =
+            "<html>\n"
+            + "  <head>\n"
+            + "    <script>\n"
+            + "      function test() {\n"
+            + "        var tfoot = document.getElementById('tfoot');\n"
+            + "        alert(tfoot.bgColor);\n"
+            + "        tfoot.bgColor = '#0000aa';\n"
+            + "        alert(tfoot.bgColor);\n"
+            + "        tfoot.bgColor = 'x';\n"
+            + "        alert(tfoot.bgColor);\n"
+            + "      }\n"
+            + "    </script>\n"
+            + "  </head>\n"
+            + "  <body onload='test()'>\n"
+            + "  <table><tfoot id='tfoot'><tr><td>cell1</td></tr></tfoot></table>\n"
+            + "  </body>\n"
+            + "</html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(DEFAULT = { "undefined", "#0000aa", "x" },
+            IE = { "", "#0000aa", "#000000" },
+            IE11 = { "", "#0000aa", "#0" })
+    public void bgColorHeader() throws Exception {
+        final String html =
+            "<html>\n"
+            + "  <head>\n"
+            + "    <script>\n"
+            + "      function test() {\n"
+            + "        var thead = document.getElementById('thead');\n"
+            + "        alert(thead.bgColor);\n"
+            + "        thead.bgColor = '#0000aa';\n"
+            + "        alert(thead.bgColor);\n"
+            + "        thead.bgColor = 'x';\n"
+            + "        alert(thead.bgColor);\n"
+            + "      }\n"
+            + "    </script>\n"
+            + "  </head>\n"
+            + "  <body onload='test()'>\n"
+            + "  <table><thead id='thead'><tr><td>cell1</td></tr></thead></table>\n"
+            + "  </body>\n"
+            + "</html>";
+        loadPageWithAlerts2(html);
     }
 }

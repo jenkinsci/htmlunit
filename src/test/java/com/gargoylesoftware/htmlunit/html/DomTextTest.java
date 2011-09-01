@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,30 +20,33 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 import com.gargoylesoftware.htmlunit.TextUtil;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 
 /**
  * Tests for {@link DomText}.
  *
- * @version $Revision: 4769 $
+ * @version $Revision: 9868 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  * @author Rodney Gitzel
  * @author Sudhan Moghe
+ * @author Philip Graf
  */
-public class DomTextTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public class DomTextTest extends SimpleWebTestCase {
 
     /**
      * Test the clean up of &amp;nbsp; in strings.
      * @throws Exception if the test fails
      */
     @Test
-    public void testAsText_nbsp() throws Exception {
+    public void asText_nbsp() throws Exception {
         testPlainText("a b&nbsp;c  d &nbsp;e",  "a b c d  e");
         testPlainText("a b&nbsp;c  d &nbsp; e", "a b c d   e");
         testPlainText("&nbsp;a&nbsp;", " a ");
@@ -52,13 +55,13 @@ public class DomTextTest extends WebTestCase {
     }
 
     /**
-     * Test font formats, as per bug #1731042.
-     * See http://sourceforge.net/tracker/index.php?func=detail&aid=1731042&group_id=47038&atid=448266.
+     * Test font formats, as per bug #490.
+     * See http://sourceforge.net/p/htmlunit/bugs/490/.
      *
      * @throws Exception if the test fails
      */
     @Test
-    public void testAsText_fontFormat() throws Exception {
+    public void asText_fontFormat() throws Exception {
         testAsText("a <b>b</b> c",  "a b c");
         testAsText("a <b>b</b>c",   "a bc");
         testAsText("a<b>b</b> c",   "ab c");
@@ -95,7 +98,7 @@ public class DomTextTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testAsText_regression() throws Exception {
+    public void asText_regression() throws Exception {
         String expected = "a" + LINE_SEPARATOR + "b" + LINE_SEPARATOR + "c";
         testAsText("a<ul><li>b</ul>c", expected);
         testAsText("a<p>b<br>c", expected);
@@ -111,18 +114,16 @@ public class DomTextTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testAsText_table_elements() throws Exception {
+    public void asText_table_elements() throws Exception {
         final String html = "<table id='table'><tr id='row'><td id='cell'> b </td></tr>\n</table>\n";
         final String content = "<html><body><span id='foo'>" + html + "</span></body></html>";
 
         final HtmlPage page = loadPage(content);
 
-        assertEquals("b", page.<HtmlElement>getHtmlElementById("cell").asText());
-        assertEquals("b", page.<HtmlElement>getHtmlElementById("row").asText());
-        assertEquals("b", page.<HtmlElement>getHtmlElementById("table").asText());
+        assertEquals("b", page.getHtmlElementById("cell").asText());
+        assertEquals("b", page.getHtmlElementById("row").asText());
+        assertEquals("b", page.getHtmlElementById("table").asText());
     }
-
-    // ====================================================================================
 
     private void testPlainText(final String html, final String expectedText) throws Exception {
         final String content = "<html><body><span id='foo'>" + html + "</span></body></html>";
@@ -149,7 +150,7 @@ public class DomTextTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testAsXml() throws Exception {
+    public void asXml() throws Exception {
         final String unicodeString = "\u064A\u0627 \u0644\u064A\u064A\u0644";
         final String html = "<html>\n"
             + "<head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8'></head>\n"
@@ -157,14 +158,14 @@ public class DomTextTest extends WebTestCase {
 
         final int[] expectedValues = {1610, 1575, 32, 1604, 1610, 1610, 1604};
 
-        final WebClient client = new WebClient(BrowserVersion.getDefault());
+        final WebClient client = getWebClient();
         final MockWebConnection webConnection = new MockWebConnection();
 
         webConnection.setDefaultResponse(TextUtil.stringToByteArray(html, "UTF-8"), 200, "OK", "text/html");
         client.setWebConnection(webConnection);
 
         final HtmlPage page = client.getPage(getDefaultUrl());
-        final String xml = page.<HtmlElement>getHtmlElementById("foo").getFirstChild().asXml().trim();
+        final String xml = page.getHtmlElementById("foo").getFirstChild().asXml().trim();
         assertEquals(expectedValues.length, xml.length());
         int index = 0;
         for (final int expectedValue : expectedValues) {
@@ -182,7 +183,7 @@ public class DomTextTest extends WebTestCase {
             + "<br><div id='tag'></div><br></body></html>";
         final HtmlPage page = loadPage(html);
 
-        final DomNode divNode = page.getDocumentElement().getElementById("tag");
+        final DomNode divNode = page.getElementById("tag");
 
         final DomText node = new DomText(page, "test split");
         divNode.insertBefore(node);
@@ -216,7 +217,7 @@ public class DomTextTest extends WebTestCase {
             + "<br><div id='tag'></div><br></body></html>";
         final HtmlPage page = loadPage(content);
 
-        final DomNode divNode = page.getDocumentElement().getElementById("tag");
+        final DomNode divNode = page.getElementById("tag");
 
         final DomText firstNode = new DomText(page, "test split");
         divNode.appendChild(firstNode);
@@ -278,8 +279,58 @@ public class DomTextTest extends WebTestCase {
             + "  <div id='myDiv'></div>\n"
             + "</body></html>";
         final String[] expectedAlerts = {"3", "4", "456"};
-        final List<String> collectedAlerts = new ArrayList<String>();
+        final List<String> collectedAlerts = new ArrayList<>();
         loadPage(html, collectedAlerts);
         assertEquals(expectedAlerts, collectedAlerts);
     }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void setTextContent() throws Exception {
+        final String html = "<html><body><span id='s'>abc</span></body></html>";
+        final HtmlPage page = loadPage(html);
+        final DomText text = (DomText) page.getElementById("s").getFirstChild();
+        assertEquals("abc", text.getTextContent());
+        text.setTextContent("xyz");
+        assertEquals("xyz", text.getTextContent());
+        assertEquals("xyz", page.asText());
+    }
+
+    /**
+     * Tests if {@code getCanonicalXPath()} returns the correct XPath for a text
+     * node without other text node siblings.
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void getCanonicalXPath_withoutTextSiblings() throws Exception {
+        final String html = "<html><body><span id='s'>abc</span></body></html>";
+        final HtmlPage page = loadPage(html);
+        final DomText text = (DomText) page.getElementById("s").getFirstChild();
+        assertEquals("/html/body/span/text()", text.getCanonicalXPath());
+        assertEquals(text, page.getFirstByXPath(text.getCanonicalXPath()));
+    }
+
+    /**
+     * Tests if {@code getCanonicalXPath()} returns the correct XPath for a text
+     * node with other text node siblings.
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void getCanonicalXPath_withTextSiblings() throws Exception {
+        final String html = "<html><body><span id='s'>abc<br/>def</span></body></html>";
+        final HtmlPage page = loadPage(html);
+
+        final DomText text1 = (DomText) page.getElementById("s").getFirstChild();
+        assertEquals("abc", text1.getData());
+        assertEquals("/html/body/span/text()[1]", text1.getCanonicalXPath());
+        assertEquals(text1, page.getFirstByXPath(text1.getCanonicalXPath()));
+
+        final DomText text2 = (DomText) page.getElementById("s").getChildNodes().get(2);
+        assertEquals("def", text2.getData());
+        assertEquals("/html/body/span/text()[2]", text2.getCanonicalXPath());
+        assertEquals(text2, page.getFirstByXPath(text2.getCanonicalXPath()));
+    }
+
 }

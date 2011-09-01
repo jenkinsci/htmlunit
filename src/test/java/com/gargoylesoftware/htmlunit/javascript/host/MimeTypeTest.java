@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,15 +23,15 @@ import org.junit.Test;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.gargoylesoftware.htmlunit.PluginConfiguration;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 
 /**
  * Unit tests for {@link MimeType}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 10603 $
  * @author Marc Guillemot
  */
-public class MimeTypeTest extends WebTestCase {
+public class MimeTypeTest extends SimpleWebTestCase {
 
     /**
      * Tests default configuration of Flash plugin for Firefox.
@@ -55,8 +55,8 @@ public class MimeTypeTest extends WebTestCase {
         final String[] expectedAlerts = {"[object MimeType]", "swf", "Shockwave Flash", "true", "true"};
         createTestPageForRealBrowserIfNeeded(html, expectedAlerts);
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(BrowserVersion.FIREFOX_2, html, collectedAlerts);
+        final List<String> collectedAlerts = new ArrayList<>();
+        loadPage(BrowserVersion.FIREFOX_38, html, collectedAlerts);
         assertEquals(expectedAlerts, collectedAlerts);
     }
 
@@ -78,16 +78,15 @@ public class MimeTypeTest extends WebTestCase {
         final String[] expectedAlerts = {"undefined", "undefined", "null"};
         createTestPageForRealBrowserIfNeeded(html, expectedAlerts);
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final Set<PluginConfiguration> plugins =
-            new HashSet<PluginConfiguration>(BrowserVersion.FIREFOX_2.getPlugins());
-        BrowserVersion.FIREFOX_2.getPlugins().clear();
+        final List<String> collectedAlerts = new ArrayList<>();
+        final Set<PluginConfiguration> plugins = new HashSet<>(BrowserVersion.FIREFOX_38.getPlugins());
+        BrowserVersion.FIREFOX_38.getPlugins().clear();
         try {
-            loadPage(BrowserVersion.FIREFOX_2, html, collectedAlerts);
+            loadPage(BrowserVersion.FIREFOX_38, html, collectedAlerts);
             assertEquals(expectedAlerts, collectedAlerts);
         }
         finally {
-            BrowserVersion.FIREFOX_2.getPlugins().addAll(plugins);
+            BrowserVersion.FIREFOX_38.getPlugins().addAll(plugins);
         }
     }
 }

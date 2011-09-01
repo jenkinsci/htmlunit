@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,10 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -27,15 +29,15 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "table".
  *
- * @version $Revision: 4794 $
+ * @version $Revision: 10214 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Frank Danek
  */
-public class HtmlTable extends ClickableElement {
-
-    private static final long serialVersionUID = 2484055580262042798L;
+public class HtmlTable extends HtmlElement {
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "table";
@@ -43,18 +45,27 @@ public class HtmlTable extends ClickableElement {
     /**
      * Creates an instance.
      *
-     * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the page that contains this element
      * @param attributes the initial attributes
      */
-    HtmlTable(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    HtmlTable(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
+        super(qualifiedName, page, attributes);
     }
 
     /**
      * Returns the first cell that matches the specified row and column, searching left to right, top to bottom.
+     * This method returns different values than getRow(rowIndex).getCell(cellIndex) because this takes cellspan
+     * and rowspan into account.<br>
+     * This means, a cell with colspan='2' consumes two columns; a cell with rowspan='3' consumes three rows. The
+     * index is based on the 'background' model of the table; if you have a row like<br>
+     * <td>cell1</td> <td colspan='2'>cell2</td> then this row is treated as a row with
+     * three cells.<br>
+     * getCellAt(rowIndex, 0).asText() returns "cell1";<br>
+     * getCellAt(rowIndex, 1).asText() returns "cell2";<br>
+     * getCellAt(rowIndex, 2).asText() returns "cell2"; and<br>
+     * getCellAt(rowIndex, 3).asText() returns null;
      *
      * @param rowIndex the row index
      * @param columnIndex the column index
@@ -62,17 +73,32 @@ public class HtmlTable extends ClickableElement {
      */
     public final HtmlTableCell getCellAt(final int rowIndex, final int columnIndex) {
         final RowIterator rowIterator = getRowIterator();
-        for (int rowNo = 0; rowIterator.hasNext(); rowNo++) {
-            final HtmlTableRow row = rowIterator.nextRow();
-            final HtmlTableRow.CellIterator cellIterator = row.getCellIterator();
-            for (int colNo = 0; cellIterator.hasNext(); colNo++) {
-                final HtmlTableCell cell = cellIterator.nextCell();
-                if (rowNo <= rowIndex && rowNo + cell.getRowSpan() > rowIndex) {
-                    if (colNo <= columnIndex && colNo + cell.getColumnSpan() > columnIndex) {
+        final HashSet<Point> occupied = new HashSet<Point>();
+        int row = 0;
+        for (final HtmlTableRow htmlTableRow : rowIterator) {
+            final HtmlTableRow.CellIterator cellIterator = htmlTableRow.getCellIterator();
+            int col = 0;
+            for (final HtmlTableCell cell : cellIterator) {
+                while (occupied.contains(new Point(row, col))) {
+                    col++;
+                }
+                final int nextRow = row + cell.getRowSpan();
+                if (row <= rowIndex && nextRow > rowIndex) {
+                    final int nextCol = col + cell.getColumnSpan();
+                    if (col <= columnIndex && nextCol > columnIndex) {
                         return cell;
                     }
                 }
+                if (cell.getRowSpan() > 1 || cell.getColumnSpan() > 1) {
+                    for (int i = 0; i < cell.getRowSpan(); i++) {
+                        for (int j = 0; j < cell.getColumnSpan(); j++) {
+                            occupied.add(new Point(row + i, col + j));
+                        }
+                    }
+                }
+                col++;
             }
+            row++;
         }
         return null;
     }
@@ -89,9 +115,9 @@ public class HtmlTable extends ClickableElement {
      * @see #getRowIterator
      */
     public List<HtmlTableRow> getRows() {
-        final List<HtmlTableRow> result = new ArrayList<HtmlTableRow>();
-        for (final RowIterator iterator = getRowIterator(); iterator.hasNext();) {
-            result.add(iterator.next());
+        final List<HtmlTableRow> result = new ArrayList<>();
+        for (final HtmlTableRow row : getRowIterator()) {
+            result.add(row);
         }
         return Collections.unmodifiableList(result);
     }
@@ -104,11 +130,11 @@ public class HtmlTable extends ClickableElement {
      */
     public HtmlTableRow getRow(final int index) throws IndexOutOfBoundsException {
         int count = 0;
-        for (final RowIterator iterator = getRowIterator(); iterator.hasNext(); count++) {
-            final HtmlTableRow next = iterator.nextRow();
+        for (final HtmlTableRow row : getRowIterator()) {
             if (count == index) {
-                return next;
+                return row;
             }
+            count++;
         }
         throw new IndexOutOfBoundsException();
     }
@@ -135,9 +161,7 @@ public class HtmlTable extends ClickableElement {
      * @exception ElementNotFoundException If the row cannot be found.
      */
     public final HtmlTableRow getRowById(final String id) throws ElementNotFoundException {
-        final RowIterator iterator = new RowIterator();
-        while (iterator.hasNext()) {
-            final HtmlTableRow row = iterator.next();
+        for (final HtmlTableRow row : getRowIterator()) {
             if (row.getAttribute("id").equals(id)) {
                 return row;
             }
@@ -151,7 +175,7 @@ public class HtmlTable extends ClickableElement {
      * @return the caption text
      */
     public String getCaptionText() {
-        for (final HtmlElement element : getChildElements()) {
+        for (final DomElement element : getChildElements()) {
             if (element instanceof HtmlCaption) {
                 return element.asText();
             }
@@ -165,7 +189,7 @@ public class HtmlTable extends ClickableElement {
      * @return the table header
      */
     public HtmlTableHeader getHeader() {
-        for (final HtmlElement element : getChildElements()) {
+        for (final DomElement element : getChildElements()) {
             if (element instanceof HtmlTableHeader) {
                 return (HtmlTableHeader) element;
             }
@@ -179,7 +203,7 @@ public class HtmlTable extends ClickableElement {
      * @return the table footer
      */
     public HtmlTableFooter getFooter() {
-        for (final HtmlElement element : getChildElements()) {
+        for (final DomElement element : getChildElements()) {
             if (element instanceof HtmlTableFooter) {
                 return (HtmlTableFooter) element;
             }
@@ -191,11 +215,11 @@ public class HtmlTable extends ClickableElement {
      * Returns a list of tables bodies defined in this table. If no bodies were defined
      * then an empty list will be returned.
      *
-     * @return a list of {@link com.gargoylesoftware.htmlunit.html.HtmlTableBody} objects
+     * @return a list of {@link HtmlTableBody} objects
      */
     public List<HtmlTableBody> getBodies() {
-        final List<HtmlTableBody> bodies = new ArrayList<HtmlTableBody>();
-        for (final HtmlElement element : getChildElements()) {
+        final List<HtmlTableBody> bodies = new ArrayList<>();
+        for (final DomElement element : getChildElements()) {
             if (element instanceof HtmlTableBody) {
                 bodies.add((HtmlTableBody) element);
             }
@@ -411,5 +435,13 @@ public class HtmlTable extends ClickableElement {
     @Override
     protected boolean isEmptyXmlTagExpanded() {
         return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public DisplayStyle getDefaultStyleDisplay() {
+        return DisplayStyle.TABLE;
     }
 }

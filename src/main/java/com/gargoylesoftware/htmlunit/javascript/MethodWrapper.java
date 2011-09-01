@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,34 +16,34 @@ package com.gargoylesoftware.htmlunit.javascript;
 
 import java.lang.reflect.Method;
 
-import org.apache.commons.lang.ArrayUtils;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.Function;
 import net.sourceforge.htmlunit.corejs.javascript.FunctionObject;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
 
+import org.apache.commons.lang3.ArrayUtils;
+
 /**
- * Wraps a java method to make it available as a JavaScript function
+ * Wraps a Java method to make it available as a JavaScript function
  * (more flexible than Rhino's {@link FunctionObject}.
  *
- * @version $Revision: 4402 $
+ * @version $Revision: 9837 $
  * @author Marc Guillemot
  */
 public class MethodWrapper extends ScriptableObject implements Function {
 
-    private static final long serialVersionUID = 6106771000496895783L;
-    private final Class< ? > clazz_;
+    private final Class<?> clazz_;
     private final Method method_;
     private final int[] jsTypeTags_;
 
     /**
-     * Facility constructor to wrap a method without arguments
+     * Facility constructor to wrap a method without arguments.
      * @param methodName the name of the method to wrap
      * @param clazz the class declaring the method
      * @throws NoSuchMethodException if the method is no found
      */
-    MethodWrapper(final String methodName, final Class< ? > clazz) throws NoSuchMethodException {
+    MethodWrapper(final String methodName, final Class<?> clazz) throws NoSuchMethodException {
         this(methodName, clazz, ArrayUtils.EMPTY_CLASS_ARRAY);
     }
 
@@ -54,14 +54,14 @@ public class MethodWrapper extends ScriptableObject implements Function {
      * @param parameterTypes the types of the method's parameter
      * @throws NoSuchMethodException if the method is no found
      */
-    MethodWrapper(final String methodName, final Class< ? > clazz, final Class< ? >[] parameterTypes)
+    MethodWrapper(final String methodName, final Class<?> clazz, final Class<?>[] parameterTypes)
         throws NoSuchMethodException {
 
         clazz_ = clazz;
         method_ = clazz.getMethod(methodName, parameterTypes);
         jsTypeTags_ = new int[parameterTypes.length];
         int i = 0;
-        for (final Class< ? > klass : parameterTypes) {
+        for (final Class<?> klass : parameterTypes) {
             jsTypeTags_[i++] = FunctionObject.getTypeTag(klass);
         }
     }
@@ -76,7 +76,6 @@ public class MethodWrapper extends ScriptableObject implements Function {
     }
 
     /**
-     * @see net.sourceforge.htmlunit.corejs.javascript.Function#call(Context, Scriptable, Scriptable, Object[])
      * {@inheritDoc}
      */
     public Object call(final Context context, final Scriptable scope, final Scriptable thisObj, final Object[] args) {
@@ -114,7 +113,7 @@ public class MethodWrapper extends ScriptableObject implements Function {
     }
 
     /**
-     * Converts js arguments to java arguments
+     * Converts JavaScript arguments to Java arguments.
      * @param context the current context
      * @param scope the current scope
      * @param jsArgs the JavaScript arguments
@@ -134,7 +133,6 @@ public class MethodWrapper extends ScriptableObject implements Function {
     }
 
     /**
-     * @see net.sourceforge.htmlunit.corejs.javascript.Function#construct(Context, Scriptable, Object[])
      * {@inheritDoc}
      */
     public Scriptable construct(final Context context, final Scriptable scope, final Object[] args) {

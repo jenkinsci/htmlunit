@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,12 +21,10 @@ import java.util.List;
 /**
  * A simple alert handler that keeps track of alerts in a list.
  *
- * @version $Revision: 4391 $
+ * @version $Revision: 9837 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  */
 public class CollectingAlertHandler implements AlertHandler, Serializable {
-
-    private static final long serialVersionUID = 6617913244195961483L;
 
     private final List<String> collectedAlerts_;
 

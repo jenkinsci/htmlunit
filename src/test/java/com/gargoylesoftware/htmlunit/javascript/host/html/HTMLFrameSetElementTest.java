@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,28 +14,23 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
-import com.gargoylesoftware.htmlunit.MockWebConnection;
-import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Unit tests for {@link HTMLFrameSetElement}.
  *
- * @version $Revision: 4697 $
+ * @version $Revision: 9843 $
  * @author Bruce Chapman
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
 @RunWith(BrowserRunner.class)
-public class HTMLFrameSetElementTest extends WebTestCase {
+public class HTMLFrameSetElementTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if an error occurs
@@ -58,7 +53,7 @@ public class HTMLFrameSetElementTest extends WebTestCase {
             + "</frameset>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -86,17 +81,10 @@ public class HTMLFrameSetElementTest extends WebTestCase {
             + "</head>\n"
             + "<body onload='doTest()'></body></html>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final WebClient webClient = getWebClient();
-        webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
+        getMockWebConnection().setResponse(URL_FIRST, framesetContent);
+        getMockWebConnection().setResponse(URL_SECOND, frameContent);
 
-        final MockWebConnection webConnection = new MockWebConnection();
-        webConnection.setResponse(URL_FIRST, framesetContent);
-        webConnection.setResponse(URL_SECOND, frameContent);
-        webClient.setWebConnection(webConnection);
-
-        webClient.getPage(URL_FIRST);
-        assertEquals(getExpectedAlerts(), collectedAlerts);
+        loadPageWithAlerts2(URL_FIRST);
     }
 
 }

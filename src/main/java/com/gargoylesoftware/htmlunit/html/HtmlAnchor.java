@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,35 +14,39 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
-import static com.gargoylesoftware.htmlunit.protocol.javascript.JavaScriptURLConnection.JAVASCRIPT_PREFIX;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.ANCHOR_EMPTY_HREF_NO_FILENAME;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.SgmlPage;
-import com.gargoylesoftware.htmlunit.TextUtil;
-import com.gargoylesoftware.htmlunit.WebRequestSettings;
+import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebWindow;
+import com.gargoylesoftware.htmlunit.protocol.javascript.JavaScriptURLConnection;
+import com.gargoylesoftware.htmlunit.util.UrlUtils;
 
 /**
  * Wrapper for the HTML element "a".
  *
- * @version $Revision: 4789 $
+ * @version $Revision: 10214 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
  * @author Dmitri Zoubkov
+ * @author Ronald Brill
+ * @author Frank Danek
  */
-public class HtmlAnchor extends ClickableElement {
+public class HtmlAnchor extends HtmlElement {
 
-    private static final long serialVersionUID = 7968778206454737178L;
     private static final Log LOG = LogFactory.getLog(HtmlAnchor.class);
 
     /** The HTML tag represented by this element. */
@@ -51,74 +55,112 @@ public class HtmlAnchor extends ClickableElement {
     /**
      * Creates a new instance.
      *
-     * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the page that contains this element
      * @param attributes the initial attributes
      */
-    HtmlAnchor(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    HtmlAnchor(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
+        super(qualifiedName, page, attributes);
     }
 
     /**
-     * Same as {@link #doClickAction(Page)}, except that it accepts an href suffix, needed when a click is
+     * Same as {@link #doClickStateUpdate()}, except that it accepts an href suffix, needed when a click is
      * performed on an image map to pass information on the click position.
      *
-     * @param defaultPage the default page to return if the action does not load a new page
      * @param hrefSuffix the suffix to add to the anchor's href attribute (for instance coordinates from an image map)
-     * @return the page that is currently loaded after execution of this method
      * @throws IOException if an IO error occurs
      */
-    protected Page doClickAction(final Page defaultPage, final String hrefSuffix) throws IOException {
-        final String href = getHrefAttribute() + hrefSuffix;
+    protected void doClickStateUpdate(final String hrefSuffix) throws IOException {
+        final String href = (getHrefAttribute() + hrefSuffix).trim();
         if (LOG.isDebugEnabled()) {
-            final String w = defaultPage.getEnclosingWindow().getName();
+            final String w = getPage().getEnclosingWindow().getName();
             LOG.debug("do click action in window '" + w + "', using href '" + href + "'");
         }
-        if (href.length() == 0) {
-            return defaultPage;
+        if (ATTRIBUTE_NOT_DEFINED == getHrefAttribute()) {
+            return;
         }
-        final HtmlPage page = (HtmlPage) getPage();
-        if (TextUtil.startsWithIgnoreCase(href, JAVASCRIPT_PREFIX)) {
-            return page.executeJavaScriptIfPossible(href, "javascript url", getStartLineNumber()).getNewPage();
+        HtmlPage htmlPage = (HtmlPage) getPage();
+        if (StringUtils.startsWithIgnoreCase(href, JavaScriptURLConnection.JAVASCRIPT_PREFIX)) {
+            final StringBuilder builder = new StringBuilder(href.length());
+            builder.append(JavaScriptURLConnection.JAVASCRIPT_PREFIX);
+            for (int i = JavaScriptURLConnection.JAVASCRIPT_PREFIX.length(); i < href.length(); i++) {
+                final char ch = href.charAt(i);
+                if (ch == '%' && i + 2 < href.length()) {
+                    final char ch1 = Character.toUpperCase(href.charAt(i + 1));
+                    final char ch2 = Character.toUpperCase(href.charAt(i + 2));
+                    if ((Character.isDigit(ch1) || ch1 >= 'A' && ch1 <= 'F')
+                            && (Character.isDigit(ch2) || ch2 >= 'A' && ch2 <= 'F')) {
+                        builder.append((char) Integer.parseInt(href.substring(i + 1, i + 3), 16));
+                        i += 2;
+                        continue;
+                    }
+                }
+                builder.append(ch);
+            }
+
+            final WebWindow win = htmlPage.getWebClient().openTargetWindow(htmlPage.getEnclosingWindow(),
+                    htmlPage.getResolvedTarget(getTargetAttribute()), "_self");
+            final Page page = win.getEnclosedPage();
+            if (page != null && page.isHtmlPage()) {
+                htmlPage = (HtmlPage) page;
+                htmlPage.executeJavaScriptIfPossible(builder.toString(), "javascript url", getStartLineNumber());
+            }
+            return;
         }
-        final URL url = page.getFullyQualifiedUrl(href);
-        final WebRequestSettings wrs = new WebRequestSettings(url);
-        wrs.setAdditionalHeader("Referer", page.getWebResponse().getRequestSettings().getUrl().toExternalForm());
+
+        final URL url = getTargetUrl(href, htmlPage);
+
+        final BrowserVersion browser = htmlPage.getWebClient().getBrowserVersion();
+        final WebRequest webRequest = new WebRequest(url, browser.getHtmlAcceptHeader());
+        webRequest.setCharset(htmlPage.getPageEncoding());
+        webRequest.setAdditionalHeader("Referer", htmlPage.getUrl().toExternalForm());
         if (LOG.isDebugEnabled()) {
             LOG.debug(
                     "Getting page for " + url.toExternalForm()
                     + ", derived from href '" + href
                     + "', using the originating URL "
-                    + page.getWebResponse().getRequestSettings().getUrl());
+                    + htmlPage.getUrl());
         }
-        return page.getWebClient().getPage(
-                page.getEnclosingWindow(),
-                page.getResolvedTarget(getTargetAttribute()),
-                wrs);
+        htmlPage.getWebClient().download(htmlPage.getEnclosingWindow(),
+                htmlPage.getResolvedTarget(getTargetAttribute()),
+                webRequest, false, "Link click");
     }
 
     /**
-     * This method will be called if there either wasn't an <tt>onclick</tt> handler, or
-     * there was but the result of that handler was <tt>true</tt>. This is the default
-     * behavior of clicking the element. For this anchor element, the default behavior is
-     * to open the HREF page, or execute the HREF if it is a <tt>javascript:</tt> URL.
+     * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
      *
-     * @param defaultPage the default page to return if the action does not load a new page
-     * @return the page that is currently loaded after execution of this method
-     * @throws IOException if an IO error occurs
+     * @param href the href
+     * @param page the HtmlPage
+     * @return the calculated target url.
+     * @throws MalformedURLException if an IO error occurs
+     */
+    public static URL getTargetUrl(final String href, final HtmlPage page) throws MalformedURLException {
+        URL url = page.getFullyQualifiedUrl(href);
+        // fix for empty url
+        if (StringUtils.isEmpty(href)) {
+            final boolean dropFilename = page.getWebClient().getBrowserVersion()
+                    .hasFeature(ANCHOR_EMPTY_HREF_NO_FILENAME);
+            if (dropFilename) {
+                String path = url.getPath();
+                path = path.substring(0, path.lastIndexOf('/') + 1);
+                url = UrlUtils.getUrlWithNewPath(url, path);
+                url = UrlUtils.getUrlWithNewRef(url, null);
+            }
+            else {
+                url = UrlUtils.getUrlWithNewRef(url, null);
+            }
+        }
+        return url;
+    }
+
+    /**
+     * {@inheritDoc}
      */
     @Override
-    protected Page doClickAction(final Page defaultPage) throws IOException {
-        final SgmlPage page = getPage();
-        final boolean onClickLoadedNewPageInCurrentWindow =
-            defaultPage != page
-            && defaultPage.getEnclosingWindow() == page.getEnclosingWindow();
-        if (onClickLoadedNewPageInCurrentWindow) {
-            return defaultPage;
-        }
-        return doClickAction(defaultPage, "");
+    protected boolean doClickStateUpdate() throws IOException {
+        doClickStateUpdate("");
+        return false;
     }
 
     /**
@@ -291,5 +333,18 @@ public class HtmlAnchor extends ClickableElement {
         final String windowName = "HtmlAnchor.openLinkInNewWindow() target";
         final WebWindow newWindow = getPage().getWebClient().openWindow(target, windowName);
         return newWindow.getEnclosedPage();
+    }
+
+    @Override
+    protected boolean isEmptyXmlTagExpanded() {
+        return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public DisplayStyle getDefaultStyleDisplay() {
+        return DisplayStyle.INLINE;
     }
 }

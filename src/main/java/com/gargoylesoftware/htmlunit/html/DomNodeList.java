@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import org.w3c.dom.NodeList;
 /**
  * A list of {@link DomNode}s which is both a W3C {@link NodeList} and a java {@link List}.
  *
- * @version $Revision: 4545 $
+ * @version $Revision: 9837 $
  * @author <a href="mailto:tom.anderson@univ.oxon.org">Tom Anderson</a>
  * @param <E> the element type
  */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,23 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.EVENT_ONCHANGE_AFTER_ONCLICK;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.EVENT_ONCHANGE_LOSING_FOCUS;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.HTMLCHECKEDINPUT_SET_CHECKED_TO_FALSE_WHEN_CLONE;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.HTMLCHECKEDINPUT_SET_DEFAULT_VALUE_WHEN_CLONE;
+
 import java.io.IOException;
 import java.util.Map;
 
 import com.gargoylesoftware.htmlunit.Page;
+import com.gargoylesoftware.htmlunit.ScriptResult;
 import com.gargoylesoftware.htmlunit.SgmlPage;
+import com.gargoylesoftware.htmlunit.javascript.host.event.Event;
 
 /**
  * Wrapper for the HTML element "input".
  *
- * @version $Revision: 4854 $
+ * @version $Revision: 10580 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:chen_jun@users.sourceforge.net">Jun Chen</a>
@@ -32,12 +39,18 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
  * @author Mike Bresnahan
  * @author Daniel Gredler
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Frank Danek
  */
 public class HtmlCheckBoxInput extends HtmlInput {
 
-    private static final long serialVersionUID = 3567976425357413976L;
+    /**
+     * Value to use if no specified <tt>value</tt> attribute.
+     */
+    private static final String DEFAULT_VALUE = "on";
 
     private boolean defaultCheckedState_;
+    private boolean forceChecked_;
 
     /**
      * Creates an instance.
@@ -45,22 +58,42 @@ public class HtmlCheckBoxInput extends HtmlInput {
      * even if spec says that it is not allowed
      * (<a href="http://www.w3.org/TR/REC-html40/interact/forms.html#adef-value-INPUT">W3C</a>).
      *
-     * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the page that contains this element
      * @param attributes the initial attributes
      */
-    HtmlCheckBoxInput(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    HtmlCheckBoxInput(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
-
-        //From the checkbox creator
-        defaultCheckedState_ = hasAttribute("checked");
-
         // default value for both IE6 and Mozilla 1.7 even if spec says it is unspecified
-        if (getAttribute("value") == ATTRIBUTE_NOT_DEFINED) {
-            setAttribute("value", "on");
+        super(qualifiedName, page, addValueIfNeeded(page, attributes));
+
+        // fix the default value in case we have set it
+        if (getAttribute("value") == DEFAULT_VALUE) {
+            setDefaultValue(ATTRIBUTE_NOT_DEFINED, false);
         }
+
+        defaultCheckedState_ = hasAttribute("checked");
+    }
+
+    /**
+     * Add missing attribute if needed by fixing attribute map rather to add it afterwards as this second option
+     * triggers the instantiation of the script object at a time where the DOM node has not yet been added to its
+     * parent.
+     */
+    private static Map<String, DomAttr> addValueIfNeeded(final SgmlPage page,
+            final Map<String, DomAttr> attributes) {
+
+        for (final String key : attributes.keySet()) {
+            if ("value".equalsIgnoreCase(key)) {
+                return attributes; // value attribute was specified
+            }
+        }
+
+        // value attribute was not specified, add it
+        final DomAttr newAttr = new DomAttr(page, null, "value", DEFAULT_VALUE, true);
+        attributes.put("value", newAttr);
+
+        return attributes;
     }
 
     /**
@@ -84,6 +117,10 @@ public class HtmlCheckBoxInput extends HtmlInput {
         else {
             removeAttribute("checked");
         }
+
+        if (hasFeature(EVENT_ONCHANGE_LOSING_FOCUS)) {
+            return getPage();
+        }
         return executeOnChangeHandlerIfAppropriate(this);
     }
 
@@ -95,22 +132,45 @@ public class HtmlCheckBoxInput extends HtmlInput {
     // we need to preserve this method as it is there since many versions with the above documentation.
     @Override
     public String asText() {
-        if (isChecked()) {
-            return "checked";
-        }
-        return "unchecked";
+        return super.asText();
     }
 
     /**
-     * Override so that checkbox can change its state correctly when its
-     * click() method is called.
-     *
      * {@inheritDoc}
      */
     @Override
-    protected Page doClickAction(final Page defaultPage) throws IOException {
-        setChecked(!isChecked());
-        return super.doClickAction(defaultPage);
+    protected boolean doClickStateUpdate() throws IOException {
+        final boolean isChecked = !isChecked();
+        if (isChecked) {
+            setAttribute("checked", "checked");
+        }
+        else {
+            removeAttribute("checked");
+        }
+        super.doClickStateUpdate();
+        return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected ScriptResult doClickFireClickEvent(final Event event) throws IOException {
+        if (!hasFeature(EVENT_ONCHANGE_LOSING_FOCUS) && !hasFeature(EVENT_ONCHANGE_AFTER_ONCLICK)) {
+            executeOnChangeHandlerIfAppropriate(this);
+        }
+
+        return super.doClickFireClickEvent(event);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected void doClickFireChangeEvent() throws IOException {
+        if (!hasFeature(EVENT_ONCHANGE_LOSING_FOCUS) && hasFeature(EVENT_ONCHANGE_AFTER_ONCLICK)) {
+            executeOnChangeHandlerIfAppropriate(this);
+        }
     }
 
     /**
@@ -148,8 +208,10 @@ public class HtmlCheckBoxInput extends HtmlInput {
     @Override
     public void setDefaultChecked(final boolean defaultChecked) {
         defaultCheckedState_ = defaultChecked;
-        if (getPage().getWebClient().getBrowserVersion().isFirefox()) {
-            setChecked(defaultChecked);
+        setChecked(defaultChecked);
+        if (hasFeature(HTMLCHECKEDINPUT_SET_CHECKED_TO_FALSE_WHEN_CLONE)) {
+            reset();
+            forceChecked_ = true;
         }
     }
 
@@ -162,4 +224,68 @@ public class HtmlCheckBoxInput extends HtmlInput {
         return defaultCheckedState_;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected void onAddedToPage() {
+        super.onAddedToPage();
+
+        if (forceChecked_) {
+            reset();
+            forceChecked_ = wasCreatedByJavascript();
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected void onAddedToDocumentFragment() {
+        super.onAddedToDocumentFragment();
+
+        if (forceChecked_) {
+            reset();
+            forceChecked_ = false;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public DomNode cloneNode(final boolean deep) {
+        final HtmlCheckBoxInput clone = (HtmlCheckBoxInput) super.cloneNode(deep);
+        if (wasCreatedByJavascript() && hasFeature(HTMLCHECKEDINPUT_SET_CHECKED_TO_FALSE_WHEN_CLONE)) {
+            clone.removeAttribute("checked");
+            clone.forceChecked_ = isDefaultChecked();
+        }
+        if (hasFeature(HTMLCHECKEDINPUT_SET_DEFAULT_VALUE_WHEN_CLONE)) {
+            clone.setDefaultValue(getValueAttribute(), false);
+        }
+        return clone;
+    }
+
+    @Override
+    Object getInternalValue() {
+        return isChecked();
+    }
+
+    void handleFocusLostValueChanged() {
+        final boolean fireOnChange = hasFeature(EVENT_ONCHANGE_LOSING_FOCUS);
+        if (fireOnChange) {
+            executeOnChangeHandlerIfAppropriate(this);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setAttributeNS(final String namespaceURI, final String qualifiedName, final String attributeValue) {
+        if ("value".equals(qualifiedName)) {
+            setDefaultValue(attributeValue, false);
+        }
+        super.setAttributeNS(namespaceURI, qualifiedName, attributeValue);
+    }
 }

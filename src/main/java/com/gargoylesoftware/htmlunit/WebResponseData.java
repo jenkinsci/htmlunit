@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,35 +14,36 @@
  */
 package com.gargoylesoftware.htmlunit;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
 import java.util.zip.GZIPInputStream;
+import java.util.zip.Inflater;
 import java.util.zip.InflaterInputStream;
 
-import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
+
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Simple data object to simplify WebResponse creation.
  *
- * @version $Revision: 4676 $
+ * @version $Revision: 9837 $
  * @author Brad Clarke
  * @author Daniel Gredler
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
 public class WebResponseData implements Serializable {
 
-    private static final long serialVersionUID = 2979956380280496543L;
-
-    private byte[] body_;
-    private int statusCode_;
-    private String statusMessage_;
-    private List<NameValuePair> responseHeaders_;
+    private final int statusCode_;
+    private final String statusMessage_;
+    private final List<NameValuePair> responseHeaders_;
+    private final DownloadedContent downloadedContent_;
 
     /**
      * Constructs with a raw byte[] (mostly for testing).
@@ -54,36 +55,7 @@ public class WebResponseData implements Serializable {
      */
     public WebResponseData(final byte[] body, final int statusCode, final String statusMessage,
             final List<NameValuePair> responseHeaders) {
-        statusCode_ = statusCode;
-        statusMessage_ = statusMessage;
-        responseHeaders_ = Collections.unmodifiableList(responseHeaders);
-
-        if (body != null) {
-            try {
-                body_ = getBody(new ByteArrayInputStream(body), responseHeaders);
-            }
-            catch (final IOException e) {
-                body_ = body;
-            }
-        }
-    }
-
-    /**
-     * Constructs with a data stream to minimize copying of the entire body.
-     *
-     * @param bodyStream        Stream of this response's body
-     * @param statusCode        Status code from the server
-     * @param statusMessage     Status message from the server
-     * @param responseHeaders   Headers in this response
-     *
-     * @throws IOException on stream errors
-     */
-    public WebResponseData(final InputStream bodyStream, final int statusCode,
-            final String statusMessage, final List<NameValuePair> responseHeaders) throws IOException {
-        statusCode_ = statusCode;
-        statusMessage_ = statusMessage;
-        responseHeaders_ = Collections.unmodifiableList(responseHeaders);
-        body_ = getBody(bodyStream, responseHeaders);
+        this(new DownloadedContent.InMemory(body), statusCode, statusMessage, responseHeaders);
     }
 
     /**
@@ -92,53 +64,96 @@ public class WebResponseData implements Serializable {
      * @param statusCode        Status code from the server
      * @param statusMessage     Status message from the server
      * @param responseHeaders   Headers in this response
-     *
-     * @throws IOException on stream errors
      */
     protected WebResponseData(final int statusCode,
-            final String statusMessage, final List<NameValuePair> responseHeaders) throws IOException {
-        statusCode_ = statusCode;
-        statusMessage_ = statusMessage;
-        responseHeaders_ = Collections.unmodifiableList(responseHeaders);
+            final String statusMessage, final List<NameValuePair> responseHeaders) {
+        this(ArrayUtils.EMPTY_BYTE_ARRAY, statusCode, statusMessage, responseHeaders);
     }
 
     /**
-     * Returns the body byte array contained by the specified input stream.
-     * If the response headers indicate that the data has been compressed,
-     * the data stream is handled appropriately. If the specified stream is
-     * <tt>null</tt>, this method returns <tt>null</tt>.
-     * @param stream the input stream which contains the body
-     * @param headers the response headers
-     * @return the specified body stream, as a byte array
-     * @throws IOException if a stream error occurs
+     * Constructor.
+     * @param downloadedContent the downloaded content
+     * @param statusCode        Status code from the server
+     * @param statusMessage     Status message from the server
+     * @param responseHeaders   Headers in this response
      */
-    protected byte[] getBody(InputStream stream, final List<NameValuePair> headers) throws IOException {
+    public WebResponseData(final DownloadedContent downloadedContent, final int statusCode, final String statusMessage,
+            final List<NameValuePair> responseHeaders) {
+        statusCode_ = statusCode;
+        statusMessage_ = statusMessage;
+        responseHeaders_ = Collections.unmodifiableList(responseHeaders);
+        downloadedContent_ = downloadedContent;
+    }
+
+    private InputStream getStream(final DownloadedContent downloadedContent,
+                final List<NameValuePair> headers) throws IOException {
+
+        InputStream stream = downloadedContent_.getInputStream();
         if (stream == null) {
             return null;
         }
-        String encoding = null;
-        for (final NameValuePair header : headers) {
-            final String headerName = header.getName().trim();
-            if (headerName.equalsIgnoreCase("content-encoding")) {
-                encoding = header.getValue();
-                break;
+
+        if (downloadedContent.isEmpty()) {
+            return stream;
+        }
+
+        final String encoding = getHeader(headers, "content-encoding");
+        if (encoding != null) {
+            if (StringUtils.contains(encoding, "gzip")) {
+                stream = new GZIPInputStream(stream);
+            }
+            else if (StringUtils.contains(encoding, "deflate")) {
+                boolean zlibHeader = false;
+                if (stream.markSupported()) { // should be always the case as the content is in a byte[] or in a file
+                    stream.mark(2);
+                    final byte[] buffer = new byte[2];
+                    stream.read(buffer, 0, 2);
+                    zlibHeader = (((buffer[0] & 0xff) << 8) | (buffer[1] & 0xff)) == 0x789c;
+                    stream.reset();
+                }
+                if (zlibHeader) {
+                    stream = new InflaterInputStream(stream);
+                }
+                else {
+                    stream = new InflaterInputStream(stream, new Inflater(true));
+                }
             }
         }
-        if (encoding != null && StringUtils.contains(encoding, "gzip")) {
-            stream = new GZIPInputStream(stream);
+        return stream;
+    }
+
+    private String getHeader(final List<NameValuePair> headers, final String name) {
+        for (final NameValuePair header : headers) {
+            final String headerName = header.getName().trim();
+            if (name.equalsIgnoreCase(headerName)) {
+                return header.getValue();
+            }
         }
-        else if (encoding != null && StringUtils.contains(encoding, "deflate")) {
-            stream = new InflaterInputStream(stream);
-        }
-        return IOUtils.toByteArray(stream);
+
+        return null;
     }
 
     /**
      * Returns the response body.
+     * This may cause memory problem for very large responses.
      * @return response body
      */
     public byte[] getBody() {
-        return body_;
+        try {
+            return IOUtils.toByteArray(getInputStream());
+        }
+        catch (final IOException e) {
+            throw new RuntimeException(e); // shouldn't we allow the method to throw IOException?
+        }
+    }
+
+    /**
+     * Returns a new {@link InputStream} allowing to read the downloaded content.
+     * @return the associated InputStream
+     * @throws IOException in case of IO problems
+     */
+    public InputStream getInputStream() throws IOException {
+        return getStream(downloadedContent_, getResponseHeaders());
     }
 
     /**
@@ -162,4 +177,10 @@ public class WebResponseData implements Serializable {
         return statusMessage_;
     }
 
+    /**
+     * Clean up the downloaded content.
+     */
+    public void cleanUp() {
+        downloadedContent_.cleanUp();
+    }
 }

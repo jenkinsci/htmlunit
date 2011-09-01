@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,81 +14,227 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.xml;
 
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.CHROME;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.FF24;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.FF31;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.IE11;
 
-import org.apache.commons.httpclient.NameValuePair;
+import java.net.URL;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
-import com.gargoylesoftware.htmlunit.MockWebConnection;
-import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
 import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Tests for {@link XMLDocument}.
  *
- * @version $Revision: 4768 $
+ * @version $Revision: 10568 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
+ * @author Chuck Dumont
+ * @author Frank Danek
+ * @author Ronald Brill
  */
 @RunWith(BrowserRunner.class)
-public class XMLDocumentTest extends WebTestCase {
+public class XMLDocumentTest extends WebDriverTestCase {
+
+    private static final String CREATE_XML_DOCUMENT_FUNCTION_NAME = "createXMLDocument";
+
+    /** Helper. */
+    public static final String CREATE_XML_DOCUMENT_FUNCTION = ""
+            + "  function " + CREATE_XML_DOCUMENT_FUNCTION_NAME + "() {\n"
+            + "    if (document.implementation && document.implementation.createDocument) {\n"
+            + "      return document.implementation.createDocument('', '', null);\n"
+            + "    } else if (window.ActiveXObject) {\n"
+            + "      return new ActiveXObject('Microsoft.XMLDOM');\n"
+            + "    }\n"
+            + "  }\n";
+
+    /** Helper. */
+    public static final String CREATE_NATIVE_XML_DOCUMENT_FUNCTION = ""
+            + "  function " + CREATE_XML_DOCUMENT_FUNCTION_NAME + "() {\n"
+            + "    return document.implementation.createDocument('', '', null);\n"
+            + "  }\n";
+
+    /** Helper. */
+    public static final String CREATE_ACTIVEX_XML_DOCUMENT_FUNCTION = ""
+            + "  function " + CREATE_XML_DOCUMENT_FUNCTION_NAME + "() {\n"
+            + "    return new ActiveXObject('Microsoft.XMLDOM');\n"
+            + "  }\n";
+
+    /**
+     * Helper.
+     * @return xml helper
+     */
+    public static String callCreateXMLDocument() {
+        return CREATE_XML_DOCUMENT_FUNCTION_NAME + "()";
+    }
+
+    private static final String LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION_NAME = "loadXMLDocumentFromFile";
+
+    /** Helper. */
+    public static final String LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION = ""
+            + "  function " + LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION_NAME + "(file) {\n"
+            + "    if (window.XMLHttpRequest) {\n"
+            + "      xhttp = new XMLHttpRequest();\n"
+            + "    } else {\n"
+            + "      xhttp = new ActiveXObject(\"Microsoft.XMLHTTP\");\n"
+            + "    }\n"
+            + "    xhttp.open(\"GET\", file, false);\n"
+            + "    xhttp.send();\n"
+            + "    return xhttp.responseXML;\n"
+            + "  }\n";
+
+    /** Helper. */
+    public static final String LOAD_NATIVE_XML_DOCUMENT_FROM_FILE_FUNCTION = ""
+            + "  function " + LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION_NAME + "(file) {\n"
+            + "    xhttp = new XMLHttpRequest();\n"
+            + "    xhttp.open(\"GET\", file, false);\n"
+            + "    xhttp.send();\n"
+            + "    return xhttp.responseXML;\n"
+            + "  }\n";
+
+    /** Helper. */
+    public static final String LOAD_ACTIVEX_XML_DOCUMENT_FROM_FILE_FUNCTION = ""
+            + "  function " + LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION_NAME + "(file) {\n"
+            + "    xhttp = new ActiveXObject(\"Microsoft.XMLHTTP\");\n"
+            + "    xhttp.open(\"GET\", file, false);\n"
+            + "    xhttp.send();\n"
+            + "    return xhttp.responseXML;\n"
+            + "  }\n";
+
+    /**
+     * Helper.
+     * @param file the file parameter
+     * @return xml helper
+     */
+    public static String callLoadXMLDocumentFromFile(final String file) {
+        return LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION_NAME + "(" + file + ")";
+    }
+
+    private static final String LOAD_XML_DOCUMENT_FROM_STRING_FUNCTION_NAME = "loadXMLDocumentFromString";
+
+    /** Helper. */
+    public static final String LOAD_XML_DOCUMENT_FROM_STRING_FUNCTION = ""
+            + "  function " + LOAD_XML_DOCUMENT_FROM_STRING_FUNCTION_NAME + "(xml) {\n"
+            + "    if (window.DOMParser) {\n"
+            + "      parser = new DOMParser();\n"
+            + "      return parser.parseFromString(xml,\"text/xml\");\n"
+            + "    } else {\n"
+            + "      xmlDoc = new ActiveXObject(\"Microsoft.XMLDOM\");\n"
+            + "      xmlDoc.async = false;\n"
+            + "      xmlDoc.loadXML(xml);\n"
+            + "      return xmlDoc;"
+            + "    }\n"
+            + "  }\n";
+
+    /** Helper. */
+    public static final String LOAD_NATIVE_XML_DOCUMENT_FROM_STRING_FUNCTION = ""
+            + "  function " + LOAD_XML_DOCUMENT_FROM_STRING_FUNCTION_NAME + "(xml) {\n"
+            + "    parser = new DOMParser();\n"
+            + "    return parser.parseFromString(xml,\"text/xml\");\n"
+            + "  }\n";
+
+    /** Helper. */
+    public static final String LOAD_ACTIVEX_XML_DOCUMENT_FROM_STRING_FUNCTION = ""
+            + "  function " + LOAD_XML_DOCUMENT_FROM_STRING_FUNCTION_NAME + "(xml) {\n"
+            + "    xmlDoc = new ActiveXObject(\"Microsoft.XMLDOM\");\n"
+            + "    xmlDoc.async = false;\n"
+            + "    xmlDoc.loadXML(xml);\n"
+            + "    return xmlDoc;"
+            + "  }\n";
+
+    /**
+     * Helper.
+     * @param string the parameter
+     * @return xml helper
+     */
+    public static String callLoadXMLDocumentFromString(final String string) {
+        return LOAD_XML_DOCUMENT_FROM_STRING_FUNCTION_NAME + "(" + string + ")";
+    }
+
+    private static final String SERIALIZE_XML_DOCUMENT_TO_STRING_FUNCTION_NAME = "serializeXMLDocumentToString";
+
+    /** Helper. */
+    public static final String SERIALIZE_XML_DOCUMENT_TO_STRING_FUNCTION = ""
+            + "  function " + SERIALIZE_XML_DOCUMENT_TO_STRING_FUNCTION_NAME + "(doc) {\n"
+            + "    if (window.XMLSerializer) {\n"
+            + "      serializer = new XMLSerializer();\n"
+            + "      return serializer.serializeToString(doc);\n"
+            + "    } else {\n"
+            + "      return doc.xml;\n"
+            + "    }\n"
+            + "  }\n";
+
+    /** Helper. */
+    public static final String SERIALIZE_NATIVE_XML_DOCUMENT_TO_STRING_FUNCTION = ""
+            + "  function " + SERIALIZE_XML_DOCUMENT_TO_STRING_FUNCTION_NAME + "(doc) {\n"
+            + "    serializer = new XMLSerializer();\n"
+            + "    return serializer.serializeToString(doc);\n"
+            + "  }\n";
+
+    /** Helper. */
+    public static final String SERIALIZE_ACTIVEX_XML_DOCUMENT_TO_STRING_FUNCTION = ""
+            + "  function " + SERIALIZE_XML_DOCUMENT_TO_STRING_FUNCTION_NAME + "(doc) {\n"
+            + "    return doc.xml;\n"
+            + "  }\n";
+
+    /**
+     * Helper.
+     * @param doc the doc parameter
+     * @return xml helper
+     */
+    public static String callSerializeXMLDocumentToString(final String doc) {
+        return SERIALIZE_XML_DOCUMENT_TO_STRING_FUNCTION_NAME + "(" + doc + ")";
+    }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts({ "undefined", "true" })
+    @Alerts(DEFAULT = { "undefined", "true" },
+            CHROME = { "undefined", "undefined" },
+            IE11 = { "undefined", "undefined" })
     public void async() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
-            + "    var doc = createXmlDocument();\n"
+            + "    var doc = " + callCreateXMLDocument() + ";\n"
             + "    alert(document.async);\n"
             + "    alert(doc.async);\n"
             + "  }\n"
-            + "  function createXmlDocument() {\n"
-            + "    if (document.implementation && document.implementation.createDocument)\n"
-            + "      return document.implementation.createDocument('', '', null);\n"
-            + "    else if (window.ActiveXObject)\n"
-            + "      return new ActiveXObject('Microsoft.XMLDOM');\n"
-            + "  }\n"
+            + CREATE_XML_DOCUMENT_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = { "true", "books", "books", "1", "book", "0" }, FF = { "true", "books", "books", "3", "#text", "0" })
+    @Alerts(FF = { "true", "books", "books", "3", "#text", "0" },
+            IE = { "true", "books", "books", "1", "book", "0" },
+            CHROME = "exception",
+            IE11 = "exception")
     public void load() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
-            + "    var doc = createXmlDocument();\n"
+            + "    var doc = " + callCreateXMLDocument() + ";\n"
             + "    doc.async = false;\n"
-            + "    alert(doc.load('" + URL_SECOND + "'));\n"
-            + "    alert(doc.documentElement.nodeName);\n"
-            + "    alert(doc.childNodes[0].nodeName);\n"
-            + "    alert(doc.childNodes[0].childNodes.length);\n"
-            + "    alert(doc.childNodes[0].childNodes[0].nodeName);\n"
-            + "    alert(doc.getElementsByTagName('books').item(0).attributes.length);\n"
+            + "    try {\n"
+            + "      alert(doc.load('" + URL_SECOND + "'));\n"
+            + "      alert(doc.documentElement.nodeName);\n"
+            + "      alert(doc.childNodes[0].nodeName);\n"
+            + "      alert(doc.childNodes[0].childNodes.length);\n"
+            + "      alert(doc.childNodes[0].childNodes[0].nodeName);\n"
+            + "      alert(doc.getElementsByTagName('books').item(0).attributes.length);\n"
+            + "    } catch(e) { alert('exception'); }\n"
             + "  }\n"
-            + "  function createXmlDocument() {\n"
-            + "    if (document.implementation && document.implementation.createDocument)\n"
-            + "      return document.implementation.createDocument('', '', null);\n"
-            + "    else if (window.ActiveXObject)\n"
-            + "      return new ActiveXObject('Microsoft.XMLDOM');\n"
-            + "  }\n"
+            + CREATE_XML_DOCUMENT_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
@@ -100,40 +246,34 @@ public class XMLDocumentTest extends WebTestCase {
             + "  </book>\n"
             + "</books>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final WebClient client = getWebClient();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, xml, "text/xml");
-        client.setWebConnection(conn);
-
-        client.getPage(URL_FIRST);
-        assertEquals(getExpectedAlerts(), collectedAlerts);
+        getMockWebConnection().setResponse(URL_SECOND, xml, "text/xml");
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = { "true", "books", "books", "1", "book" }, FF = { "true", "books", "books", "3", "#text" })
+    @Alerts(FF = { "true", "books", "books", "3", "#text", "0" },
+            IE = { "true", "books", "books", "1", "book", "0" },
+            CHROME = "exception",
+            IE11 = "exception")
+    // TODO what is the difference to load()?
     public void load_relativeURL() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
-            + "    var doc = createXmlDocument();\n"
+            + "    var doc = " + callCreateXMLDocument() + ";\n"
             + "    doc.async = false;\n"
-            + "    alert(doc.load('" + URL_SECOND + "'));\n"
-            + "    alert(doc.documentElement.nodeName);\n"
-            + "    alert(doc.childNodes[0].nodeName);\n"
-            + "    alert(doc.childNodes[0].childNodes.length);\n"
-            + "    alert(doc.childNodes[0].childNodes[0].nodeName);\n"
+            + "    try {\n"
+            + "      alert(doc.load('" + URL_SECOND + "'));\n"
+            + "      alert(doc.documentElement.nodeName);\n"
+            + "      alert(doc.childNodes[0].nodeName);\n"
+            + "      alert(doc.childNodes[0].childNodes.length);\n"
+            + "      alert(doc.childNodes[0].childNodes[0].nodeName);\n"
+            + "      alert(doc.getElementsByTagName('books').item(0).attributes.length);\n"
+            + "    } catch(e) { alert('exception'); }\n"
             + "  }\n"
-            + "  function createXmlDocument() {\n"
-            + "    if (document.implementation && document.implementation.createDocument)\n"
-            + "      return document.implementation.createDocument('', '', null);\n"
-            + "    else if (window.ActiveXObject)\n"
-            + "      return new ActiveXObject('Microsoft.XMLDOM');\n"
-            + "  }\n"
+            + CREATE_XML_DOCUMENT_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
@@ -145,75 +285,68 @@ public class XMLDocumentTest extends WebTestCase {
             + "  </book>\n"
             + "</books>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final WebClient client = getWebClient();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, xml, "text/xml");
-        client.setWebConnection(conn);
-
-        client.getPage(URL_FIRST);
-        assertEquals(getExpectedAlerts(), collectedAlerts);
+        getMockWebConnection().setResponse(URL_SECOND, xml, "text/xml");
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.IE)
-    @Alerts("false")
+    @Alerts(DEFAULT = "undefined",
+            IE8 = "false")
     public void preserveWhiteSpace() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
-            + "    var doc = new ActiveXObject('MSXML2.DOMDocument');\n"
-            + "    alert(doc.preserveWhiteSpace);\n"
+            + "    try {\n"
+            + "      var doc = " + callCreateXMLDocument() + ";\n"
+            + "      alert(doc.preserveWhiteSpace);\n"
+            + "    } catch(e) { alert('exception'); }\n"
             + "  }\n"
+            + CREATE_XML_DOCUMENT_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.IE)
-    @Alerts()
+    @Alerts(DEFAULT = "exception",
+            IE8 = "")
     public void setProperty() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
-            + "    var doc = new ActiveXObject('MSXML2.DOMDocument');\n"
-            + "    doc.setProperty('SelectionNamespaces', \"xmlns:xsl='http://www.w3.org/1999/XSL/Transform'\");\n"
-            + "    doc.setProperty('SelectionLanguage', 'XPath');\n"
+            + "    var doc = " + callCreateXMLDocument() + ";\n"
+            + "    try {\n"
+            + "      doc.setProperty('SelectionNamespaces', \"xmlns:xsl='http://www.w3.org/1999/XSL/Transform'\");\n"
+            + "      doc.setProperty('SelectionLanguage', 'XPath');\n"
+            + "    } catch(e) { alert('exception'); }\n"
             + "  }\n"
+            + CREATE_XML_DOCUMENT_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.IE)
-    @Alerts({ "true", "1", "books" })
+    @Alerts(DEFAULT = { "exception" },
+            IE8 = { "1", "books" })
     public void selectNodes() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
-            + "    var doc = createXmlDocument();\n"
-            + "    doc.async = false;\n"
-            + "    alert(doc.load('" + URL_SECOND + "'));\n"
-            + "    var nodes = doc.selectNodes('/books');\n"
-            + "    alert(nodes.length);\n"
-            + "    alert(nodes[0].tagName);\n"
+            + "    var doc = " + callLoadXMLDocumentFromFile("'" + URL_SECOND + "'") + ";\n"
+            + "    try {\n"
+            + "      var nodes = doc.selectNodes('/books');\n"
+            + "      alert(nodes.length);\n"
+            + "      alert(nodes[0].tagName);\n"
+            + "    } catch(e) { alert('exception'); }\n"
             + "  }\n"
-            + "  function createXmlDocument() {\n"
-            + "    if (document.implementation && document.implementation.createDocument)\n"
-            + "      return document.implementation.createDocument('', '', null);\n"
-            + "    else if (window.ActiveXObject)\n"
-            + "      return new ActiveXObject('Microsoft.XMLDOM');\n"
-            + "  }\n"
+            + LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
@@ -225,39 +358,26 @@ public class XMLDocumentTest extends WebTestCase {
             + "  </book>\n"
             + "</books>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final WebClient client = getWebClient();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, xml, "text/xml");
-        client.setWebConnection(conn);
-
-        client.getPage(URL_FIRST);
-        assertEquals(getExpectedAlerts(), collectedAlerts);
+        getMockWebConnection().setResponse(URL_SECOND, xml, "text/xml");
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.IE)
-    @Alerts({ "0", "1" })
+    @Alerts(DEFAULT = "exception",
+            IE8 = { "0", "1" })
     public void selectNodes_caseSensitive() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
-            + "    var doc = createXmlDocument();\n"
-            + "    doc.async = false;\n"
-            + "    doc.load('" + URL_SECOND + "');\n"
-            + "    alert(doc.selectNodes('/bOoKs').length);\n"
-            + "    alert(doc.selectNodes('/books').length);\n"
+            + "    var doc = " + callLoadXMLDocumentFromFile("'" + URL_SECOND + "'") + ";\n"
+            + "    try {\n"
+            + "      alert(doc.selectNodes('/bOoKs').length);\n"
+            + "      alert(doc.selectNodes('/books').length);\n"
+            + "    } catch(e) { alert('exception'); }\n"
             + "  }\n"
-            + "  function createXmlDocument() {\n"
-            + "    if (document.implementation && document.implementation.createDocument)\n"
-            + "      return document.implementation.createDocument('', '', null);\n"
-            + "    else if (window.ActiveXObject)\n"
-            + "      return new ActiveXObject('Microsoft.XMLDOM');\n"
-            + "  }\n"
+            + LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
@@ -269,39 +389,26 @@ public class XMLDocumentTest extends WebTestCase {
             + "  </book>\n"
             + "</books>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final WebClient client = getWebClient();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, xml, "text/xml");
-        client.setWebConnection(conn);
-
-        client.getPage(URL_FIRST);
-        assertEquals(getExpectedAlerts(), collectedAlerts);
+        getMockWebConnection().setResponse(URL_SECOND, xml, "text/xml");
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.IE)
-    @Alerts({ "true", "2", "1" })
-    public void selectNodes_Namespace() throws Exception {
+    @Alerts(DEFAULT = { "exception" },
+            IE8 = { "2", "1" })
+    public void selectNodes_namespace() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
-            + "    var doc = createXmlDocument();\n"
-            + "    doc.async = false;\n"
-            + "    alert(doc.load('" + URL_SECOND + "'));\n"
-            + "    alert(doc.selectNodes('//ns1:title').length)\n"
-            + "    alert(doc.selectNodes('//ns2:title').length)\n"
+            + "    var doc = " + callLoadXMLDocumentFromFile("'" + URL_SECOND + "'") + ";\n"
+            + "    try {\n"
+            + "      alert(doc.selectNodes('//ns1:title').length);\n"
+            + "      alert(doc.selectNodes('//ns2:title').length);\n"
+            + "    } catch(e) { alert('exception'); }\n"
             + "  }\n"
-            + "  function createXmlDocument() {\n"
-            + "    if (document.implementation && document.implementation.createDocument)\n"
-            + "      return document.implementation.createDocument('', '', null);\n"
-            + "    else if (window.ActiveXObject)\n"
-            + "      return new ActiveXObject('Microsoft.XMLDOM');\n"
-            + "  }\n"
+            + LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
         final String xml
@@ -320,37 +427,30 @@ public class XMLDocumentTest extends WebTestCase {
             + "  </ns1:book>\n"
             + "</ns1:books>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final WebClient client = getWebClient();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, xml, "text/xml");
-        client.setWebConnection(conn);
-
-        client.getPage(URL_FIRST);
-        assertEquals(getExpectedAlerts(), collectedAlerts);
+        getMockWebConnection().setResponse(URL_SECOND, xml, "text/xml");
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.IE)
-    @Alerts({ "book", "null", "book", "null" })
+    @Alerts(DEFAULT = "exception",
+            IE8 = { "book", "null", "book", "null" })
     public void selectNodes_nextNodeAndReset() throws Exception {
         final String html = "<html><head><script>\n"
             + "  function test() {\n"
-            + "    var doc = new ActiveXObject('Microsoft.XMLDOM');;\n"
-            + "    doc.async = false;\n"
-            + "    doc.load('" + URL_SECOND + "');\n"
-            + "    var nodes = doc.selectNodes('//book');\n"
-            + "    alert(nodes.nextNode().nodeName);\n"
-            + "    alert(nodes.nextNode());\n"
-            + "    nodes.reset();\n"
-            + "    alert(nodes.nextNode().nodeName);\n"
-            + "    alert(nodes.nextNode());\n"
+            + "    try {\n"
+            + "      var doc = " + callLoadXMLDocumentFromFile("'" + URL_SECOND + "'") + ";\n"
+            + "      var nodes = doc.selectNodes('//book');\n"
+            + "      alert(nodes.nextNode().nodeName);\n"
+            + "      alert(nodes.nextNode());\n"
+            + "      nodes.reset();\n"
+            + "      alert(nodes.nextNode().nodeName);\n"
+            + "      alert(nodes.nextNode());\n"
+            + "    } catch(e) { alert('exception'); }\n"
             + "  }\n"
+            + LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION
             + "</script></head><body onload='test()'>foo</body></html>";
 
         final String xml
@@ -361,41 +461,66 @@ public class XMLDocumentTest extends WebTestCase {
             + "  </book>\n"
             + "</books>";
 
-        final WebClient client = getWebClient();
+        getMockWebConnection().setResponse(URL_SECOND, xml, "text/xml");
+        loadPageWithAlerts2(html);
+    }
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
+    /**
+     * Test that element.selectNodes("/tagName") searches from root of the tree, not from that specific element.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "book", "exception /title, exception title" },
+            IE8 = { "book", "0", "1" })
+    // IE11 works only if running alone
+    public void selectNodes_fromRoot() throws Exception {
+        final String html = "<html><head><script>\n"
+            + "  function test() {\n"
+            + "    try {\n"
+            + "      var doc = " + callLoadXMLDocumentFromFile("'" + URL_SECOND + "'") + ";\n"
+            + "      var child = doc.documentElement.firstChild;\n"
+            + "      alert(child.tagName);\n"
 
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, xml, "text/xml");
-        client.setWebConnection(conn);
+            + "      try {\n"
+            + "        alert(child.selectNodes('/title').length);\n"
+            + "      } catch(e) { alert('exception /title'); }\n"
 
-        client.getPage(URL_FIRST);
-        assertEquals(getExpectedAlerts(), collectedAlerts);
+            + "      try {\n"
+            + "        alert(child.selectNodes('title').length);\n"
+            + "      } catch(e) { alert('exception title'); }\n"
+            + "    } catch(e) { alert('exception'); }\n"
+            + "  }\n"
+            + LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION
+            + "</script></head><body onload='test()'>foo</body></html>";
+
+        final String xml = "<books><book><title>Immortality</title><author>John Smith</author></book></books>";
+
+        getMockWebConnection().setResponse(URL_SECOND, xml, "text/xml");
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.IE)
-    @Alerts({ "book", "#document", "book", "#document" })
+    @Alerts(DEFAULT = "exception",
+            IE8 = { "book", "#document", "book", "#document" })
     public void selectSingleNode() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
             + "    var text='<book/>';\n"
-            + "    var doc=new ActiveXObject('Microsoft.XMLDOM');\n"
-            + "    doc.async=false;\n"
-            + "    doc.loadXML(text);\n"
-            + "    alert(doc.selectNodes('*')[0].nodeName);\n"
-            + "    alert(doc.selectNodes('/')[0].nodeName);\n"
-            + "    alert(doc.selectSingleNode('*').nodeName);\n"
-            + "    alert(doc.selectNodes('*')[0].selectSingleNode('/').nodeName);\n"
+            + "    try {\n"
+            + "      var doc = " + callLoadXMLDocumentFromString("text") + ";\n"
+            + "      alert(doc.selectNodes('*')[0].nodeName);\n"
+            + "      alert(doc.selectNodes('/')[0].nodeName);\n"
+            + "      alert(doc.selectSingleNode('*').nodeName);\n"
+            + "      alert(doc.selectNodes('*')[0].selectSingleNode('/').nodeName);\n"
+            + "    } catch(e) { alert('exception'); }\n"
             + "  }\n"
+            + LOAD_XML_DOCUMENT_FROM_STRING_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -407,30 +532,23 @@ public class XMLDocumentTest extends WebTestCase {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
             + "    var text='<someprefix:test xmlns:someprefix=\"http://myNS\"/>';\n"
-            + "    if (window.ActiveXObject) {\n"
-            + "      var doc=new ActiveXObject('Microsoft.XMLDOM');\n"
-            + "      doc.async=false;\n"
-            + "      doc.loadXML(text);\n"
-            + "    } else {\n"
-            + "      var parser=new DOMParser();\n"
-            + "      var doc=parser.parseFromString(text,'text/xml');\n"
-            + "    }\n"
+            + "    var doc = " + callLoadXMLDocumentFromString("text") + ";\n"
             + "    alert(doc.documentElement.tagName);\n"
             + "  }\n"
+            + LOAD_XML_DOCUMENT_FROM_STRING_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * Tests "xml:space" attribute.
      *
-     * Xalan team response:
-     * <quote>See the DOM Level 3 recommendation for discussion of this. XPath returns the start of the XPath text node,
+     * Xalan team response:<br>
+     * "See the DOM Level 3 recommendation for discussion of this. XPath returns the start of the XPath text node,
      * which spans multiple DOM nodes. It is the DOM user's responsibility to gather the additional nodes,
-     * either manually or by retrieving wholeText rather than value.
-     *
-     * This is unavoidable since DOM and XPath define the concept of "node" differently.</quote>
+     * either manually or by retrieving wholeText rather than value.<br>
+     * This is unavoidable since DOM and XPath define the concept of "node" differently."
      *
      * @throws Exception if the test fails
      */
@@ -441,51 +559,46 @@ public class XMLDocumentTest extends WebTestCase {
             + "  function test() {\n"
             + "    var text='<root xml:space=\\'preserve\\'>This t"
             + "<elem>ext has</elem> <![CDATA[ CDATA ]]>in<elem /> it</root>';\n"
-            + "    if (window.ActiveXObject) {\n"
-            + "      var doc=new ActiveXObject('Microsoft.XMLDOM');\n"
-            + "      doc.async=false;\n"
-            + "      doc.loadXML(text);\n"
-            + "    } else {\n"
-            + "      var parser=new DOMParser();\n"
-            + "      var doc=parser.parseFromString(text,'text/xml');\n"
-            + "    }\n"
+            + "    var doc = " + callLoadXMLDocumentFromString("text") + ";\n"
             + "    alert(doc.documentElement.childNodes.length);\n"
             + "  }\n"
+            + LOAD_XML_DOCUMENT_FROM_STRING_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.IE)
-    @Alerts({ "true", "true", "true", "true", "true", "true", "true", "true",
-            "false",
-            "true", "true", "true", "true", "true", "true", "true", "true" })
+    @Alerts(DEFAULT = "exception",
+            IE = { "true", "true", "true", "true", "true", "true", "true", "true",
+            "false", "true", "true", "true", "true", "true", "true", "true", "true" })
     public void testParseError() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
-            + "    var doc = new ActiveXObject('Microsoft.XMLDOM');\n"
-            + "    alert(doc.documentElement == null);\n"
-            + "    alert(doc.parseError.errorCode === 0);\n"
-            + "    alert(doc.parseError.filepos === 0);\n"
-            + "    alert(doc.parseError.line === 0);\n"
-            + "    alert(doc.parseError.linepos === 0);\n"
-            + "    alert(doc.parseError.reason === '');\n"
-            + "    alert(doc.parseError.srcText === '');\n"
-            + "    alert(doc.parseError.url === '');\n"
-            + "    doc.async = false;\n"
-            + "    alert(doc.load('" + URL_SECOND + "'));\n"
-            + "    alert(doc.documentElement == null);\n"
-            + "    alert(doc.parseError.errorCode !== 0);\n"
-            + "    alert(doc.parseError.filepos !== 0);\n"
-            + "    alert(doc.parseError.line !== 0);\n"
-            + "    alert(doc.parseError.linepos !== 0);\n"
-            + "    alert(doc.parseError.reason !== '');\n"
-            + "    alert(doc.parseError.srcText !== '');\n"
-            + "    alert(doc.parseError.url !== '');\n"
+            + "    try {\n"
+            + "      var doc = new ActiveXObject('Microsoft.XMLDOM');\n"
+            + "      alert(doc.documentElement == null);\n"
+            + "      alert(doc.parseError.errorCode === 0);\n"
+            + "      alert(doc.parseError.filepos === 0);\n"
+            + "      alert(doc.parseError.line === 0);\n"
+            + "      alert(doc.parseError.linepos === 0);\n"
+            + "      alert(doc.parseError.reason === '');\n"
+            + "      alert(doc.parseError.srcText === '');\n"
+            + "      alert(doc.parseError.url === '');\n"
+            + "      doc.async = false;\n"
+            + "      alert(doc.load('" + URL_SECOND + "'));\n"
+            + "      alert(doc.documentElement == null);\n"
+            + "      alert(doc.parseError.errorCode !== 0);\n"
+            + "      alert(doc.parseError.filepos !== 0);\n"
+            + "      alert(doc.parseError.line !== 0);\n"
+            + "      alert(doc.parseError.linepos !== 0);\n"
+            + "      alert(doc.parseError.reason !== '');\n"
+            + "      alert(doc.parseError.srcText !== '');\n"
+            + "      alert(doc.parseError.url !== '');\n"
+            + "    } catch(e) { alert('exception'); }\n"
             + "  }\n"
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
@@ -495,24 +608,16 @@ public class XMLDocumentTest extends WebTestCase {
             + "  <element>\n"
             + "</root>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final WebClient client = getWebClient();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, xml, "text/xml");
-        client.setWebConnection(conn);
-
-        client.getPage(URL_FIRST);
-        assertEquals(getExpectedAlerts(), collectedAlerts);
+        getMockWebConnection().setResponse(URL_SECOND, xml, "text/xml");
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.FF)
-    @Alerts("http://myNS")
+    @Alerts(DEFAULT = "http://myNS",
+            IE = { })
     public void createNSResolver() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
@@ -525,72 +630,29 @@ public class XMLDocumentTest extends WebTestCase {
             + "    text += '  </html>\\n';\n"
             + "    text += '  </xsl:template>\\n';\n"
             + "    text += '</xsl:stylesheet>';\n"
-            + "    if (window.ActiveXObject) {\n"
-            + "      var doc=new ActiveXObject('Microsoft.XMLDOM');\n"
-            + "      doc.async=false;\n"
-            + "      doc.loadXML(text);\n"
-            + "    } else {\n"
-            + "      var parser=new DOMParser();\n"
-            + "      var doc=parser.parseFromString(text,'text/xml');\n"
+            + "    var doc = " + callLoadXMLDocumentFromString("text") + ";\n"
+            + "    if (doc.createNSResolver) {\n"
+            + "      alert(doc.createNSResolver(doc.documentElement).lookupNamespaceURI('xsl'));\n"
             + "    }\n"
-            + "    alert(doc.createNSResolver(doc.documentElement).lookupNamespaceURI('xsl'));\n"
             + "  }\n"
+            + LOAD_XML_DOCUMENT_FROM_STRING_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts({ "1610", "1575", "32", "1604", "1610", "1610", "1610", "1610", "1610", "1610", "1604" })
-    public void load_Encoding() throws Exception {
-        final String html = "<html><head><title>foo</title><script>\n"
-            + "  function test() {\n"
-            + "    var doc = createXmlDocument();\n"
-            + "    doc.async = false;\n"
-            + "    doc.load('" + URL_SECOND + "');\n"
-            + "    var value = doc.documentElement.firstChild.nodeValue;\n"
-            + "    for (var i=0; i < value.length; i++ ) {\n"
-            + "      alert(value.charCodeAt(i));\n"
-            + "    }\n"
-            + "  }\n"
-            + "  function createXmlDocument() {\n"
-            + "    if (document.implementation && document.implementation.createDocument)\n"
-            + "      return document.implementation.createDocument('', '', null);\n"
-            + "    else if (window.ActiveXObject)\n"
-            + "      return new ActiveXObject('Microsoft.XMLDOM');\n"
-            + "  }\n"
-            + "</script></head><body onload='test()'>\n"
-            + "</body></html>";
-
-        final String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-            + "<something>\u064A\u0627 \u0644\u064A\u064A\u064A\u064A\u064A\u064A\u0644</something>";
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final WebClient client = getWebClient();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        final List< ? extends NameValuePair> emptyList = Collections.emptyList();
-        conn.setResponse(URL_SECOND, xml.getBytes("UTF-8"), 200, "OK", "text/xml", emptyList);
-        client.setWebConnection(conn);
-
-        client.getPage(URL_FIRST);
-        assertEquals(getExpectedAlerts(), collectedAlerts);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    @Browsers(Browser.IE)
-    @Alerts("columns")
+    @Alerts(DEFAULT = "exception",
+            IE8 = "columns")
     public void xmlInsideHtml() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
-            + "    alert(messageTableHeaders.documentElement.nodeName);\n"
+            + "    try {\n"
+            + "      alert(messageTableHeaders.documentElement.nodeName);\n"
+            + "    } catch(e) {alert('exception'); }\n"
             + "  }\n"
             + "</script>\n"
             + "</head>\n"
@@ -602,21 +664,24 @@ public class XMLDocumentTest extends WebTestCase {
             + "    </columns>\n"
             + "  </xml>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.FF)
-    @Alerts("true")
+    @Alerts(DEFAULT = "true",
+            IE8 = "exception")
     public void instanceOf() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
-            + "    var x = (new DOMParser()).parseFromString('<x/>','text/xml');\n"
-            + "    alert(x instanceof XMLDocument);;\n"
+            + "    var x = " + callLoadXMLDocumentFromString("'<x/>'") + ";\n"
+            + "    try {\n"
+            + "      alert(x instanceof XMLDocument);\n"
+            + "    }catch(e) {alert('exception')}\n"
             + "  }\n"
+            + LOAD_XML_DOCUMENT_FROM_STRING_FUNCTION
             + "</script>\n"
             + "</head>\n"
             + "<body onload='test()'>\n"
@@ -627,26 +692,29 @@ public class XMLDocumentTest extends WebTestCase {
             + "    </columns>\n"
             + "  </xml>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.FF)
-    @Alerts("button")
+    @Alerts(DEFAULT = "button",
+            IE = { })
     public void evaluate() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
             + "    var s = '<toolbar><button id=\"compose_button\"/></toolbar>';\n"
-            + "    var xDoc = (new DOMParser()).parseFromString(s,'text/xml');\n"
-            + "    var r = xDoc.evaluate(\"button[@id='compose_button']\", xDoc.firstChild, null, 9, null);\n"
-            + "    alert(r.singleNodeValue.tagName);\n"
+            + "    var xDoc = " + callLoadXMLDocumentFromString("s") + ";\n"
+            + "    if (xDoc.evaluate) {\n"
+            + "      var r = xDoc.evaluate(\"button[@id='compose_button']\", xDoc.firstChild, null, 9, null);\n"
+            + "      alert(r.singleNodeValue.tagName);\n"
+            + "    }\n"
             + "  }\n"
+            + LOAD_XML_DOCUMENT_FROM_STRING_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -660,81 +728,61 @@ public class XMLDocumentTest extends WebTestCase {
     public void moveChildBetweenDocuments() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "function test() {\n"
-            + "  var doc1 = loadXmlDocument();\n"
-            + "  var doc2 = loadXmlDocument();\n"
+            + "  var doc1 = " + callLoadXMLDocumentFromFile("'foo.xml'") + ";\n"
+            + "  var doc2 = " + callLoadXMLDocumentFromFile("'foo.xml'") + ";\n"
             + "  alert('same doc: ' + (doc1 == doc2));\n"
             + "  var doc1Root = doc1.firstChild;\n"
-            + "  alert('in first: ' + doc1Root.childNodes.length)\n"
-            + "  var doc1RootOriginalFirstChild = doc1Root.firstChild\n"
-            + "  alert(doc1RootOriginalFirstChild.tagName)\n"
-            + "  alert('ownerDocument: ' + (doc1RootOriginalFirstChild.ownerDocument == doc1 ? 'doc1' : 'doc2'))\n"
+            + "  alert('in first: ' + doc1Root.childNodes.length);\n"
+            + "  var doc1RootOriginalFirstChild = doc1Root.firstChild;\n"
+            + "  alert(doc1RootOriginalFirstChild.tagName);\n"
+            + "  alert('ownerDocument: ' + (doc1RootOriginalFirstChild.ownerDocument == doc1 ? 'doc1' : 'doc2'));\n"
             + "\n"
             + "  var doc2Root = doc2.firstChild;\n"
-            + "  alert('in 2nd: ' + doc2Root.childNodes.length)\n"
-            + "  doc2Root.appendChild(doc1RootOriginalFirstChild)\n"
-            + "  alert('ownerDocument: ' + (doc1RootOriginalFirstChild.ownerDocument == doc1 ? 'doc1' : 'doc2'))\n"
+            + "  alert('in 2nd: ' + doc2Root.childNodes.length);\n"
+            + "  doc2Root.appendChild(doc1RootOriginalFirstChild);\n"
+            + "  alert('ownerDocument: ' + (doc1RootOriginalFirstChild.ownerDocument == doc1 ? 'doc1' : 'doc2'));\n"
             + "  alert('first child ownerDocument: ' + "
-            + "(doc1RootOriginalFirstChild.firstChild.ownerDocument == doc1 ? 'doc1' : 'doc2'))\n"
-            + "  alert('in first: ' + doc1Root.childNodes.length)\n"
-            + "  alert('in 2nd: ' + doc2Root.childNodes.length)\n"
+            + "(doc1RootOriginalFirstChild.firstChild.ownerDocument == doc1 ? 'doc1' : 'doc2'));\n"
+            + "  alert('in first: ' + doc1Root.childNodes.length);\n"
+            + "  alert('in 2nd: ' + doc2Root.childNodes.length);\n"
             + "\n"
             + "  doc1Root.replaceChild(doc1RootOriginalFirstChild, doc1Root.firstChild);\n"
-            + "  alert('ownerDocument: ' + (doc1RootOriginalFirstChild.ownerDocument == doc1 ? 'doc1' : 'doc2'))\n"
-            + "  alert('in first: ' + doc1Root.childNodes.length)\n"
-            + "  alert('in 2nd: ' + doc2Root.childNodes.length)\n"
+            + "  alert('ownerDocument: ' + (doc1RootOriginalFirstChild.ownerDocument == doc1 ? 'doc1' : 'doc2'));\n"
+            + "  alert('in first: ' + doc1Root.childNodes.length);\n"
+            + "  alert('in 2nd: ' + doc2Root.childNodes.length);\n"
             + "\n"
             + "  doc2Root.insertBefore(doc1RootOriginalFirstChild, doc2Root.firstChild);\n"
-            + "  alert('ownerDocument: ' + (doc1RootOriginalFirstChild.ownerDocument == doc1 ? 'doc1' : 'doc2'))\n"
-            + "  alert('in first: ' + doc1Root.childNodes.length)\n"
-            + "  alert('in 2nd: ' + doc2Root.childNodes.length)\n"
+            + "  alert('ownerDocument: ' + (doc1RootOriginalFirstChild.ownerDocument == doc1 ? 'doc1' : 'doc2'));\n"
+            + "  alert('in first: ' + doc1Root.childNodes.length);\n"
+            + "  alert('in 2nd: ' + doc2Root.childNodes.length);\n"
             + "\n"
             + "}\n"
-            + "function loadXmlDocument() {\n"
-            + " var doc;\n"
-            + " if (document.implementation && document.implementation.createDocument)\n"
-            + "   doc = document.implementation.createDocument('', '', null);\n"
-            + " else if (window.ActiveXObject)\n"
-            + "   doc = new ActiveXObject('Microsoft.XMLDOM');\n"
-            + " doc.async = false;\n"
-            + " doc.load('foo.xml');\n"
-            + " return doc\n"
-            + "}\n"
+            + LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
         final String xml = "<order><book><title/></book><cd/><dvd/></order>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final WebClient client = getWebClient();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setResponse(new URL(URL_FIRST + "foo.xml"), xml, "text/xml");
-        client.setWebConnection(conn);
-
-        client.getPage(URL_FIRST);
-        assertEquals(getExpectedAlerts(), collectedAlerts);
+        getMockWebConnection().setResponse(new URL(URL_FIRST + "foo.xml"), xml, "text/xml");
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts("1")
+    @Alerts({ "1", "0", "1", "0" })
     public void getElementsByTagName() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
-            + "    var doc = createXmlDocument();\n"
-            + "    doc.async = false;\n"
-            + "    doc.load('" + URL_SECOND + "');\n"
+            + "    var doc = " + callLoadXMLDocumentFromFile("'" + URL_SECOND + "'") + ";\n"
             + "    alert(doc.getElementsByTagName('book').length);\n"
+            + "    alert(doc.getElementsByTagName('soap:book').length);\n"
+            + "    var elem = doc.getElementsByTagName('book')[0];\n"
+            + "    alert(elem.getElementsByTagName('title').length);\n"
+            + "    alert(elem.getElementsByTagName('soap:title').length);\n"
             + "  }\n"
-            + "  function createXmlDocument() {\n"
-            + "    if (document.implementation && document.implementation.createDocument)\n"
-            + "      return document.implementation.createDocument('', '', null);\n"
-            + "    else if (window.ActiveXObject)\n"
-            + "      return new ActiveXObject('Microsoft.XMLDOM');\n"
-            + "  }\n"
+            + LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
@@ -748,42 +796,199 @@ public class XMLDocumentTest extends WebTestCase {
             + "  </books>\n"
             + "</soap:Envelope>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final WebClient client = getWebClient();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, xml, "text/xml");
-        client.setWebConnection(conn);
-
-        client.getPage(URL_FIRST);
-        assertEquals(getExpectedAlerts(), collectedAlerts);
+        getMockWebConnection().setResponse(URL_SECOND, xml, "text/xml");
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = "1", FF = "0")
-    @NotYetImplemented(Browser.IE)
+    @Alerts(DEFAULT = { "0", "1", "0", "1" },
+            CHROME = { "1", "0" },
+            IE11 = { "1", "0" })
+    @NotYetImplemented({ CHROME, IE11 })
+    public void getElementsByTagNameWithNamespace() throws Exception {
+        final String html = "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            + "    var doc = " + callLoadXMLDocumentFromFile("'" + URL_SECOND + "'") + ";\n"
+            + "    alert(doc.getElementsByTagName('book').length);\n"
+            + "    alert(doc.getElementsByTagName('soap:book').length);\n"
+            + "    if (doc.getElementsByTagName('soap:book').length != 0) {\n"
+            + "      var elem = doc.getElementsByTagName('soap:book')[0];\n"
+            + "      alert(elem.getElementsByTagName('title').length);\n"
+            + "      alert(elem.getElementsByTagName('soap:title').length);\n"
+            + "    }\n"
+            + "  }\n"
+            + LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION
+            + "</script></head><body onload='test()'>\n"
+            + "</body></html>";
+
+        final String xml
+            = "<soap:Envelope xmlns:soap='http://schemas.xmlsoap.org/soap/envelope/'>\n"
+            + "  <books xmlns='http://www.example.com/ns1'>\n"
+            + "    <soap:book>\n"
+            + "      <soap:title>Immortality</soap:title>\n"
+            + "      <author>John Smith</author>\n"
+            + "    </soap:book>\n"
+            + "  </books>\n"
+            + "</soap:Envelope>";
+
+        getMockWebConnection().setResponse(URL_SECOND, xml, "text/xml");
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "true", "false", "false", "false" },
+            CHROME = { "false", "false", "true", "false" },
+            FF38 = { "false", "false", "true", "false" },
+            IE = { "false", "false", "false", "false" },
+            IE8 = "exception")
+    @NotYetImplemented({ FF24, FF31 })
+    // XML ID handling not yet correctly implemented
+    public void getElementById_xml() throws Exception {
+        final String html = "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            + "    var text='<?xml version=\"1.0\" encoding=\"utf-8\"?>\\n'\n"
+            + "      + '<!DOCTYPE idTest [\\n'\n"
+            + "      + '    <!ATTLIST item xId ID #IMPLIED>\\n'\n"
+            + "      + ']>\\n'\n"
+            + "      + '<idTest>\\n'\n"
+            + "      + '    <item xId=\"item1\" />\\n'\n"
+            + "      + '    <item xml:id=\"item2\" />\\n'\n"
+            + "      + '    <item id=\"item3\" />\\n'\n"
+            + "      + '    <item ID=\"item4\" />\\n'\n"
+            + "      + '</idTest>';\n"
+            + "    try {\n"
+            + "      var doc = " + callLoadXMLDocumentFromString("text") + ";\n"
+            + "      alert(doc.getElementById('item1') != null);\n"
+            + "      alert(doc.getElementById('item2') != null);\n"
+            + "      alert(doc.getElementById('item3') != null);\n"
+            + "      alert(doc.getElementById('item4') != null);\n"
+            + "    } catch(e) { alert('exception'); }\n"
+            + "  }\n"
+            + LOAD_XML_DOCUMENT_FROM_STRING_FUNCTION
+            + "</script></head><body onload='test()'>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "false", "false" },
+            CHROME = { "true", "true" },
+            FF38 = { "true", "true" },
+            IE8 = "exception")
+    // XML ID handling not yet correctly implemented
+    public void getElementById_html() throws Exception {
+        final String html = "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            + "    var text='<form id=\"form1\">\\n'\n"
+            + "      + '    <div id=\"div1\"></div>\\n'\n"
+            + "      + '</form>';\n"
+            + "    try {\n"
+            + "      var doc = " + callLoadXMLDocumentFromString("text") + ";\n"
+            + "      alert(doc.getElementById('form1') != null);\n"
+            + "      alert(doc.getElementById('div1') != null);\n"
+            + "    } catch(e) { alert('exception'); }\n"
+            + "  }\n"
+            + LOAD_XML_DOCUMENT_FROM_STRING_FUNCTION
+            + "</script></head><body onload='test()'>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "true", "true" },
+            IE8 = "exception")
+    public void getElementById_xhtml() throws Exception {
+        final String html = "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            + "    var text='<form xmlns=\"http://www.w3.org/1999/xhtml\" id=\"form1\">\\n'\n"
+            + "      + '    <div id=\"div1\"></div>\\n'\n"
+            + "      + '</form>';\n"
+            + "    try {\n"
+            + "      var doc = " + callLoadXMLDocumentFromString("text") + ";\n"
+            + "      alert(doc.getElementById('form1') != null);\n"
+            + "      alert(doc.getElementById('div1') != null);\n"
+            + "    } catch(e) { alert('exception'); }\n"
+            + "  }\n"
+            + LOAD_XML_DOCUMENT_FROM_STRING_FUNCTION
+            + "</script></head><body onload='test()'>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "0",
+            IE = "1",
+            IE11 = "exception")
     public void xpathWithNamespaces() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
-            + "    var doc = createXmlDocument();\n"
+            + "    var doc = " + callLoadXMLDocumentFromFile("'" + URL_SECOND + "'") + ";\n"
+            + "    try {\n"
+            + "      alert(doc.selectNodes('//soap:book').length);\n"
+            + "    } catch (e) {\n"
+            + "      try {\n"
+            + "      alert(doc.evaluate('count(//book)', doc.documentElement, "
+            + "null, XPathResult.NUMBER_TYPE, null).numberValue);\n"
+            + "      } catch (e) {\n"
+            + "        alert('exception');\n"
+            + "      }\n"
+            + "    }\n"
+            + "  }\n"
+            + LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION
+            + "</script></head><body onload='test()'>\n"
+            + "</body></html>";
+
+        final String xml
+            = "<soap:Envelope xmlns:soap='http://schemas.xmlsoap.org/soap/envelope/'>\n"
+            + "  <books xmlns='http://www.example.com/ns1'>\n"
+            + "    <soap:book>\n"
+            + "      <title>Immortality</title>\n"
+            + "      <author>John Smith</author>\n"
+            + "    </soap:book>\n"
+            + "  </books>\n"
+            + "</soap:Envelope>";
+
+        getMockWebConnection().setResponse(URL_SECOND, xml, "text/xml");
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { },
+            IE = "1")
+    public void selectionNamespaces() throws Exception {
+        final String html = "<html><head><title>foo</title><script>\n"
+            + "  var selectionNamespaces = 'xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" "
+                            + "xmlns:ns1=\"http://www.example.com/ns1\"';\n"
+            + "  function test() {\n"
+            + "  if ('ActiveXObject' in window) {\n"
+            + "    var doc = new ActiveXObject('Microsoft.XMLDOM');\n"
+            + "    doc.setProperty('SelectionNamespaces', selectionNamespaces);"
             + "    doc.async = false;\n"
             + "    doc.load('" + URL_SECOND + "');\n"
             + "    try {\n"
-            + "      alert(doc.selectNodes('//book').length);\n"
+            + "      alert(doc.selectNodes('/s:Envelope/ns1:books/s:book').length);\n"
             + "    } catch (e) {\n"
             + "      alert(doc.evaluate('count(//book)', doc.documentElement, "
             + "null, XPathResult.NUMBER_TYPE, null).numberValue);\n"
-            + "    }\n"
-            + "  }\n"
-            + "  function createXmlDocument() {\n"
-            + "    if (document.implementation && document.implementation.createDocument)\n"
-            + "      return document.implementation.createDocument('', '', null);\n"
-            + "    else if (window.ActiveXObject)\n"
-            + "      return new ActiveXObject('Microsoft.XMLDOM');\n"
+            + "    }}\n"
             + "  }\n"
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
@@ -791,47 +996,34 @@ public class XMLDocumentTest extends WebTestCase {
         final String xml
             = "<soap:Envelope xmlns:soap='http://schemas.xmlsoap.org/soap/envelope/'>\n"
             + "  <books xmlns='http://www.example.com/ns1'>\n"
-            + "    <book>\n"
+            + "    <soap:book>\n"
             + "      <title>Immortality</title>\n"
             + "      <author>John Smith</author>\n"
-            + "    </book>\n"
+            + "    </soap:book>\n"
             + "  </books>\n"
             + "</soap:Envelope>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final WebClient client = getWebClient();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, xml, "text/xml");
-        client.setWebConnection(conn);
-
-        client.getPage(URL_FIRST);
-        assertEquals(getExpectedAlerts(), collectedAlerts);
+        getMockWebConnection().setResponse(URL_SECOND, xml, "text/xml");
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = "null", FF = "[object HTMLDivElement]")
+    @Alerts(DEFAULT = "nodeFromID not available",
+            IE8 = "nodeFromID null")
     public void nodeFromID() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
-            + "    var doc = createXmlDocument();\n"
-            + "    doc.async = false;\n"
-            + "    doc.load('" + URL_SECOND + "');\n"
-            + "    if (document.all)\n"
-            + "      alert(doc.nodeFromID('target'));\n"
-            + "    else\n"
-            + "      alert(doc.getElementById('target'));\n"
+            + "    var doc = " + callLoadXMLDocumentFromFile("'" + URL_SECOND + "'") + ";\n"
+            + "    try {\n"
+            + "      alert('nodeFromID ' + doc.nodeFromID('target'));\n"
+            + "    } catch (e) {\n"
+            + "      alert('nodeFromID not available');\n"
+            + "    }"
             + "  }\n"
-            + "  function createXmlDocument() {\n"
-            + "    if (document.implementation && document.implementation.createDocument)\n"
-            + "      return document.implementation.createDocument('', '', null);\n"
-            + "    else if (window.ActiveXObject)\n"
-            + "      return new ActiveXObject('Microsoft.XMLDOM');\n"
-            + "  }\n"
+            + LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
@@ -843,16 +1035,46 @@ public class XMLDocumentTest extends WebTestCase {
             + "  </body>\n"
             + "</html>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final WebClient client = getWebClient();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, xml, "text/xml");
-        client.setWebConnection(conn);
+        getMockWebConnection().setResponse(URL_SECOND, xml, "text/xml");
+        loadPageWithAlerts2(html);
+    }
 
-        client.getPage(URL_FIRST);
-        assertEquals(getExpectedAlerts(), collectedAlerts);
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "[object XMLDocument]", "OK" } ,
+            IE = "[object XMLDocument]",
+            IE11 = { "[object Document]", "OK" })
+    //TODO: in my real IE8 (without WebDriver), I got [object HTMLDocument]
+    //so it should be HTMLDocument not XMLDocument for IE
+    //Also, IE8 with WebDriver gives "" (empty Alert)
+    @NotYetImplemented(IE11)
+    // Real IE11 seems to generate always an (HTML)Document within an iframe.
+    public void test() throws Exception {
+        final String html = "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            + "    var ifr = document.getElementById('ifr');\n"
+            + "    ifr.onload = function() {\n"
+            + "        var xml = ifr.contentWindow.document;\n"
+            + "        alert(xml);\n"
+            + "        if(xml.getElementsByTagName) {\n"
+            + "          alert(xml.getElementsByTagName('status')[0].textContent);\n"
+            + "        }\n"
+            + "    };"
+            + "    ifr.src = '" + URL_SECOND + "';\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'>\n"
+            + "  <iframe id='ifr'></iframe>\n"
+            + "</body></html>";
+
+        final String xml
+            = "<response>\n"
+            + "  <status>OK</status>\n"
+            + "</response>";
+
+        getMockWebConnection().setResponse(URL_SECOND, xml, "text/xml");
+        loadPageWithAlerts2(html);
     }
 
 }

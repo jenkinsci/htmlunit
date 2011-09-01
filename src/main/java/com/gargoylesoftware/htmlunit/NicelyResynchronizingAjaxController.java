@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@
  */
 package com.gargoylesoftware.htmlunit;
 
-import java.lang.ref.WeakReference;
-import java.io.ObjectInputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.lang.ref.WeakReference;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -30,12 +30,11 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
  * are directly useful for the user. To easily have a testable state, these calls
  * are performed synchronously.
  *
- * @version $Revision: 4802 $
+ * @version $Revision: 9871 $
  * @author Marc Guillemot
  */
 public class NicelyResynchronizingAjaxController extends AjaxController {
 
-    private static final long serialVersionUID = -5406000795046341395L;
     private static final Log LOG = LogFactory.getLog(NicelyResynchronizingAjaxController.class);
 
     private transient WeakReference<Thread> originatedThread_;
@@ -51,7 +50,7 @@ public class NicelyResynchronizingAjaxController extends AjaxController {
      * Initializes this instance.
      */
     private void init() {
-        originatedThread_ = new WeakReference<Thread>(Thread.currentThread());
+        originatedThread_ = new WeakReference<>(Thread.currentThread());
     }
 
     /**
@@ -60,7 +59,7 @@ public class NicelyResynchronizingAjaxController extends AjaxController {
      * {@inheritDoc}
      */
     @Override
-    public boolean processSynchron(final HtmlPage page, final WebRequestSettings settings, final boolean async) {
+    public boolean processSynchron(final HtmlPage page, final WebRequest settings, final boolean async) {
         if (async && isInOriginalThread()) {
             LOG.info("Re-synchronized call to " + settings.getUrl());
             return true;

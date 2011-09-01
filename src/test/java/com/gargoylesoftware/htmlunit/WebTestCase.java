@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@
  */
 package com.gargoylesoftware.htmlunit;
 
+import static org.junit.Assert.assertNotNull;
+
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -25,35 +27,32 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.net.ConnectException;
 import java.net.MalformedURLException;
-import java.net.SocketException;
 import java.net.URL;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Map;
+import java.util.Locale;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.SerializationUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.SerializationUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
-
-import com.gargoylesoftware.htmlunit.html.HtmlElement;
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import org.junit.rules.TestRule;
 
 /**
  * Common superclass for HtmlUnit tests.
  *
- * @version $Revision: 4859 $
+ * @version $Revision: 10254 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David D. Kilzer
  * @author Marc Guillemot
@@ -61,14 +60,42 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
  * @author Michael Ottati
  * @author Daniel Gredler
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
 public abstract class WebTestCase {
 
     /** Logging support. */
     private static final Log LOG = LogFactory.getLog(WebTestCase.class);
 
+    /** save the environment */
+    private static final Locale SAVE_LOCALE = Locale.getDefault();
+
     /** The listener port for the web server. */
-    public static final int PORT = Integer.valueOf(System.getProperty("htmlunit.test.port", "12345"));
+    public static final int PORT = Integer.parseInt(System.getProperty("htmlunit.test.port", "12345"));
+
+    /** The second listener port for the web server, used for cross-origin tests. */
+    public static final int PORT2 = Integer.parseInt(System.getProperty("htmlunit.test.port2", "12346"));
+
+    /** The second listener port for the web server, used for cross-origin tests. */
+    public static final int PORT3 = Integer.parseInt(System.getProperty("htmlunit.test.port3", "12347"));
+
+    /** The SOCKS proxy host to use for SOCKS proxy tests. */
+    public static final String SOCKS_PROXY_HOST = System.getProperty("htmlunit.test.socksproxy.host", "localhost");
+
+    /** The SOCKS proxy port to use for SOCKS proxy tests. */
+    public static final int SOCKS_PROXY_PORT = Integer.parseInt(
+            System.getProperty("htmlunit.test.socksproxy.port", "55555"));
+
+    /** Skips the SOCKS proxy tests. */
+    public static final boolean SOCKS_PROXY_SKIP = Boolean.valueOf(
+            System.getProperty("htmlunit.test.socksproxy.skip", "false"));
+
+    /** Succeeds the SOCKS proxy tests (for windows) . */
+    public static final boolean GEOLOCATION_IGNORE = Boolean.valueOf(
+            System.getProperty("htmlunit.test.geolocation.ignore", "false"));
+
+    /** The default time used to wait for the expected alerts. */
+    protected static final long DEFAULT_WAIT_TIME = 1000;
 
     /** Constant for the URL which is used in the tests. */
     public static final URL URL_FIRST;
@@ -76,11 +103,32 @@ public abstract class WebTestCase {
     /** Constant for the URL which is used in the tests. */
     public static final URL URL_SECOND;
 
-    /** Constant for the URL which is used in the tests. */
+    /**
+     * Constant for the URL which is used in the tests.
+     * This URL doesn't use the same host name as {@link #URL_FIRST} and {@link #URL_SECOND}.
+     */
     public static final URL URL_THIRD;
 
-    /** Constant for the URL http://www.gargoylesoftware.com which is used in the tests. */
-    public static final URL URL_GARGOYLE;
+    /**
+     * Constant for a URL used in tests that responds with Access-Control-Allow-Origin.
+     */
+    public static final URL URL_CROSS_ORIGIN;
+
+    /**
+     * To get an origin header with two things in it, there needs to be a chain of two
+     * cross-origin referers. So we need a second extra origin.
+     */
+    public static final URL URL_CROSS_ORIGIN2;
+
+    /**
+     * Constant for the base URL for cross-origin tests.
+     */
+    public static final URL URL_CROSS_ORIGIN_BASE;
+
+    /**
+     * The content type for JavaScript.
+     */
+    public static final String JAVASCRIPT_MIME_TYPE = "application/javascript";
 
     /**
      * The name of the system property used to determine if files should be generated
@@ -93,24 +141,33 @@ public abstract class WebTestCase {
     protected static final String LINE_SEPARATOR = System.getProperty("line.separator");
 
     private BrowserVersion browserVersion_;
-    private WebClient webClient_;
-    private MockWebConnection mockWebConnection_;
 
     private String[] expectedAlerts_;
+    private MockWebConnection mockWebConnection_;
 
-    private static final BrowserVersion FLAG_ALL_BROWSERS = new BrowserVersion("", "", "", 0);
-    private static final ThreadLocal<BrowserVersion> generateTest_browserVersion_ = new ThreadLocal<BrowserVersion>();
+    /** To be documented. */
+    protected static final BrowserVersion FLAG_ALL_BROWSERS = new BrowserVersion("", "", "", 0);
+    /** To be documented. */
+    protected static final ThreadLocal<BrowserVersion> generateTest_browserVersion_ = new ThreadLocal<BrowserVersion>();
     private String generateTest_content_;
     private List<String> generateTest_expectedAlerts_;
     private boolean generateTest_notYetImplemented_;
     private String generateTest_testName_;
 
+    /**
+     * JUnit 4 {@link Rule} controlling System.err.
+     */
+    @Rule
+    public final TestRule errOutputChecker_ = new ErrorOutputChecker();
+
     static {
         try {
             URL_FIRST = new URL("http://localhost:" + PORT + "/");
             URL_SECOND = new URL("http://localhost:" + PORT + "/second/");
-            URL_THIRD = new URL("http://localhost:" + PORT + "/third/");
-            URL_GARGOYLE = new URL("http://www.gargoylesoftware.com/");
+            URL_THIRD = new URL("http://127.0.0.1:" + PORT + "/third/");
+            URL_CROSS_ORIGIN = new URL("http://127.0.0.1:" + PORT2 + "/corsAllowAll");
+            URL_CROSS_ORIGIN2 = new URL("http://localhost:" + PORT3 + "/");
+            URL_CROSS_ORIGIN_BASE = new URL("http://localhost:" + PORT2 + "/");
         }
         catch (final MalformedURLException e) {
             // This is theoretically impossible.
@@ -123,142 +180,6 @@ public abstract class WebTestCase {
      */
     protected WebTestCase() {
         generateTest_browserVersion_.remove();
-    }
-
-    /**
-     * Load a page with the specified HTML using the default browser version.
-     * @param html the HTML to use
-     * @return the new page
-     * @throws Exception if something goes wrong
-     */
-    public static final HtmlPage loadPage(final String html) throws Exception {
-        return loadPage(html, null);
-    }
-
-    /**
-     * Load a page with the specified HTML and collect alerts into the list.
-     * @param browserVersion the browser version to use
-     * @param html the HTML to use
-     * @param collectedAlerts the list to hold the alerts
-     * @return the new page
-     * @throws Exception if something goes wrong
-     */
-    public static final HtmlPage loadPage(final BrowserVersion browserVersion,
-            final String html, final List<String> collectedAlerts) throws Exception {
-        if (generateTest_browserVersion_.get() == null) {
-            generateTest_browserVersion_.set(browserVersion);
-        }
-        return loadPage(browserVersion, html, collectedAlerts, URL_GARGOYLE);
-    }
-
-    /**
-     * User the default browser version to load a page with the specified HTML
-     * and collect alerts into the list.
-     * @param html the HTML to use
-     * @param collectedAlerts the list to hold the alerts
-     * @return the new page
-     * @throws Exception if something goes wrong
-     */
-    public static final HtmlPage loadPage(final String html, final List<String> collectedAlerts) throws Exception {
-        generateTest_browserVersion_.set(FLAG_ALL_BROWSERS);
-        return loadPage(BrowserVersion.getDefault(), html, collectedAlerts, URL_GARGOYLE);
-    }
-
-    /**
-     * Loads an external URL, accounting for the fact that the remote server may be down or the
-     * machine running the tests may not be connected to the internet.
-     * @param url the URL to load
-     * @return the loaded page, or <tt>null</tt> if there were connectivity issues
-     * @throws Exception if an error occurs
-     */
-    protected static final HtmlPage loadUrl(final String url) throws Exception {
-        try {
-            final WebClient client = new WebClient();
-            client.setUseInsecureSSL(true);
-            return client.getPage(url);
-        }
-        catch (final ConnectException e) {
-            // The remote server is probably down.
-            System.out.println("Connection could not be made to " + url);
-            return null;
-        }
-        catch (final SocketException e) {
-            // The local machine may not be online.
-            System.out.println("Connection could not be made to " + url);
-            return null;
-        }
-        catch (final UnknownHostException e) {
-            // The local machine may not be online.
-            System.out.println("Connection could not be made to " + url);
-            return null;
-        }
-    }
-
-    /**
-     * Loads a page with the specified HTML and collect alerts into the list.
-     * @param html the HTML to use
-     * @param collectedAlerts the list to hold the alerts
-     * @param url the URL that will use as the document host for this page
-     * @return the new page
-     * @throws Exception if something goes wrong
-     */
-    protected static final HtmlPage loadPage(final String html, final List<String> collectedAlerts,
-            final URL url) throws Exception {
-
-        return loadPage(BrowserVersion.getDefault(), html, collectedAlerts, url);
-    }
-
-    /**
-     * Load a page with the specified HTML and collect alerts into the list.
-     * @param browserVersion the browser version to use
-     * @param html the HTML to use
-     * @param collectedAlerts the list to hold the alerts
-     * @param url the URL that will use as the document host for this page
-     * @return the new page
-     * @throws Exception if something goes wrong
-     */
-    protected static final HtmlPage loadPage(final BrowserVersion browserVersion,
-            final String html, final List<String> collectedAlerts, final URL url) throws Exception {
-
-        final WebClient client = new WebClient(browserVersion);
-        return loadPage(client, html, collectedAlerts, url);
-    }
-
-    /**
-     * Load a page with the specified HTML and collect alerts into the list.
-     * @param client the WebClient to use (webConnection and alertHandler will be configured on it)
-     * @param html the HTML to use
-     * @param collectedAlerts the list to hold the alerts
-     * @param url the URL that will use as the document host for this page
-     * @return the new page
-     * @throws Exception if something goes wrong
-     */
-    protected static final HtmlPage loadPage(final WebClient client,
-            final String html, final List<String> collectedAlerts, final URL url) throws Exception {
-
-        if (collectedAlerts != null) {
-            client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        }
-
-        final MockWebConnection webConnection = new MockWebConnection();
-        webConnection.setDefaultResponse(html);
-        client.setWebConnection(webConnection);
-
-        return client.getPage(url);
-    }
-
-    /**
-     * Load a page with the specified HTML and collect alerts into the list.
-     * @param client the WebClient to use (webConnection and alertHandler will be configured on it)
-     * @param html the HTML to use
-     * @param collectedAlerts the list to hold the alerts
-     * @return the new page
-     * @throws Exception if something goes wrong
-     */
-    protected static final HtmlPage loadPage(final WebClient client,
-            final String html, final List<String> collectedAlerts) throws Exception {
-
-        return loadPage(client, html, collectedAlerts, URL_GARGOYLE);
     }
 
     /**
@@ -275,7 +196,7 @@ public abstract class WebTestCase {
      * @param expectedUrl the expected URL
      * @param actualUrl the URL to test
      */
-    protected void assertEquals(final URL expectedUrl, final URL actualUrl) {
+    protected static void assertEquals(final URL expectedUrl, final URL actualUrl) {
         Assert.assertEquals(expectedUrl.toExternalForm(), actualUrl.toExternalForm());
     }
 
@@ -284,8 +205,26 @@ public abstract class WebTestCase {
      * @param expected the expected object
      * @param actual the object to test
      */
-    protected void assertEquals(final Object expected, final Object actual) {
+    protected static void assertEquals(final Object expected, final Object actual) {
         Assert.assertEquals(expected, actual);
+    }
+
+    /**
+     * Asserts the two ints are equal.
+     * @param expected the expected int
+     * @param actual the int to test
+     */
+    protected static void assertEquals(final int expected, final int actual) {
+        Assert.assertEquals(expected, actual);
+    }
+
+    /**
+     * Asserts the two boolean are equal.
+     * @param expected the expected boolean
+     * @param actual the boolean to test
+     */
+    protected void assertEquals(final boolean expected, final boolean actual) {
+        Assert.assertEquals(Boolean.valueOf(expected), Boolean.valueOf(actual));
     }
 
     /**
@@ -312,7 +251,7 @@ public abstract class WebTestCase {
      * Facility method to avoid having to create explicitly a list from
      * a String[] (for example when testing received alerts).
      * Transforms the String[] to a List before calling
-     * {@link junit.framework.Assert#assertEquals(java.lang.Object, java.lang.Object)}.
+     * {@link org.junit.Assert#assertEquals(java.lang.Object, java.lang.Object)}.
      * @param expected the expected strings
      * @param actual the collection of strings to test
      */
@@ -324,7 +263,7 @@ public abstract class WebTestCase {
      * Facility method to avoid having to create explicitly a list from
      * a String[] (for example when testing received alerts).
      * Transforms the String[] to a List before calling
-     * {@link junit.framework.Assert#assertEquals(java.lang.String, java.lang.Object, java.lang.Object)}.
+     * {@link org.junit.Assert#assertEquals(java.lang.String, java.lang.Object, java.lang.Object)}.
      * @param message the message to display if assertion fails
      * @param expected the expected strings
      * @param actual the collection of strings to test
@@ -366,6 +305,15 @@ public abstract class WebTestCase {
      */
     protected void assertFalse(final boolean condition) {
         Assert.assertFalse(condition);
+    }
+
+    /**
+     * Assert the specified condition is false.
+     * @param message message to show
+     * @param condition condition to test
+     */
+    protected void assertFalse(final String message, final boolean condition) {
+        Assert.assertFalse(message, condition);
     }
 
     /**
@@ -454,7 +402,7 @@ public abstract class WebTestCase {
             }
             final String endScript = "\n<script>htmlunitReserved_addSummaryAfterOnload();</script>\n";
             if (newContent.contains("</body>")) {
-                newContent = StringUtils.replaceOnce(newContent, "</body>",  endScript + "</body>");
+                newContent = StringUtils.replaceOnce(newContent, "</body>", endScript + "</body>");
             }
             else {
                 LOG.info("No test generated: currently only content with a <head> and a </body> is supported");
@@ -465,8 +413,10 @@ public abstract class WebTestCase {
             LOG.info("Test file written: " + f.getAbsolutePath());
         }
         else {
-            LOG.debug("System property \"" + PROPERTY_GENERATE_TESTPAGES
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("System property \"" + PROPERTY_GENERATE_TESTPAGES
                     + "\" not set, don't generate test HTML page for real browser");
+            }
         }
     }
 
@@ -500,63 +450,13 @@ public abstract class WebTestCase {
     }
 
     /**
-     * Convenience method to pull the MockWebConnection out of an HtmlPage created with
-     * the loadPage method.
-     * @param page HtmlPage to get the connection from
-     * @return the MockWebConnection that served this page
-     */
-    protected static final MockWebConnection getMockConnection(final HtmlPage page) {
-        return (MockWebConnection) page.getWebClient().getWebConnection();
-    }
-
-    /**
-     * Runs the calling JUnit test again and fails only if it already runs.<br/>
-     * This is helpful for tests that don't currently work but should work one day,
-     * when the tested functionality has been implemented.<br/>
-     * The right way to use it is:
-     * <pre>
-     * public void testXXX() {
-     *   if (notYetImplemented()) {
-     *       return;
-     *   }
-     *
-     *   ... the real (now failing) unit test
-     * }
-     * </pre>
-     * @return <tt>false</tt> when not itself already in the call stack
-     */
-    protected boolean notYetImplemented() {
-        generateTest_notYetImplemented_ = true;
-        if (notYetImplementedFlag.get() != null) {
-            return false;
-        }
-        notYetImplementedFlag.set(Boolean.TRUE);
-
-        final Method testMethod = findRunningJUnitTestMethod();
-        try {
-            LOG.info("Running " + testMethod.getName() + " as not yet implemented");
-            testMethod.invoke(this, (Object[]) new Class[] {});
-            Assert.fail(testMethod.getName() + " is marked as not implemented but already works");
-        }
-        catch (final Exception e) {
-            LOG.info(testMethod.getName() + " fails which is normal as it is not yet implemented");
-            // method execution failed, it is really "not yet implemented"
-        }
-        finally {
-            notYetImplementedFlag.set(null);
-        }
-
-        return true;
-    }
-
-    /**
      * Finds from the call stack the active running JUnit test case
      * @return the test case method
      * @throws RuntimeException if no method could be found
      */
     private Method findRunningJUnitTestMethod() {
-        final Class< ? > cl = getClass();
-        final Class< ? >[] args = new Class[] {};
+        final Class<?> cl = getClass();
+        final Class<?>[] args = new Class[] {};
 
         // search the initial junit test
         final Throwable t = new Exception();
@@ -574,7 +474,6 @@ public abstract class WebTestCase {
                 }
             }
         }
-
         throw new RuntimeException("No JUnit test case method found in call stack");
     }
 
@@ -590,103 +489,12 @@ public abstract class WebTestCase {
             && Modifier.isPublic(method.getModifiers());
     }
 
-    private static final ThreadLocal<Boolean> notYetImplementedFlag = new ThreadLocal<Boolean>();
-
     /**
-     * Load the specified resource for the supported browsers and tests
-     * that the generated log corresponds to the expected one for this browser.
-     *
-     * @param fileName the resource name which resides in /resources folder and
-     *        belongs to the same package as the test class.
-     *
-     * @throws Exception if the test fails
+     * Sets the browser version.
+     * @param browserVersion the browser version
      */
-    protected void testHTMLFile(final String fileName) throws Exception {
-        final String resourcePath = getClass().getPackage().getName().replace('.', '/') + '/' + fileName;
-        final URL url = getClass().getClassLoader().getResource(resourcePath);
-
-        final Map<String, BrowserVersion> testedBrowser = new HashMap<String, BrowserVersion>();
-        testedBrowser.put("FIREFOX_2", BrowserVersion.FIREFOX_2);
-        testedBrowser.put("INTERNET_EXPLORER_6_0", BrowserVersion.INTERNET_EXPLORER_6);
-
-        for (final Map.Entry<String, BrowserVersion> entry : testedBrowser.entrySet()) {
-            final String browserKey = entry.getKey();
-            final BrowserVersion browserVersion = entry.getValue();
-
-            final WebClient client = new WebClient(browserVersion);
-
-            final HtmlPage page = client.getPage(url);
-            final HtmlElement want = page.getHtmlElementById(browserKey);
-
-            final HtmlElement got = page.getHtmlElementById("log");
-
-            final List<String> expected = readChildElementsText(want);
-            final List<String> actual = readChildElementsText(got);
-
-            Assert.assertEquals(expected, actual);
-        }
-    }
-
-    private List<String> readChildElementsText(final HtmlElement elt) {
-        final List<String> list = new ArrayList<String>();
-        for (final HtmlElement child : elt.getChildElements()) {
-            list.add(child.asText());
-        }
-        return list;
-    }
-
-    void setBrowserVersion(final BrowserVersion browserVersion) {
+    public void setBrowserVersion(final BrowserVersion browserVersion) {
         browserVersion_ = browserVersion;
-    }
-
-    /**
-     * Returns the WebClient instance for the current test with the current {@link BrowserVersion}.
-     * @return a WebClient with the current {@link BrowserVersion}
-     */
-    protected final WebClient createNewWebClient() {
-        return new WebClient(getBrowserVersion());
-    }
-
-    /**
-     * Returns the WebClient instance for the current test with the current {@link BrowserVersion}.
-     * @return a WebClient with the current {@link BrowserVersion}
-     */
-    protected final WebClient getWebClient() {
-        if (webClient_ == null) {
-            webClient_ = createNewWebClient();
-        }
-        return webClient_;
-    }
-
-    /**
-     * Returns the WebClient instance for the current test with the current {@link BrowserVersion}.
-     * @return a WebClient with the current {@link BrowserVersion}
-     */
-    protected final WebClient getWebClientWithMockWebConnection() {
-        if (webClient_ == null) {
-            webClient_ = createNewWebClient();
-            webClient_.setWebConnection(getMockWebConnection());
-        }
-        return webClient_;
-    }
-
-    /**
-     * Returns the mock WebConnection instance for the current test.
-     * @return the mock WebConnection instance for the current test
-     */
-    protected MockWebConnection getMockWebConnection() {
-        if (mockWebConnection_ == null) {
-            mockWebConnection_ = new MockWebConnection();
-        }
-        return mockWebConnection_;
-    }
-
-    /**
-     * Sets the mock WebConnection instance for the current test.
-     * @param connection the connection to use
-     */
-    protected void setMockWebConnection(final MockWebConnection connection) {
-        mockWebConnection_ = connection;
     }
 
     /**
@@ -704,7 +512,7 @@ public abstract class WebTestCase {
      * Sets the expected alerts.
      * @param expectedAlerts the expected alerts
      */
-    protected void setExpectedAlerts(final String... expectedAlerts) {
+    public void setExpectedAlerts(final String... expectedAlerts) {
         expectedAlerts_ = expectedAlerts;
     }
 
@@ -717,48 +525,16 @@ public abstract class WebTestCase {
     }
 
     /**
-     * Defines the provided HTML as the response of the MockWebConnection for {@link #getDefaultUrl()}
-     * and loads the page with this URL using the current browser version.
-     * Finally asserts the alerts equal the expected alerts.
-     * @param html the HTML to use
-     * @return the new page
-     * @throws Exception if something goes wrong
+     * Expand "§§URL§§" to the provided URL in the expected alerts.
+     * @param url the url to expand
      */
-    protected final HtmlPage loadPageWithAlerts(final String html) throws Exception {
-        return loadPageWithAlerts(html, getDefaultUrl(), -1);
-    }
-
-    /**
-     * Defines the provided HTML as the response of the MockWebConnection for {@link #getDefaultUrl()}
-     * and loads the page with this URL using the current browser version.
-     * Finally asserts the alerts equal the expected alerts.
-     * @param html the HTML to use
-     * @param url the URL from which the provided HTML code should be delivered
-     * @param waitForJS the milliseconds to wait for background JS tasks to complete. Ignored if -1.
-     * @return the new page
-     * @throws Exception if something goes wrong
-     */
-    protected final HtmlPage loadPageWithAlerts(final String html, final URL url, final int waitForJS)
-        throws Exception {
+    protected void expandExpectedAlertsVariables(final URL url) {
         if (expectedAlerts_ == null) {
             throw new IllegalStateException("You must annotate the test class with '@RunWith(BrowserRunner.class)'");
         }
-
-        createTestPageForRealBrowserIfNeeded(html, expectedAlerts_);
-
-        final WebClient client = getWebClientWithMockWebConnection();
-        final List<String> collectedAlerts = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-
-        final MockWebConnection webConnection = getMockWebConnection();
-        webConnection.setResponse(url, html);
-
-        final HtmlPage page = client.getPage(url);
-        if (waitForJS > 0) {
-            assertEquals(0, client.waitForBackgroundJavaScriptStartingBefore(waitForJS));
+        for (int i = 0; i < expectedAlerts_.length; ++i) {
+            expectedAlerts_[i] = expectedAlerts_[i].replaceAll("§§URL§§", url.toExternalForm());
         }
-        assertEquals(expectedAlerts_, collectedAlerts);
-        return page;
     }
 
     /**
@@ -767,17 +543,33 @@ public abstract class WebTestCase {
      * @param object the object being cloned
      * @return a clone of the specified object
      */
-    @SuppressWarnings("unchecked")
     protected <T extends Serializable> T clone(final T object) {
-        return (T) SerializationUtils.clone(object);
+        return SerializationUtils.clone(object);
     }
 
     /**
      * Gets the default URL used for the tests.
      * @return the url
      */
-    protected URL getDefaultUrl() {
-        return URL_GARGOYLE;
+    protected static URL getDefaultUrl() {
+        return URL_FIRST;
+    }
+
+    /**
+     * Prepare the environment.
+     * Rhino has localized error message... for instance for French
+     */
+    @BeforeClass
+    public static void beforeClass() {
+        Locale.setDefault(Locale.US);
+    }
+
+    /**
+     * Restore the environment.
+     */
+    @AfterClass
+    public static void afterClass() {
+        Locale.setDefault(SAVE_LOCALE);
     }
 
     /**
@@ -792,12 +584,7 @@ public abstract class WebTestCase {
 
             final File outFile = new File(targetDir, generateTest_testName_);
 
-            // replace alert(x) by a storage in window's scope
-            // Convert to string here due to: http://code.google.com/p/webdriver/issues/detail?id=209
-            final String newContent = StringUtils.replace(generateTest_content_, "alert(",
-                "(function(t){var x = window.__huCatchedAlerts; x = x ? x : []; "
-                + "window.__huCatchedAlerts = x; x.push(String(t))})(");
-
+            final String newContent = getModifiedContent(generateTest_content_);
             FileUtils.writeStringToFile(outFile, newContent);
 
             // write the expected alerts
@@ -823,14 +610,107 @@ public abstract class WebTestCase {
     }
 
     /**
+     * Returns the modified JavaScript after changing how 'alerts' are called.
+     * @param html the html
+     * @return the modified html
+     */
+    protected static String getModifiedContent(final String html) {
+        // replace alert(x) by a storage in top scope
+        // Convert to string here due to: http://code.google.com/p/webdriver/issues/detail?id=209
+        return StringUtils.replace(html, "alert(",
+                "(function(t){var x = top.__huCatchedAlerts; x = x ? x : []; "
+                + "top.__huCatchedAlerts = x; x.push(String(t))})(");
+    }
+
+    /**
+     * To be documented.
+     * @param status the status
+     */
+    protected void setGenerateTest_notYetImplemented(final boolean status) {
+        generateTest_notYetImplemented_ = status;
+    }
+
+    /**
+     * Returns the mock WebConnection instance for the current test.
+     * @return the mock WebConnection instance for the current test
+     */
+    protected MockWebConnection getMockWebConnection() {
+        if (mockWebConnection_ == null) {
+            mockWebConnection_ = new MockWebConnection();
+        }
+        return mockWebConnection_;
+    }
+
+    /**
+     * Sets the mock WebConnection instance for the current test.
+     * @param connection the connection to use
+     */
+    protected void setMockWebConnection(final MockWebConnection connection) {
+        mockWebConnection_ = connection;
+    }
+
+    /**
      * Cleanup after a test.
      */
     @After
     public void releaseResources() {
-        if (webClient_ != null) {
-            webClient_.closeAllWindows();
-        }
-        webClient_ = null;
         mockWebConnection_ = null;
+    }
+
+    /**
+     * Loads an expectation file for the specified browser search first for a browser specific resource
+     * and falling back in a general resource.
+     * @param resourcePrefix the start of the resource name
+     * @param resourceSuffix the end of the resource name
+     * @return the content of the file
+     * @throws Exception in case of error
+     */
+    protected String loadExpectation(final String resourcePrefix, final String resourceSuffix) throws Exception {
+        final URL url = getExpectationsResource(getClass(), getBrowserVersion(), resourcePrefix, resourceSuffix);
+        assertNotNull(url);
+        final File file = new File(url.toURI());
+
+        String content = FileUtils.readFileToString(file, "UTF-8");
+        content = StringUtils.replace(content, "\r\n", "\n");
+        return content;
+    }
+
+    private static URL getExpectationsResource(final Class<?> referenceClass, final BrowserVersion browserVersion,
+            final String resourcePrefix, final String resourceSuffix) {
+        final String browserSpecificResource = resourcePrefix + "." + browserVersion.getNickname() + resourceSuffix;
+
+        URL url = referenceClass.getResource(browserSpecificResource);
+        if (url != null) {
+            return url;
+        }
+
+        final String browserFamily = browserVersion.getNickname().replaceAll("[\\d\\.]", "");
+        final String browserFamilyResource = resourcePrefix + "." + browserFamily + resourceSuffix;
+
+        url = referenceClass.getResource(browserFamilyResource);
+        if (url != null) {
+            return url;
+        }
+
+        // fall back: expectations for all browsers
+        final String resource = resourcePrefix + resourceSuffix;
+        return referenceClass.getResource(resource);
+    }
+
+    /**
+     * Gets the active JavaScript threads.
+     * @return the threads
+     */
+    protected List<Thread> getJavaScriptThreads() {
+        final Thread[] threads = new Thread[Thread.activeCount() + 10];
+        Thread.enumerate(threads);
+        final List<Thread> jsThreads = new ArrayList<>();
+        for (final Thread t : threads) {
+            if (t != null && t.getName().startsWith("JS executor for")) {
+                jsThreads.add(t);
+            }
+        }
+
+        return jsThreads;
     }
 }

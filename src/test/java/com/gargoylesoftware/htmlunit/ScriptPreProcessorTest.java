@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
@@ -28,7 +29,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 /**
  * Tests for {@link ScriptPreProcessor}.
  *
- * @version $Revision: 4271 $
+ * @version $Revision: 9868 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author <a href="mailto:bcurren@esomnie.com">Ben Curren</a>
@@ -41,6 +42,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
  * @author Daniel Gredler
  * @author Sudhan Moghe
  */
+@RunWith(BrowserRunner.class)
 public class ScriptPreProcessorTest extends WebServerTestCase {
 
     /**
@@ -49,7 +51,7 @@ public class ScriptPreProcessorTest extends WebServerTestCase {
      */
     @Test
     public void testScriptPreProcessor() throws IOException {
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
         final MockWebConnection webConnection = new MockWebConnection();
         final String alertText = "content";
         final String newAlertText = "newcontent";
@@ -70,7 +72,7 @@ public class ScriptPreProcessorTest extends WebServerTestCase {
         // Test null return from pre processor
         client.setScriptPreProcessor(new ScriptPreProcessor() {
             public String preProcess(final HtmlPage htmlPage, final String sourceCode, final String sourceName,
-                                      final HtmlElement htmlElement) {
+                    final int lineNumber, final HtmlElement htmlElement) {
                 return null;
             }
         });
@@ -85,7 +87,7 @@ public class ScriptPreProcessorTest extends WebServerTestCase {
         // Test modify script in pre processor
         client.setScriptPreProcessor(new ScriptPreProcessor() {
             public String preProcess(final HtmlPage htmlPage, final String sourceCode, final String sourceName,
-                                      final HtmlElement htmlElement) {
+                    final int lineNumber, final HtmlElement htmlElement) {
                 final int start = sourceCode.indexOf(alertText);
                 final int end = start + alertText.length();
 
@@ -111,7 +113,7 @@ public class ScriptPreProcessorTest extends WebServerTestCase {
      */
     @Test
     public void testScriptPreProcessor_UnimplementedJavascript() throws Exception {
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
         final MockWebConnection webConnection = new MockWebConnection();
         final String content = "<html><head><title>foo</title></head><body>\n"
             + "<p>hello world</p>\n"
@@ -124,14 +126,14 @@ public class ScriptPreProcessorTest extends WebServerTestCase {
 
         client.setScriptPreProcessor(new ScriptPreProcessor() {
             public String preProcess(final HtmlPage htmlPage, final String sourceCode, final String sourceName,
-                                      final HtmlElement htmlElement) {
+                    final int lineNumber, final HtmlElement htmlElement) {
                 if (sourceCode.indexOf("unimplementedFunction") > -1) {
                     return "";
                 }
                 return sourceCode;
             }
         });
-        final List<String> alerts = new ArrayList<String>();
+        final List<String> alerts = new ArrayList<>();
         client.setAlertHandler(new CollectingAlertHandler(alerts));
         client.getPage("http://page");
 
@@ -147,18 +149,19 @@ public class ScriptPreProcessorTest extends WebServerTestCase {
     public void testScriptPreProcessor_Eval() throws Exception {
         final String html = "<html><body><script>eval('aX'+'ert(\"abc\")');</script></body></html>";
 
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
         final MockWebConnection conn = new MockWebConnection();
         conn.setDefaultResponse(html);
         client.setWebConnection(conn);
 
         client.setScriptPreProcessor(new ScriptPreProcessor() {
-            public String preProcess(final HtmlPage p, final String src, final String srcName, final HtmlElement e) {
+            public String preProcess(final HtmlPage p, final String src, final String srcName,
+                    final int lineNumber, final HtmlElement htmlElement) {
                 return src.replaceAll("aXert", "alert");
             }
         });
 
-        final List<String> alerts = new ArrayList<String>();
+        final List<String> alerts = new ArrayList<>();
         client.setAlertHandler(new CollectingAlertHandler(alerts));
         client.getPage(URL_FIRST);
 

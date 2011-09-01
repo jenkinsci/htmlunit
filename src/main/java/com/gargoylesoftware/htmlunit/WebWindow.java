@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.gargoylesoftware.htmlunit.javascript.background.JavaScriptJobManager;
 /**
  * An interface that represents one window in a browser. It could be a top level window or a frame.
  *
- * @version $Revision: 4756 $
+ * @version $Revision: 9837 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author David D. Kilzer
@@ -115,4 +115,65 @@ public interface WebWindow extends Serializable {
      */
     JavaScriptJobManager getJobManager();
 
+    /**
+     * Indicates if this window is closed. No action should be performed on a closed window.
+     * @return <code>true</code> when the window is closed
+     */
+    boolean isClosed();
+
+    /**
+     * Returns the width (in pixels) of the browser window viewport including, if rendered, the vertical scrollbar.
+     * @return the inner width.
+     */
+    int getInnerWidth();
+
+    /**
+     * Sets the width (in pixels) of the browser window viewport including, if rendered, the vertical scrollbar.
+     * @param innerWidth the inner width
+     */
+    void setInnerWidth(final int innerWidth);
+
+    /**
+     * Returns the width of the outside of the browser window.
+     * It represents the width of the whole browser window including sidebar (if expanded),
+     * window chrome and window resizing borders/handles.
+     * @return the outer width
+     */
+    int getOuterWidth();
+
+    /**
+     * Sets the width of the outside of the browser window.
+     * It represents the width of the whole browser window including sidebar (if expanded),
+     * window chrome and window resizing borders/handles.
+     * @param outerWidth the outer width
+     */
+    void setOuterWidth(final int outerWidth);
+
+    /**
+     * Returns the height (in pixels) of the browser window viewport including, if rendered, the horizontal scrollbar.
+     * @return a inner height
+     */
+    int getInnerHeight();
+
+    /**
+     * Sets the height (in pixels) of the browser window viewport including, if rendered, the horizontal scrollbar.
+     * @param innerHeight the inner height
+     */
+    void setInnerHeight(final int innerHeight);
+
+    /**
+     * Returns the height in pixels of the whole browser window.
+     * It represents the height of the whole browser window including sidebar (if expanded),
+     * window chrome and window resizing borders/handles.
+     * @return the outer height
+     */
+    int getOuterHeight();
+
+    /**
+     * Sets the height in pixels of the whole browser window.
+     * It represents the height of the whole browser window including sidebar (if expanded),
+     * window chrome and window resizing borders/handles.
+     * @param outerHeight the outer height
+     */
+    void setOuterHeight(final int outerHeight);
 }

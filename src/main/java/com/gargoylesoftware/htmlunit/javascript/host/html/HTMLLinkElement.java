@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,52 +14,70 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+
 import java.net.MalformedURLException;
+
+import net.sourceforge.htmlunit.corejs.javascript.Context;
 
 import com.gargoylesoftware.htmlunit.html.HtmlLink;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import com.gargoylesoftware.htmlunit.javascript.host.Stylesheet;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSStyleSheet;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.DOMTokenList;
 
 /**
  * The JavaScript object "HTMLLinkElement".
  *
- * @version $Revision: 4873 $
+ * @version $Revision: 10429 $
  * @author Ahmed Ashour
  */
+@JsxClasses({
+        @JsxClass(domClass = HtmlLink.class,
+                browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(domClass = HtmlLink.class,
+            isJSObject = false, browsers = @WebBrowser(value = IE, maxVersion = 8))
+    })
 public class HTMLLinkElement extends HTMLElement {
-
-    private static final long serialVersionUID = -6381573516360300401L;
 
     /**
      * The associated style sheet (only valid for links of type
      * <tt>&lt;link rel="stylesheet" type="text/css" href="..." /&gt;</tt>).
      */
-    private Stylesheet sheet_;
+    private CSSStyleSheet sheet_;
 
     /**
      * Creates an instance.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
     public HTMLLinkElement() {
-        // Empty.
     }
 
     /**
      * Sets the href property.
      * @param href href attribute value
      */
-    public void jsxSet_href(final String href) {
+    @JsxSetter
+    public void setHref(final String href) {
         getDomNodeOrDie().setAttribute("href", href);
     }
 
     /**
      * Returns the value of the href property.
      * @return the href property
-     * @throws Exception if an error occurs
      */
-    public String jsxGet_href() throws Exception {
+    @JsxGetter
+    public String getHref() {
         final HtmlLink link = (HtmlLink) getDomNodeOrDie();
         final String href = link.getHrefAttribute();
-        if (href.length() == 0) {
+        if (href.isEmpty()) {
             return href;
         }
         try {
@@ -74,33 +92,53 @@ public class HTMLLinkElement extends HTMLElement {
      * Sets the rel property.
      * @param rel rel attribute value
      */
-    public void jsxSet_rel(final String rel) {
+    @JsxSetter
+    public void setRel(final String rel) {
         getDomNodeOrDie().setAttribute("rel", rel);
     }
 
     /**
      * Returns the value of the rel property.
      * @return the rel property
-     * @throws Exception if an error occurs
      */
-    public String jsxGet_rel() throws Exception {
+    @JsxGetter
+    public String getRel() {
         return ((HtmlLink) getDomNodeOrDie()).getRelAttribute();
+    }
+
+    /**
+     * Sets the rev property.
+     * @param rel rev attribute value
+     */
+    @JsxSetter
+    public void setRev(final String rel) {
+        getDomNodeOrDie().setAttribute("rev", rel);
+    }
+
+    /**
+     * Returns the value of the rev property.
+     * @return the rev property
+     */
+    @JsxGetter
+    public String getRev() {
+        return ((HtmlLink) getDomNodeOrDie()).getRevAttribute();
     }
 
     /**
      * Sets the type property.
      * @param type type attribute value
      */
-    public void jsxSet_type(final String type) {
+    @JsxSetter
+    public void setType(final String type) {
         getDomNodeOrDie().setAttribute("type", type);
     }
 
     /**
      * Returns the value of the type property.
      * @return the type property
-     * @throws Exception if an error occurs
      */
-    public String jsxGet_type() throws Exception {
+    @JsxGetter
+    public String getType() {
         return ((HtmlLink) getDomNodeOrDie()).getTypeAttribute();
     }
 
@@ -109,11 +147,27 @@ public class HTMLLinkElement extends HTMLElement {
      * <tt>&lt;link rel="stylesheet" type="text/css" href="..." /&gt;</tt>).
      * @return the associated style sheet
      */
-    public Stylesheet getSheet() {
+    public CSSStyleSheet getSheet() {
         if (sheet_ == null) {
-            sheet_ = Stylesheet.loadStylesheet(getWindow(), this, (HtmlLink) getDomNodeOrDie(), null);
+            sheet_ = CSSStyleSheet.loadStylesheet(getWindow(), this, (HtmlLink) getDomNodeOrDie(), null);
         }
         return sheet_;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected boolean isEndTagForbidden() {
+        return true;
+    }
+
+    /**
+     * Returns the {@code relList} attribute.
+     * @return the {@code relList} attribute
+     */
+    @JsxGetter(@WebBrowser(FF))
+    public DOMTokenList getRelList() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
 }

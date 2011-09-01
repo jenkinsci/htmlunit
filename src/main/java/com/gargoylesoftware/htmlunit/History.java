@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,22 +26,19 @@ import com.gargoylesoftware.htmlunit.util.UrlUtils;
 /**
  * Representation of the navigation history of a single window.
  *
- * @version $Revision: 4877 $
+ * @version $Revision: 10535 $
  * @author Daniel Gredler
+ * @author Ahmed Ashour
  */
 public class History implements Serializable {
-
-    /** Serial version UID. */
-    private static final long serialVersionUID = 2913698177338034112L;
 
     /** The window to which this navigation history belongs. */
     private final WebWindow window_;
 
     /**
-     * The URLs of the pages in this navigation history; stored as Strings instead of java.net.URLs
-     * because "about:blank" URLs don't serialize correctly.
+     * The {@link WebRequest}s of the pages in this navigation history.
      */
-    private final List<String> urls_ = new ArrayList<String>();
+    private final List<WebRequest> webRequests_ = new ArrayList<>();
 
     /**
      * Whether or not to ignore calls to {@link #addPage(Page)}; this is a bit hackish (we should probably be using
@@ -74,7 +71,7 @@ public class History implements Serializable {
      * @return the length of the navigation history
      */
     public int getLength() {
-        return urls_.size();
+        return webRequests_.size();
     }
 
     /**
@@ -91,8 +88,8 @@ public class History implements Serializable {
      * @return the URL at the specified index in the navigation history, or <tt>null</tt> if the index is not valid
      */
     public URL getUrl(final int index) {
-        if (index >= 0 && index < urls_.size()) {
-            return UrlUtils.toUrlSafe(urls_.get(index));
+        if (index >= 0 && index < webRequests_.size()) {
+            return UrlUtils.toUrlSafe(webRequests_.get(index).getUrl().toExternalForm());
         }
         return null;
     }
@@ -116,7 +113,7 @@ public class History implements Serializable {
      * @throws IOException if an IO error occurs
      */
     public History forward() throws IOException {
-        if (index_ < urls_.size() - 1) {
+        if (index_ < webRequests_.size() - 1) {
             index_++;
             goToUrlAtCurrentIndex();
         }
@@ -132,10 +129,10 @@ public class History implements Serializable {
      */
     public History go(final int relativeIndex) throws IOException {
         final int i = index_ + relativeIndex;
-        if (i < urls_.size() && i >= 0) {
+        if (i < webRequests_.size() && i >= 0) {
             index_ = i;
+            goToUrlAtCurrentIndex();
         }
-        goToUrlAtCurrentIndex();
         return this;
     }
 
@@ -144,7 +141,19 @@ public class History implements Serializable {
      */
     @Override
     public String toString() {
-        return urls_.toString();
+        return webRequests_.toString();
+    }
+
+    /**
+     * Removes the current URL from the history.
+     */
+    public void removeCurrent() {
+        if (index_ >= 0 && index_ < webRequests_.size()) {
+            webRequests_.remove(index_);
+            if (index_ > 0) {
+                index_--;
+            }
+        }
     }
 
     /**
@@ -153,14 +162,17 @@ public class History implements Serializable {
      */
     protected void addPage(final Page page) {
         final Boolean ignoreNewPages = ignoreNewPages_.get();
-        if (ignoreNewPages != null && ignoreNewPages) {
+        if (ignoreNewPages != null && ignoreNewPages.booleanValue()) {
             return;
         }
         index_++;
-        while (urls_.size() > index_) {
-            urls_.remove(index_);
+        while (webRequests_.size() > index_) {
+            webRequests_.remove(index_);
         }
-        urls_.add(page.getWebResponse().getRequestSettings().getUrl().toExternalForm());
+        final WebRequest request = page.getWebResponse().getWebRequest();
+        final WebRequest newRequest = new WebRequest(request.getUrl(), request.getHttpMethod());
+        newRequest.setRequestParameters(request.getRequestParameters());
+        webRequests_.add(newRequest);
     }
 
     /**
@@ -168,12 +180,12 @@ public class History implements Serializable {
      * @throws IOException if an IO error occurs
      */
     private void goToUrlAtCurrentIndex() throws IOException {
-        final URL url = UrlUtils.toUrlSafe(urls_.get(index_));
-        final WebRequestSettings wrs = new WebRequestSettings(url);
+        final WebRequest request = webRequests_.get(index_);
+
         final Boolean old = ignoreNewPages_.get();
         try {
-            ignoreNewPages_.set(true);
-            window_.getWebClient().getPage(window_, wrs);
+            ignoreNewPages_.set(Boolean.TRUE);
+            window_.getWebClient().getPage(window_, request);
         }
         finally {
             ignoreNewPages_.set(old);

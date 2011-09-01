@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,12 +24,10 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the DOM node ProcessingInstruction.
  *
- * @version $Revision: 4791 $
+ * @version $Revision: 9837 $
  * @author Ahmed Ashour
  */
 public class DomProcessingInstruction extends DomNode implements ProcessingInstruction {
-
-    private static final long serialVersionUID = -4400111815012912413L;
 
     private final String target_;
     private String data_;
@@ -99,6 +97,14 @@ public class DomProcessingInstruction extends DomNode implements ProcessingInstr
     @Override
     public String getNodeValue() {
         return data_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setTextContent(final String textContent) {
+        setNodeValue(textContent);
     }
 
     /**

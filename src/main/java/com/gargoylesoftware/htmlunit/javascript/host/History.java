@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,11 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_HISTORY_ENUMS_ENTRIES;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+
 import java.io.IOException;
 
 import net.sourceforge.htmlunit.corejs.javascript.Context;
@@ -21,24 +26,33 @@ import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 
 import com.gargoylesoftware.htmlunit.WebWindow;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxFunction;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
 
 /**
  * A JavaScript object for the client's browsing history.
  *
- * @version $Revision: 4607 $
+ * @version $Revision: 10430 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Chris Erskine
  * @author Daniel Gredler
+ * @author Ahmed Ashour
  */
+@JsxClasses({
+        @JsxClass(browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(isJSObject = false, browsers = @WebBrowser(value = IE, maxVersion = 8))
+    })
 public class History extends SimpleScriptable {
 
-    private static final long serialVersionUID = -285158453206844475L;
-
     /**
-     * Creates an instance. JavaScript objects must have a default constructor.
+     * Creates an instance.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(value = FF, minVersion = 31) })
     public History() {
-        // Empty.
     }
 
     /**
@@ -47,13 +61,13 @@ public class History extends SimpleScriptable {
     @Override
     public Object[] getIds() {
         Object[] ids = super.getIds();
-        if (getBrowserVersion().isFirefox()) {
+        if (getBrowserVersion().hasFeature(JS_HISTORY_ENUMS_ENTRIES)) {
             final int len = getWindow().getWebWindow().getHistory().getLength();
             if (len > 0) {
                 final Object[] allIds = new Object[ids.length + len];
                 System.arraycopy(ids, 0, allIds, 0, ids.length);
                 for (int i = 0; i < len; i++) {
-                    allIds[ids.length + i] = new Integer(i);
+                    allIds[ids.length + i] = Integer.valueOf(i);
                 }
                 ids = allIds;
             }
@@ -66,9 +80,9 @@ public class History extends SimpleScriptable {
      */
     @Override
     public boolean has(final int index, final Scriptable start) {
-        if (getBrowserVersion().isFirefox()) {
+        if (getBrowserVersion().hasFeature(JS_HISTORY_ENUMS_ENTRIES)) {
             final History h = (History) start;
-            if (index >= 0 && index < h.jsxGet_length()) {
+            if (index >= 0 && index < h.getLength()) {
                 return true;
             }
         }
@@ -81,17 +95,18 @@ public class History extends SimpleScriptable {
     @Override
     public Object get(final int index, final Scriptable start) {
         final History h = (History) start;
-        if (index < 0 || index >= h.jsxGet_length()) {
+        if (index < 0 || index >= h.getLength()) {
             return NOT_FOUND;
         }
-        return jsxFunction_item(index);
+        return item(index);
     }
 
     /**
      * Returns the "length" property.
      * @return the "length" property
      */
-    public int jsxGet_length() {
+    @JsxGetter
+    public int getLength() {
         final WebWindow w = getWindow().getWebWindow();
         return w.getHistory().getLength();
     }
@@ -99,7 +114,8 @@ public class History extends SimpleScriptable {
     /**
      * JavaScript function "back".
      */
-    public void jsxFunction_back() {
+    @JsxFunction
+    public void back() {
         final WebWindow w = getWindow().getWebWindow();
         try {
             w.getHistory().back();
@@ -112,7 +128,8 @@ public class History extends SimpleScriptable {
     /**
      * JavaScript function "forward".
      */
-    public void jsxFunction_forward() {
+    @JsxFunction
+    public void forward() {
         final WebWindow w = getWindow().getWebWindow();
         try {
             w.getHistory().forward();
@@ -126,7 +143,8 @@ public class History extends SimpleScriptable {
      * JavaScript function "go".
      * @param relativeIndex the relative index
      */
-    public void jsxFunction_go(final int relativeIndex) {
+    @JsxFunction
+    public void go(final int relativeIndex) {
         final WebWindow w = getWindow().getWebWindow();
         try {
             w.getHistory().go(relativeIndex);
@@ -140,7 +158,8 @@ public class History extends SimpleScriptable {
      * Returns the "current" property.
      * @return the "current" property
      */
-    public String jsxGet_current() {
+    @JsxGetter(@WebBrowser(FF))
+    public String getCurrent() {
         throw Context.reportRuntimeError("Permission denied to get property History.current");
     }
 
@@ -148,7 +167,8 @@ public class History extends SimpleScriptable {
      * Returns the "previous" property.
      * @return the "previous" property
      */
-    public String jsxGet_previous() {
+    @JsxGetter(@WebBrowser(FF))
+    public String getPrevious() {
         throw Context.reportRuntimeError("Permission denied to get property History.previous");
     }
 
@@ -156,7 +176,8 @@ public class History extends SimpleScriptable {
      * Returns the "next" property.
      * @return the "next" property
      */
-    public String jsxGet_next() {
+    @JsxGetter(@WebBrowser(FF))
+    public String getNext() {
         throw Context.reportRuntimeError("Permission denied to get property History.next");
     }
 
@@ -165,8 +186,28 @@ public class History extends SimpleScriptable {
      * @param index the index
      * @return the URL of the history item at the specified index
      */
-    public String jsxFunction_item(final int index) {
+    @JsxFunction(@WebBrowser(FF))
+    public String item(final int index) {
         throw Context.reportRuntimeError("Permission denied to call method History.item");
     }
 
+    /**
+     * Replaces a state.
+     * @param object the state object
+     * @param title the title
+     * @param url an optional URL
+     */
+    @JsxFunction({ @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) })
+    public void replaceState(final Object object, final String title, final String url) {
+    }
+
+    /**
+     * Pushes a state.
+     * @param object the state object
+     * @param title the title
+     * @param url an optional URL
+     */
+    @JsxFunction({ @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) })
+    public void pushState(final Object object, final String title, final String url) {
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
  * Class to display version information about HtmlUnit. This is the class
  * that will be executed if the JAR file is run.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 10115 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Ahmed Ashour
  */
@@ -37,7 +37,7 @@ public final class Version {
      * @throws Exception if an error occurs
      */
     public static void main(final String[] args) throws Exception {
-        if (args.length == 1 && args[0].equals("-SanityCheck")) {
+        if (args.length == 1 && "-SanityCheck".equals(args[0])) {
             runSanityCheck();
             return;
         }
@@ -51,18 +51,19 @@ public final class Version {
      * @throws Exception if anything goes wrong
      */
     private static void runSanityCheck() throws Exception {
-        final WebClient webClient = new WebClient();
-        final HtmlPage page = webClient.getPage("http://htmlunit.sourceforge.net/index.html");
-        page.executeJavaScript("document.location");
-        System.out.println("Sanity check complete.");
+        try (final WebClient webClient = new WebClient()) {
+            final HtmlPage page = webClient.getPage("http://htmlunit.sourceforge.net/index.html");
+            page.executeJavaScript("document.location");
+            System.out.println("Sanity check complete.");
+        }
     }
 
     /**
-     * Returns "HTMLUnit".
-     * @return "HTMLUnit"
+     * Returns "HtmlUnit".
+     * @return "HtmlUnit"
      */
     public static String getProductName() {
-        return "HTMLUnit";
+        return "HtmlUnit";
     }
 
     /**
@@ -78,6 +79,6 @@ public final class Version {
      * @return the copyright notice
      */
     public static String getCopyright() {
-        return "Copyright (c) 2002-2009 Gargoyle Software Inc. All rights reserved.";
+        return "Copyright (c) 2002-2015 Gargoyle Software Inc. All rights reserved.";
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,28 +14,32 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
 import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
 
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
 
 /**
  * A JavaScript object for a Namespace.
  *
- * @version $Revision: 4402 $
+ * @version $Revision: 10403 $
  * @author Ahmed Ashour
+ * @author Frank Danek
  * @see <a href="http://msdn.microsoft.com/en-us/library/ms535854.aspx">MSDN documentation</a>
  */
+@JsxClass(isJSObject = false, isDefinedInStandardsMode = false, browsers = @WebBrowser(IE))
 public class Namespace extends SimpleScriptable {
 
-    private static final long serialVersionUID = -5554898606769625960L;
     private String name_;
     private String urn_;
 
     /**
-     * Creates an instance. JavaScript objects must have a default constructor.
-     * Don't call.
+     * Creates an instance.
      */
-    @Deprecated
     public Namespace() {
         // Empty.
     }
@@ -58,7 +62,8 @@ public class Namespace extends SimpleScriptable {
      * Retrieves the name of the namespace.
      * @return the name
      */
-    public String jsxGet_name() {
+    @JsxGetter
+    public String getName() {
         return name_;
     }
 
@@ -66,7 +71,8 @@ public class Namespace extends SimpleScriptable {
      * Gets a Uniform Resource Name (URN) for a target document.
      * @return the URN
      */
-    public String jsxGet_urn() {
+    @JsxGetter
+    public String getUrn() {
         return urn_;
     }
 
@@ -74,7 +80,8 @@ public class Namespace extends SimpleScriptable {
      * Gets a Uniform Resource Name (URN) for a target document.
      * @param urn the Uniform Resource Name
      */
-    public void jsxSet_urn(final String urn) {
+    @JsxSetter
+    public void setUrn(final String urn) {
         urn_ = urn;
     }
 }

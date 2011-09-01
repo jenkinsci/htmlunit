@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,8 +25,9 @@ import org.apache.commons.logging.LogFactory;
  * used by HtmlUnit. The line and column may indicates the position of the problem detected
  * by the parser. This is only an indication and in some cases the position where
  * the problem has to be solved is located lines before.
+ * In some cases (when parsing a html snippet), the html content is also available.
  *
- * @version $Revision: 4789 $
+ * @version $Revision: 9837 $
  * @author Marc Guillemot
  */
 public interface HTMLParserListener {
@@ -42,21 +43,25 @@ public interface HTMLParserListener {
      * Called when the HTML parser reports an error.
      * @param message the description of the problem
      * @param url the URL of the document in which the problem occurs
+     * @param html the content of the snippet in which the problem occurs
      * @param line the line of the problem
      * @param column the column of the problem
      * @param key the key identifying the "type" of problem
      */
-    void error(final String message, final URL url, final int line, final int column, final String key);
+    void error(final String message, final URL url, final String html,
+            final int line, final int column, final String key);
 
     /**
      * Called when the HTML parser reports a warning.
      * @param message the description of the problem
      * @param url the URL of the document in which the problem occurs
+     * @param html the content of the snippet in which the problem occurs
      * @param line the line of the problem
      * @param column the column of the problem
      * @param key the key identifying the "type" of problem
      */
-    void warning(final String message, final URL url, final int line, final int column, final String key);
+    void warning(final String message, final URL url, final String html,
+            final int line, final int column, final String key);
 }
 
 /**
@@ -68,19 +73,18 @@ class SimpleHTMLParserListener implements HTMLParserListener {
 
     private static final Log LOG = LogFactory.getLog(HTMLParserListener.class);
 
-    public void error(final String message, final URL url, final int line, final int column, final String key) {
-        if (LOG.isErrorEnabled()) {
-            LOG.error(format(message, url, line, column, key));
-        }
+    public void error(final String message, final URL url, final String html,
+            final int line, final int column, final String key) {
+        LOG.error(format(message, url, html, line, column));
     }
 
-    public void warning(final String message, final URL url, final int line, final int column, final String key) {
-        if (LOG.isWarnEnabled()) {
-            LOG.warn(format(message, url, line, column, key));
-        }
+    public void warning(final String message, final URL url, final String html,
+            final int line, final int column, final String key) {
+        LOG.warn(format(message, url, html, line, column));
     }
 
-    private String format(final String message, final URL url, final int line, final int column, final String key) {
+    private String format(final String message, final URL url, final String html,
+            final int line, final int column) {
         final StringBuilder buffer = new StringBuilder(message);
         buffer.append(" (");
         buffer.append(url.toExternalForm());
@@ -88,8 +92,12 @@ class SimpleHTMLParserListener implements HTMLParserListener {
         buffer.append(line);
         buffer.append(":");
         buffer.append(column);
+        if (null != html) {
+            buffer.append(" htmlSnippet: '");
+            buffer.append(html);
+            buffer.append("'");
+        }
         buffer.append(")");
         return buffer.toString();
     }
-
 }

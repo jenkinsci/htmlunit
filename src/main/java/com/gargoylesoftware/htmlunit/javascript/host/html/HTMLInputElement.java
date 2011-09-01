@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,42 +14,61 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
-import org.apache.commons.lang.math.NumberUtils;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.EVENT_ONCLICK_USES_POINTEREVENT;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_ALIGN_FOR_INPUT_IGNORES_VALUES;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_CLICK_CHECKBOX_TRIGGERS_NO_CHANGE_EVENT;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+
+import java.io.IOException;
+
+import org.apache.commons.lang3.math.NumberUtils;
 import org.xml.sax.helpers.AttributesImpl;
 
+import com.gargoylesoftware.htmlunit.html.HtmlCheckBoxInput;
 import com.gargoylesoftware.htmlunit.html.HtmlInput;
+import com.gargoylesoftware.htmlunit.html.HtmlRadioButtonInput;
 import com.gargoylesoftware.htmlunit.html.HtmlTextInput;
 import com.gargoylesoftware.htmlunit.html.InputElementFactory;
-import com.gargoylesoftware.htmlunit.javascript.host.FormField;
+import com.gargoylesoftware.htmlunit.html.impl.SelectableTextInput;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxFunction;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
+import com.gargoylesoftware.htmlunit.javascript.host.MouseEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.Event;
+import com.gargoylesoftware.htmlunit.javascript.host.event.PointerEvent;
 
 /**
  * The JavaScript object for form input elements (html tag &lt;input ...&gt;).
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 10596 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Marc Guillemot
  * @author Chris Erskine
  * @author Ahmed Ashour
  * @author Daniel Gredler
+ * @author Ronald Brill
+ * @author Frank Danek
  */
+@JsxClasses({
+        @JsxClass(domClass = HtmlInput.class,
+                browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(domClass = HtmlInput.class,
+            isJSObject = false, browsers = @WebBrowser(value = IE, maxVersion = 8))
+    })
 public class HTMLInputElement extends FormField {
-
-    private static final long serialVersionUID = 3712016051364495710L;
 
     /**
      * Creates an instance.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
     public HTMLInputElement() {
-        // Empty.
-    }
-
-    /**
-     * JavaScript constructor. This must be declared in every JavaScript file
-     * because the rhino engine won't walk up the hierarchy looking for constructors.
-     */
-    public void jsConstructor() {
-        // Empty.
     }
 
     /**
@@ -57,8 +76,9 @@ public class HTMLInputElement extends FormField {
      * Note: this replace the DOM node with a new one.
      * @param newType the new type to set
      */
-    public void jsxSet_type(final String newType) {
-        HtmlInput input = getHtmlInputOrDie();
+    @JsxSetter
+    public void setType(final String newType) {
+        HtmlInput input = getDomNodeOrDie();
 
         if (!input.getTypeAttribute().equalsIgnoreCase(newType)) {
             final AttributesImpl attributes = readAttributes(input);
@@ -67,6 +87,10 @@ public class HTMLInputElement extends FormField {
 
             final HtmlInput newInput = (HtmlInput) InputElementFactory.instance
                 .createElement(input.getPage(), "input", attributes);
+
+            if (input.wasCreatedByJavascript()) {
+                newInput.markAsCreatedByJavascript();
+            }
 
             if (input.getParentNode() != null) {
                 input.getParentNode().replaceChild(newInput, input);
@@ -89,18 +113,18 @@ public class HTMLInputElement extends FormField {
      * implementation does nothing. The implementations in Checkbox and Radio
      * actually do the work.
      *
-     * @param checked  True if this input should have the "checked" attribute set
+     * @param checked True if this input should have the "checked" attribute set
      */
-    public void jsxSet_checked(final boolean checked) {
-        ((HtmlInput) getDomNodeOrDie()).setChecked(checked);
+    @JsxSetter
+    public void setChecked(final boolean checked) {
+        getDomNodeOrDie().setChecked(checked);
     }
 
     /**
-     * Commodity for <code>(HtmlInput) getDomNodeOrDie()</code>.
-     * @return the bound HTML input
+     * {@inheritDoc}
      */
-    protected HtmlInput getHtmlInputOrDie() {
-        return (HtmlInput) getDomNodeOrDie();
+    public HtmlInput getDomNodeOrDie() {
+        return (HtmlInput) super.getDomNodeOrDie();
     }
 
     /**
@@ -111,33 +135,35 @@ public class HTMLInputElement extends FormField {
      *
      *@return the checked property
      */
-    public boolean jsxGet_checked() {
-        return ((HtmlInput) getDomNodeOrDie()).isChecked();
+    @JsxGetter
+    public boolean getChecked() {
+        return getDomNodeOrDie().isChecked();
     }
 
     /**
      * Select this element.
      */
-    public void jsxFunction_select() {
-        final HtmlInput input = getHtmlInputOrDie();
+    @JsxFunction
+    public void select() {
+        final HtmlInput input = getDomNodeOrDie();
         if (input instanceof HtmlTextInput) {
-            ((HtmlTextInput) getDomNodeOrDie()).select();
+            ((HtmlTextInput) input).select();
         }
         // currently nothing for other input types
     }
 
     /**
-     * Uses {@link #jsxSet_type(String)} if attribute's name is type to
+     * Uses {@link #setType(String)} if attribute's name is type to
      * replace DOM node as well as long as we have subclasses of {@link HtmlInput}.
      * {@inheritDoc}
      */
     @Override
-    public void jsxFunction_setAttribute(final String name, final String value) {
+    public void setAttribute(final String name, final String value) {
         if ("type".equals(name)) {
-            jsxSet_type(value);
+            setType(value);
         }
         else {
-            super.jsxFunction_setAttribute(name, value);
+            super.setAttribute(name, value);
         }
     }
 
@@ -146,8 +172,9 @@ public class HTMLInputElement extends FormField {
      * @return the input's default value, used if the containing form gets reset
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms533718.aspx">MSDN Documentation</a>
      */
-    public String jsxGet_defaultValue() {
-        return ((HtmlInput) getDomNodeOrDie()).getDefaultValue();
+    @JsxGetter
+    public String getDefaultValue() {
+        return getDomNodeOrDie().getDefaultValue();
     }
 
     /**
@@ -155,8 +182,9 @@ public class HTMLInputElement extends FormField {
      * @param defaultValue the input's default value, used if the containing form gets reset
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms533718.aspx">MSDN Documentation</a>
      */
-    public void jsxSet_defaultValue(final String defaultValue) {
-        ((HtmlInput) getDomNodeOrDie()).setDefaultValue(defaultValue);
+    @JsxSetter
+    public void setDefaultValue(final String defaultValue) {
+        getDomNodeOrDie().setDefaultValue(defaultValue);
     }
 
     /**
@@ -164,8 +192,9 @@ public class HTMLInputElement extends FormField {
      * @return the input's default checked value, used if the containing form gets reset
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms533715.aspx">MSDN Documentation</a>
      */
-    public boolean jsxGet_defaultChecked() {
-        return ((HtmlInput) getDomNodeOrDie()).isDefaultChecked();
+    @JsxGetter
+    public boolean getDefaultChecked() {
+        return getDomNodeOrDie().isDefaultChecked();
     }
 
     /**
@@ -173,70 +202,62 @@ public class HTMLInputElement extends FormField {
      * @param defaultChecked the input's default checked value, used if the containing form gets reset
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms533715.aspx">MSDN Documentation</a>
      */
-    public void jsxSet_defaultChecked(final boolean defaultChecked) {
-        ((HtmlInput) getDomNodeOrDie()).setDefaultChecked(defaultChecked);
+    @JsxSetter
+    public void setDefaultChecked(final boolean defaultChecked) {
+        getDomNodeOrDie().setDefaultChecked(defaultChecked);
     }
 
     /**
      * Gets the value of "textLength" attribute.
      * @return the text length
      */
-    public int jsxGet_textLength() {
-        return jsxGet_value().length();
+    @JsxGetter(@WebBrowser(FF))
+    public int getTextLength() {
+        return getValue().length();
     }
 
     /**
      * Gets the value of "selectionStart" attribute.
      * @return the selection start
      */
-    public int jsxGet_selectionStart() {
-        return ((HtmlTextInput) getDomNodeOrDie()).getSelectionStart();
+    @JsxGetter({ @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11), @WebBrowser(CHROME) })
+    public int getSelectionStart() {
+        return ((SelectableTextInput) getDomNodeOrDie()).getSelectionStart();
     }
 
     /**
      * Sets the value of "selectionStart" attribute.
      * @param start selection start
      */
-    public void jsxSet_selectionStart(final int start) {
-        ((HtmlTextInput) getDomNodeOrDie()).setSelectionStart(start);
+    @JsxSetter({ @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11), @WebBrowser(CHROME) })
+    public void setSelectionStart(final int start) {
+        ((SelectableTextInput) getDomNodeOrDie()).setSelectionStart(start);
     }
 
     /**
      * Gets the value of "selectionEnd" attribute.
      * @return the selection end
      */
-    public int jsxGet_selectionEnd() {
-        return ((HtmlTextInput) getDomNodeOrDie()).getSelectionEnd();
+    @JsxGetter({ @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11), @WebBrowser(CHROME) })
+    public int getSelectionEnd() {
+        return ((SelectableTextInput) getDomNodeOrDie()).getSelectionEnd();
     }
 
     /**
      * Sets the value of "selectionEnd" attribute.
      * @param end selection end
      */
-    public void jsxSet_selectionEnd(final int end) {
-        ((HtmlTextInput) getDomNodeOrDie()).setSelectionEnd(end);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected boolean isAttributeName(final String name) {
-        if ("maxlength".equals(name.toLowerCase())) {
-            return "maxLength".equals(name);
-        }
-
-        if ("readOnly".equals(name.toLowerCase())) {
-            return "readOnly".equals(name);
-        }
-        return super.isAttributeName(name);
+    @JsxSetter({ @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11), @WebBrowser(CHROME) })
+    public void setSelectionEnd(final int end) {
+        ((SelectableTextInput) getDomNodeOrDie()).setSelectionEnd(end);
     }
 
     /**
      * Gets the max length.
      * @return the max length
      */
-    public int jsxGet_maxLength() {
+    @JsxGetter
+    public int getMaxLength() {
         final String attrValue = getDomNodeOrDie().getAttribute("maxLength");
         return NumberUtils.toInt(attrValue, -1);
     }
@@ -245,24 +266,82 @@ public class HTMLInputElement extends FormField {
      * Sets the value of "maxLength" attribute.
      * @param length the new value
      */
-    public void jsxSet_maxLength(final int length) {
-        getDomNodeOrDie().setAttribute("maxLength", String.valueOf(length));
+    @JsxSetter
+    public void setMaxLength(final int length) {
+        getDomNodeOrDie().setMaxLength(length);
+    }
+
+    /**
+     * Gets the {@code minLength}.
+     * @return the {@code minLength}
+     */
+    @JsxGetter(@WebBrowser(CHROME))
+    public int getMinLength() {
+        final String attrValue = getDomNodeOrDie().getAttribute("minLength");
+        return NumberUtils.toInt(attrValue, -1);
+    }
+
+    /**
+     * Sets the value of {@code minLength} attribute.
+     * @param length the new value
+     */
+    @JsxSetter(@WebBrowser(CHROME))
+    public void setMinLength(final int length) {
+        getDomNodeOrDie().setMinLength(length);
+    }
+
+    /**
+     * Gets the {@code min} property.
+     * @return the {@code min} property
+     */
+    @JsxGetter({ @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) })
+    public String getMin() {
+        return getDomNodeOrDie().getAttribute("min");
+    }
+
+    /**
+     * Sets the {@code min} property.
+     * @param min the {@code min} property
+     */
+    @JsxSetter({ @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) })
+    public void setMin(final String min) {
+        getDomNodeOrDie().setAttribute("min", min);
+    }
+
+    /**
+     * Gets the {@code max} property.
+     * @return the {@code max} property
+     */
+    @JsxGetter({ @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) })
+    public String getMax() {
+        return getDomNodeOrDie().getAttribute("max");
+    }
+
+    /**
+     * Sets the {@code max} property.
+     * @param max the {@code max} property
+     */
+    @JsxSetter({ @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) })
+    public void setMax(final String max) {
+        getDomNodeOrDie().setAttribute("max", max);
     }
 
     /**
      * Gets the value of "readOnly" attribute.
      * @return the readOnly attribute
      */
-    public boolean jsxGet_readOnly() {
-        return ((HtmlInput) getDomNodeOrDie()).isReadOnly();
+    @JsxGetter
+    public boolean getReadOnly() {
+        return getDomNodeOrDie().isReadOnly();
     }
 
     /**
      * Sets the value of "readOnly" attribute.
      * @param readOnly the new value
      */
-    public void jsxSet_readOnly(final boolean readOnly) {
-        ((HtmlInput) getDomNodeOrDie()).setReadOnly(readOnly);
+    @JsxSetter
+    public void setReadOnly(final boolean readOnly) {
+        getDomNodeOrDie().setReadOnly(readOnly);
     }
 
     /**
@@ -270,28 +349,27 @@ public class HTMLInputElement extends FormField {
      * @param start the index of the first character to select
      * @param end the index of the character after the selection
      */
-    public void jsxFunction_setSelectionRange(final int start, final int end) {
-        jsxSet_selectionStart(start);
-        jsxSet_selectionEnd(end);
+    @JsxFunction({ @WebBrowser(FF), @WebBrowser(CHROME), @WebBrowser(value = IE, minVersion = 11) })
+    public void setSelectionRange(final int start, final int end) {
+        setSelectionStart(start);
+        setSelectionEnd(end);
     }
 
     /**
      * Returns the value of the "alt" property.
      * @return the value of the "alt" property
      */
-    public String jsxGet_alt() {
-        String alt = getDomNodeOrDie().getAttribute("alt");
-        if (alt == NOT_FOUND) {
-            alt = "";
-        }
-        return alt;
+    @JsxGetter
+    public String getAlt() {
+        return getDomNodeOrDie().getAttribute("alt");
     }
 
     /**
      * Returns the value of the "alt" property.
      * @param alt the value
      */
-    public void jsxSet_alt(final String alt) {
+    @JsxSetter
+    public void setAlt(final String alt) {
         getDomNodeOrDie().setAttribute("alt", alt);
     }
 
@@ -299,19 +377,17 @@ public class HTMLInputElement extends FormField {
      * Gets the "border" attribute.
      * @return the "border" attribute
      */
-    public String jsxGet_border() {
-        String border = getDomNodeOrDie().getAttribute("border");
-        if (border == NOT_FOUND) {
-            border = "";
-        }
-        return border;
+    @JsxGetter(@WebBrowser(IE))
+    public String getBorder() {
+        return getDomNodeOrDie().getAttribute("border");
     }
 
     /**
      * Sets the "border" attribute.
      * @param border the "border" attribute
      */
-    public void jsxSet_border(final String border) {
+    @JsxSetter(@WebBrowser(IE))
+    public void setBorder(final String border) {
         getDomNodeOrDie().setAttribute("border", border);
     }
 
@@ -319,7 +395,8 @@ public class HTMLInputElement extends FormField {
      * Returns the value of the "align" property.
      * @return the value of the "align" property
      */
-    public String jsxGet_align() {
+    @JsxGetter
+    public String getAlign() {
         return getAlign(true);
     }
 
@@ -327,9 +404,136 @@ public class HTMLInputElement extends FormField {
      * Sets the value of the "align" property.
      * @param align the value of the "align" property
      */
-    public void jsxSet_align(final String align) {
-        final boolean ignoreIfNoError = getBrowserVersion().isIE();
+    @JsxSetter
+    public void setAlign(final String align) {
+        final boolean ignoreIfNoError = getBrowserVersion().hasFeature(JS_ALIGN_FOR_INPUT_IGNORES_VALUES);
         setAlign(align, ignoreIfNoError);
     }
 
+    /**
+     * Returns the value of the <tt>src</tt> attribute.
+     * @return the value of the <tt>src</tt> attribute
+     */
+    @JsxGetter
+    public String getSrc() {
+        return getDomNodeOrDie().getSrcAttribute();
+    }
+
+    /**
+     * {@inheritDoc} Overridden to modify browser configurations.
+     */
+    @Override
+    @JsxFunction(@WebBrowser(FF))
+    public void click() throws IOException {
+        final HtmlInput domNode = getDomNodeOrDie();
+        final boolean originalState = domNode.isChecked();
+        final Event event;
+        if (getBrowserVersion().hasFeature(EVENT_ONCLICK_USES_POINTEREVENT)) {
+            event = new PointerEvent(domNode, MouseEvent.TYPE_CLICK, false,
+                    false, false, MouseEvent.BUTTON_LEFT);
+        }
+        else {
+            event = new MouseEvent(domNode, MouseEvent.TYPE_CLICK, false,
+                    false, false, MouseEvent.BUTTON_LEFT);
+        }
+        domNode.click(event);
+
+        final boolean newState = domNode.isChecked();
+
+        if (originalState != newState
+            && (domNode instanceof HtmlRadioButtonInput
+                    || (domNode instanceof HtmlCheckBoxInput
+                            && !getBrowserVersion().hasFeature(JS_CLICK_CHECKBOX_TRIGGERS_NO_CHANGE_EVENT)))) {
+            domNode.fireEvent(Event.TYPE_CHANGE);
+        }
+    }
+
+    /**
+     * {@inheritDoc} Overridden to modify browser configurations.
+     */
+    @Override
+    @JsxGetter
+    public String getType() {
+        return super.getType();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected boolean isEndTagForbidden() {
+        return true;
+    }
+
+    /**
+     * Returns the {@code required} attribute.
+     * @return the {@code required} attribute
+     */
+    @JsxGetter({ @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) })
+    public boolean isRequired() {
+        return getDomNodeOrDie().isRequired();
+    }
+
+    /**
+     * Sets the {@code required} attribute.
+     * @param required the new attribute value
+     */
+    @JsxSetter({ @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) })
+    public void setRequired(final boolean required) {
+        getDomNodeOrDie().setRequired(required);
+    }
+
+    /**
+     * Returns the {@code size} attribute.
+     * @return the {@code size} attribute
+     */
+    @JsxGetter
+    public String getSize() {
+        return getDomNodeOrDie().getSize();
+    }
+
+    /**
+     * Sets the {@code size} attribute.
+     * @param size the new {@code size} value
+     */
+    @JsxSetter
+    public void setSize(final String size) {
+        getDomNodeOrDie().setSize(size);
+    }
+
+    /**
+     * Returns the {@code accept} attribute.
+     * @return the {@code accept} attribute
+     */
+    @JsxGetter
+    public String getAccept() {
+        return getDomNodeOrDie().getAccept();
+    }
+
+    /**
+     * Sets the {@code accept} attribute.
+     * @param accept the new {@code accept} value
+     */
+    @JsxSetter
+    public void setAccept(final String accept) {
+        getDomNodeOrDie().setAccept(accept);
+    }
+
+    /**
+     * Returns the {@code autocomplete} attribute.
+     * @return the {@code autocomplete} attribute
+     */
+    @JsxGetter({ @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) })
+    public String getAutocomplete() {
+        return getDomNodeOrDie().getAutocomplete();
+    }
+
+    /**
+     * Sets the {@code autocomplete} attribute.
+     * @param autocomplete the new {@code autocomplete} value
+     */
+    @JsxSetter({ @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) })
+    public void setAutocomplete(final String autocomplete) {
+        getDomNodeOrDie().setAutocomplete(autocomplete);
+    }
 }

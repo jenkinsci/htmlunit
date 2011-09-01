@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,13 +18,11 @@ import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
 
 /**
  * A window opened in JavaScript via either <tt>window.showModalDialog</tt> or <tt>window.showModelessDialog</tt>.
- * @version $Revision: 4756 $
+ * @version $Revision: 9837 $
  * @author Daniel Gredler
+ * @author Ronald Brill
  */
 public class DialogWindow extends WebWindowImpl {
-
-    /** Serial version UID. */
-    private static final long serialVersionUID = -8851612155741170131L;
 
     /** The arguments object exposed via the <tt>dialogArguments</tt> JavaScript property. */
     private Object arguments_;
@@ -34,9 +32,10 @@ public class DialogWindow extends WebWindowImpl {
      * @param webClient the web client that "owns" this window
      * @param arguments the arguments object exposed via the <tt>dialogArguments</tt> JavaScript property
      */
-    public DialogWindow(final WebClient webClient, final Object arguments) {
+    protected DialogWindow(final WebClient webClient, final Object arguments) {
         super(webClient);
         arguments_ = arguments;
+        performRegistration();
     }
 
     /**
@@ -44,7 +43,7 @@ public class DialogWindow extends WebWindowImpl {
      */
     @Override
     protected boolean isJavaScriptInitializationNeeded() {
-        return this.getScriptObject() == null;
+        return getScriptObject() == null;
     }
 
     /**
@@ -77,8 +76,17 @@ public class DialogWindow extends WebWindowImpl {
      * Closes this window.
      */
     public void close() {
+        getJobManager().shutdown();
         destroyChildren();
         getWebClient().deregisterWebWindow(this);
     }
 
+    /**
+     * Returns a string representation of this object.
+     * @return a string representation of this object
+     */
+    @Override
+    public String toString() {
+        return "DialogWindow[name=\"" + getName() + "\"]";
+    }
 }

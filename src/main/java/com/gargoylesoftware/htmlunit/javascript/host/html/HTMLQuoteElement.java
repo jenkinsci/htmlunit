@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,32 +14,46 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+
+import com.gargoylesoftware.htmlunit.html.HtmlBlockQuote;
+import com.gargoylesoftware.htmlunit.html.HtmlInlineQuotation;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
+
 /**
  * The JavaScript object "HTMLQuoteElement".
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 10429 $
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Carsten Steul
  */
+@JsxClasses({
+        @JsxClass(domClass = HtmlInlineQuotation.class, browsers = { @WebBrowser(FF), @WebBrowser(CHROME) }),
+        @JsxClass(domClass = HtmlBlockQuote.class, browsers = { @WebBrowser(FF), @WebBrowser(CHROME) })
+    })
 public class HTMLQuoteElement extends HTMLElement {
-
-    private static final long serialVersionUID = -2939057085304041436L;
 
     /**
      * Creates an instance.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
     public HTMLQuoteElement() {
-        // Empty.
     }
 
     /**
      * Returns the value of the "cite" property.
      * @return the value of the "cite" property
      */
-    public String jsxGet_cite() {
-        String cite = getDomNodeOrDie().getAttribute("cite");
-        if (cite == NOT_FOUND) {
-            cite = "";
-        }
+    @JsxGetter
+    public String getCite() {
+        final String cite = getDomNodeOrDie().getAttribute("cite");
         return cite;
     }
 
@@ -47,27 +61,8 @@ public class HTMLQuoteElement extends HTMLElement {
      * Returns the value of the "cite" property.
      * @param cite the value
      */
-    public void jsxSet_cite(final String cite) {
+    @JsxSetter
+    public void setCite(final String cite) {
         getDomNodeOrDie().setAttribute("cite", cite);
-    }
-
-    /**
-     * Returns the value of the "dateTime" property.
-     * @return the value of the "dateTime" property
-     */
-    public String jsxGet_dateTime() {
-        String cite = getDomNodeOrDie().getAttribute("datetime");
-        if (cite == NOT_FOUND) {
-            cite = "";
-        }
-        return cite;
-    }
-
-    /**
-     * Returns the value of the "dateTime" property.
-     * @param dateTime the value
-     */
-    public void jsxSet_dateTime(final String dateTime) {
-        getDomNodeOrDie().setAttribute("datetime", dateTime);
     }
 }

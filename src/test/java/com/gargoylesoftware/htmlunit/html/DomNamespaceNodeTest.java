@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,16 +18,16 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 
 /**
  * Tests for {@link DomNamespaceNode}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 9842 $
  * @author Ahmed Ashour
  */
 @RunWith(BrowserRunner.class)
-public class DomNamespaceNodeTest extends WebTestCase {
+public class DomNamespaceNodeTest extends SimpleWebTestCase {
 
     /**
      * @throws Exception if the test fails

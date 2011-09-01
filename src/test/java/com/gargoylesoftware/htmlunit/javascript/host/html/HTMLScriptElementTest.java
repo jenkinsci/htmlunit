@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,45 +14,40 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
-import java.util.ArrayList;
-import java.util.List;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.IE8;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
-import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
-import com.gargoylesoftware.htmlunit.MockWebConnection;
-import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebTestCase;
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import com.gargoylesoftware.htmlunit.html.HtmlTextArea;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Unit tests for {@link HTMLScriptElement}.
  * TODO: check event order with defer in real browser WITHOUT using alert(...) as it impacts ordering.
  * Some expectations seems to be incorrect.
- * @version $Revision: 4503 $
+ * @version $Revision: 10277 $
  * @author Daniel Gredler
  * @author Ahmed Ashour
  * @author Marc Guillemot
+ * @author Frank Danek
+ * @author Ronald Brill
  */
-public class HTMLScriptElementTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public class HTMLScriptElementTest extends WebDriverTestCase {
 
     /**
      * Verifies that the <tt>onreadystatechange</tt> handler is invoked correctly.
      * @throws Exception if an error occurs
      */
     @Test
+    @Alerts(DEFAULT = "1 2 3 4 onload ",
+            IE8 = "1 2 3 b=loading 4 b=loaded ")
     public void onReadyStateChangeHandler() throws Exception {
-        //onReadyStateChangeHandler(BrowserVersion.INTERNET_EXPLORER_6_0, "1 2 4 3 b=complete ");
-        //IE7 gives "1 2 3 b=complete " if 'Check new version of stored pages' is set to 'Never'
-        onReadyStateChangeHandler(BrowserVersion.INTERNET_EXPLORER_7, "1 2 3 b=loading 4 b=loaded ");
-        onReadyStateChangeHandler(BrowserVersion.FIREFOX_2, "1 2 3 4 onload ");
-        onReadyStateChangeHandler(BrowserVersion.FIREFOX_3, "1 2 3 4 onload ");
-    }
-
-    private void onReadyStateChangeHandler(final BrowserVersion browserVersion, final String expectedValue)
-        throws Exception {
         final String html = "<html>\n"
             + "  <head>\n"
             + "    <title>test</title>\n"
@@ -64,12 +59,16 @@ public class HTMLScriptElementTest extends WebTestCase {
             + "        script.onreadystatechange = null;\n"
             + "        script.onreadystatechange = function() {\n"
             + "          document.getElementById('myTextarea').value += script.id + '=' + script.readyState + ' ';\n"
+            + "          if (this.readyState == 'loaded') {\n"
+            + "            alert(document.getElementById('myTextarea').value);\n"
+            + "          }\n"
             + "        }\n"
             + "        script.onload = function () {\n"
             + "          document.getElementById('myTextarea').value += 'onload ';\n"
+            + "          alert(document.getElementById('myTextarea').value);\n"
             + "        }\n"
             + "        document.getElementById('myTextarea').value += '1 ';\n"
-            + "        script.src = '" + URL_SECOND + "';\n"
+            + "        script.src = 'script.js';\n"
             + "        document.getElementById('myTextarea').value += '2 ';\n"
             + "        document.getElementsByTagName('head')[0].appendChild(script);\n"
             + "        document.getElementById('myTextarea').value += '3 ';\n"
@@ -82,18 +81,8 @@ public class HTMLScriptElementTest extends WebTestCase {
 
         final String js = "document.getElementById('myTextarea').value += '4 ';";
 
-        final WebClient client = new WebClient(browserVersion);
-        final List<String> collectedAlerts = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-
-        final MockWebConnection webConnection = new MockWebConnection();
-        webConnection.setResponse(URL_FIRST, html);
-        webConnection.setResponse(URL_SECOND, js, "text/javascript");
-        client.setWebConnection(webConnection);
-
-        final HtmlPage page = client.getPage(URL_FIRST);
-        final HtmlTextArea textArea = page.getHtmlElementById("myTextarea");
-        assertEquals(expectedValue, textArea.getText());
+        getMockWebConnection().setDefaultResponse(js, JAVASCRIPT_MIME_TYPE);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -101,17 +90,10 @@ public class HTMLScriptElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts("")
     public void srcWithJavaScriptProtocol_Static() throws Exception {
-        srcWithJavaScriptProtocol_Static(BrowserVersion.INTERNET_EXPLORER_6, "1");
-        srcWithJavaScriptProtocol_Static(BrowserVersion.INTERNET_EXPLORER_7);
-        srcWithJavaScriptProtocol_Static(BrowserVersion.FIREFOX_2, "1");
-    }
-
-    private void srcWithJavaScriptProtocol_Static(final BrowserVersion version, final String... expected) throws Exception {
         final String html = "<html><head><script src='javascript:\"alert(1)\"'></script></head><body></body></html>";
-        final List<String> actual = new ArrayList<String>();
-        loadPage(version, html, actual);
-        assertEquals(expected, actual);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -119,14 +101,9 @@ public class HTMLScriptElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts("")
     public void srcWithJavaScriptProtocol_Dynamic() throws Exception {
-        srcWithJavaScriptProtocol_Dynamic(BrowserVersion.INTERNET_EXPLORER_6, "1");
-        srcWithJavaScriptProtocol_Dynamic(BrowserVersion.INTERNET_EXPLORER_7);
-        srcWithJavaScriptProtocol_Dynamic(BrowserVersion.FIREFOX_2, "1");
-    }
-
-    private void srcWithJavaScriptProtocol_Dynamic(final BrowserVersion version, final String... expected) throws Exception {
-        final String content =
+        final String html =
               "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
             + "    var script=document.createElement('script');\n"
@@ -136,15 +113,525 @@ public class HTMLScriptElementTest extends WebTestCase {
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
-        final List<String> actual = new ArrayList<String>();
-        loadPage(version, content, actual);
-        assertEquals(expected, actual);
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Test for bug 2993940.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "start", "end" },
+            IE8 = { "start", "executed", "end" })
+    public void reexecuteModifiedScript() throws Exception {
+        final String html =
+              "<html><head><title>foo</title></head><body>\n"
+            + "<script>\n"
+            + "  alert('start');\n"
+            + "  var script = document.getElementsByTagName('script')[0];\n"
+            + "  script.text = \"alert('executed');\";\n"
+            + "  alert('end');\n"
+            + "</script>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Creates a new script element and adds the source using <code>createTextNode</code> and <code>appendChild</code>.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "start", "end" },
+            IE8 = { "start", "exception", "end" })
+    public void createElementWithCreateTextNode() throws Exception {
+        // IE (at least IE6 and IE8) does not support script.appendChild(source)
+        final String html =
+                "<html><head><title>foo</title></head><body>\n"
+              + "<script>\n"
+              + "  alert('start');\n"
+              + "  var script = document.createElement('script');\n"
+              + "  var source = document.createTextNode(\"alert('executed');\");\n"
+              + "  try {\n"
+              + "    script.appendChild(source);\n"
+              + "  } catch(e) {alert('exception'); }\n"
+              + "  alert('end');\n"
+              + "</script>\n"
+              + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Creates a new script element and adds the source using <code>createTextNode</code> and <code>appendChild</code>.
+     * After that it appends the script element to the body.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "start", "middle", "executed", "end" },
+            IE8 = { "start", "exception", "middle", "end" })
+    public void createElementWithCreateTextNodeAndAppend() throws Exception {
+        // IE (at least IE6 and IE8) does not support script.appendChild(source)
+        final String html =
+                "<html><head><title>foo</title></head><body>\n"
+              + "<script>\n"
+              + "  alert('start');\n"
+              + "  var script = document.createElement('script');\n"
+              + "  var source = document.createTextNode(\"alert('executed');\");\n"
+              + "  try {\n"
+              + "    script.appendChild(source);\n"
+              + "  } catch(e) {alert('exception'); }\n"
+              + "  alert('middle');\n"
+              + "  document.body.appendChild(script);\n"
+              + "  alert('end');\n"
+              + "</script>\n"
+              + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Creates a new script element and adds the source using <code>.text</code>.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "start", "end" })
+    public void createElementWithSetText() throws Exception {
+        final String html =
+                "<html><head><title>foo</title></head><body>\n"
+              + "<script>\n"
+              + "  alert('start');\n"
+              + "  var script = document.createElement('script');\n"
+              + "  script.text = \"alert('executed');\";\n"
+              + "  alert('end');\n"
+              + "</script>\n"
+              + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Creates a new script element and adds the source using <code>.text</code>.
+     * After that it appends the script element to the body.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "start", "middle", "executed", "end" })
+    public void createElementWithSetTextAndAppend() throws Exception {
+        final String html =
+                "<html><head><title>foo</title></head><body>\n"
+              + "<script>\n"
+              + "  alert('start');\n"
+              + "  var script = document.createElement('script');\n"
+              + "  script.text = \"alert('executed');\";\n"
+              + "  alert('middle');\n"
+              + "  document.body.appendChild(script);\n"
+              + "  alert('end');\n"
+              + "</script>\n"
+              + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Creates a new script element and adds the source using <code>.src</code>.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "start", "end" })
+    public void createElementWithSetSrc() throws Exception {
+        final String html =
+                "<html><head><title>foo</title></head><body>\n"
+              + "<script>\n"
+              + "  alert('start');\n"
+              + "  var script = document.createElement('script');\n"
+              + "  script.src = \"" + URL_SECOND + "\";\n"
+              + "  alert('end');\n"
+              + "</script>\n"
+              + "</body></html>";
+
+        final String js = "alert('executed');";
+        getMockWebConnection().setResponse(URL_SECOND, js);
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Creates a new script element and adds the source using <code>.src</code>.
+     * After that it appends the script element to the body.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "start", "middle", "end", "executed" })
+    public void createElementWithSetSrcAndAppend() throws Exception {
+        final String html =
+                "<html><head><title>foo</title></head><body>\n"
+              + "<script>\n"
+              + "  alert('start');\n"
+              + "  var script = document.createElement('script');\n"
+              + "  script.src = \"" + URL_SECOND + "\";\n"
+              + "  alert('middle');\n"
+              + "  document.body.appendChild(script);\n"
+              + "  alert('end');\n"
+              + "</script>\n"
+              + "</body></html>";
+
+        final String js = "alert('executed');";
+        getMockWebConnection().setResponse(URL_SECOND, js);
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Replaces the source of the current script element using <code>createTextNode</code> and <code>appendChild</code>.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "start", "end" },
+            IE8 = { "start", "exception", "end" })
+    public void replaceSelfWithCreateTextNode() throws Exception {
+        // IE (at least IE6 and IE8) does not support script.appendChild(source)
+        final String html =
+                "<html><head><title>foo</title></head><body>\n"
+              + "<script>\n"
+              + "  alert('start');\n"
+              + "  var script = document.getElementsByTagName('script')[0];\n"
+              + "  var source = document.createTextNode(\"alert('executed');\");\n"
+              + "  try {\n"
+              + "    script.appendChild(source);\n"
+              + "  } catch(e) {alert('exception'); }\n"
+              + "  alert('end');\n"
+              + "</script>\n"
+              + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Replaces the source of the current script element using <code>.text</code>.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "start", "end" },
+            IE8 = { "start", "executed", "end" })
+    public void replaceSelfWithSetText() throws Exception {
+        // TODO this test is the same as #reexecuteModifiedScriptWhenReappending()
+        final String html =
+                "<html><head><title>foo</title></head><body>\n"
+              + "<script>\n"
+              + "  alert('start');\n"
+              + "  var script = document.getElementsByTagName('script')[0];\n"
+              + "  var source = document.createTextNode(\"alert('executed');\");\n"
+              + "  script.text = \"alert('executed');\";\n"
+              + "  alert('end');\n"
+              + "</script>\n"
+              + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Replaces the source of the current script element using <code>.src</code>.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "start", "end" },
+            IE8 = { "start", "end", "executed" })
+    public void replaceSelfWithSetSrc() throws Exception {
+        final String html =
+                "<html><head><title>foo</title></head><body>\n"
+              + "<script>\n"
+              + "  alert('start');\n"
+              + "  var script = document.getElementsByTagName('script')[0];\n"
+              + "  var source = document.createTextNode(\"alert('executed');\");\n"
+              + "  script.src = \"" + URL_SECOND + "\";\n"
+              + "  alert('end');\n"
+              + "</script>\n"
+              + "</body></html>";
+
+        final String js = "alert('executed');";
+        getMockWebConnection().setResponse(URL_SECOND, js);
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Replaces the empty source of another script element using <code>createTextNode</code> and <code>appendChild</code>.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "start", "executed", "end" },
+            IE8 = { "start", "exception", "end" })
+    public void replaceWithCreateTextNodeEmpty() throws Exception {
+        // IE (at least IE6 and IE8) does not support script.appendChild(source)
+        final String html =
+                "<html><head><title>foo</title></head><body>\n"
+              + "<script id='js1'></script>\n"
+              + "<script>\n"
+              + "  alert('start');\n"
+              + "  var script = document.getElementById('js1');\n"
+              + "  var source = document.createTextNode(\"alert('executed');\");\n"
+              + "  try {\n"
+              + "    script.appendChild(source);\n"
+              + "  } catch(e) {alert('exception'); }\n"
+              + "  alert('end');\n"
+              + "</script>\n"
+              + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Replaces the source containing just a blank of another script element using <code>createTextNode</code> and <code>appendChild</code>.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "start", "end" },
+            IE8 = { "start", "exception", "end" })
+    public void replaceWithCreateTextNodeBlank() throws Exception {
+        // IE (at least IE6 and IE8) does not support script.appendChild(source)
+        final String html =
+                "<html><head><title>foo</title></head><body>\n"
+              + "<script id='js1'> </script>\n"
+              + "<script>\n"
+              + "  alert('start');\n"
+              + "  var script = document.getElementById('js1');\n"
+              + "  var source = document.createTextNode(\"alert('executed');\");\n"
+              + "  try {\n"
+              + "    script.appendChild(source);\n"
+              + "  } catch(e) {alert('exception'); }\n"
+              + "  alert('end');\n"
+              + "</script>\n"
+              + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Replaces the source containing a script of another script element using <code>createTextNode</code> and <code>appendChild</code>.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "script", "start", "end" },
+            IE8 = { "script", "start", "exception", "end" })
+    public void replaceWithCreateTextNodeScript() throws Exception {
+        // IE (at least IE6 and IE8) does not support script.appendChild(source)
+        final String html =
+                "<html><head><title>foo</title></head><body>\n"
+              + "<script id='js1'>\n"
+              + "  alert('script');\n"
+              + "</script>\n"
+              + "<script>\n"
+              + "  alert('start');\n"
+              + "  var script = document.getElementById('js1');\n"
+              + "  var source = document.createTextNode(\"alert('executed');\");\n"
+              + "  try {\n"
+              + "    script.appendChild(source);\n"
+              + "  } catch(e) {alert('exception'); }\n"
+              + "  alert('end');\n"
+              + "</script>\n"
+              + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Replaces the empty source of another script element using <code>.text</code>.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "start", "executed", "end" })
+    public void replaceWithSetTextEmpty() throws Exception {
+        final String html =
+                "<html><head><title>foo</title></head><body>\n"
+              + "<script id='js1'></script>\n"
+              + "<script>\n"
+              + "  alert('start');\n"
+              + "  var script = document.getElementById('js1');\n"
+              + "  script.text = \"alert('executed');\";\n"
+              + "  alert('end');\n"
+              + "</script>\n"
+              + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Replaces the source containing just a blank of another script element using <code>.text</code>.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "start", "end" },
+            IE8 = { "start", "executed", "end" })
+    public void replaceWithSetTextBlank() throws Exception {
+        final String html =
+                "<html><head><title>foo</title></head><body>\n"
+              + "<script id='js1'> </script>\n"
+              + "<script>\n"
+              + "  alert('start');\n"
+              + "  var script = document.getElementById('js1');\n"
+              + "  script.text = \"alert('executed');\";\n"
+              + "  alert('end');\n"
+              + "</script>\n"
+              + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Replaces the source containing a script of another script element using <code>.text</code>.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "script", "start", "end" },
+            IE8 = { "script", "start", "executed", "end" })
+    public void replaceWithSetTextScript() throws Exception {
+        final String html =
+                "<html><head><title>foo</title></head><body>\n"
+              + "<script id='js1'>\n"
+              + "  alert('script');\n"
+              + "</script>\n"
+              + "<script>\n"
+              + "  alert('start');\n"
+              + "  var script = document.getElementById('js1');\n"
+              + "  script.text = \"alert('executed');\";\n"
+              + "  alert('end');\n"
+              + "</script>\n"
+              + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Replaces the empty source of another script element using <code>.src</code>.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "start", "end", "executed" })
+    public void replaceWithSetSrcEmpty() throws Exception {
+        final String html =
+                "<html><head><title>foo</title></head><body>\n"
+              + "<script id='js1'></script>\n"
+              + "<script>\n"
+              + "  alert('start');\n"
+              + "  var script = document.getElementById('js1');\n"
+              + "  script.src = \"" + URL_SECOND + "\";\n"
+              + "  alert('end');\n"
+              + "</script>\n"
+              + "</body></html>";
+
+        final String js = "alert('executed');";
+        getMockWebConnection().setResponse(URL_SECOND, js);
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Replaces the source containing just a blank of another script element using <code>.src</code>.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "start", "end" },
+            IE8 = { "start", "end", "executed" })
+    public void replaceWithSetSrcBlank() throws Exception {
+        final String html =
+                "<html><head><title>foo</title></head><body>\n"
+              + "<script id='js1'> </script>\n"
+              + "<script>\n"
+              + "  alert('start');\n"
+              + "  var script = document.getElementById('js1');\n"
+              + "  script.src = \"" + URL_SECOND + "\";\n"
+              + "  alert('end');\n"
+              + "</script>\n"
+              + "</body></html>";
+
+        final String js = "alert('executed');";
+        getMockWebConnection().setResponse(URL_SECOND, js);
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Replaces the source containing a script of another script element using <code>.text</code>.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "script", "start", "end" },
+            IE8 = { "script", "start", "end", "executed" })
+    public void replaceWithSetSrcScript() throws Exception {
+        final String html =
+                "<html><head><title>foo</title></head><body>\n"
+              + "<script id='js1'>\n"
+              + "  alert('script');\n"
+              + "</script>\n"
+              + "<script>\n"
+              + "  alert('start');\n"
+              + "  var script = document.getElementById('js1');\n"
+              + "  script.src = \"" + URL_SECOND + "\";\n"
+              + "  alert('end');\n"
+              + "</script>\n"
+              + "</body></html>";
+
+        final String js = "alert('executed');";
+        getMockWebConnection().setResponse(URL_SECOND, js);
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Moves a script element from a div element to the body element using <code>appendChild</code>.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "executed", "start", "end" })
+    public void moveWithAppend() throws Exception {
+        final String html =
+                "<html><head><title>foo</title></head><body>\n"
+              + "<div>\n"
+              + "<script id='js1'>alert('executed');</script>\n"
+              + "<script>\n"
+              + "  alert('start');\n"
+              + "  var script = document.getElementById('js1');\n"
+              + "  document.body.appendChild(script);\n"
+              + "  alert('end');\n"
+              + "</script>\n"
+              + "</div>\n"
+              + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Moves a script element from a div element to the body element using <code>insertBefore</code>.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "executed", "start", "end" })
+    public void moveWithInsert() throws Exception {
+        final String html =
+                "<html><head><title>foo</title></head><body>\n"
+              + "<div>\n"
+              + "<script id='js1'>\n"
+              + "  alert('executed');\n"
+              + "</script>\n"
+              + "<script>\n"
+              + "  alert('start');\n"
+              + "  var script = document.getElementById('js1');\n"
+              + "  document.body.insertBefore(script, null);\n"
+              + "  alert('end');\n"
+              + "</script>\n"
+              + "</div>\n"
+              + "</body></html>";
+
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts(DEFAULT = { "script-for", "exception", "script-body" },
+            IE = { "script-body", "script-for", "hello" })
     public void scriptForEvent() throws Exception {
         // IE accepts it with () or without
         scriptForEvent("onload");
@@ -152,20 +639,22 @@ public class HTMLScriptElementTest extends WebTestCase {
     }
 
     private void scriptForEvent(final String eventName) throws Exception {
-        final String content
-            = "<html><head><title>foo</title>\n"
+        final String html = "<html><head><title>foo</title>\n"
             + "<script FOR='window' EVENT='" + eventName + "' LANGUAGE='javascript'>\n"
-            + " document.form1.txt.value='hello';\n"
-            + " alert(document.form1.txt.value);\n"
-            + "</script></head><body>\n"
-            + "<form name='form1'><input type=text name='txt'></form></body></html>";
-        final List<String> collectedAlerts = new ArrayList<String>();
+            + "  alert('script-for');\n"
+            + "  try {\n"
+            + "    document.form1.txt.value='hello';\n"
+            + "    alert(document.form1.txt.value);\n"
+            + "  } catch(e) {alert('exception'); }\n"
+            + "</script></head>\n"
+            + "<body>\n"
+            + "  <form name='form1'><input type='text' name='txt'></form>\n"
+            + "  <script>\n"
+            + "    alert('script-body');\n"
+            + "  </script>\n"
+            + "</body></html>";
 
-        final String[] expectedAlerts = {"hello"};
-        createTestPageForRealBrowserIfNeeded(content, expectedAlerts);
-
-        loadPage(content, collectedAlerts);
-        assertEquals(expectedAlerts, collectedAlerts);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -176,14 +665,10 @@ public class HTMLScriptElementTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
+    @Alerts(DEFAULT = { "3", "4", "2", "5" },
+            IE8 = { "1", "2", "3", "4", "5", "6", "7" })
+    @NotYetImplemented(IE8)
     public void onReadyStateChange_Order() throws Exception {
-        onReadyStateChange_Order(BrowserVersion.FIREFOX_2, "3", "4", "2", "5");
-        //onReadyStateChange_Order(BrowserVersion.INTERNET_EXPLORER_6_0, "1", "2", "3", "4", "5", "6", "7");
-        //onReadyStateChange_Order(BrowserVersion.INTERNET_EXPLORER_7_0, "1", "2", "3", "4", "5", "6", "7");
-    }
-
-    private void onReadyStateChange_Order(final BrowserVersion version, final String... expected)
-        throws Exception {
         final String html =
               "<html>\n"
             + "  <head>\n"
@@ -196,15 +681,14 @@ public class HTMLScriptElementTest extends WebTestCase {
             + "  </head>\n"
             + "  <body onload='alert(5)'></body>\n"
             + "</html>";
-        final List<String> actual = new ArrayList<String>();
-        loadPage(version, html, actual);
-        assertEquals(expected, actual);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
+    @Alerts(IE8 = "[object]")
     public void onReadyStateChange_EventAvailable() throws Exception {
         final String html =
               "<html><body><script>\n"
@@ -213,10 +697,7 @@ public class HTMLScriptElementTest extends WebTestCase {
             + "s.onreadystatechange = function() {alert(window.event);};\n"
             + "document.body.appendChild(s);\n"
             + "</script></body></html>";
-        final List<String> actual = new ArrayList<String>();
-        loadPage(BrowserVersion.INTERNET_EXPLORER_7, html, actual);
-        final String[] expected = new String[] {"[object]"};
-        assertEquals(expected, actual);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -227,14 +708,9 @@ public class HTMLScriptElementTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
+    @Alerts(DEFAULT = { "3", "4", "2" },
+            IE8 = { "1", "2", "3", "4", "5", "6" })
     public void onReadyStateChange_Order_NoBody() throws Exception {
-        onReadyStateChange_Order_NoBody(BrowserVersion.FIREFOX_2, "3", "4", "2");
-        onReadyStateChange_Order_NoBody(BrowserVersion.INTERNET_EXPLORER_6, "1", "2", "3", "4", "5", "6");
-        onReadyStateChange_Order_NoBody(BrowserVersion.INTERNET_EXPLORER_7, "1", "2", "3", "4", "5", "6");
-    }
-
-    private void onReadyStateChange_Order_NoBody(final BrowserVersion version, final String... expected)
-        throws Exception {
         final String html =
               "<html>\n"
             + "  <head>\n"
@@ -246,22 +722,15 @@ public class HTMLScriptElementTest extends WebTestCase {
             + "    <script>alert('2')</script>\n"
             + "  </head>\n"
             + "</html>";
-        final List<String> actual = new ArrayList<String>();
-        loadPage(version, html, actual);
-        assertEquals(expected, actual);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts("1")
     public void text() throws Exception {
-        text(BrowserVersion.INTERNET_EXPLORER_6);
-        text(BrowserVersion.INTERNET_EXPLORER_7);
-        text(BrowserVersion.FIREFOX_2);
-    }
-
-    private void text(final BrowserVersion browserVersion) throws Exception {
         final String html =
             "<html>\n"
             + "  <head>\n"
@@ -281,16 +750,15 @@ public class HTMLScriptElementTest extends WebTestCase {
             + "  <body onload='test()'>\n"
             + "  </body>\n"
             + "</html>";
-        final String[] expectedAlerts = {"1"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(browserVersion, html, collectedAlerts);
-        assertEquals(expectedAlerts, collectedAlerts);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts(DEFAULT = "onload",
+            IE8 = { "defer", "onload" })
     public void onload_after_deferReadStateComplete() throws Exception {
         final String html =
               "<html>\n"
@@ -301,9 +769,181 @@ public class HTMLScriptElementTest extends WebTestCase {
             + "  <body onload='alert(\"onload\")'>\n"
             + "  </body>\n"
             + "</html>";
-        final List<String> actual = new ArrayList<String>();
-        final String[] expected = {"defer", "onload"};
-        loadPage(BrowserVersion.INTERNET_EXPLORER_6, html, actual);
-        assertEquals(expected, actual);
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Regression test for bug 47038.
+     * http://sourceforge.net/tracker/?func=detail&atid=448266&aid=3403860&group_id=47038
+     * TODO: IE check only done with IE6 and IE8, check with other versions
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "1", "2", "3" },
+            IE = "1")
+    public void scriptType() throws Exception {
+        final String html
+            = "<html>\n"
+            + "<head>\n"
+            + "<script type='text/javascript'>alert(1)</script>\n"
+            + "<script type=' text/javascript'>alert(2)</script>\n"
+            + "<script type=' text/javascript '>alert(3)</script>\n"
+            + "<script type=' text / javascript '>alert(4)</script>\n"
+            + "</head>\n"
+            + "<body>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Test exception throw by IE when calling <code>appendChild</code>.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(IE = "Unexpected call to method or property access",
+            IE11 = "")
+    public void appendChild_UnexpectedCall() throws Exception {
+        // IE (at least IE6 and IE8) does not support script.appendChild(source)
+        final String html =
+                "<html><head><title>foo</title></head><body>\n"
+              + "<script>\n"
+              + "  var script = document.createElement('script');\n"
+              + "  var source = document.createTextNode(\"alert('executed');\");\n"
+              + "  try {\n"
+              + "    script.appendChild(source);\n"
+              + "  } catch(e) {\n"
+              + "    alert(e.message.slice(0,44));\n"
+              + "  };\n"
+              + "</script>\n"
+              + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Test exception throw by IE when calling <code>insertBefore</code>.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(IE = "Unexpected call to method or property access",
+            IE11 = "")
+    public void insertBeforeUnexpectedCall() throws Exception {
+        // IE (at least IE6 and IE8) does not support script.insertBefore(source, null)
+        final String html =
+                "<html><head><title>foo</title></head><body>\n"
+              + "<script>\n"
+              + "  var script = document.createElement('script');\n"
+              + "  var source = document.createTextNode(\"alert('executed');\");\n"
+              + "  try {\n"
+              + "    script.insertBefore(source, null);\n"
+              + "  } catch(e) {\n"
+              + "    alert(e.message.slice(0,44));\n"
+              + "  };\n"
+              + "</script>\n"
+              + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Firefox should not run scripts with "event" and "for" attributes.
+     *
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "onload for window,",
+            IE8 = "onload for window,onclick for div1,")
+    public void scriptEventFor() throws Exception {
+        final String html = "<html>\n"
+            + "<head>\n"
+            + "  <script>\n"
+            + "    function log(text) {\n"
+            + "      var textarea = document.getElementById('myTextarea');\n"
+            + "      textarea.value += text + ',';\n"
+            + "    }\n"
+            + "  </script>\n"
+            + "</head><body>\n"
+            + "  <textarea id='myTextarea' cols='80' rows='10'></textarea>\n"
+            + "  <script event='onload' for='window'>\n"
+            + "    log('onload for window')\n"
+            + "  </script>\n"
+            + "  <div id='div1'>the div 1</div>\n"
+            + "  <div id='div2'>the div 2</div>\n"
+            + "  <script event='onclick' for='div1'>\n"
+            + "    log('onclick for div1')\n"
+            + "  </script>\n"
+            + "  <script event='onclick' for='document.all.div2'>\n"
+            + "    log('onclick for div2')\n"
+            + "  </script>\n"
+            + "</body></html>";
+
+        final WebDriver webDriver = loadPage2(html);
+        webDriver.findElement(By.id("div1")).click();
+        webDriver.findElement(By.id("div2")).click();
+        assertEquals(getExpectedAlerts()[0], webDriver.findElement(By.id("myTextarea")).getAttribute("value"));
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "function foo() { return a > b}", "function mce() { return a &gt; b}" },
+            IE8 = { "\r\nfunction foo() { return a > b}", "function mce() { return a &gt; b}" })
+    public void innerHtml() throws Exception {
+        final String html
+            = "<html><head><title>foo</title>\n"
+
+            + "<script id='script1'>function foo() { return a > b}</script>\n"
+
+            + "<script>\n"
+            + "function doTest() {\n"
+            + "  script = document.getElementById('script1');\n"
+            + "  alert(script.innerHTML);\n"
+
+            + "  script = document.getElementById('mce');\n"
+            + "  alert(script.innerHTML);\n"
+
+            + "}\n"
+            + "</script>\n"
+            + "</head><body onload='doTest()'>\n"
+            // this is done by TinyMce
+            + "<script>document.write('<mce:script id=\"mce\">function mce() { return a > b}</mce:script>');</script>\n"
+
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "\n    <script id=\"testScript\">function foo() { return a > b}</script>\n  " },
+            IE8 = { "" })
+    @NotYetImplemented(IE8)
+    public void innerHTMLGetSet() throws Exception {
+        final String html
+            = "<html>\n"
+            + "<head></head>\n"
+            + "<body>\n"
+
+            + "  <div id='tester'>\n"
+            + "    <script id='testScript'>function foo() { return a > b}</script>\n"
+            + "  </div>\n"
+
+            + "  <script type='text/javascript'>\n"
+            + "    var div = document.getElementById('tester');\n"
+            + "    try {\n"
+            + "      div.innerHTML = div.innerHTML;\n"
+            + "    } catch (e) { alert('exception'); }\n"
+            + "    alert(div.innerHTML);\n"
+            + "  </script>\n"
+
+            + "</body>\n"
+            + "</html>\n";
+
+        loadPageWithAlerts2(html);
     }
 }

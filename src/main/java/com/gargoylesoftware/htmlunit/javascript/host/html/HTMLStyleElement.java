@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,33 +14,51 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_INNER_HTML_READONLY_FOR_SOME_TAGS;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+
 import java.io.StringReader;
 
+import net.sourceforge.htmlunit.corejs.javascript.Context;
+
 import org.w3c.css.sac.InputSource;
-import org.w3c.dom.css.CSSStyleSheet;
 
 import com.gargoylesoftware.htmlunit.Cache;
 import com.gargoylesoftware.htmlunit.html.HtmlStyle;
-import com.gargoylesoftware.htmlunit.javascript.host.Stylesheet;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSStyleSheet;
 
 /**
  * The JavaScript object "HTMLStyleElement".
  *
- * @version $Revision: 4859 $
+ * @version $Revision: 10429 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
+ * @author Ronald Brill
+ * @author Frank Danek
  */
+@JsxClasses({
+        @JsxClass(domClass = HtmlStyle.class,
+                browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(domClass = HtmlStyle.class,
+            isJSObject = false, browsers = @WebBrowser(value = IE, maxVersion = 8))
+    })
 public class HTMLStyleElement extends HTMLElement {
 
-    private static final long serialVersionUID = 944381786297995169L;
-
-    private Stylesheet sheet_;
+    private CSSStyleSheet sheet_;
 
     /**
      * Creates an instance.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
     public HTMLStyleElement() {
-        // Empty.
     }
 
     /**
@@ -48,27 +66,25 @@ public class HTMLStyleElement extends HTMLElement {
      * @see <a href="http://www.xulplanet.com/references/objref/HTMLStyleElement.html">Mozilla doc</a>
      * @return the sheet
      */
-    public Stylesheet jsxGet_sheet() {
+    @JsxGetter({ @WebBrowser(FF), @WebBrowser(CHROME), @WebBrowser(value = IE, minVersion = 11) })
+    public CSSStyleSheet getSheet() {
         if (sheet_ != null) {
             return sheet_;
         }
 
-        String css = "";
         final HtmlStyle style = (HtmlStyle) getDomNodeOrDie();
-        if (style.getFirstChild() != null) {
-            css = style.getFirstChild().asText();
-        }
+        final String css = style.getTextContent();
 
         final Cache cache = getWindow().getWebWindow().getWebClient().getCache();
-        final CSSStyleSheet cached = cache.getCachedStyleSheet(css);
-        final String uri = getDomNodeOrDie().getPage().getWebResponse().getRequestSettings()
-        .getUrl().toExternalForm();
+        final org.w3c.dom.css.CSSStyleSheet cached = cache.getCachedStyleSheet(css);
+        final String uri = getDomNodeOrDie().getPage().getWebResponse().getWebRequest()
+                .getUrl().toExternalForm();
         if (cached != null) {
-            sheet_ = new Stylesheet(this, cached, uri);
+            sheet_ = new CSSStyleSheet(this, cached, uri);
         }
         else {
             final InputSource source = new InputSource(new StringReader(css));
-            sheet_ = new Stylesheet(this, source, uri);
+            sheet_ = new CSSStyleSheet(this, source, uri);
             cache.cache(css, sheet_.getWrappedSheet());
         }
 
@@ -79,7 +95,61 @@ public class HTMLStyleElement extends HTMLElement {
      * Gets the associated sheet (IE).
      * @return the sheet
      */
-    public Stylesheet jsxGet_styleSheet() {
-        return jsxGet_sheet();
+    @JsxGetter(@WebBrowser(value = IE, maxVersion = 8))
+    public CSSStyleSheet getStyleSheet() {
+        return getSheet();
+    }
+
+    /**
+     * Returns the type of this style.
+     * @return the type
+     */
+    @JsxGetter
+    public String getType() {
+        final HtmlStyle style = (HtmlStyle) getDomNodeOrDie();
+        return style.getTypeAttribute();
+    }
+
+    /**
+     * Sets the type of this style.
+     * @param type the new type
+     */
+    @JsxSetter
+    public void setType(final String type) {
+        final HtmlStyle style = (HtmlStyle) getDomNodeOrDie();
+        style.setTypeAttribute(type);
+    }
+
+    /**
+     * Returns the media of this style.
+     * @return the media
+     */
+    @JsxGetter
+    public String getMedia() {
+        final HtmlStyle style = (HtmlStyle) getDomNodeOrDie();
+        return style.getAttribute("media");
+    }
+
+    /**
+     * Sets the media of this style.
+     * @param media the new media
+     */
+    @JsxSetter
+    public void setMedia(final String media) {
+        final HtmlStyle style = (HtmlStyle) getDomNodeOrDie();
+        style.setAttribute("media", media);
+    }
+
+    /**
+     * Overwritten to throw an exception in IE8/9.
+     * @param value the new value for the contents of this node
+     */
+    @Override
+    @JsxSetter
+    public void setInnerHTML(final Object value) {
+        if (getBrowserVersion().hasFeature(JS_INNER_HTML_READONLY_FOR_SOME_TAGS)) {
+            throw Context.reportRuntimeError("innerHTML is read-only for tag 'style'");
+        }
+        super.setInnerHTML(value);
     }
 }

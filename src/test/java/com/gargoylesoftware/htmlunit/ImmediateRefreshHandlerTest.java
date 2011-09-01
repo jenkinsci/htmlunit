@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@ import org.junit.runner.RunWith;
 /**
  * Tests for {@link ImmediateRefreshHandler}.
  *
- * @version $Revision: 4731 $
+ * @version $Revision: 9838 $
  * @author Marc Guillemot
  */
 @RunWith(BrowserRunner.class)
-public final class ImmediateRefreshHandlerTest extends WebTestCase {
+public final class ImmediateRefreshHandlerTest extends SimpleWebTestCase {
 
     /**
      * Regression test for bug 1211980: redirect on the same page after a post.
@@ -42,7 +42,7 @@ public final class ImmediateRefreshHandlerTest extends WebTestCase {
         final MockWebConnection webConnection = new MockWebConnection() {
             private int nbCalls_ = 0;
             @Override
-            public WebResponse getResponse(final WebRequestSettings settings) throws IOException {
+            public WebResponse getResponse(final WebRequest request) throws IOException {
                 String content = "<html><head>\n";
                 if (nbCalls_ == 0) {
                     content += "<meta http-equiv='refresh' content='0;url="
@@ -51,15 +51,15 @@ public final class ImmediateRefreshHandlerTest extends WebTestCase {
                 }
                 content += "</head><body></body></html>";
                 nbCalls_++;
-                final StringWebResponse response = new StringWebResponse(content, settings.getUrl());
-                response.getRequestSettings().setHttpMethod(settings.getHttpMethod());
+                final StringWebResponse response = new StringWebResponse(content, request.getUrl());
+                response.getWebRequest().setHttpMethod(request.getHttpMethod());
                 return response;
             }
         };
         client.setWebConnection(webConnection);
 
-        final WebRequestSettings settings = new WebRequestSettings(getDefaultUrl());
-        settings.setHttpMethod(HttpMethod.POST);
-        client.getPage(settings);
+        final WebRequest request = new WebRequest(getDefaultUrl());
+        request.setHttpMethod(HttpMethod.POST);
+        client.getPage(request);
     }
 }

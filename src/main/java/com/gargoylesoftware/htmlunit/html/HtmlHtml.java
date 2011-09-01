@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,13 +21,12 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * A representation of an HTML element "html".
  *
- * @version $Revision: 4059 $
+ * @version $Revision: 9837 $
  * @author David K. Taylor
  * @author Ahmed Ashour
+ * @author Frank Danek
  */
 public final class HtmlHtml extends HtmlElement {
-
-    private static final long serialVersionUID = 8928934628059990747L;
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "html";
@@ -35,13 +34,12 @@ public final class HtmlHtml extends HtmlElement {
     /**
      * Creates a new instance.
      *
-     * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the page that contains this element
      * @param attributes the initial attributes
      */
-    HtmlHtml(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    HtmlHtml(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
+        super(qualifiedName, page, attributes);
     }
 }

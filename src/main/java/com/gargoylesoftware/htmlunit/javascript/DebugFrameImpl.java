@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,9 @@
  */
 package com.gargoylesoftware.htmlunit.javascript;
 
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import net.sourceforge.htmlunit.corejs.javascript.Callable;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
+import net.sourceforge.htmlunit.corejs.javascript.EcmaError;
 import net.sourceforge.htmlunit.corejs.javascript.Function;
 import net.sourceforge.htmlunit.corejs.javascript.IdFunctionObject;
 import net.sourceforge.htmlunit.corejs.javascript.JavaScriptException;
@@ -26,6 +24,10 @@ import net.sourceforge.htmlunit.corejs.javascript.NativeFunction;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
 import net.sourceforge.htmlunit.corejs.javascript.debug.DebuggableScript;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import com.gargoylesoftware.htmlunit.javascript.host.Event;
 
@@ -45,7 +47,7 @@ import com.gargoylesoftware.htmlunit.javascript.host.Event;
  * HtmlUnit itself, rather than the debugging and development of web applications.
  * </p>
  *
- * @version $Revision: 4501 $
+ * @version $Revision: 10305 $
  * @author Daniel Gredler
  * @author Marc Guillemot
  * @see DebuggerImpl
@@ -65,7 +67,7 @@ public class DebugFrameImpl extends DebugFrameAdapter {
      * @param functionOrScript the function or script to which this frame corresponds
      */
     public DebugFrameImpl(final DebuggableScript functionOrScript) {
-        this.functionOrScript_ = functionOrScript;
+        functionOrScript_ = functionOrScript;
     }
 
     /**
@@ -125,7 +127,7 @@ public class DebugFrameImpl extends DebugFrameAdapter {
             // try to get the js representation
             asString = Context.toString(arg);
             if (arg instanceof Event) {
-                asString += "<" + ((Event) arg).jsxGet_type() + ">";
+                asString += "<" + ((Event) arg).getType() + ">";
             }
         }
         catch (final Throwable e) {
@@ -144,7 +146,12 @@ public class DebugFrameImpl extends DebugFrameAdapter {
             if (t instanceof JavaScriptException) {
                 final JavaScriptException e = (JavaScriptException) t;
                 LOG.trace(getSourceName(cx) + ":" + getFirstLine(cx)
-                        + " Exception thrown: " + Context.toString(e.getValue()));
+                    + " Exception thrown: " + Context.toString(e.details()));
+            }
+            else if (t instanceof EcmaError) {
+                final EcmaError e = (EcmaError) t;
+                LOG.trace(getSourceName(cx) + ":" + getFirstLine(cx)
+                    + " Exception thrown: " + Context.toString(e.details()));
             }
             else {
                 LOG.trace(getSourceName(cx) + ":" + getFirstLine(cx) + " Exception thrown: " + t.getCause());
@@ -173,8 +180,8 @@ public class DebugFrameImpl extends DebugFrameAdapter {
      * @return the name of the function corresponding to this frame
      */
     private String getFunctionName(final Scriptable thisObj) {
-        if (this.functionOrScript_.isFunction()) {
-            final String name = this.functionOrScript_.getFunctionName();
+        if (functionOrScript_.isFunction()) {
+            final String name = functionOrScript_.getFunctionName();
             if (name != null && name.length() > 0) {
                 // A named function -- we can just return the name.
                 return name;
@@ -205,10 +212,17 @@ public class DebugFrameImpl extends DebugFrameAdapter {
                                 return "__defineGetter__ " + s;
                             }
                         }
-                        final Object o = obj.get(s, obj);
+                        final Object o;
+                        try {
+                            // within a try block as this sometimes throws (not sure why)
+                            o = obj.get(s, obj);
+                        }
+                        catch (final Exception e) {
+                            return "[anonymous]";
+                        }
                         if (o instanceof NativeFunction) {
                             final NativeFunction f = (NativeFunction) o;
-                            if (f.getDebuggableView() == this.functionOrScript_) {
+                            if (f.getDebuggableView() == functionOrScript_) {
                                 return s;
                             }
                         }
@@ -231,8 +245,8 @@ public class DebugFrameImpl extends DebugFrameAdapter {
      * @return the name of the parameter at the specified index, or <tt>???</tt> if there is no corresponding name
      */
     private String getParamName(final int index) {
-        if (index >= 0 && this.functionOrScript_.getParamCount() > index) {
-            return this.functionOrScript_.getParamOrVarName(index);
+        if (index >= 0 && functionOrScript_.getParamCount() > index) {
+            return functionOrScript_.getParamOrVarName(index);
         }
         return "???";
     }
@@ -263,10 +277,13 @@ public class DebugFrameImpl extends DebugFrameAdapter {
      */
     private String getFirstLine(final Context cx) {
         final Object line = cx.getThreadLocal(KEY_LAST_LINE);
+        String result;
         if (line == null) {
-            return "unknown";
+            result = "??";
         }
-        return String.valueOf(line);
+        else {
+            result = String.valueOf(line);
+        }
+        return StringUtils.leftPad(result, 5);
     }
-
 }

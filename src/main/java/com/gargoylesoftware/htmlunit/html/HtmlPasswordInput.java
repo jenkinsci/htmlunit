@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,30 +14,37 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.HTMLINPUT_SET_DEFAULT_VALUE_UPDATES_VALUE;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_INPUT_SET_VALUE_MOVE_SELECTION_TO_START;
+
 import java.util.Map;
 
 import com.gargoylesoftware.htmlunit.SgmlPage;
+import com.gargoylesoftware.htmlunit.html.impl.SelectableTextInput;
+import com.gargoylesoftware.htmlunit.html.impl.SelectionDelegate;
 
 /**
  * Wrapper for the HTML element "input".
  *
- * @version $Revision: 4808 $
+ * @version $Revision: 9837 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Daniel Gredler
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Frank Danek
  */
 public class HtmlPasswordInput extends HtmlInput implements SelectableTextInput {
-
-    private static final long serialVersionUID = -1074283471317076942L;
 
     private final SelectionDelegate selectionDelegate_ = new SelectionDelegate(this);
 
     private final DoTypeProcessor doTypeProcessor_ = new DoTypeProcessor() {
-        private static final long serialVersionUID = -1938284467263013958L;
         @Override
         void typeDone(final String newValue, final int newCursorPosition) {
+            if (newValue.length() > getMaxLength()) {
+                return;
+            }
             setAttribute("value", newValue);
             setSelectionStart(newCursorPosition);
             setSelectionEnd(newCursorPosition);
@@ -46,14 +53,14 @@ public class HtmlPasswordInput extends HtmlInput implements SelectableTextInput 
 
     /**
      * Creates an instance.
-     * @param namespaceURI the URI that identifies an XML namespace
+     *
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the page that contains this element
      * @param attributes the initial attributes
      */
-    HtmlPasswordInput(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    HtmlPasswordInput(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
+        super(qualifiedName, page, attributes);
     }
 
     /**
@@ -83,6 +90,13 @@ public class HtmlPasswordInput extends HtmlInput implements SelectableTextInput 
      */
     public String getText() {
         return getValueAttribute();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void setText(final String text) {
+        setValueAttribute(text);
     }
 
     /**
@@ -122,4 +136,39 @@ public class HtmlPasswordInput extends HtmlInput implements SelectableTextInput 
             c, shiftKey, ctrlKey, altKey);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected Object clone() throws CloneNotSupportedException {
+        return new HtmlPasswordInput(getQualifiedName(), getPage(), getAttributesMap());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setAttributeNS(final String namespaceURI, final String qualifiedName, final String attributeValue) {
+        super.setAttributeNS(namespaceURI, qualifiedName, attributeValue);
+        if ("value".equals(qualifiedName)) {
+            final SgmlPage page = getPage();
+            if (page != null && page.isHtmlPage()) {
+                int pos = 0;
+                if (!hasFeature(JS_INPUT_SET_VALUE_MOVE_SELECTION_TO_START)) {
+                    pos = attributeValue.length();
+                }
+                setSelectionStart(pos);
+                setSelectionEnd(pos);
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void setDefaultValue(final String defaultValue) {
+        boolean modifyValue = hasFeature(HTMLINPUT_SET_DEFAULT_VALUE_UPDATES_VALUE);
+        modifyValue = modifyValue && getValueAttribute().equals(getDefaultValue());
+        setDefaultValue(defaultValue, modifyValue);
+    }
 }

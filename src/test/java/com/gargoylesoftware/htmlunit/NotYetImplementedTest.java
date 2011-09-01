@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,17 +23,18 @@ import java.util.TreeSet;
 import org.apache.commons.io.FileUtils;
 import org.junit.Test;
 
-import com.gargoylesoftware.htmlunit.javascript.host.PropertiesTest;
+import com.gargoylesoftware.htmlunit.general.ElementPropertiesTest;
 
 /**
  * Generates HTML file with all <tt>NotYetImplemented</tt> methods.
  *
- * @version $Revision: 4687 $
+ * @version $Revision: 10575 $
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
 public class NotYetImplementedTest {
 
-    private Set<String> entries_ = new TreeSet<String>();
+    private Set<String> entries_ = new TreeSet<>();
 
     /**
      * @throws Exception if the test fails
@@ -46,14 +47,17 @@ public class NotYetImplementedTest {
 
     private void process(final File dir) throws IOException {
         for (final File file : dir.listFiles()) {
-            if (file.isDirectory() && !file.getName().equals(".svn")) {
+            if (file.isDirectory()
+                    && !"huge".equals(file.getName())
+                    && !".svn".equals(file.getName())) {
                 process(file);
             }
             else {
-                if (file.getName().endsWith(".java") && !file.getName().equals("WebTestCase.java")
-                        && !file.getName().equals("NotYetImplementedTest.java")
-                        && !file.getName().equals("CodeStyleTest.java")) {
-                    final List<String> lines = CodeStyleTest.getLines(file);
+                if (file.getName().endsWith(".java")
+                        && !"SimpleWebTestCase.java".equals(file.getName())
+                        && !"NotYetImplementedTest.java".equals(file.getName())
+                        && !"CodeStyleTest.java".equals(file.getName())) {
+                    final List<String> lines = FileUtils.readLines(file);
                     final String relativePath = file.getAbsolutePath().substring(
                         new File(".").getAbsolutePath().length() - 1).replace('\\', '/');
                     process(lines, relativePath);
@@ -64,37 +68,10 @@ public class NotYetImplementedTest {
 
     private void process(final List<String> lines, final String path) {
         int index = 1;
+        String revision = "-1";
         for (final String line : lines) {
-            if (line.contains("notYetImplemented()")) {
+            if (line.contains("@NotYetImplemented()")) {
                 String methodName = null;
-                int lineNumber = -1;
-                for (int i = index; i >= 0; i--) {
-                    final String l = lines.get(i);
-                    if (l.startsWith("    public ")) {
-                        methodName = l.split(" ")[6];
-                        break;
-                    }
-                }
-                for (int i = index; i >= 0; i--) {
-                    final String l = lines.get(i);
-                    if (l.startsWith("    /**")) {
-                        lineNumber = i;
-                        break;
-                    }
-                }
-                entries_.add(path + ';' + methodName + ';' + lineNumber);
-            }
-            else if (line.contains("@NotYetImplemented")) {
-                final String browser;
-                if (line.contains("(")) {
-                    browser = line.replaceAll(".*\\((.*)\\).*", "$1").replaceAll("Browser\\.", "")
-                        .replaceAll("[{}]", "").trim();
-                }
-                else {
-                    browser = "";
-                }
-                String methodName = null;
-                int lineNumber = -1;
                 for (int i = index; i < lines.size(); i++) {
                     final String l = lines.get(i);
                     if (l.startsWith("    public ")) {
@@ -102,33 +79,109 @@ public class NotYetImplementedTest {
                         break;
                     }
                 }
-                for (int i = index; i >= 0; i--) {
+                final int lineNumber = getLineNumber(lines, index);
+                final String description = getDescription(lines, index);
+                entries_.add(path + ';' + revision + ';' + methodName + ';' + lineNumber + ";All;" + description);
+            }
+            else if (line.startsWith("    @NotYetImplemented")) {
+                String browser = "All";
+                if (line.contains("(")) {
+                    browser = line.replaceAll(".*\\((.*)\\).*", "$1");
+                    browser = browser.replaceAll("Browser\\.", "");
+                    browser = browser.replaceAll("[{}]", "");
+                    browser = browser.trim();
+                }
+                String methodName = null;
+                for (int i = index; i < lines.size(); i++) {
                     final String l = lines.get(i);
-                    if (l.startsWith("    /**")) {
-                        lineNumber = i;
+                    if (l.startsWith("    public ")) {
+                        methodName = l.split(" ")[6];
                         break;
                     }
                 }
-                entries_.add(path + ';' + methodName + ';' + lineNumber + ";" + browser);
+                final int lineNumber = getLineNumber(lines, index);
+                final String description = getDescription(lines, index);
+                entries_.add(path + ';' + revision + ';' + methodName + ';' + lineNumber + ";" + browser
+                        + ';' + description);
+            }
+            else if (line.startsWith(" * @version $Revision: ")) {
+                revision = line.substring(" * @version $Revision: ".length(), line.lastIndexOf(' '));
             }
             index++;
         }
     }
 
+    private static int getLineNumber(final List<String> lines, final int index) {
+        for (int i = index; i >= 0; i--) {
+            final String l = lines.get(i);
+            if (l.startsWith("    /**")) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    private static String getDescription(final List<String> lines, final int index) {
+        final StringBuilder builder = new StringBuilder();
+        for (int i = getLineNumber(lines, index); i < lines.size(); i++) {
+            final String line = lines.get(i).trim();
+            final int start = line.indexOf(' ') != -1 ? line.indexOf(' ') + 1 : -1;
+            final boolean end = line.endsWith("*/");
+            if (line.contains("* @throws ") || line.contains("* @exception")) {
+                break;
+            }
+            if (start != -1) {
+                if (builder.length() != 0) {
+                    builder.append(' ');
+                }
+                builder.append(line.substring(start, line.length() - (end ? 2 : 0)));
+            }
+            if (end) {
+                break;
+            }
+        }
+        return builder.toString().replace(";", "__semicolon__");
+    }
+
     private void save() throws Exception {
         final StringBuilder builder = new StringBuilder();
-        builder.append("<html><head></head><body>\n");
-        builder.append("NotYetImplemented is a condition in which a test is known to fail with HtmlUnit.");
-        builder.append("<table border='1'>\n");
-        builder.append("  <tr><th>File</th><th>Method</th><th>Line</th></tr>\n");
+        builder.append("<html><head>\n");
+        builder.append("<style type=\"text/css\">\n");
+        builder.append("table.bottomBorder { border-collapse:collapse; }\n");
+        builder.append("table.bottomBorder td, table.bottomBorder th { "
+                            + "border-bottom:1px dotted black;padding:5px; }\n");
+        builder.append("table.bottomBorder td.numeric { text-align:right; }\n");
+        builder.append("</style>\n");
+        builder.append("</head><body>\n");
+        builder.append("<p>NotYetImplemented is a condition in which a test is known to fail with HtmlUnit.</p>");
+        // statistics
+        builder.append("<h3>Overview</h3>");
+        final int overviewPos = builder.length();
+        // per browser
+
+        // details
+        builder.append("<h3>Details</h3>");
+        builder.append("<table class='bottomBorder'>\n");
+        builder.append("  <tr><th>File</th><th>#</th><th>Method</th><th>Line</th><th>Description</th></tr>\n");
         String lastFile = null;
+
+        int count = 0;
+        int countIE8 = 0;
+        int countIE11 = 0;
+        int countFF24 = 0;
+        int countFF31 = 0;
+        int countFF38 = 0;
+        int countChrome = 0;
         for (final String entry : entries_) {
             final String[] values = entry.split(";");
             final String file = values[0];
             final String fileName = file.substring(file.lastIndexOf('/') + 1, file.length() - 5);
-            final String method = values[1];
-            final String line = values[2];
-            final String browser = values.length > 3 ? values[3] : "";
+            final String revision = values[1];
+            final String method = values[2];
+            final String line = values[3];
+            final String browser = values[4];
+            final String description = entry.endsWith(";") ? "&nbsp;"
+                    : values[values.length - 1].replace("__semicolon__", ";");
             builder.append("  <tr>\n");
             if (!file.equals(lastFile)) {
                 int totalCount = 0;
@@ -147,14 +200,100 @@ public class NotYetImplementedTest {
                 builder.append("</td>\n");
                 lastFile = file;
             }
-            builder.append("    <td><a href='http://htmlunit.svn.sourceforge.net/viewvc/htmlunit/trunk/htmlunit/"
-                    + file + "?view=markup#l_" + line + "'>").append(method).append("</a> ")
+            builder.append("    <td>").append(Integer.toString(count++)).append("</td>\n");
+            builder.append("    <td><a href='https://sourceforge.net/p/htmlunit/code/" + revision
+                    + "/tree/trunk/htmlunit/" + file + "#l" + line + "'>").append(method).append("</a> ")
                     .append(browser).append("</td>\n");
-            builder.append("    <td>").append(line).append("</td>\n");
+            builder.append("    <td class='numeric'>").append(line).append("</td>\n");
+            builder.append("    <td>").append(description).append("</td>\n");
             builder.append("  </tr>\n");
+
+            if (browser.contains("IE8")) {
+                countIE8++;
+            }
+            if (browser.contains("IE11")) {
+                countIE11++;
+            }
+            if (!browser.contains("IE8")
+                    && !browser.contains("IE11")
+                    && browser.contains("IE")) {
+                countIE8++;
+                countIE11++;
+            }
+
+            if (browser.contains("FF24")) {
+                countFF24++;
+            }
+            if (browser.contains("FF31")) {
+                countFF31++;
+            }
+            if (browser.contains("FF38")) {
+                countFF38++;
+            }
+            if (!browser.contains("FF24")
+                    && !browser.contains("FF31")
+                    && !browser.contains("FF38")
+                    && browser.contains("FF")) {
+                countFF24++;
+                countFF31++;
+                countFF38++;
+            }
+            if (browser.contains("CHROME")) {
+                countChrome++;
+            }
+            if (browser.contains("All")) {
+                countIE8++;
+                countIE11++;
+                countFF24++;
+                countFF31++;
+                countFF38++;
+                countChrome++;
+            }
         }
         builder.append("</table>\n").append("</body></html>");
-        FileUtils.writeStringToFile(new File(PropertiesTest.getArtifactsDirectory(), "notYetImplemented.html"),
+
+        final StringBuilder overview = new StringBuilder();
+        overview.append("<table class='bottomBorder'>\n");
+        overview.append("  <tr>\n");
+        overview.append("    <td class='numeric'>").append(Integer.toString(count)).append("</td>\n");
+        overview.append("    <td>methods marked as NotYetImplemented</td>\n");
+        overview.append("  </tr>\n");
+
+        overview.append("  <tr>\n");
+        overview.append("    <td class='numeric'>").append(Integer.toString(countIE8)).append("</td>\n");
+        overview.append("    <td>for IE8</td>\n");
+        overview.append("  </tr>\n");
+
+        overview.append("  <tr>\n");
+        overview.append("    <td class='numeric'>").append(Integer.toString(countIE11)).append("</td>\n");
+        overview.append("    <td>for IE11</td>\n");
+        overview.append("  </tr>\n");
+
+        overview.append("  <tr>\n");
+        overview.append("    <td class='numeric'>").append(Integer.toString(countFF24)).append("</td>\n");
+        overview.append("    <td>for FF24</td>\n");
+        overview.append("  </tr>\n");
+
+        overview.append("  <tr>\n");
+        overview.append("    <td class='numeric'>").append(Integer.toString(countFF31)).append("</td>\n");
+        overview.append("    <td>for FF31</td>\n");
+        overview.append("  </tr>\n");
+
+        overview.append("  <tr>\n");
+        overview.append("    <td class='numeric'>").append(Integer.toString(countFF38)).append("</td>\n");
+        overview.append("    <td>for FF38</td>\n");
+        overview.append("  </tr>\n");
+
+        overview.append("  <tr>\n");
+        overview.append("    <td class='numeric'>").append(Integer.toString(countChrome)).append("</td>\n");
+        overview.append("    <td>for Chrome</td>\n");
+        overview.append("  </tr>\n");
+
+        overview.append("</table>\n");
+
+        builder.insert(overviewPos, overview);
+
+        FileUtils.writeStringToFile(new File(ElementPropertiesTest.getTargetDirectory(), "notYetImplemented.html"),
                 builder.toString());
     }
 

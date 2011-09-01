@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,12 +20,12 @@ import java.net.URL;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.net.URLCodec;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * Helper to work with data URLs.
  * @see <a href="http://www.ietf.org/rfc/rfc2397.txt">RFC2397</a>
- * @version $Revision: 4002 $
+ * @version $Revision: 9837 $
  * @author Marc Guillemot
  */
 public class DataUrlDecoder {
@@ -73,7 +73,7 @@ public class DataUrlDecoder {
             throw new IllegalArgumentException("Not a data url: " + url);
         }
         final int comma = url.indexOf(',');
-        final String beforeData =  url.substring("data:".length(), comma);
+        final String beforeData = url.substring("data:".length(), comma);
         final String mediaType = extractMediaType(beforeData);
         final String charset = extractCharset(beforeData);
 

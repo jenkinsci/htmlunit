@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +16,23 @@ package com.gargoylesoftware.htmlunit.javascript.host.html;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
+import com.gargoylesoftware.htmlunit.html.HtmlHtml;
 
 /**
  * Unit tests for {@link HTMLHtmlElement}.
  *
- * @version $Revision: 4741 $
+ * @version $Revision: 9924 $
  * @author Daniel Gredler
  * @author Marc Guillemot
+ * @author Frank Danek
  */
 @RunWith(BrowserRunner.class)
 public class HTMLHtmlElementTest extends WebDriverTestCase {
@@ -35,9 +41,31 @@ public class HTMLHtmlElementTest extends WebDriverTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = { "[object]", "exception" },
-            FF2 = { "[object HTMLHtmlElement]", "[HTMLHtmlElement]" },
-            FF3 = { "[object HTMLHtmlElement]", "[object HTMLHtmlElement]" })
+    @Alerts(DEFAULT = "[object HTMLHtmlElement]",
+            IE8 = "[object]")
+    public void simpleScriptable() throws Exception {
+        final String html = "<html id='myId'><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            + "    alert(document.getElementById('myId'));\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'>\n"
+            + "</body></html>";
+
+        final WebDriver driver = loadPageWithAlerts2(html);
+        if (driver instanceof HtmlUnitDriver) {
+            final WebElement element = driver.findElement(By.id("myId"));
+            assertTrue(toHtmlElement(element) instanceof HtmlHtml);
+        }
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "[object HTMLHtmlElement]", "function HTMLHtmlElement() {\n    [native code]\n}" },
+            CHROME = { "[object HTMLHtmlElement]", "function HTMLHtmlElement() { [native code] }" },
+            IE11 = { "[object HTMLHtmlElement]", "[object HTMLHtmlElement]" },
+            IE8 = { "[object]", "exception" })
     public void HTMLHtmlElement_toString() throws Exception {
         final String html = "<html id='myId'><head><title>foo</title><script>\n"
             + "  function test() {\n"
@@ -92,8 +120,8 @@ public class HTMLHtmlElementTest extends WebDriverTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = { "true", "true", "true", "true" },
-            IE = { "true", "false", "true", "false" })
+    @Alerts(DEFAULT = { "true", "true", "true", "true" },
+            IE8 = { "true", "false", "true", "false" })
     public void clientWidth() throws Exception {
         final String html = "<!DOCTYPE HTML PUBLIC '-//W3C//DTD HTML 4.01 Transitional//EN'"
             + " 'http://www.w3.org/TR/html4/loose.dtd'>" // important for IE6!!!

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.CSS_DISPLAY_BLOCK2;
+
 import java.util.Map;
 
 import com.gargoylesoftware.htmlunit.SgmlPage;
@@ -21,12 +23,11 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "marquee".
  *
- * @version $Revision: 4009 $
+ * @version $Revision: 10198 $
  * @author Ahmed Ashour
+ * @author Frank Danek
  */
 public class HtmlMarquee extends HtmlElement {
-
-    private static final long serialVersionUID = -8889956363167966069L;
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "marquee";
@@ -34,13 +35,23 @@ public class HtmlMarquee extends HtmlElement {
     /**
      * Creates a new instance.
      *
-     * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the page that contains this element
      * @param attributes the initial attributes
      */
-    HtmlMarquee(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    HtmlMarquee(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
+        super(qualifiedName, page, attributes);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public DisplayStyle getDefaultStyleDisplay() {
+        if (hasFeature(CSS_DISPLAY_BLOCK2)) {
+            return DisplayStyle.INLINE_BLOCK;
+        }
+        return DisplayStyle.BLOCK;
     }
 }

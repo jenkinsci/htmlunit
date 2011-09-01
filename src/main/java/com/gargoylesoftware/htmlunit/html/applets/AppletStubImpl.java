@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.gargoylesoftware.htmlunit.html.applets;
 import java.applet.AppletContext;
 import java.applet.AppletStub;
 import java.net.URL;
+import java.util.HashMap;
 
 import com.gargoylesoftware.htmlunit.html.HtmlApplet;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
@@ -25,18 +26,29 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
  * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
  * {@link AppletStub} implementation for HtmlUnit. This is what is used by an applet to communicate
  * with the browser.
+ * @version $Revision: 9837 $
  * @author Marc Guillemot
- * @version $Revision: 4002 $
+ * @author Ronald Brill
  */
 public class AppletStubImpl implements AppletStub {
     private final AppletContextImpl appletContextImpl_;
+    private final HashMap<String, String> parameters_;
+    private final URL codebase_;
+    private final URL documentbase_;
 
     /**
      * Constructs a stub for an applet node.
      * @param htmlApplet the applet node
+     * @param parameters app parameters of the applet
+     * @param codebase codebase of the applet
+     * @param documentbase documentbase of the applet
      */
-    public AppletStubImpl(final HtmlApplet htmlApplet) {
+    public AppletStubImpl(final HtmlApplet htmlApplet,
+            final HashMap<String, String> parameters, final URL codebase, final URL documentbase) {
         appletContextImpl_ = new AppletContextImpl((HtmlPage) htmlApplet.getPage());
+        parameters_ = parameters;
+        codebase_ = codebase;
+        documentbase_ = documentbase;
     }
 
     /**
@@ -57,27 +69,28 @@ public class AppletStubImpl implements AppletStub {
      * {@inheritDoc}
      */
     public URL getCodeBase() {
-        throw new RuntimeException("Not yet implemented!");
+        return codebase_;
     }
 
     /**
      * {@inheritDoc}
      */
     public URL getDocumentBase() {
-        throw new RuntimeException("Not yet implemented!");
+        return documentbase_;
     }
 
     /**
      * {@inheritDoc}
      */
     public String getParameter(final String name) {
-        throw new RuntimeException("Not yet implemented!");
+        return parameters_.get(name);
     }
 
     /**
      * {@inheritDoc}
      */
     public boolean isActive() {
-        throw new RuntimeException("Not yet implemented!");
+        throw new RuntimeException(
+                "Not yet implemented! (com.gargoylesoftware.htmlunit.html.applets.AppletStubImpl.isActive())");
     }
 }

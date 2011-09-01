@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,22 +21,25 @@ import java.util.Collections;
 import java.util.List;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.Page;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 
 /**
  * Tests for {@link HtmlArea}.
  *
- * @version $Revision: 4556 $
+ * @version $Revision: 9868 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author Ahmed Ashour
  */
-public class HtmlAreaTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public class HtmlAreaTest extends SimpleWebTestCase {
 
     private WebClient createWebClient(final String onClick) {
         final String firstContent
@@ -49,7 +52,7 @@ public class HtmlAreaTest extends WebTestCase {
             + "</map></body></html>";
         final String secondContent = "<html><head><title>second</title></head><body></body></html>";
         final String thirdContent = "<html><head><title>third</title></head><body></body></html>";
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
@@ -81,7 +84,7 @@ public class HtmlAreaTest extends WebTestCase {
     @Test
     public void testClick_onclickReturnsFalse() throws Exception {
         final WebClient client = createWebClient("alert('foo');return false;");
-        final List<String> collectedAlerts = new ArrayList<String>();
+        final List<String> collectedAlerts = new ArrayList<>();
         client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
         final HtmlPage page = client.getPage(URL_FIRST);
@@ -98,7 +101,7 @@ public class HtmlAreaTest extends WebTestCase {
     @Test
     public void testClick_onclickReturnsTrue() throws Exception {
         final WebClient client = createWebClient("alert('foo');return true;");
-        final List<String> collectedAlerts = new ArrayList<String>();
+        final List<String> collectedAlerts = new ArrayList<>();
         client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
         final HtmlPage page = client.getPage(URL_FIRST);
@@ -118,7 +121,51 @@ public class HtmlAreaTest extends WebTestCase {
             = "<html><head><title>foo</title></head><body><map>\n"
             + "<area href='javascript:alert(\"clicked\")' id='a2' coords='0,0,10,10'/>\n"
             + "</map></body></html>";
-        final List<String> collectedAlerts = new ArrayList<String>();
+        final List<String> collectedAlerts = new ArrayList<>();
+        final HtmlPage page = loadPage(htmlContent, collectedAlerts);
+
+        final HtmlArea area = page.getHtmlElementById("a2");
+
+        assertEquals(Collections.EMPTY_LIST, collectedAlerts);
+
+        final HtmlPage secondPage = area.click();
+
+        assertEquals(new String[] {"clicked"}, collectedAlerts);
+        assertSame(page, secondPage);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void testClick_javascriptUrlMixedCas() throws Exception {
+        final String htmlContent
+            = "<html><head><title>foo</title></head><body><map>\n"
+            + "<area href='javasCRIpT:alert(\"clicked\")' id='a2' coords='0,0,10,10'/>\n"
+            + "</map></body></html>";
+        final List<String> collectedAlerts = new ArrayList<>();
+        final HtmlPage page = loadPage(htmlContent, collectedAlerts);
+
+        final HtmlArea area = page.getHtmlElementById("a2");
+
+        assertEquals(Collections.EMPTY_LIST, collectedAlerts);
+
+        final HtmlPage secondPage = area.click();
+
+        assertEquals(new String[] {"clicked"}, collectedAlerts);
+        assertSame(page, secondPage);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void testClick_javascriptUrlLeadingWhitespace() throws Exception {
+        final String htmlContent
+            = "<html><head><title>foo</title></head><body><map>\n"
+            + "<area href='     javascript:alert(\"clicked\")' id='a2' coords='0,0,10,10'/>\n"
+            + "</map></body></html>";
+        final List<String> collectedAlerts = new ArrayList<>();
         final HtmlPage page = loadPage(htmlContent, collectedAlerts);
 
         final HtmlArea area = page.getHtmlElementById("a2");
@@ -140,17 +187,17 @@ public class HtmlAreaTest extends WebTestCase {
             = "<html><head><title>foo</title></head><body><map>\n"
             + "<area href='javascript:alert(\"clicked\")' id='a2' coords='0,0,10,10'/>\n"
             + "</map></body></html>";
-        final WebClient client = new WebClient();
-        client.setJavaScriptEnabled(false);
+        final WebClient client = getWebClient();
+        client.getOptions().setJavaScriptEnabled(false);
 
-        final List<String> collectedAlerts = new ArrayList<String>();
+        final List<String> collectedAlerts = new ArrayList<>();
         client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setDefaultResponse(htmlContent);
         client.setWebConnection(webConnection);
 
-        final HtmlPage page = client.getPage(URL_GARGOYLE);
+        final HtmlPage page = client.getPage(getDefaultUrl());
         final HtmlArea area = page.getHtmlElementById("a2");
 
         assertEquals(Collections.EMPTY_LIST, collectedAlerts);
@@ -171,10 +218,10 @@ public class HtmlAreaTest extends WebTestCase {
             = "<html><head><title>foo</title></head><body><map>\n"
             + "<area href='javascript:alert(this == window)' id='a2' coords='0,0,10,10'/>\n"
             + "</map></body></html>";
-        final List<String> collectedAlerts = new ArrayList<String>();
+        final List<String> collectedAlerts = new ArrayList<>();
         final String[] expectedAlerts = {"true"};
         final HtmlPage page = loadPage(htmlContent, collectedAlerts);
-        final Page page2 = page.<HtmlArea>getHtmlElementById("a2").click();
+        final Page page2 = page.getHtmlElementById("a2").click();
 
         assertEquals(expectedAlerts, collectedAlerts);
         assertSame(page, page2);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,15 +21,14 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "menu".
  *
- * @version $Revision: 4097 $
+ * @version $Revision: 9837 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
+ * @author Frank Danek
  */
-public class HtmlMenu extends ClickableElement {
-
-    private static final long serialVersionUID = 6489339440830260880L;
+public class HtmlMenu extends HtmlElement {
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "menu";
@@ -37,14 +36,13 @@ public class HtmlMenu extends ClickableElement {
     /**
      * Creates an instance of HtmlMenu
      *
-     * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the HtmlPage that contains this element
      * @param attributes the initial attributes
      */
-    HtmlMenu(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    HtmlMenu(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
+        super(qualifiedName, page, attributes);
     }
 
     /**

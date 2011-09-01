@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,27 +16,29 @@ package com.gargoylesoftware.htmlunit.html;
 
 import static org.junit.Assert.assertNotNull;
 
+import java.util.LinkedList;
+import java.util.List;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.MockWebConnection;
-import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
+import com.gargoylesoftware.htmlunit.MockWebConnection;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
+import com.gargoylesoftware.htmlunit.WebClient;
 
 /**
  * Tests for {@link HtmlTextInput}.
  *
- * @version $Revision: 4802 $
+ * @version $Revision: 9871 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
  * @author Sudhan Moghe
- */
+ * @author Ronald Brill
+*/
 @RunWith(BrowserRunner.class)
-public class HtmlTextInputTest extends WebTestCase {
+public class HtmlTextInputTest extends SimpleWebTestCase {
 
     /**
      * @throws Exception if the test fails
@@ -56,6 +58,39 @@ public class HtmlTextInputTest extends WebTestCase {
         assertEquals("", t.getValueAttribute());
         t.type('\b');
         assertEquals("", t.getValueAttribute());
+    }
+
+    /**
+     * This test caused a StringIndexOutOfBoundsException as of HtmlUnit-2.7-SNAPSHOT on 27.10.2009.
+     * This came from the fact that cloneNode() uses clone() and the two HtmlTextInput instances
+     * were referencing the same DoTypeProcessor: type in second field were reflected in the first one.
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void type_StringIndexOutOfBoundsException() throws Exception {
+        type_StringIndexOutOfBoundsException("<input type='text' id='t'>");
+        type_StringIndexOutOfBoundsException("<input type='password' id='t'>");
+        type_StringIndexOutOfBoundsException("<textarea id='t'></textarea>");
+    }
+
+    void type_StringIndexOutOfBoundsException(final String tag) throws Exception {
+        final String html = "<html><head></head><body>\n"
+            + tag + "\n"
+            + "<script>\n"
+            + "function copy(node) {\n"
+            + "  e.value = '231';"
+            + "}"
+            + "var e = document.getElementById('t');\n"
+            + "e.onkeyup = copy;\n"
+            + "var c = e.cloneNode();\n"
+            + "c.id = 't2';\n"
+            + "document.body.appendChild(c);\n"
+            + "</script>\n"
+            + "</body></html>";
+        final HtmlPage page = loadPage(getBrowserVersion(), html, null);
+        final HtmlElement t = page.getHtmlElementById("t2");
+        t.type("abc");
+        assertEquals("abc", t.asText());
     }
 
     /**
@@ -130,86 +165,15 @@ public class HtmlTextInputTest extends WebTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts("0")
-    public void selection() throws Exception {
-        final String html =
-              "<html><head><script>\n"
-            + "  function test() {\n"
-            + "    alert(getSelection(document.getElementById('text1')).length);\n"
-            + "  }\n"
-            + "  function getSelection(element) {\n"
-            + "    if (typeof element.selectionStart == 'number') {\n"
-            + "      return element.value.substring(element.selectionStart, element.selectionEnd);\n"
-            + "    } else if (document.selection && document.selection.createRange) {\n"
-            + "      return document.selection.createRange().text;\n"
-            + "    }\n"
-            + "  }\n"
-            + "</script></head>\n"
-            + "<body onload='test()'>\n"
-            + "<input id='text1'/>\n"
-            + "</body></html>";
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * @throws Exception if test fails
-     */
-    @Test
-    @Alerts(IE = { "undefined,undefined", "undefined,undefined", "3,undefined", "3,10" },
-            FF = { "7,7", "11,11", "3,11", "3,10" })
-    public void selection2_1() throws Exception {
-        selection2(3, 10);
-    }
-
-    /**
-     * @throws Exception if test fails
-     */
-    @Test
-    @Alerts(IE = { "undefined,undefined", "undefined,undefined", "-3,undefined", "-3,15" },
-            FF = { "7,7", "11,11", "0,11", "0,11" })
-    public void selection2_2() throws Exception {
-        selection2(-3, 15);
-    }
-
-    /**
-     * @throws Exception if test fails
-     */
-    @Test
-    @Alerts(IE = { "undefined,undefined", "undefined,undefined", "10,undefined", "10,5" },
-            FF = { "7,7", "11,11", "10,11", "5,5" })
-    public void selection2_3() throws Exception {
-        selection2(10, 5);
-    }
-
-    private void selection2(final int selectionStart, final int selectionEnd) throws Exception {
-        final String html = "<html>\n"
-            + "<body>\n"
-            + "<input id='myTextInput' value='Bonjour'>\n"
-            + "<script>\n"
-            + "    var input = document.getElementById('myTextInput');\n"
-            + "    alert(input.selectionStart + ',' + input.selectionEnd);\n"
-            + "    input.value = 'Hello there';\n"
-            + "    alert(input.selectionStart + ',' + input.selectionEnd);\n"
-            + "    input.selectionStart = " + selectionStart + ";\n"
-            + "    alert(input.selectionStart + ',' + input.selectionEnd);\n"
-            + "    input.selectionEnd = " + selectionEnd + ";\n"
-            + "    alert(input.selectionStart + ',' + input.selectionEnd);\n"
-            + "</script>\n"
-            + "</body>\n"
-            + "</html>";
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * @throws Exception if an error occurs
-     */
-    @Test
-    @Browsers(Browser.IE)
+    @Alerts(DEFAULT = { "exception", "My old value" },
+            IE8 = "My new value")
     public void setSelectionText() throws Exception {
         final String html =
               "<html><head><script>\n"
             + "  function test() {\n"
-            + "    document.selection.createRange().text = 'new';\n"
+            + "    try {\n"
+            + "      document.selection.createRange().text = 'new';\n"
+            + "    } catch(e) { alert('exception'); }\n"
             + "  }\n"
             + "</script></head>\n"
             + "<body>\n"
@@ -217,14 +181,18 @@ public class HtmlTextInputTest extends WebTestCase {
             + "<input id='myButton' type='button' value='Test' onclick='test()'>\n"
             + "</body></html>";
 
-        final HtmlPage page = loadPage(getBrowserVersion(), html, null);
+        final List<String> alerts = new LinkedList<>();
+
+        final HtmlPage page = loadPage(getBrowserVersion(), html, alerts);
         final HtmlTextInput input = page.getHtmlElementById("myInput");
         final HtmlButtonInput button = page.getHtmlElementById("myButton");
         page.setFocusedElement(input);
         input.setSelectionStart(3);
         input.setSelectionEnd(6);
         button.click();
-        assertEquals("My new value", input.getValueAttribute());
+
+        alerts.add(input.getValueAttribute());
+        assertEquals(getExpectedAlerts(), alerts);
     }
 
     /**
@@ -295,7 +263,7 @@ public class HtmlTextInputTest extends WebTestCase {
         final HtmlTextInput lastKey = page.getHtmlElementById("lastKey");
         t.type("abc");
         assertEquals("abc", t.getValueAttribute());
-        assertEquals("99", lastKey.getValueAttribute());
+        assertEquals("67", lastKey.getValueAttribute());
 
         // character in private use area E000–F8FF
         t.type("\uE014");

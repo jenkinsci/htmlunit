@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,8 +32,8 @@ import com.gargoylesoftware.htmlunit.javascript.host.Window;
 /**
  * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
  * {@link AppletContext} implementation for HtmlUnit.
+ * @version $Revision: 9837 $
  * @author Marc Guillemot
- * @version $Revision: 4002 $
  */
 public class AppletContextImpl implements AppletContext {
     private static final Enumeration<Applet> EMPTY_ENUMERATION
@@ -114,6 +114,6 @@ public class AppletContextImpl implements AppletContext {
         // perhaps should we move status handling to WebWindow
         // on the other side this allows "orphaned" pages to be usable
         final Window window = ((SimpleScriptable) htmlPage_.getScriptObject()).getWindow();
-        window.jsxSet_status(status);
+        window.setStatus(status);
     }
 }

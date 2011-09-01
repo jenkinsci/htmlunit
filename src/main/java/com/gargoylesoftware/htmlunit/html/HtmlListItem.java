@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,15 +21,14 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "li".
  *
- * @version $Revision: 4097 $
+ * @version $Revision: 10214 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
+ * @author Frank Danek
  */
-public class HtmlListItem extends ClickableElement {
-
-    private static final long serialVersionUID = -1649077723867505624L;
+public class HtmlListItem extends HtmlElement {
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "li";
@@ -37,14 +36,13 @@ public class HtmlListItem extends ClickableElement {
     /**
      * Creates an instance of HtmlListItem
      *
-     * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the HtmlPage that contains this element
      * @param attributes the initial attributes
      */
-    HtmlListItem(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    HtmlListItem(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
+        super(qualifiedName, page, attributes);
     }
 
     /**
@@ -69,5 +67,13 @@ public class HtmlListItem extends ClickableElement {
      */
     public final String getValueAttribute() {
         return getAttribute("value");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public DisplayStyle getDefaultStyleDisplay() {
+        return DisplayStyle.LIST_ITEM;
     }
 }

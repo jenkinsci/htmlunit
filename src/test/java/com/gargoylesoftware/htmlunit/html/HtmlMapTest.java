@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,27 +14,33 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Tests for {@link HtmlMap}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 9842 $
  * @author Ahmed Ashour
+ * @author Frank Danek
  */
-public class HtmlMapTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public class HtmlMapTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    public void testSimpleScriptable() throws Exception {
+    @Alerts(DEFAULT = "[object HTMLMapElement]",
+            IE8 = "[object]")
+    public void simpleScriptable() throws Exception {
         final String html = "<html><head>\n"
             + "<script>\n"
             + "  function test() {\n"
@@ -45,10 +51,103 @@ public class HtmlMapTest extends WebTestCase {
             + "  <map id='myId'/>\n"
             + "</body></html>";
 
-        final String[] expectedAlerts = {"[object HTMLMapElement]"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(BrowserVersion.FIREFOX_2, html, collectedAlerts);
-        assertTrue(HtmlMap.class.isInstance(page.getHtmlElementById("myId")));
-        assertEquals(expectedAlerts, collectedAlerts);
+        final WebDriver driver = loadPageWithAlerts2(html);
+        if (driver instanceof HtmlUnitDriver) {
+            final HtmlPage page = (HtmlPage) getWebWindowOf((HtmlUnitDriver) driver).getEnclosedPage();
+            assertTrue(HtmlMap.class.isInstance(page.getHtmlElementById("myId")));
+        }
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void isDisplayed() throws Exception {
+        final String html = "<html><head><title>Page A</title></head>\n"
+                + "<body>"
+                + "  <img id='myImg' usemap='#imgmap'"
+                        + " src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAA"
+                        + "HElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg=='>\n"
+                + "  <map id='myMap' name='imgmap'>\n"
+                + "    <area id='myArea' shape='rect' coords='0,0,1,1'>\n"
+                + "  </map>\n"
+                + "</body></html>";
+
+        final WebDriver driver = loadPageWithAlerts2(html);
+
+        boolean displayed = driver.findElement(By.id("myImg")).isDisplayed();
+        assertTrue(displayed);
+
+        displayed = driver.findElement(By.id("myMap")).isDisplayed();
+        assertTrue(displayed);
+
+        displayed = driver.findElement(By.id("myArea")).isDisplayed();
+        assertTrue(displayed);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void isDisplayedHiddenImage() throws Exception {
+        final String html = "<html><head><title>Page A</title></head>\n"
+                + "<body>"
+                + "  <img id='myImg' usemap='#imgmap' style='display: none'"
+                        + " src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAA"
+                        + "HElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg=='>\n"
+                + "  <map id='myMap' name='imgmap'>\n"
+                + "    <area id='myArea' shape='rect' coords='0,0,1,1'>\n"
+                + "  </map>\n"
+                + "</body></html>";
+
+        final WebDriver driver = loadPageWithAlerts2(html);
+
+        boolean displayed = driver.findElement(By.id("myImg")).isDisplayed();
+        assertFalse(displayed);
+
+        displayed = driver.findElement(By.id("myMap")).isDisplayed();
+        assertFalse(displayed);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void isDisplayedHiddenMap() throws Exception {
+        final String html = "<html><head><title>Page A</title></head>\n"
+                + "<body>"
+                + "  <img id='myImg' usemap='#imgmap'"
+                        + " src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAA"
+                        + "HElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg=='>\n"
+                + "  <map id='myMap' name='imgmap' style='display: none'>\n"
+                + "    <area id='myArea' shape='rect' coords='0,0,1,1'>\n"
+                + "  </map>\n"
+                + "</body></html>";
+
+        final WebDriver driver = loadPageWithAlerts2(html);
+
+        boolean displayed = driver.findElement(By.id("myImg")).isDisplayed();
+        assertTrue(displayed);
+
+        displayed = driver.findElement(By.id("myMap")).isDisplayed();
+        assertTrue(displayed);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void isDisplayedMissingImage() throws Exception {
+        final String html = "<html><head><title>Page A</title></head>\n"
+                + "<body>\n"
+                + "  <map id='myMap' name='imgmap' style='display: none'>\n"
+                + "    <area id='myArea' shape='rect' coords='0,0,1,1'>\n"
+                + "  </map>\n"
+                + "</body></html>";
+
+        final WebDriver driver = loadPageWithAlerts2(html);
+
+        final boolean displayed = driver.findElement(By.id("myMap")).isDisplayed();
+        assertFalse(displayed);
     }
 }

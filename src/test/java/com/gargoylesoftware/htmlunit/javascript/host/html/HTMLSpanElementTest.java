@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,29 +14,37 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.IE8;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Unit tests for {@link HTMLSpanElement}.
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 10157 $
  * @author Daniel Gredler
  * @author Marc Guillemot
  * @author Ahmed Ashour
+ * @author Frank Danek
+ * @author Ronald Brill
  */
 @RunWith(BrowserRunner.class)
-public class HTMLSpanElementTest extends WebTestCase {
+public class HTMLSpanElementTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(IE = "yes", FF = "no")
+    @Alerts(DEFAULT = "no",
+            IE8 = "yes")
     public void doScroll() throws Exception {
         final String html =
             "<html>\n"
@@ -57,22 +65,21 @@ public class HTMLSpanElementTest extends WebTestCase {
             + "  <body onload='test()'><span id='s'>abc</span></body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(IE6 = {"[object] undefined", "[object] undefined" }, IE7 = {"[object] ", "[object] undefined" },
-            FF = {"[object HTMLSpanElement] undefined", "[object HTMLSpanElement] undefined" })
+    @Alerts(DEFAULT = "[object HTMLSpanElement] undefined",
+            IE8 = "[object] undefined")
     public void cite() throws Exception {
         final String html =
             "<html>\n"
             + "  <head>\n"
             + "    <script>\n"
             + "      function test() {\n"
-            + "        debug(document.createElement('abbr'));\n"
             + "        debug(document.createElement('span'));\n"
             + "      }\n"
             + "      function debug(e) {\n"
@@ -83,6 +90,21 @@ public class HTMLSpanElementTest extends WebTestCase {
             + "  <body onload='test()'></body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("beforeSpace afterSpace")
+    @NotYetImplemented(IE8)
+    public void asText() throws Exception {
+        final String html = "<html><head></head><body>\n"
+            + "<div id='foo'><span>beforeSpace</span><span> </span><span>afterSpace</span></div>"
+            + "</body></html>";
+
+        final WebDriver driver = loadPage2(html);
+        assertEquals(getExpectedAlerts()[0], driver.findElement(By.id("foo")).getText());
     }
 }

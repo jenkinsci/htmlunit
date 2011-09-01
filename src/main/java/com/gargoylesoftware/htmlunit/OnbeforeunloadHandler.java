@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,11 @@ package com.gargoylesoftware.htmlunit;
 /**
  * A handler for <tt>onbeforeunload</tt> events.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 10103 $
  * @author Ahmed Ashour
  */
 public interface OnbeforeunloadHandler {
+
     /**
      * Handles an <tt>onbeforeunload</tt> event for the specified page.
      * @param page the page on which the event occurred

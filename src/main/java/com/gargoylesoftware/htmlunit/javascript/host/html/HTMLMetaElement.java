@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,28 +14,45 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+
+import com.gargoylesoftware.htmlunit.html.HtmlMeta;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
+
 /**
  * The JavaScript object "HTMLMetaElement".
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 10429 $
  * @author Ahmed Ashour
  */
+@JsxClasses({
+        @JsxClass(domClass = HtmlMeta.class,
+                browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(domClass = HtmlMeta.class,
+            isJSObject = false, browsers = @WebBrowser(value = IE, maxVersion = 8))
+    })
 public class HTMLMetaElement extends HTMLElement {
-
-    private static final long serialVersionUID = 2709850253223688489L;
 
     /**
      * Creates an instance.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
     public HTMLMetaElement() {
-        // Empty.
     }
 
     /**
      * Returns "charset" attribute.
      * @return the charset attribute
      */
-    public String jsxGet_charset() {
+    @JsxGetter(@WebBrowser(IE))
+    public String getCharset() {
         return "";
     }
 
@@ -43,7 +60,8 @@ public class HTMLMetaElement extends HTMLElement {
      * Sets the "charset" attribute.
      * @param charset the charset attribute
      */
-    public void jsxSet_charset(final String charset) {
+    @JsxSetter(@WebBrowser(IE))
+    public void setCharset(final String charset) {
         //empty
     }
 
@@ -51,7 +69,8 @@ public class HTMLMetaElement extends HTMLElement {
      * Returns "content" attribute.
      * @return the content attribute
      */
-    public String jsxGet_content() {
+    @JsxGetter
+    public String getContent() {
         return getDomNodeOrDie().getAttribute("content");
     }
 
@@ -59,7 +78,8 @@ public class HTMLMetaElement extends HTMLElement {
      * Sets the "content" attribute.
      * @param content the content attribute
      */
-    public void jsxSet_content(final String content) {
+    @JsxSetter
+    public void setContent(final String content) {
         getDomNodeOrDie().setAttribute("content", content);
     }
 
@@ -67,7 +87,8 @@ public class HTMLMetaElement extends HTMLElement {
      * Returns "http-equiv" attribute.
      * @return the http-equiv attribute
      */
-    public String jsxGet_httpEquiv() {
+    @JsxGetter
+    public String getHttpEquiv() {
         return getDomNodeOrDie().getAttribute("http-equiv");
     }
 
@@ -75,7 +96,8 @@ public class HTMLMetaElement extends HTMLElement {
      * Sets the "http-equiv" attribute.
      * @param httpEquiv the http-equiv attribute
      */
-    public void jsxSet_httpEquiv(final String httpEquiv) {
+    @JsxSetter
+    public void setHttpEquiv(final String httpEquiv) {
         getDomNodeOrDie().setAttribute("http-equiv", httpEquiv);
     }
 
@@ -83,7 +105,8 @@ public class HTMLMetaElement extends HTMLElement {
      * Returns "name" attribute.
      * @return the name attribute
      */
-    public String jsxGet_name() {
+    @JsxGetter
+    public String getName() {
         return getDomNodeOrDie().getAttribute("name");
     }
 
@@ -91,7 +114,8 @@ public class HTMLMetaElement extends HTMLElement {
      * Sets the "name" attribute.
      * @param name the name attribute
      */
-    public void jsxSet_name(final String name) {
+    @JsxSetter
+    public void setName(final String name) {
         getDomNodeOrDie().setAttribute("name", name);
     }
 
@@ -99,7 +123,8 @@ public class HTMLMetaElement extends HTMLElement {
      * Returns "scheme" attribute.
      * @return the scheme attribute
      */
-    public String jsxGet_scheme() {
+    @JsxGetter
+    public String getScheme() {
         return getDomNodeOrDie().getAttribute("scheme");
     }
 
@@ -107,7 +132,8 @@ public class HTMLMetaElement extends HTMLElement {
      * Sets the "scheme" attribute.
      * @param scheme the scheme attribute
      */
-    public void jsxSet_scheme(final String scheme) {
+    @JsxSetter
+    public void setScheme(final String scheme) {
         getDomNodeOrDie().setAttribute("scheme", scheme);
     }
 
@@ -115,7 +141,8 @@ public class HTMLMetaElement extends HTMLElement {
      * Returns "url" attribute.
      * @return the url attribute
      */
-    public String jsxGet_url() {
+    @JsxGetter(@WebBrowser(IE))
+    public String getUrl() {
         return "";
     }
 
@@ -123,8 +150,16 @@ public class HTMLMetaElement extends HTMLElement {
      * Sets the "url" attribute.
      * @param url the url attribute
      */
-    public void jsxSet_url(final String url) {
+    @JsxSetter(@WebBrowser(IE))
+    public void setUrl(final String url) {
         //empty
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected boolean isEndTagForbidden() {
+        return true;
+    }
 }

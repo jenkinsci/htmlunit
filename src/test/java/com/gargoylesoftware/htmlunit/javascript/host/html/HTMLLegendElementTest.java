@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,21 +14,27 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.IE11;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.IE8;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Tests for {@link HTMLLegendElement}.
  *
- * @version $Revision: 4772 $
+ * @version $Revision: 9843 $
  * @author Daniel Gredler
+ * @author Ronald Brill
+ * @author Frank Danek
  */
 @RunWith(BrowserRunner.class)
-public class HTMLLegendElementTest extends WebTestCase {
+public class HTMLLegendElementTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if an error occurs
@@ -54,20 +60,85 @@ public class HTMLLegendElementTest extends WebTestCase {
             + "alert(a1.accessKey);\n"
             + "alert(a2.accessKey);\n"
             + "</script></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = "[object]", FF = "[object HTMLFormElement]")
+    @Alerts(DEFAULT = "[object HTMLFormElement]",
+            IE8 = "[object]")
     public void form() throws Exception {
         final String html
             = "<html><body><form><fieldset><legend id='a'>a</legend></fieldset></form><script>\n"
             + "alert(document.getElementById('a').form);\n"
             + "</script></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(DEFAULT = { "left", "right", "bottom", "top", "wrong", "" },
+            IE = { "left", "right", "bottom", "top", "", "" })
+    @NotYetImplemented
+    public void getAlign() throws Exception {
+        final String html
+            = "<html><body>\n"
+            + "  <form><fieldset>\n"
+            + "    <legend id='i1' align='left' ></legend>\n"
+            + "    <legend id='i2' align='right' ></legend>\n"
+            + "    <legend id='i3' align='bottom' ></legend>\n"
+            + "    <legend id='i4' align='top' ></legend>\n"
+            + "    <legend id='i5' align='wrong' ></legend>\n"
+            + "    <legend id='i6' ></legend>\n"
+            + "  </fieldset></form>\n"
+
+            + "<script>\n"
+            + "  for (i=1; i<=6; i++) {\n"
+            + "    alert(document.getElementById('i'+i).align);\n"
+            + "  };\n"
+            + "</script>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(DEFAULT = { "CenTer", "8", "foo", "left", "right", "bottom", "top" },
+            IE = { "center", "error", "center", "error", "center", "left", "right", "bottom", "top" })
+    @NotYetImplemented({ IE8, IE11 })
+    public void setAlign() throws Exception {
+        final String html
+            = "<html><body>\n"
+            + "  <form><fieldset>\n"
+            + "    <legend id='i1' align='left' ></legend>\n"
+            + "  </fieldset></form>\n"
+
+            + "<script>\n"
+            + "  function setAlign(elem, value) {\n"
+            + "    try {\n"
+            + "      elem.align = value;\n"
+            + "    } catch (e) { alert('error'); }\n"
+            + "    alert(elem.align);\n"
+            + "  }\n"
+
+            + "  var elem = document.getElementById('i1');\n"
+            + "  setAlign(elem, 'CenTer');\n"
+
+            + "  setAlign(elem, '8');\n"
+            + "  setAlign(elem, 'foo');\n"
+
+            + "  setAlign(elem, 'left');\n"
+            + "  setAlign(elem, 'right');\n"
+            + "  setAlign(elem, 'bottom');\n"
+            + "  setAlign(elem, 'top');\n"
+            + "</script>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
 }

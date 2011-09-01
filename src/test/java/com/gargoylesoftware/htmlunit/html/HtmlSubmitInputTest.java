@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,47 +14,41 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
-import java.io.IOException;
-import java.io.Writer;
-import java.util.ArrayList;
+import java.net.URL;
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import javax.servlet.Servlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import org.apache.commons.httpclient.NameValuePair;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
-import com.gargoylesoftware.htmlunit.MockWebConnection;
-import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebServerTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
-import com.gargoylesoftware.htmlunit.util.ServletContentWrapper;
+import com.gargoylesoftware.htmlunit.MockWebConnection;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Tests for {@link HtmlSubmitInput}.
  *
- * @version $Revision: 4167 $
+ * @version $Revision: 9842 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Marc Guillemot
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Frank Danek
  */
 @RunWith(BrowserRunner.class)
-public class HtmlSubmitInputTest extends WebServerTestCase {
+public class HtmlSubmitInputTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    public void testSubmit() throws Exception {
+    public void submit() throws Exception {
         final String html
             = "<html><head><title>foo</title></head><body>\n"
             + "<form id='form1' method='post'>\n"
@@ -62,160 +56,78 @@ public class HtmlSubmitInputTest extends WebServerTestCase {
             + "<input type='suBMit' name='button' value='foo'/>\n"
             + "<input type='submit' name='anotherButton' value='foo'/>\n"
             + "</form></body></html>";
-        final HtmlPage page = loadPage(getBrowserVersion(), html, null);
-        final MockWebConnection webConnection = getMockConnection(page);
 
-        final HtmlForm form = page.getHtmlElementById("form1");
+        final WebDriver wd = loadPageWithAlerts2(html);
 
-        final HtmlSubmitInput submitInput = form.getInputByName("button");
-        final HtmlPage secondPage = submitInput.click();
-        assertEquals("foo", secondPage.getTitleText());
+        final WebElement button = wd.findElement(By.name("button"));
+        button.click();
+
+        assertEquals("foo", wd.getTitle());
 
         assertEquals(Collections.singletonList(new NameValuePair("button", "foo")),
-            webConnection.getLastParameters());
+            getMockWebConnection().getLastParameters());
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    public void testClick_onClick() throws Exception {
+    @Alerts({ "foo", "bar" })
+    public void click_onClick() throws Exception {
         final String html
             = "<html><head><title>foo</title></head><body>\n"
-            + "<form id='form1' onSubmit='alert(\"bar\")'>\n"
+            + "<form id='form1' onSubmit='alert(\"bar\"); return false;'>\n"
             + "    <input type='submit' name='button' value='foo' onClick='alert(\"foo\")'/>\n"
             + "</form></body></html>";
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(getBrowserVersion(), html, collectedAlerts);
 
-        final HtmlForm form = page.getHtmlElementById("form1");
-        final HtmlSubmitInput submitInput = form.getInputByName("button");
+        final WebDriver wd = loadPage2(html);
 
-        submitInput.click();
+        final WebElement button = wd.findElement(By.name("button"));
+        button.click();
 
-        final String[] expectedAlerts = {"foo", "bar"};
-        assertEquals(expectedAlerts, collectedAlerts);
+        assertEquals(getExpectedAlerts(), getCollectedAlerts(wd));
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    public void testClick_onClick_JavascriptReturnsTrue() throws Exception {
-        final String firstHtml
+    public void click_onClick_JavascriptReturnsTrue() throws Exception {
+        final String html
             = "<html><head><title>First</title></head><body>\n"
-            + "<form name='form1' method='get' action='" + URL_SECOND + "'>\n"
+            + "<form name='form1' method='get' action='foo.html'>\n"
             + "<input name='button' type='submit' value='PushMe' id='button1'"
             + "onclick='return true'/></form>\n"
             + "</body></html>";
         final String secondHtml = "<html><head><title>Second</title></head><body></body></html>";
 
-        final WebClient client = getWebClient();
-        final List<String> collectedAlerts = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
+        getMockWebConnection().setResponse(new URL(getDefaultUrl(), "foo.html"), secondHtml);
 
-        final MockWebConnection webConnection = new MockWebConnection();
-        webConnection.setResponse(URL_FIRST, firstHtml);
-        webConnection.setDefaultResponse(secondHtml);
+        final WebDriver wd = loadPageWithAlerts2(html);
 
-        client.setWebConnection(webConnection);
+        final WebElement button = wd.findElement(By.id("button1"));
+        button.click();
 
-        final HtmlPage firstPage = client.getPage(URL_FIRST);
-        final HtmlSubmitInput input = firstPage.getHtmlElementById("button1");
-        final HtmlPage secondPage = input.click();
-        assertEquals("Second", secondPage.getTitleText());
+        assertEquals("Second", wd.getTitle());
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = "Submit Query", FF = "")
-    public void testDefaultValue() throws Exception {
-        final String html =
-            "<html><head>\n"
-            + "<script>\n"
-            + "  function test() {\n"
-            + "    alert(document.getElementById('myId').value);\n"
-            + "  }\n"
-            + "</script>\n"
-            + "</head>\n"
-            + "<body onload='test()'>\n"
-            + "<form action='" + URL_SECOND + "'>\n"
-            + "  <input type='submit' id='myId'>\n"
-            + "</form>\n"
-            + "</body></html>";
-
-        final HtmlPage page = loadPageWithAlerts(html);
-        assertTrue(page.asText().indexOf("Submit Query") > -1);
-        assertFalse(page.asXml().indexOf("Submit Query") > -1);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    @Alerts("")
-    public void testEmptyValue() throws Exception {
-        final String html =
-            "<html><head>\n"
-            + "<script>\n"
-            + "  function test() {\n"
-            + "    alert(document.getElementById('myId').value);\n"
-            + "  }\n"
-            + "</script>\n"
-            + "</head>\n"
-            + "<body onload='test()'>\n"
-            + "<form action='" + URL_SECOND + "'>\n"
-            + "  <input type='submit' id='myId' value=''>\n"
-            + "</form>\n"
-            + "</body></html>";
-
-        final HtmlPage page = loadPageWithAlerts(html);
-        assertFalse(page.asText().indexOf("Submit Query") > -1);
-        assertTrue(page.asXml().indexOf("value=\"\"") > -1);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testOutsideForm() throws Exception {
+    @Alerts("1")
+    public void outsideForm() throws Exception {
         final String html =
             "<html><head></head>\n"
             + "<body>\n"
             + "<input id='myInput' type='submit' onclick='alert(1)'>\n"
             + "</body></html>";
 
-        final String[] expectedAlerts = {"1"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(getBrowserVersion(), html, collectedAlerts);
-        final HtmlSubmitInput input = page.getHtmlElementById("myInput");
+        final WebDriver wd = loadPage2(html);
+        final WebElement input = wd.findElement(By.id("myInput"));
         input.click();
 
-        assertEquals(expectedAlerts, collectedAlerts);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    @Alerts(FF = "1")
-    public void onclick() throws Exception {
-        final String html =
-            "<html><head></head>\n"
-            + "<body>\n"
-            + "<form>\n"
-            + "  <input id='myInput'>\n"
-            + "  <input type='submit' onclick='alert(1)'>\n"
-            + "</form>\n"
-            + "</body></html>";
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(getBrowserVersion(), html, collectedAlerts);
-        page.<HtmlInput>getHtmlElementById("myInput").type('\n');
-
-        assertEquals(getExpectedAlerts(), collectedAlerts);
+        assertEquals(getExpectedAlerts(), getCollectedAlerts(wd));
     }
 
     /**
@@ -223,65 +135,242 @@ public class HtmlSubmitInputTest extends WebServerTestCase {
      */
     @Test
     public void doubleSubmission() throws Exception {
-        DoubleSubmissionCounterServlet.COUNT_ = 0;
-        final Map<String, Class< ? extends Servlet>> servlets = new HashMap<String, Class< ? extends Servlet>>();
-        servlets.put("/main", DoubleSubmissionMainServlet.class);
-        servlets.put("/test", DoubleSubmissionCounterServlet.class);
-        startWebServer("./", null, servlets);
+        final String html = "<html>\n"
+            + "<head>\n"
+            + "  <script type='text/javascript'>\n"
+            + "    function submitForm() {\n"
+            + "      document.deliveryChannelForm.submitBtn.disabled = true;\n"
+            + "      document.deliveryChannelForm.submit();\n"
+            + "    }\n"
+            + "  </script>"
+            + "</head>\n"
+            + "<body>\n"
+            + "  <form action='test' name='deliveryChannelForm'>\n"
+            + "    <input name='submitBtn' type='submit' value='Save' title='Save' onclick='submitForm();'>\n"
+            + "  </form>"
+            + "</body>\n"
+            + "</html>";
 
-        final WebClient client = getWebClient();
-        final HtmlPage page = client.getPage("http://localhost:" + PORT + "/main");
-        page.<HtmlSubmitInput>getFirstByXPath("//input").click();
-        assertEquals(1, DoubleSubmissionCounterServlet.COUNT_);
+        getMockWebConnection().setDefaultResponse("");
+        final WebDriver wd = loadPageWithAlerts2(html);
+        final WebElement input = wd.findElement(By.name("submitBtn"));
+        input.click();
+
+        assertEquals(2, getMockWebConnection().getRequestCount());
     }
 
     /**
-     * Servlet for {@link #doubleSubmission()}.
+     * @throws Exception if the test fails
      */
-    public static class DoubleSubmissionMainServlet extends ServletContentWrapper {
-        private static final long serialVersionUID = -4386757311850462720L;
+    @Test
+    public void doubleSubmissionWithRedirect() throws Exception {
+        final String html = "<html><body>\n"
+            + "<script>\n"
+            + "function submitForm(btn) {\n"
+            + "  btn.form.submit();\n"
+            + "  btn.disabled = true;\n"
+            + "}\n"
+            + "</script>"
+            + "<form method='post' action='test'>\n"
+            + "  <input name='text' type='text'>\n"
+            + "  <input name='btn' type='submit' onclick='submitForm(this);'>\n"
+            + "</form>"
+            + "</body></html>";
 
-        /**
-         * Creates an instance.
-         */
-        public DoubleSubmissionMainServlet() {
-            super("<html>\n"
-                    + "<head>\n"
-                    + "  <script type='text/javascript'>\n"
-                    + "    function submitForm() {\n"
-                    + "      document.deliveryChannelForm.submitBtn.disabled = true;\n"
-                    + "      document.deliveryChannelForm.submit();\n"
-                    + "    }\n"
-                    + "  </script>"
-                    + "</head>\n"
-                    + "<body>\n"
-                    + "  <form action='test' name='deliveryChannelForm'>\n"
-                    + "    <input name='submitBtn' type='submit' value='Save' title='Save' onclick='submitForm();'>\n"
-                    + "  </form>"
-                    + "</body>\n"
-                    + "</html>");
-        }
+        final MockWebConnection mockWebConnection = getMockWebConnection();
+
+        final List<NameValuePair> redirectHeaders = Arrays.asList(new NameValuePair("Location", "/nextPage"));
+        mockWebConnection.setResponse(new URL(getDefaultUrl() + "test"), "", 302, "Found", null, redirectHeaders);
+
+        mockWebConnection.setResponse(new URL(getDefaultUrl() + "nextPage"),
+            "<html><head><title>next page</title></head></html>");
+
+        final WebDriver wd = loadPageWithAlerts2(html);
+        final WebElement input = wd.findElement(By.name("btn"));
+        input.click();
+
+        assertEquals("next page", wd.getTitle());
+        assertEquals(3, mockWebConnection.getRequestCount());
     }
 
     /**
-     * Servlet for {@link #doubleSubmission()}.
+     * @throws Exception if the test fails
      */
-    public static class DoubleSubmissionCounterServlet extends HttpServlet {
+    @Test
+    @Alerts(DEFAULT = { "-", "-", "-" },
+            IE = { "Submit Query-", "Submit Query-", "Submit Query-" },
+            IE11 = { "Submit Query-Submit Query", "Submit Query-Submit Query", "Submit Query-Submit Query" })
+    public void defaultValues() throws Exception {
+        final String html = "<html><head><title>foo</title>\n"
+            + "<script>\n"
+            + "  function test() {\n"
+            + "    var input = document.getElementById('submit1');\n"
+            + "    alert(input.value + '-' + input.defaultValue);\n"
 
-        private static final long serialVersionUID = 4094440276952531020L;
+            + "    input = document.createElement('input');\n"
+            + "    input.type = 'submit';\n"
+            + "    alert(input.value + '-' + input.defaultValue);\n"
 
-        private static int COUNT_;
+            + "    var builder = document.createElement('div');\n"
+            + "    builder.innerHTML = '<input type=\"submit\">';\n"
+            + "    input = builder.firstChild;\n"
+            + "    alert(input.value + '-' + input.defaultValue);\n"
+            + "  }\n"
+            + "</script>\n"
+            + "</head><body onload='test()'>\n"
+            + "<form>\n"
+            + "  <input type='submit' id='submit1'>\n"
+            + "</form>\n"
+            + "</body></html>";
 
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        protected void doGet(final HttpServletRequest request, final HttpServletResponse response) throws IOException {
-            COUNT_++;
-            response.setContentType("text/html");
-            final Writer writer = response.getWriter();
-            writer.write("<html><body>Hello</body></html>");
-            writer.close();
-        }
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "-", "-", "-" },
+            IE = { "Submit Query-", "Submit Query-", "Submit Query-" },
+            IE11 = { "Submit Query-Submit Query", "Submit Query-Submit Query", "Submit Query-Submit Query" })
+    public void defaultValuesAfterClone() throws Exception {
+        final String html = "<html><head><title>foo</title>\n"
+            + "<script>\n"
+            + "  function test() {\n"
+            + "    var input = document.getElementById('submit1');\n"
+            + "    input = input.cloneNode(false);\n"
+            + "    alert(input.value + '-' + input.defaultValue);\n"
+
+            + "    input = document.createElement('input');\n"
+            + "    input.type = 'submit';\n"
+            + "    input = input.cloneNode(false);\n"
+            + "    alert(input.value + '-' + input.defaultValue);\n"
+
+            + "    var builder = document.createElement('div');\n"
+            + "    builder.innerHTML = '<input type=\"submit\">';\n"
+            + "    input = builder.firstChild;\n"
+            + "    input = input.cloneNode(false);\n"
+            + "    alert(input.value + '-' + input.defaultValue);\n"
+            + "  }\n"
+            + "</script>\n"
+            + "</head><body onload='test()'>\n"
+            + "<form>\n"
+            + "  <input type='submit' id='submit1'>\n"
+            + "</form>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "initial-initial", "initial-initial", "newValue-newValue", "newValue-newValue",
+                "newDefault-newDefault", "newDefault-newDefault" },
+            IE8 = { "initial-initial", "initial-initial", "newValue-initial", "newValue-initial",
+                "newValue-newDefault", "newValue-newDefault" })
+    public void resetByClick() throws Exception {
+        final String html = "<html><head><title>foo</title>\n"
+            + "<script>\n"
+            + "  function test() {\n"
+            + "    var submit = document.getElementById('testId');\n"
+            + "    alert(submit.value + '-' + submit.defaultValue);\n"
+
+            + "    document.getElementById('testReset').click;\n"
+            + "    alert(submit.value + '-' + submit.defaultValue);\n"
+
+            + "    submit.value = 'newValue';\n"
+            + "    alert(submit.value + '-' + submit.defaultValue);\n"
+
+            + "    document.getElementById('testReset').click;\n"
+            + "    alert(submit.value + '-' + submit.defaultValue);\n"
+
+            + "    submit.defaultValue = 'newDefault';\n"
+            + "    alert(submit.value + '-' + submit.defaultValue);\n"
+
+            + "    document.forms[0].reset;\n"
+            + "    alert(submit.value + '-' + submit.defaultValue);\n"
+            + "  }\n"
+            + "</script>\n"
+            + "</head><body onload='test()'>\n"
+            + "<form>\n"
+            + "  <input type='submit' id='testId' value='initial'>\n"
+            + "  <input type='reset' id='testReset'>\n"
+            + "</form>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "initial-initial", "initial-initial", "newValue-newValue", "newValue-newValue",
+                "newDefault-newDefault", "newDefault-newDefault" },
+            IE8 = { "initial-initial", "initial-initial", "newValue-initial", "newValue-initial",
+                "newValue-newDefault", "newValue-newDefault" })
+    public void resetByJS() throws Exception {
+        final String html = "<html><head><title>foo</title>\n"
+            + "<script>\n"
+            + "  function test() {\n"
+            + "    var submit = document.getElementById('testId');\n"
+            + "    alert(submit.value + '-' + submit.defaultValue);\n"
+
+            + "    document.forms[0].reset;\n"
+            + "    alert(submit.value + '-' + submit.defaultValue);\n"
+
+            + "    submit.value = 'newValue';\n"
+            + "    alert(submit.value + '-' + submit.defaultValue);\n"
+
+            + "    document.forms[0].reset;\n"
+            + "    alert(submit.value + '-' + submit.defaultValue);\n"
+
+            + "    submit.defaultValue = 'newDefault';\n"
+            + "    alert(submit.value + '-' + submit.defaultValue);\n"
+
+            + "    document.forms[0].reset;\n"
+            + "    alert(submit.value + '-' + submit.defaultValue);\n"
+            + "  }\n"
+            + "</script>\n"
+            + "</head><body onload='test()'>\n"
+            + "<form>\n"
+            + "  <input type='submit' id='testId' value='initial'>\n"
+            + "</form>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "initial-initial", "default-default", "newValue-newValue", "newdefault-newdefault" },
+            IE8 = { "initial-initial", "initial-default", "newValue-default", "newValue-newdefault" })
+    public void defaultValue() throws Exception {
+        final String html = "<html><head><title>foo</title>\n"
+            + "<script>\n"
+            + "  function test() {\n"
+            + "    var submit = document.getElementById('testId');\n"
+            + "    alert(submit.value + '-' + submit.defaultValue);\n"
+
+            + "    submit.defaultValue = 'default';\n"
+            + "    alert(submit.value + '-' + submit.defaultValue);\n"
+
+            + "    submit.value = 'newValue';\n"
+            + "    alert(submit.value + '-' + submit.defaultValue);\n"
+            + "    submit.defaultValue = 'newdefault';\n"
+            + "    alert(submit.value + '-' + submit.defaultValue);\n"
+            + "  }\n"
+            + "</script>\n"
+            + "</head><body onload='test()'>\n"
+            + "<form>\n"
+            + "  <input type='submit' id='testId' value='initial'>\n"
+            + "</form>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
     }
 }

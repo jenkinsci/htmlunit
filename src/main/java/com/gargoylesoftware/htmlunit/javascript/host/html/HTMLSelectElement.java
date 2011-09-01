@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,42 +14,55 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_SELECT_ADD_SECOND_PARAM_IS_INDEX_ONLY;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_SELECT_REMOVE_IGNORE_IF_INDEX_OUTSIDE;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+
 import java.util.List;
 
 import net.sourceforge.htmlunit.corejs.javascript.Context;
+import net.sourceforge.htmlunit.corejs.javascript.EvaluatorException;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 
-import com.gargoylesoftware.htmlunit.html.HTMLParser;
+import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.HtmlOption;
 import com.gargoylesoftware.htmlunit.html.HtmlSelect;
-import com.gargoylesoftware.htmlunit.javascript.host.FormField;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxFunction;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
 
 /**
  * The JavaScript object for {@link HtmlSelect}.
  *
- * @version $Revision: 4864 $
+ * @version $Revision: 10429 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author Marc Guillemot
  * @author Chris Erskine
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
+@JsxClasses({
+        @JsxClass(domClass = HtmlSelect.class,
+                browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(domClass = HtmlSelect.class,
+            isJSObject = false, browsers = @WebBrowser(value = IE, maxVersion = 8))
+    })
 public class HTMLSelectElement extends FormField {
 
-    private static final long serialVersionUID = 4332789476842114628L;
     private HTMLOptionsCollection optionsArray_;
 
     /**
      * Creates an instance.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
     public HTMLSelectElement() {
-    }
-
-    /**
-     * JavaScript constructor. This must be declared in every JavaScript file because
-     * the rhino engine won't walk up the hierarchy looking for constructors.
-     */
-    public void jsConstructor() {
     }
 
     /**
@@ -69,33 +82,46 @@ public class HTMLSelectElement extends FormField {
      * Removes option at the specified index.
      * @param index the index of the item to remove
      */
-    public void jsxFunction_remove(final int index) {
-        put(index, null, null);
+    @JsxFunction
+    public void remove(final int index) {
+        if (index < 0 && getBrowserVersion().hasFeature(JS_SELECT_REMOVE_IGNORE_IF_INDEX_OUTSIDE)) {
+            return;
+        }
+        final HTMLOptionsCollection options = getOptions();
+        if (index >= options.getLength() && getBrowserVersion().hasFeature(JS_SELECT_REMOVE_IGNORE_IF_INDEX_OUTSIDE)) {
+            return;
+        }
+
+        getOptions().remove(index);
     }
 
     /**
      * Adds a new item to the list (optionally) before the specified item.
      * @param newOptionObject the DomNode to insert
-     * @param arg2 for Firefox: the DomNode to insert the previous element before (null if at end),
+     * @param beforeOptionObject for Firefox: the DomNode to insert the previous element before (null if at end),
      * for Internet Explorer: the index where the element should be placed (optional).
      */
-    public void jsxFunction_add(final HTMLOptionElement newOptionObject, final Object arg2) {
-        if (getBrowserVersion().isIE()) {
-            add_IE(newOptionObject, arg2);
+    @JsxFunction
+    public void add(final HTMLOptionElement newOptionObject, final Object beforeOptionObject) {
+        if (getBrowserVersion().hasFeature(JS_SELECT_ADD_SECOND_PARAM_IS_INDEX_ONLY)) {
+            if (beforeOptionObject instanceof HTMLOptionElement) {
+                throw new EvaluatorException("Unsupported parameter.");
+            }
+            if (beforeOptionObject == null) {
+                throw new EvaluatorException("Null not supported as index.");
+            }
         }
-        else {
-            add(newOptionObject, arg2);
-        }
-        ensureSelectedIndex();
+
+        getOptions().add(newOptionObject, beforeOptionObject);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public Object jsxFunction_appendChild(final Object childObject) {
-        final Object object = super.jsxFunction_appendChild(childObject);
-        ensureSelectedIndex();
+    public Object appendChild(final Object childObject) {
+        final Object object = super.appendChild(childObject);
+        getHtmlSelect().ensureSelectedIndex();
         return object;
     }
 
@@ -103,76 +129,24 @@ public class HTMLSelectElement extends FormField {
      * {@inheritDoc}
      */
     @Override
-    public Object jsxFunction_insertBefore(final Object[] args) {
-        final Object object = super.jsxFunction_insertBefore(args);
-        ensureSelectedIndex();
+    public Object insertBeforeImpl(final Object[] args) {
+        final Object object = super.insertBeforeImpl(args);
+        getHtmlSelect().ensureSelectedIndex();
         return object;
     }
 
     /**
-     * Adds a new item to the list (optionally) at the specified index in IE way.
-     * @param newOptionObject the DomNode to insert
-     * @param index (optional) the index where the node should be inserted
+     * Gets the item at the specified index.
+     * @param index the position of the option to retrieve
+     * @return the option
      */
-    protected void add_IE(final HTMLOptionElement newOptionObject, final Object index) {
-        final HtmlSelect select = getHtmlSelect();
-        final HtmlOption beforeOption;
-        if (Context.getUndefinedValue().equals(index)) {
-            beforeOption = null;
+    @JsxFunction
+    public Object item(final int index) {
+        final Object option = getOptions().item(index);
+        if (option == Context.getUndefinedValue()) {
+            return null;
         }
-        else {
-            final int intIndex = ((Integer) Context.jsToJava(index, Integer.class)).intValue();
-            if (intIndex >= select.getOptionSize()) {
-                beforeOption = null;
-            }
-            else {
-                beforeOption = select.getOption(intIndex);
-            }
-        }
-
-        addBefore(newOptionObject, beforeOption);
-    }
-
-    /**
-     * Adds a new item to the list (optionally) before the specified item in Mozilla way.
-     * @param newOptionObject the DomNode to insert
-     * @param beforeOptionObject the DomNode to insert the previous element before (null if at end)
-     */
-    protected void add(final HTMLOptionElement newOptionObject, final Object beforeOptionObject) {
-        final HtmlOption beforeOption;
-        if (beforeOptionObject == null) {
-            beforeOption = null;
-        }
-        else if (Context.getUndefinedValue().equals(beforeOptionObject)) {
-            throw Context.reportRuntimeError("Not enough arguments [SelectElement.add]");
-        }
-        else {
-            beforeOption = (HtmlOption) ((HTMLOptionElement) beforeOptionObject).getDomNodeOrDie();
-        }
-        addBefore(newOptionObject, beforeOption);
-    }
-
-    /**
-     * Adds the option (and create the associated DOM node if needed) before the specified one
-     * or at the end if the specified one in null.
-     * @param newOptionObject the new option to add
-     * @param beforeOption the option that should be after the option to add
-     */
-    protected void addBefore(final HTMLOptionElement newOptionObject, final HtmlOption beforeOption) {
-        final HtmlSelect select = getHtmlSelect();
-
-        HtmlOption htmlOption = newOptionObject.getDomNodeOrNull();
-        if (htmlOption == null) {
-            htmlOption = (HtmlOption) HTMLParser.getFactory(HtmlOption.TAG_NAME).createElement(
-                    select.getPage(), HtmlOption.TAG_NAME, null);
-        }
-
-        if (beforeOption == null) {
-            select.appendChild(htmlOption);
-        }
-        else {
-            beforeOption.insertBefore(htmlOption);
-        }
+        return option;
     }
 
     /**
@@ -180,7 +154,7 @@ public class HTMLSelectElement extends FormField {
      * @return the type
      */
     @Override
-    public String jsxGet_type() {
+    public String getType() {
         final String type;
         if (getHtmlSelect().isMultipleSelectEnabled()) {
             type = "select-multiple";
@@ -195,7 +169,8 @@ public class HTMLSelectElement extends FormField {
      * Returns the value of the "options" property.
      * @return the options property
      */
-    public HTMLOptionsCollection jsxGet_options() {
+    @JsxGetter
+    public HTMLOptionsCollection getOptions() {
         if (optionsArray_ == null) {
             initialize();
         }
@@ -206,40 +181,18 @@ public class HTMLSelectElement extends FormField {
      * Returns the value of the "selectedIndex" property.
      * @return the selectedIndex property
      */
-    public int jsxGet_selectedIndex() {
-        final HtmlSelect htmlSelect = getHtmlSelect();
-        final List<HtmlOption> selectedOptions = htmlSelect.getSelectedOptions();
-        if (selectedOptions.isEmpty()) {
-            return -1;
-        }
-        final List<HtmlOption> allOptions = htmlSelect.getOptions();
-        return allOptions.indexOf(selectedOptions.get(0));
+    @JsxGetter
+    public int getSelectedIndex() {
+        return getHtmlSelect().getSelectedIndex();
     }
 
     /**
      * Sets the value of the "selectedIndex" property.
      * @param index the new value
      */
-    public void jsxSet_selectedIndex(final int index) {
-        final HtmlSelect htmlSelect = getHtmlSelect();
-
-        if (index != 0 && getBrowserVersion().isFirefox() && (index < -1 || index >= htmlSelect.getOptionSize())) {
-            throw Context.reportRuntimeError("Invalid index for select node: " + index);
-        }
-
-        for (final HtmlOption itemToUnSelect : htmlSelect.getSelectedOptions()) {
-            htmlSelect.setSelectedAttribute(itemToUnSelect, false);
-        }
-        if (index < 0) {
-            return;
-        }
-
-        final List<HtmlOption> allOptions = htmlSelect.getOptions();
-
-        if (index < allOptions.size()) {
-            final HtmlOption itemToSelect = allOptions.get(index);
-            htmlSelect.setSelectedAttribute(itemToSelect, true, false);
-        }
+    @JsxSetter
+    public void setSelectedIndex(final int index) {
+        getHtmlSelect().setSelectedIndex(index);
     }
 
     /**
@@ -247,35 +200,31 @@ public class HTMLSelectElement extends FormField {
      * @return the value
      */
     @Override
-    public String jsxGet_value() {
+    public String getValue() {
         final HtmlSelect htmlSelect = getHtmlSelect();
         final List<HtmlOption> selectedOptions = htmlSelect.getSelectedOptions();
         if (selectedOptions.isEmpty()) {
             return "";
         }
-        return ((HTMLOptionElement) selectedOptions.get(0).getScriptObject()).jsxGet_value();
+        return ((HTMLOptionElement) selectedOptions.get(0).getScriptObject()).getValue();
     }
 
     /**
      * Returns the value of the "length" property.
      * @return the length property
      */
-    public int jsxGet_length() {
-        if (optionsArray_ == null) {
-            initialize();
-        }
-        return optionsArray_.jsxGet_length();
+    @JsxGetter
+    public int getLength() {
+        return getOptions().getLength();
     }
 
     /**
      * Removes options by reducing the "length" property.
      * @param newLength the new length property value
      */
-    public void jsxSet_length(final int newLength) {
-        if (optionsArray_ == null) {
-            initialize();
-        }
-        optionsArray_.jsxSet_length(newLength);
+    @JsxSetter
+    public void setLength(final int newLength) {
+        getOptions().setLength(newLength);
     }
 
     /**
@@ -286,10 +235,7 @@ public class HTMLSelectElement extends FormField {
      */
     @Override
     public Object get(final int index, final Scriptable start) {
-        if (optionsArray_ == null) {
-            initialize();
-        }
-        return optionsArray_.get(index, start);
+        return getOptions().get(index, start);
     }
 
     /**
@@ -300,10 +246,7 @@ public class HTMLSelectElement extends FormField {
      */
     @Override
     public void put(final int index, final Scriptable start, final Object newValue) {
-        if (optionsArray_ == null) {
-            initialize();
-        }
-        optionsArray_.put(index, start, newValue);
+        getOptions().put(index, start, newValue);
     }
 
     /**
@@ -319,18 +262,19 @@ public class HTMLSelectElement extends FormField {
      * @param newValue the value of the option to select
      */
     @Override
-    public void jsxSet_value(final String newValue) {
-        getHtmlSelect().setSelectedAttribute(newValue, true);
+    public void setValue(final String newValue) {
+        getHtmlSelect().setSelectedAttribute(newValue, true, false);
     }
 
     /**
      * Returns the <tt>size</tt> attribute.
      * @return the <tt>size</tt> attribute
      */
-    public int jsxGet_size() {
+    @JsxGetter
+    public int getSize() {
         int size = 0;
         final String sizeAttribute = getDomNodeOrDie().getAttribute("size");
-        if (sizeAttribute != HtmlSelect.ATTRIBUTE_NOT_DEFINED && sizeAttribute != HtmlSelect.ATTRIBUTE_VALUE_EMPTY) {
+        if (sizeAttribute != DomElement.ATTRIBUTE_NOT_DEFINED && sizeAttribute != DomElement.ATTRIBUTE_VALUE_EMPTY) {
             try {
                 size = Integer.parseInt(sizeAttribute);
             }
@@ -345,7 +289,8 @@ public class HTMLSelectElement extends FormField {
      * Sets the <tt>size</tt> attribute.
      * @param size the <tt>size</tt> attribute
      */
-    public void jsxSet_size(final String size) {
+    @JsxSetter
+    public void setSize(final String size) {
         getDomNodeOrDie().setAttribute("size", size);
     }
 
@@ -353,7 +298,8 @@ public class HTMLSelectElement extends FormField {
      * Returns <tt>true</tt> if the <tt>multiple</tt> attribute is set.
      * @return <tt>true</tt> if the <tt>multiple</tt> attribute is set
      */
-    public boolean jsxGet_multiple() {
+    @JsxGetter
+    public boolean getMultiple() {
         return getDomNodeOrDie().hasAttribute("multiple");
     }
 
@@ -361,7 +307,8 @@ public class HTMLSelectElement extends FormField {
      * Sets or clears the <tt>multiple</tt> attribute.
      * @param multiple <tt>true</tt> to set the <tt>multiple</tt> attribute, <tt>false</tt> to clear it
      */
-    public void jsxSet_multiple(final boolean multiple) {
+    @JsxSetter
+    public void setMultiple(final boolean multiple) {
         if (multiple) {
             getDomNodeOrDie().setAttribute("multiple", "multiple");
         }
@@ -370,14 +317,57 @@ public class HTMLSelectElement extends FormField {
         }
     }
 
-    private void ensureSelectedIndex() {
-        final HtmlSelect select = getHtmlSelect();
-        if (select.getOptionSize() == 0) {
-            jsxSet_selectedIndex(-1);
-        }
-        else if (jsxGet_selectedIndex() == -1) {
-            jsxSet_selectedIndex(0);
-        }
+    /**
+     * Returns the {@code dataFld} attribute.
+     * @return the {@code dataFld} attribute
+     */
+    @JsxGetter(@WebBrowser(value = IE, maxVersion = 8))
+    public String getDataFld() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
     }
 
+    /**
+     * Sets the {@code dataFld} attribute.
+     * @param dataFld {@code dataFld} attribute
+     */
+    @JsxSetter(@WebBrowser(value = IE, maxVersion = 8))
+    public void setDataFld(final String dataFld) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code dataFormatAs} attribute.
+     * @return the {@code dataFormatAs} attribute
+     */
+    @JsxGetter(@WebBrowser(value = IE, maxVersion = 8))
+    public String getDataFormatAs() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code dataFormatAs} attribute.
+     * @param dataFormatAs {@code dataFormatAs} attribute
+     */
+    @JsxSetter(@WebBrowser(value = IE, maxVersion = 8))
+    public void setDataFormatAs(final String dataFormatAs) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code dataSrc} attribute.
+     * @return the {@code dataSrc} attribute
+     */
+    @JsxGetter(@WebBrowser(value = IE, maxVersion = 8))
+    public String getDataSrc() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code dataSrc} attribute.
+     * @param dataSrc {@code dataSrc} attribute
+     */
+    @JsxSetter(@WebBrowser(value = IE, maxVersion = 8))
+    public void setDataSrc(final String dataSrc) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
 }

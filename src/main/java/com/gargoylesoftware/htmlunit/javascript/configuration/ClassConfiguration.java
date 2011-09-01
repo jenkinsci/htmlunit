@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,129 +14,84 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.configuration;
 
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
 
 /**
- * A container for all the JavaScript configuration information.
+ * A container for all the JavaScript configuration information for one class.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 10322 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Chris Erskine
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
 public final class ClassConfiguration {
-    private static final String GETTER_PREFIX = "jsxGet_";
-    private static final String SETTER_PREFIX = "jsxSet_";
-    private static final String FUNCTION_PREFIX = "jsxFunction_";
+    private Map<String, PropertyInfo> propertyMap_ = new HashMap<>();
+    private Map<String, Method> functionMap_ = new HashMap<>();
+    private Map<String, Method> staticFunctionMap_ = new HashMap<>();
+    private List<String> constants_ = new ArrayList<>();
+    private String extendedClassName_;
+    private final Class<? extends SimpleScriptable> hostClass_;
 
-    private Map<String, PropertyInfo> propertyMap_ = new HashMap<String, PropertyInfo>();
-    private Map<String, FunctionInfo> functionMap_ = new HashMap<String, FunctionInfo>();
-    private List<String> constants_ = new ArrayList<String>();
-    private String extendedClass_;
     /**
-     * The fully qualified name of the class that implements this class.
+     * The constructor method in the {@link #hostClass_}
      */
-    private final String className_;
-    private final Class< ? extends SimpleScriptable> linkedClass_;
-    /**
-     * The constructor method in the {@link #linkedClass_}
-     */
-    private final Method jsConstructor_;
-    private final String htmlClassname_;
+    private Member jsConstructor_;
+    private final Class<?>[] domClasses_;
     private final boolean jsObject_;
+    private final boolean definedInStandardsMode_;
+    private final String className_;
 
     /**
      * Constructor.
      *
-     * @param classname the name of the configuration class this entry is for
-     * @param implementingClass - the fully qualified name of the class implementing this functionality
-     * @param jsConstructor the constructor of method <code>implementingClass</code>
-     * @param extendedClass - The name of the class that this class extends
-     * @param htmlClass the name of the HTML class that this object supports
+     * @param hostClass - the class implementing this functionality
+     * @param domClasses the DOM classes that this object supports
      * @param jsObject boolean flag for if this object is a JavaScript object
-     * @throws ClassNotFoundException - if the implementing class is not found
+     * @param definedInStandardsMode should be defined in only Standards Mode
+     * @param className the class name, can be null
      */
-    @SuppressWarnings("unchecked")
-    public ClassConfiguration(final String classname, final String implementingClass, final String jsConstructor,
-        final String extendedClass, final String htmlClass, final boolean jsObject)
-        throws ClassNotFoundException {
-        className_ = classname;
-        extendedClass_ = extendedClass;
-        linkedClass_ = (Class< ? extends SimpleScriptable>) Class.forName(implementingClass);
-        if (jsConstructor != null && jsConstructor.length() != 0) {
-            Method foundCtor = null;
-            for (final Method method : linkedClass_.getMethods()) {
-                if (method.getName().equals(jsConstructor)) {
-                    foundCtor = method;
-                    break;
-                }
-            }
-            if (foundCtor == null) {
-                throw new IllegalStateException("Constructor method \"" + jsConstructor
-                        + "\" in class \"" + implementingClass + " is not found.");
-            }
-            jsConstructor_ = foundCtor;
+    public ClassConfiguration(final Class<? extends SimpleScriptable> hostClass, final Class<?>[] domClasses,
+            final boolean jsObject, final boolean definedInStandardsMode, final String className) {
+        final Class<?> superClass = hostClass.getSuperclass();
+        if (superClass != SimpleScriptable.class) {
+            extendedClassName_ = superClass.getSimpleName();
         }
         else {
-            jsConstructor_ = null;
+            extendedClassName_ = "";
         }
+        hostClass_ = hostClass;
         jsObject_ = jsObject;
-        if (htmlClass != null && htmlClass.length() != 0) {
-            htmlClassname_ = htmlClass;
-        }
-        else {
-            htmlClassname_ = null;
-        }
+        definedInStandardsMode_ = definedInStandardsMode;
+        domClasses_ = domClasses;
+        className_ = className;
     }
 
-    /**
-     * @return the className
-     */
-    public String getClassName() {
-        return className_;
+    void setJSConstructor(final Member jsConstructor) {
+        if (jsConstructor_ != null) {
+            throw new IllegalStateException("Can not have two constructors for "
+                    + jsConstructor_.getDeclaringClass().getName());
+        }
+        jsConstructor_ = jsConstructor;
     }
 
     /**
      * Add the property to the configuration.
      * @param name name of the property
-     * @param readable flag for if the property is readable
-     * @param writeable flag for if the property is writeable
+     * @param getter the getter method
+     * @param setter the setter method
      */
-    public void addProperty(final String name, final boolean readable, final boolean writeable) {
-        final PropertyInfo info = new PropertyInfo();
-        info.setReadable(readable);
-        info.setWriteable(writeable);
-        try {
-            if (readable) {
-                info.setReadMethod(linkedClass_.getMethod(GETTER_PREFIX + name, (Class []) null));
-            }
-        }
-        catch (final NoSuchMethodException e) {
-            throw new IllegalStateException("Method '" + GETTER_PREFIX + name + "' was not found for "
-                + name + " property in " + linkedClass_.getName());
-        }
-        // For the setters, we have to loop through the methods since we do not know what type of argument
-        // the method takes.
-        if (writeable) {
-            final String setMethodName = SETTER_PREFIX + name;
-            for (final Method method : linkedClass_.getMethods()) {
-                if (method.getName().equals(setMethodName) && method.getParameterTypes().length == 1) {
-                    info.setWriteMethod(method);
-                    break;
-                }
-            }
-            if (info.getWriteMethod() == null) {
-                throw new IllegalStateException("Method '" + SETTER_PREFIX + name + "' was not found for " + name
-                    + " property in " + linkedClass_.getName());
-            }
-        }
+    public void addProperty(final String name, final Method getter, final Method setter) {
+        final PropertyInfo info = new PropertyInfo(getter, setter);
         propertyMap_.put(name, info);
     }
 
@@ -149,18 +104,34 @@ public final class ClassConfiguration {
     }
 
     /**
-     * Returns the set of keys for the defined properties.
+     * Returns the set of entries for the defined properties.
      * @return a set
      */
-    public Set<String> propertyKeys() {
-        return propertyMap_.keySet();
+    public Set<Entry<String, PropertyInfo>> getPropertyEntries() {
+        return propertyMap_.entrySet();
+    }
+
+    /**
+     * Returns the set of entries for the defined functions.
+     * @return a set
+     */
+    public Set<Entry<String, Method>> getFunctionEntries() {
+        return functionMap_.entrySet();
+    }
+
+    /**
+     * Returns the set of entries for the defined static functions.
+     * @return a set
+     */
+    public Set<Entry<String, Method>> getStaticFunctionEntries() {
+        return staticFunctionMap_.entrySet();
     }
 
     /**
      * Returns the set of keys for the defined functions.
      * @return a set
      */
-    public Set<String> functionKeys() {
+    public Set<String> getFunctionKeys() {
         return functionMap_.keySet();
     }
 
@@ -168,178 +139,56 @@ public final class ClassConfiguration {
      * Returns the constant list.
      * @return a list
      */
-    public List<String> constants() {
+    public List<String> getConstants() {
         return constants_;
     }
 
     /**
      * Add the function to the configuration.
-     * @param name - Name of the function
+     * @param method the method
      */
-    public void addFunction(final String name) {
-        final FunctionInfo info = new FunctionInfo();
-        final String setMethodName = FUNCTION_PREFIX + name;
-        for (final Method method : linkedClass_.getMethods()) {
-            if (method.getName().equals(setMethodName)) {
-                info.setFunctionMethod(method);
-                break;
-            }
-        }
-        if (info.getFunctionMethod() == null) {
-            throw new IllegalStateException("Method '" + FUNCTION_PREFIX + name + "' was not found for " + name
-                + " function in " + linkedClass_.getName());
-        }
-        functionMap_.put(name, info);
+    public void addFunction(final Method method) {
+        functionMap_.put(method.getName(), method);
     }
 
     /**
-     * Sets the browser information for this named property.
-     * @param propertyName - Name of the property to set
-     * @param browserName - Browser name to set
-     * @throws IllegalStateException - Property does not exist
+     * Add the static function to the configuration.
+     * @param method the method
      */
-    public void setBrowser(final String propertyName, final String browserName)
-        throws IllegalStateException {
-        final PropertyInfo property = getPropertyInfo(propertyName);
-        if (property == null) {
-            throw new IllegalStateException("Property does not exist to set browser");
-        }
-        property.setBrowser(new BrowserInfo(browserName));
+    public void addStaticFunction(final Method method) {
+        staticFunctionMap_.put(method.getName(), method);
     }
 
     /**
      * @return the extendedClass
      */
-    public String getExtendedClass() {
-        return extendedClass_;
-    }
-
-    /**
-     * @param extendedClass the extendedClass to set
-     */
-    public void setExtendedClass(final String extendedClass) {
-        extendedClass_ = extendedClass;
-    }
-
-    /**
-     * Returns the PropertyInfo for the given property name.
-     * @param propertyName Name of property
-     * @return the PropertyInfo for the given property name
-     */
-    protected PropertyInfo getPropertyInfo(final String propertyName) {
-        return propertyMap_.get(propertyName);
-    }
-
-    private FunctionInfo getFunctionInfo(final String functionName) {
-        return functionMap_.get(functionName);
-    }
-
-    /**
-     * Test for value equality of the 2 objects.
-     *
-     * @param obj   the reference object with which to compare
-     * @return <code>true</code> if the value of this object is the same as the obj
-     * argument; <code>false</code> otherwise.
-     */
-    @Override
-    public boolean equals(final Object obj) {
-        if (!(obj instanceof ClassConfiguration)) {
-            return false;
-        }
-        final ClassConfiguration config = (ClassConfiguration) obj;
-        if (propertyMap_.size() != config.propertyMap_.size()) {
-            return false;
-        }
-        if (functionMap_.size() != config.functionMap_.size()) {
-            return false;
-        }
-        final Set<String> keys = config.propertyMap_.keySet();
-        for (final String key : keys) {
-            if (!config.propertyMap_.get(key).valueEquals(propertyMap_.get(key))) {
-                return false;
-            }
-        }
-
-        for (final String key : config.functionMap_.keySet()) {
-            if (!config.functionMap_.get(key).valueEquals(functionMap_.get(key))) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Currently, this is the hashcode for the name.
-     * {@inheritDoc}
-     */
-    @Override
-    public int hashCode() {
-        return className_.hashCode();
-    }
-
-    /**
-     * Gets the method that implements the getter for the named property.
-     *
-     * @param propertyName the name of the property
-     * @return the method that implements the getter for the named property
-     */
-    public Method getPropertyReadMethod(final String propertyName) {
-        final PropertyInfo info = getPropertyInfo(propertyName);
-        if (info == null) {
-            return null;
-        }
-        return info.getReadMethod();
-    }
-
-    /**
-     * Gets the method that implements the setter for the named property.
-     *
-     * @param propertyName the name of the property
-     * @return the method that implements the setter for the named property
-     */
-    public Method getPropertyWriteMethod(final String propertyName) {
-        final PropertyInfo info = getPropertyInfo(propertyName);
-        if (info == null) {
-            return null;
-        }
-        return info.getWriteMethod();
-    }
-
-    /**
-     * Gets the method that implements the given function.
-     *
-     * @param functionName the name of the property
-     * @return the method that implements the given function
-     */
-    public Method getFunctionMethod(final String functionName) {
-        final FunctionInfo info = getFunctionInfo(functionName);
-        if (info == null) {
-            return null;
-        }
-        return info.getFunctionMethod();
+    public String getExtendedClassName() {
+        return extendedClassName_;
     }
 
     /**
      * Gets the class of the JavaScript host object.
      * @return the class of the JavaScript host object
      */
-    public Class< ? extends SimpleScriptable> getLinkedClass() {
-        return linkedClass_;
+    public Class<? extends SimpleScriptable> getHostClass() {
+        return hostClass_;
     }
 
     /**
-     * Gets the JavaScript constructor method in {@link #getLinkedClass()}.
-     * @return the JavaScript constructor method in {@link #getLinkedClass()}
+     * Gets the JavaScript constructor method in {@link #getHostClass()}.
+     * @return the JavaScript constructor method in {@link #getHostClass()}
      */
-    public Method getJsConstructor() {
+    public Member getJsConstructor() {
         return jsConstructor_;
     }
 
     /**
-     * @return the htmlClassname
+     * Returns the DOM classes.
+     *
+     * @return the DOM classes
      */
-    public String getHtmlClassname() {
-        return htmlClassname_;
+    public Class<?>[] getDomClasses() {
+        return domClasses_;
     }
 
     /**
@@ -350,16 +199,42 @@ public final class ClassConfiguration {
     }
 
     /**
-     * Class used to contain the property information if the property is readable, writeable and the
+     * Returns whether the class should be defined in only Standards Mode.
+     * @return defineInStandardsMode
+     */
+    public boolean isDefinedInStandardsMode() {
+        return definedInStandardsMode_;
+    }
+
+    /**
+     * Returns the class name.
+     * @return the class name
+     */
+    public String getClassName() {
+        if (className_ != null) {
+            return className_;
+        }
+        return getHostClass().getSimpleName();
+    }
+
+    /**
+     * Class used to contain the property information if the property is readable, writable and the
      * methods that implement the get and set functions.
      */
-    protected class PropertyInfo {
-        private boolean readable_ = false;
-        private boolean writeable_ = false;
-        private boolean hasBrowsers_ = false;
-        private Map<String, BrowserInfo> browserMap_;
+    public static class PropertyInfo {
         private Method readMethod_;
         private Method writeMethod_;
+
+        /**
+         * Constructor.
+         *
+         * @param readMethod the readMethod
+         * @param writeMethod the writeMethod
+         */
+        public PropertyInfo(final Method readMethod, final Method writeMethod) {
+            readMethod_ = readMethod;
+            writeMethod_ = writeMethod;
+        }
 
         /**
          * @return the readMethod
@@ -369,172 +244,10 @@ public final class ClassConfiguration {
         }
 
         /**
-         * @param readMethod the readMethod to set
-         */
-        public void setReadMethod(final Method readMethod) {
-            readMethod_ = readMethod;
-        }
-
-        /**
          * @return the writeMethod
          */
         public Method getWriteMethod() {
             return writeMethod_;
         }
-
-        /**
-         * @param writeMethod the writeMethod to set
-         */
-        public void setWriteMethod(final Method writeMethod) {
-            writeMethod_ = writeMethod;
-        }
-
-        private void setBrowser(final BrowserInfo browserInfo) {
-            if (browserMap_ == null) {
-                hasBrowsers_ = true;
-                browserMap_ = new HashMap<String, BrowserInfo>();
-            }
-
-            browserMap_.put(browserInfo.getBrowserName(), browserInfo);
-        }
-
-        /**
-         * Test for value equality of the 2 objects
-         *
-         * @param obj   the reference object with which to compare
-         * @return <code>true</code> if the value of this object is the same as the obj
-         * argument; <code>false</code> otherwise.
-         */
-        private boolean valueEquals(final Object obj) {
-            if (!(obj instanceof PropertyInfo)) {
-                return false;
-            }
-            final PropertyInfo info = (PropertyInfo) obj;
-            if (hasBrowsers_ != info.hasBrowsers_) {
-                return false;
-            }
-            if (hasBrowsers_) {
-                if (browserMap_.size() != info.browserMap_.size()) {
-                    return false;
-                }
-                for (final String key : browserMap_.keySet()) {
-                    if (!browserMap_.get(key).valueEquals(info.browserMap_.get(key))) {
-                        return false;
-                    }
-                }
-
-            }
-            return (readable_ == info.readable_)
-                && (writeable_ == info.writeable_);
-        }
-
-        /**
-         * @param readable the readable to set
-         */
-        private void setReadable(final boolean readable) {
-            readable_ = readable;
-        }
-
-        /**
-         * @param writeable the writeable to set
-         */
-        private void setWriteable(final boolean writeable) {
-            writeable_ = writeable;
-        }
     }
-
-    private class FunctionInfo {
-        private boolean hasBrowsers_ = false;
-        private Map<String, BrowserInfo> browserMap_;
-        private Method functionMethod_;
-
-        /**
-         * Test for value equality of the 2 objects
-         *
-         * @param obj   the reference object with which to compare
-         * @return <code>true</code> if the value of this object is the same as the obj
-         * argument; <code>false</code> otherwise.
-         */
-        private boolean valueEquals(final Object obj) {
-            if (!(obj instanceof FunctionInfo)) {
-                return false;
-            }
-            final FunctionInfo info = (FunctionInfo) obj;
-            if (hasBrowsers_ != info.hasBrowsers_) {
-                return false;
-            }
-            if (hasBrowsers_) {
-                if (browserMap_.size() != info.browserMap_.size()) {
-                    return false;
-                }
-                for (final String key : browserMap_.keySet()) {
-                    if (browserMap_.get(key).valueEquals(info.browserMap_.get(key))) {
-                        return false;
-                    }
-                }
-
-            }
-            return true;
-        }
-
-        /**
-         * @return the functionMethod
-         */
-        public Method getFunctionMethod() {
-            return functionMethod_;
-        }
-
-        /**
-         * @param functionMethod the functionMethod to set
-         */
-        public void setFunctionMethod(final Method functionMethod) {
-            functionMethod_ = functionMethod;
-        }
-    }
-
-    private final class BrowserInfo {
-        private String browserName_;
-        private String minVersion_;
-        private String maxVersion_;
-        private String lessThanVersion_;
-
-        /**
-         * Test for value equality of the 2 objects.
-         *
-         * @param obj the reference object with which to compare
-         * @return <code>true</code> if the value of this object is the same as the obj
-         * argument; <code>false</code> otherwise.
-         */
-        private boolean valueEquals(final Object obj) {
-            if (!(obj instanceof BrowserInfo)) {
-                return false;
-            }
-            final BrowserInfo info = (BrowserInfo) obj;
-            if (minVersion_ != null && !minVersion_.equals(info.minVersion_)) {
-                return false;
-            }
-            if (maxVersion_ != null && !maxVersion_.equals(info.maxVersion_)) {
-                return false;
-            }
-            if (lessThanVersion_ != null && !lessThanVersion_.equals(info.lessThanVersion_)) {
-                return false;
-            }
-            return (browserName_ == info.browserName_);
-        }
-
-        /**
-         * @param browserName name of the browser
-         */
-        private BrowserInfo(final String browserName) {
-            browserName_ = browserName;
-        }
-
-        /**
-         * @return the browserName
-         */
-        private String getBrowserName() {
-            return browserName_;
-        }
-    }
-
 }

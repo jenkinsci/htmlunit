@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
 
@@ -22,10 +22,10 @@ import com.gargoylesoftware.htmlunit.BrowserVersion;
  * Evaluator for IE conditional expressions.
  *
  * @see <a href="http://msdn.microsoft.com/en-us/library/ms537512.aspx">MSDN documentation</a>
- * @version $Revision: 4079 $
+ * @version $Revision: 9837 $
  * @author Marc Guillemot
  */
-public final class IEConditionalCommentExpressionEvaluator {
+final class IEConditionalCommentExpressionEvaluator {
 
     /**
      * Hide constructor of utility class
@@ -63,7 +63,7 @@ public final class IEConditionalCommentExpressionEvaluator {
             return !evaluate(condition.substring(1), browserVersion);
         }
         else if (condition.startsWith("IE")) {
-            final String currentVersion = String.valueOf(browserVersion.getBrowserVersionNumeric());
+            final String currentVersion = Float.toString(browserVersion.getBrowserVersionNumeric());
             return currentVersion.startsWith(condition.substring(2).trim());
         }
         else if (condition.startsWith("lte IE")) {

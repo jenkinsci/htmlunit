@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,11 +22,13 @@ import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 import com.gargoylesoftware.htmlunit.TopLevelWindow;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.html.HtmlAnchor;
 import com.gargoylesoftware.htmlunit.html.HtmlInlineFrame;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
@@ -35,12 +37,12 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
  * Tests for {@link JavaScriptJobManagerImpl} using the full HtmlUnit stack. Minimal unit tests
  * which do not use the full HtmlUnit stack go in {@link JavaScriptJobManagerMinimalTest}.
  *
- * @version $Revision: 4343 $
+ * @version $Revision: 10150 $
  * @author Brad Clarke
  * @author Ahmed Ashour
  */
-public class JavaScriptJobManagerTest extends WebTestCase {
-
+@RunWith(BrowserRunner.class)
+public class JavaScriptJobManagerTest extends SimpleWebTestCase {
     private long startTime_;
 
     private void startTimedTest() {
@@ -91,7 +93,7 @@ public class JavaScriptJobManagerTest extends WebTestCase {
         jobManager.waitForJobs(7000);
         assertEquals(0, jobManager.getJobCount());
         assertEquals(Collections.EMPTY_LIST, collectedAlerts);
-        assertMaxTestRunTime(10000);
+        assertMaxTestRunTime(10_000);
     }
 
     /**
@@ -121,15 +123,20 @@ public class JavaScriptJobManagerTest extends WebTestCase {
             + "</html>";
 
         final List<String> collectedAlerts = Collections.synchronizedList(new ArrayList<String>());
-        startTimedTest();
         final HtmlPage page = loadPage(content, collectedAlerts);
+
+        // loading the page takes some time (on our slow build machine);
+        // start the timer after loading the page
+        startTimedTest();
+
         final JavaScriptJobManager jobManager = page.getEnclosingWindow().getJobManager();
         assertNotNull(jobManager);
         assertEquals(1, jobManager.getJobCount());
-        jobManager.waitForJobs(1000);
+        jobManager.waitForJobs(DEFAULT_WAIT_TIME);
         assertEquals(0, jobManager.getJobCount());
         assertEquals(Collections.nCopies(3, "blah"), collectedAlerts);
-        assertMaxTestRunTime(1000);
+
+        assertMaxTestRunTime(DEFAULT_WAIT_TIME + 100);
     }
 
     /**
@@ -140,18 +147,18 @@ public class JavaScriptJobManagerTest extends WebTestCase {
         final String firstContent = "<html><head><title>First</title></head><body>\n"
             + "<iframe id='iframe1' src='"
             + URL_SECOND
-            + "'>\n"
+            + "'></iframe>\n"
             + "<a href='"
             + URL_THIRD.toExternalForm()
             + "' id='clickme'>click me</a>\n"
             + "</body></html>";
         final String secondContent = "<html><head><title>Second</title></head><body>\n"
             + "<script>\n"
-            + "setInterval('', 10000);\n"
+            + "setInterval('', 30000);\n"
             + "</script>\n"
             + "</body></html>";
         final String thirdContent = "<html><head><title>Third</title></head><body></body></html>";
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
@@ -167,12 +174,11 @@ public class JavaScriptJobManagerTest extends WebTestCase {
 
         final HtmlAnchor anchor = page.getHtmlElementById("clickme");
         final HtmlPage newPage = anchor.click();
-
         Assert.assertEquals("new page should load", "Third", newPage.getTitleText());
         Assert.assertEquals("frame should be gone", 0, newPage.getFrames().size());
 
-        mgr.waitForJobs(1000);
-        Assert.assertEquals("thread should stop", 0, mgr.getJobCount());
+        mgr.waitForJobs(10000);
+        Assert.assertEquals("job manager should have no jobs left", 0, mgr.getJobCount());
     }
 
     /**

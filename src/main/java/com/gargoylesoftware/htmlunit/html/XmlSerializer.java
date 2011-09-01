@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,33 +15,40 @@
 package com.gargoylesoftware.htmlunit.html;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
-
-import javax.imageio.ImageReader;
+import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang.StringEscapeUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import com.gargoylesoftware.htmlunit.Page;
-import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.SgmlPage;
+import com.gargoylesoftware.htmlunit.WebResponse;
+import com.gargoylesoftware.htmlunit.util.MimeType;
 
 /**
  * Utility to handle conversion from HTML code to XML string.
- * @version $Revision: 4805 $
+ * @version $Revision: 9868 $
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Marc Guillemot
  */
 class XmlSerializer {
+
+    private static final String FILE_SEPARATOR = "/";
+    private static final Pattern CREATE_FILE_PATTERN = Pattern.compile(".*/");
 
     private final StringBuilder buffer_ = new StringBuilder();
     private final StringBuilder indent_ = new StringBuilder();
     private File outputDir_;
-    private WebClient webClient_;
 
     public void save(final HtmlPage page, final File file) throws IOException {
-        webClient_ = page.getWebClient();
         String fileName = file.getName();
         if (!fileName.endsWith(".htm") && !fileName.endsWith(".html")) {
             fileName += ".html";
@@ -59,16 +66,17 @@ class XmlSerializer {
      * Converts an HTML element to XML.
      * @param node a node
      * @return the text representation according to the setting of this serializer
+     * @throws IOException in case of problem saving resources
      */
-    public String asXml(final HtmlElement node) {
+    public String asXml(final HtmlElement node) throws IOException {
         buffer_.setLength(0);
         indent_.setLength(0);
-        String charsetName = null;
-        if (node.getPage() instanceof HtmlPage) {
-            charsetName = node.getPage().getPageEncoding();
-        }
-        if (charsetName != null && node instanceof HtmlHtml) {
-            buffer_.append("<?xml version=\"1.0\" encoding=\"").append(charsetName).append("\"?>").append('\n');
+        final SgmlPage page = node.getPage();
+        if (null != page && page.isHtmlPage()) {
+            final String charsetName = page.getPageEncoding();
+            if (charsetName != null && node instanceof HtmlHtml) {
+                buffer_.append("<?xml version=\"1.0\" encoding=\"").append(charsetName).append("\"?>").append('\n');
+            }
         }
         printXml(node);
         final String response = buffer_.toString();
@@ -76,13 +84,13 @@ class XmlSerializer {
         return response;
     }
 
-    protected void printXml(final DomElement node) {
+    protected void printXml(final DomElement node) throws IOException {
         if (!isExcluded(node)) {
             final boolean hasChildren = node.getFirstChild() != null;
             buffer_.append(indent_).append('<');
             printOpeningTag(node);
 
-            if (!hasChildren && !isEmptyXmlTagExpanded(node)) {
+            if (!hasChildren && !node.isEmptyXmlTagExpanded()) {
                 buffer_.append("/>").append('\n');
             }
             else {
@@ -102,85 +110,154 @@ class XmlSerializer {
         }
     }
 
-    protected boolean isEmptyXmlTagExpanded(final DomNode node) {
-        return node instanceof HtmlDivision || node instanceof HtmlInlineFrame || node instanceof HtmlOrderedList
-            || node instanceof HtmlScript || node instanceof HtmlSpan || node instanceof HtmlStyle
-            || node instanceof HtmlTable || node instanceof HtmlTitle || node instanceof HtmlUnorderedList;
-    }
-
     /**
      * Prints the content between "&lt;" and "&gt;" (or "/&gt;") in the output of the tag name
      * and its attributes in XML format.
      * @param node the node whose opening tag is to be printed
+     * @throws IOException in case of problem saving resources
      */
-    protected void printOpeningTag(final DomElement node) {
+    protected void printOpeningTag(final DomElement node) throws IOException {
         buffer_.append(node.getTagName());
-        final Map<String, DomAttr> attributes;
-        if (node instanceof HtmlScript) {
-            attributes = getAttributesFor((HtmlScript) node);
+        final Map<String, DomAttr> attributes = readAttributes(node);
+
+        for (final Map.Entry<String, DomAttr> entry : attributes.entrySet()) {
+            buffer_.append(" ");
+            buffer_.append(entry.getKey());
+            buffer_.append("=\"");
+            final String value = entry.getValue().getNodeValue();
+            buffer_.append(com.gargoylesoftware.htmlunit.util.StringUtils.escapeXmlAttributeValue(value));
+            buffer_.append('"');
         }
-        else if (node instanceof HtmlImage) {
-            attributes = getAttributesFor((HtmlImage) node);
+    }
+
+    private Map<String, DomAttr> readAttributes(final DomElement node) throws IOException {
+        if (node instanceof HtmlImage) {
+            return getAttributesFor((HtmlImage) node);
         }
         else if (node instanceof HtmlLink) {
-            attributes = getAttributesFor((HtmlLink) node);
+            return getAttributesFor((HtmlLink) node);
         }
-        else {
-            attributes = node.getAttributesMap();
+        else if (node instanceof BaseFrameElement) {
+            return getAttributesFor((BaseFrameElement) node);
         }
 
-        for (final String name : attributes.keySet()) {
-            buffer_.append(" ");
-            buffer_.append(name);
-            buffer_.append("=\"");
-            buffer_.append(StringEscapeUtils.escapeXml(attributes.get(name).getNodeValue()));
-            buffer_.append("\"");
+        Map<String, DomAttr> attributes = node.getAttributesMap();
+        if (node instanceof HtmlOption) {
+            attributes = new HashMap<>(attributes);
+            final HtmlOption option = (HtmlOption) node;
+            if (option.isSelected()) {
+                if (!attributes.containsKey("selected")) {
+                    attributes.put("selected", new DomAttr(node.getPage(), null, "selected", "selected", false));
+                }
+            }
+            else {
+                attributes.remove("selected");
+            }
         }
+        return attributes;
     }
 
-    protected Map<String, DomAttr> getAttributesFor(final HtmlScript script) {
-        final Map<String, DomAttr> map = new HashMap<String, DomAttr>(script.getAttributesMap());
-        final String src = map.get("src").getValue();
-        try {
-            final File file = createFile(src, ".js");
-            final String content = webClient_.<Page>getPage(src).getWebResponse().getContentAsString();
-            FileUtils.writeStringToFile(file, content);
-            map.get("src").setValue(outputDir_.getName() + File.separatorChar + file.getName());
+    private Map<String, DomAttr> getAttributesFor(final BaseFrameElement frame) throws IOException {
+        final Map<String, DomAttr> map = createAttributesCopyWithClonedAttribute(frame, "src");
+        final DomAttr srcAttr = map.get("src");
+        if (srcAttr == null) {
+            return map;
         }
-        catch (final Exception e) {
-            throw new RuntimeException(e);
+
+        final Page enclosedPage = frame.getEnclosedPage();
+        final String suffix = getFileExtension(enclosedPage);
+        final File file = createFile(srcAttr.getValue(), "." + suffix);
+
+        if (enclosedPage != null) {
+            if (enclosedPage.isHtmlPage()) {
+                file.delete(); // TODO: refactor as it is stupid to create empty file at one place
+                // and then to complain that it already exists
+                ((HtmlPage) enclosedPage).save(file);
+            }
+            else {
+                final InputStream is = enclosedPage.getWebResponse().getContentAsStream();
+                final FileOutputStream fos = new FileOutputStream(file);
+                IOUtils.copyLarge(is, fos);
+                IOUtils.closeQuietly(is);
+                IOUtils.closeQuietly(fos);
+            }
         }
+
+        srcAttr.setValue(file.getParentFile().getName() + FILE_SEPARATOR + file.getName());
         return map;
     }
 
-    protected Map<String, DomAttr> getAttributesFor(final HtmlLink link) {
-        final Map<String, DomAttr> map = new HashMap<String, DomAttr>(link.getAttributesMap());
-        final String src = map.get("href").getValue();
-        try {
-            final File file = createFile(src, ".css");
+    private String getFileExtension(final Page enclosedPage) {
+        if (enclosedPage != null) {
+            if (enclosedPage.isHtmlPage()) {
+                return "html";
+            }
+
+            final URL url = enclosedPage.getUrl();
+            if (url.getPath().contains(".")) {
+                return StringUtils.substringAfterLast(url.getPath(), ".");
+            }
+        }
+
+        return ".unknown";
+    }
+
+    protected Map<String, DomAttr> getAttributesFor(final HtmlLink link) throws IOException {
+        final Map<String, DomAttr> map = createAttributesCopyWithClonedAttribute(link, "href");
+        final DomAttr hrefAttr = map.get("href");
+        if ((null != hrefAttr) && StringUtils.isNotBlank(hrefAttr.getValue())) {
+            final File file = createFile(hrefAttr.getValue(), ".css");
             FileUtils.writeStringToFile(file, link.getWebResponse(true).getContentAsString());
-            map.get("href").setValue(outputDir_.getName() + File.separatorChar + file.getName());
+            hrefAttr.setValue(outputDir_.getName() + FILE_SEPARATOR + file.getName());
         }
-        catch (final Exception e) {
-            throw new RuntimeException(e);
-        }
+
         return map;
     }
 
-    protected Map<String, DomAttr> getAttributesFor(final HtmlImage image) {
-        final Map<String, DomAttr> map = new HashMap<String, DomAttr>(image.getAttributesMap());
-        final String src = map.get("src").getValue();
-        try {
-            final ImageReader reader = image.getImageReader();
-            final File file = createFile(src, "." + reader.getFormatName());
-            image.saveAs(file);
-            outputDir_.mkdirs();
-            map.get("src").setValue(outputDir_.getName() + File.separatorChar + file.getName());
+    protected Map<String, DomAttr> getAttributesFor(final HtmlImage image) throws IOException {
+        final Map<String, DomAttr> map = createAttributesCopyWithClonedAttribute(image, "src");
+        final DomAttr srcAttr = map.get("src");
+        if ((null != srcAttr) && StringUtils.isNotBlank(srcAttr.getValue())) {
+            final WebResponse response = image.getWebResponse(true);
+
+            final File file = createFile(srcAttr.getValue(), "." + getSuffix(response));
+            FileUtils.copyInputStreamToFile(response.getContentAsStream(), file);
+            final String valueOnFileSystem = outputDir_.getName() + FILE_SEPARATOR + file.getName();
+            srcAttr.setValue(valueOnFileSystem); // this is the clone attribute node, not the original one of the page
         }
-        catch (final Exception e) {
-            throw new RuntimeException(e);
-        }
+
         return map;
+    }
+
+    private String getSuffix(final WebResponse response) {
+        // first try to take the one from the requested file
+        final String url = response.getWebRequest().getUrl().toString();
+        final String fileName = StringUtils.substringAfterLast(StringUtils.substringBefore(url, "?"), "/");
+        // if there is a suffix with 2-4 letters, the take it
+        final String suffix = StringUtils.substringAfterLast(fileName, ".");
+        if (suffix.length() > 1 && suffix.length() < 5) {
+            return suffix;
+        }
+
+        // use content type
+        return MimeType.getFileExtension(response.getContentType());
+    }
+
+    private Map<String, DomAttr> createAttributesCopyWithClonedAttribute(final HtmlElement elt, final String attrName) {
+        final Map<String, DomAttr> newMap = new HashMap<>(elt.getAttributesMap());
+
+        // clone the specified element, if possible
+        final DomAttr attr = newMap.get(attrName);
+        if (null == attr) {
+            return newMap;
+        }
+
+        final DomAttr clonedAttr = new DomAttr(attr.getPage(), attr.getNamespaceURI(),
+            attr.getQualifiedName(), attr.getValue(), attr.getSpecified());
+
+        newMap.put(attrName, clonedAttr);
+
+        return newMap;
     }
 
     protected boolean isExcluded(final DomElement element) {
@@ -195,9 +272,12 @@ class XmlSerializer {
      * @throws IOException if a problem occurs creating the file
      */
     private File createFile(final String url, final String extension) throws IOException {
-        String name = url.replaceFirst("/$", "").replaceAll(".*/", "");
+        String name = url.replaceFirst("/$", "");
+        name = CREATE_FILE_PATTERN.matcher(name).replaceAll("");
         name = StringUtils.substringBefore(name, "?"); // remove query
         name = StringUtils.substringBefore(name, ";"); // remove additional info
+        name = StringUtils.substring(name, 0, 30); // many file systems have a limit at 255, let's limit it
+        name = com.gargoylesoftware.htmlunit.util.StringUtils.sanitizeForFileName(name);
         if (!name.endsWith(extension)) {
             name += extension;
         }

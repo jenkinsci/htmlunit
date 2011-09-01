@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,28 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.net.URL;
 import java.util.Map;
 
+import org.apache.commons.io.IOUtils;
+
 import com.gargoylesoftware.htmlunit.SgmlPage;
+import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.WebRequest;
+import com.gargoylesoftware.htmlunit.WebResponse;
 
 /**
  * Wrapper for the HTML element "embed".
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 10214 $
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Frank Danek
  */
 public class HtmlEmbed extends HtmlElement {
-
-    private static final long serialVersionUID = -3145507421763037622L;
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "embed";
@@ -34,13 +43,38 @@ public class HtmlEmbed extends HtmlElement {
     /**
      * Creates a new instance.
      *
-     * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the page that contains this element
      * @param attributes the initial attributes
      */
-    HtmlEmbed(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    HtmlEmbed(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
+        super(qualifiedName, page, attributes);
+    }
+
+    /**
+     * Saves this content as the specified file.
+     * @param file the file to save to
+     * @throws IOException if an IO error occurs
+     */
+    public void saveAs(final File file) throws IOException {
+        final HtmlPage page = (HtmlPage) getPage();
+        final WebClient webclient = page.getWebClient();
+
+        final URL url = page.getFullyQualifiedUrl(getAttribute("src"));
+        final WebRequest request = new WebRequest(url);
+        request.setAdditionalHeader("Referer", page.getUrl().toExternalForm());
+        final WebResponse webResponse = webclient.loadWebResponse(request);
+        final FileOutputStream fos = new FileOutputStream(file);
+        IOUtils.copy(webResponse.getContentAsStream(), fos);
+        fos.close();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public DisplayStyle getDefaultStyleDisplay() {
+        return DisplayStyle.INLINE;
     }
 }

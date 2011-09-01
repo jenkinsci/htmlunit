@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,79 +17,52 @@ package com.gargoylesoftware.htmlunit.javascript.background;
 /**
  * A JavaScript-triggered background job managed by a {@link JavaScriptJobManager}.
  *
- * @version $Revision: 4320 $
+ * @version $Revision: 9837 $
  * @author Daniel Gredler
+ * @author Amit Manjhi
+ * @author Ronald Brill
  */
-public abstract class JavaScriptJob implements Runnable {
-
-    /** The job ID. */
-    private Integer id_;
-
-    /** The initial amount of time to wait before executing this job. */
-    private final int initialDelay_;
-
-    /** The amount of time to wait between executions of this job (may be <tt>null</tt>). */
-    private final Integer period_;
-
-    /** Creates a new job instance that executes once, immediately. */
-    public JavaScriptJob() {
-        this(0, null);
-    }
-
-    /**
-     * Creates a new job instance.
-     * @param initialDelay the initial amount of time to wait before executing this job
-     * @param period the amount of time to wait between executions of this job (may be <tt>null</tt>)
-     */
-    public JavaScriptJob(final int initialDelay, final Integer period) {
-        initialDelay_ = initialDelay;
-        period_ = period;
-    }
-
-    /**
-     * Sets the job ID.
-     * @param id the job ID
-     */
-    public void setId(final Integer id) {
-        id_ = id;
-    }
+public interface JavaScriptJob extends Runnable, Comparable<JavaScriptJob> {
 
     /**
      * Returns the job ID.
      * @return the job ID
      */
-    public Integer getId() {
-        return id_;
-    }
+    Integer getId();
 
     /**
-     * Returns the initial amount of time to wait before executing this job.
-     * @return the initial amount of time to wait before executing this job
+     * Sets the job ID.
+     * @param id the job ID
      */
-    public int getInitialDelay() {
-        return initialDelay_;
-    }
+    void setId(final Integer id);
+
+    /**
+     * Returns the target execution time of the job.
+     * @return the target execution time in ms
+     */
+    long getTargetExecutionTime();
+
+    /**
+     * Sets the target execution time of the job.
+     * @param targetExecutionTime the new target execution time.
+     */
+    void setTargetExecutionTime(final long targetExecutionTime);
 
     /**
      * Returns the amount of time to wait between executions of this job (may be <tt>null</tt>).
      * @return the amount of time to wait between executions of this job (may be <tt>null</tt>)
      */
-    public Integer getPeriod() {
-        return period_;
-    }
+    Integer getPeriod();
 
     /**
      * Returns <tt>true</tt> if this job executes periodically.
      * @return <tt>true</tt> if this job executes periodically
      */
-    public boolean isPeriodic() {
-        return period_  != null;
-    }
+    boolean isPeriodic();
 
-    /** {@inheritDoc} */
-    @Override
-    public String toString() {
-        return "JavaScript Job " + id_;
-    }
-
+    /**
+     * Returns <tt>true</tt> if has to be executed ASAP.
+     * @return <tt>true</tt> if has to be executed ASAP
+     */
+    boolean isExecuteAsap();
 }

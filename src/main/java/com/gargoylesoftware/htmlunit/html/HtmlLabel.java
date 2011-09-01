@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,16 +24,16 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "label".
  *
- * @version $Revision: 4598 $
+ * @version $Revision: 10214 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Marc Guillemot
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Frank Danek
  */
-public class HtmlLabel extends ClickableElement {
-
-    private static final long serialVersionUID = -3007176633287091652L;
+public class HtmlLabel extends HtmlElement {
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "label";
@@ -41,14 +41,13 @@ public class HtmlLabel extends ClickableElement {
     /**
      * Creates an instance of HtmlLabel
      *
-     * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the HtmlPage that contains this element
      * @param attributes the initial attributes
      */
-    HtmlLabel(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    HtmlLabel(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
+        super(qualifiedName, page, attributes);
     }
 
     /**
@@ -130,7 +129,7 @@ public class HtmlLabel extends ClickableElement {
         final String elementId = getForAttribute();
         if (!ATTRIBUTE_NOT_DEFINED.equals(elementId)) {
             try {
-                return getElementById(elementId);
+                return ((HtmlPage) getPage()).getHtmlElementById(elementId);
             }
             catch (final ElementNotFoundException e) {
                 return null;
@@ -167,5 +166,13 @@ public class HtmlLabel extends ClickableElement {
         }
 
         return response;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public DisplayStyle getDefaultStyleDisplay() {
+        return DisplayStyle.INLINE;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,10 @@
  */
 package com.gargoylesoftware.htmlunit;
 
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.CHROME;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.FF;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.IE;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -21,9 +25,17 @@ import java.lang.annotation.Target;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.runner.Runner;
+import org.junit.runner.manipulation.Filter;
+import org.junit.runner.manipulation.Filterable;
+import org.junit.runner.manipulation.NoTestsRemainException;
+import org.junit.runner.notification.RunNotifier;
 import org.junit.runners.Suite;
+import org.junit.runners.model.Statement;
+
+import com.gargoylesoftware.htmlunit.runners.BrowserVersionClassRunner;
 
 /**
  * The custom runner <code>BrowserRunner</code> implements browser parameterized
@@ -36,18 +48,18 @@ import org.junit.runners.Suite;
  * public class SomeTest extends WebTestCase {
  *
  *    &#064;Test
- *    &#064;Browsers({Browser.FIREFOX_2})
  *    public void test() {
- *       //your test case that succeeds with only Firefox 2
+ *      getBrowserVersion();// returns the currently used BrowserVersion
  *    }
  * }
  * </pre>
- * @version $Revision: 4810 $
+ * @version $Revision: 10456 $
  * @author Ahmed Ashour
+ * @author Frank Danek
  */
 public class BrowserRunner extends Suite {
 
-    private final ArrayList<Runner> runners_ = new ArrayList<Runner>();
+    private final ArrayList<Runner> runners_ = new ArrayList<>();
 
     /**
      * Constructor.
@@ -58,25 +70,75 @@ public class BrowserRunner extends Suite {
     public BrowserRunner(final Class<WebTestCase> klass) throws Throwable {
         super(klass, Collections.<Runner>emptyList());
 
-        final String property = System.getProperty(WebDriverTestCase.PROPERTY, "").toLowerCase();
-        final boolean runAll = !WebDriverTestCase.class.isAssignableFrom(klass) || property.length() == 0;
-
         if (BrowserVersionClassRunner.containsTestMethods(klass)) {
-            if (runAll || property.contains("ie6")) {
-                runners_.add(new BrowserVersionClassRunner(klass, BrowserVersion.INTERNET_EXPLORER_6));
+            final Set<String> browsers = WebDriverTestCase.getBrowsersProperties();
+            if (WebDriverTestCase.class.isAssignableFrom(klass)) {
+                if (browsers.contains("chrome")) {
+                    runners_.add(new BrowserVersionClassRunner(klass, BrowserVersion.CHROME, true));
+                }
+                if (browsers.contains("ff24")) {
+                    runners_.add(new BrowserVersionClassRunner(klass, BrowserVersion.FIREFOX_24, true));
+                }
+                if (browsers.contains("ff31")) {
+                    runners_.add(new BrowserVersionClassRunner(klass, BrowserVersion.FIREFOX_31, true));
+                }
+                if (browsers.contains("ff38")) {
+                    runners_.add(new BrowserVersionClassRunner(klass, BrowserVersion.FIREFOX_38, true));
+                }
+                if (browsers.contains("ie8")) {
+                    runners_.add(new BrowserVersionClassRunner(klass, BrowserVersion.INTERNET_EXPLORER_8, true));
+                }
+                if (browsers.contains("ie11")) {
+                    runners_.add(new BrowserVersionClassRunner(klass, BrowserVersion.INTERNET_EXPLORER_11, true));
+                }
             }
-            if (runAll || property.contains("ie7")) {
-                runners_.add(new BrowserVersionClassRunner(klass, BrowserVersion.INTERNET_EXPLORER_7));
+
+            if (browsers.contains("hu-chrome")) {
+                runners_.add(new BrowserVersionClassRunner(klass, BrowserVersion.CHROME, false));
             }
-            if (runAll || property.contains("ff2")) {
-                runners_.add(new BrowserVersionClassRunner(klass, BrowserVersion.FIREFOX_2));
+            if (browsers.contains("hu-ff24")) {
+                runners_.add(new BrowserVersionClassRunner(klass, BrowserVersion.FIREFOX_24, false));
             }
-            if (runAll || property.contains("ff3")) {
-                runners_.add(new BrowserVersionClassRunner(klass, BrowserVersion.FIREFOX_3));
+            if (browsers.contains("hu-ff31")) {
+                runners_.add(new BrowserVersionClassRunner(klass, BrowserVersion.FIREFOX_31, false));
+            }
+            if (browsers.contains("hu-ff38")) {
+                runners_.add(new BrowserVersionClassRunner(klass, BrowserVersion.FIREFOX_38, false));
+            }
+            if (browsers.contains("hu-ie8")) {
+                runners_.add(new BrowserVersionClassRunner(klass, BrowserVersion.INTERNET_EXPLORER_8, false));
+            }
+            if (browsers.contains("hu-ie11")) {
+                runners_.add(new BrowserVersionClassRunner(klass, BrowserVersion.INTERNET_EXPLORER_11, false));
             }
         }
-        if (BrowserNoneClassRunner.containsTestMethods(klass)) {
-            runners_.add(new BrowserNoneClassRunner(klass));
+    }
+
+    @Override
+    protected Statement classBlock(final RunNotifier notifier) {
+        return childrenInvoker(notifier);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void filter(final Filter filter) throws NoTestsRemainException {
+        boolean atLeastOne = false;
+        for (final Runner runner : getChildren()) {
+            try {
+                if (runner instanceof Filterable) {
+                    ((Filterable) runner).filter(filter);
+                    atLeastOne = true;
+                }
+            }
+            catch (final NoTestsRemainException e) {
+                // nothing
+            }
+        }
+
+        if (!atLeastOne) {
+            throw new NoTestsRemainException();
         }
     }
 
@@ -88,83 +150,89 @@ public class BrowserRunner extends Suite {
         return runners_;
     }
 
-    static final String EMPTY_DEFAULT = "~InTerNal_To_BrowSeRRunNer#@$";
+    /**
+     * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
+     */
+    public static final String EMPTY_DEFAULT = "~InTerNal_To_BrowSeRRunNer#@$";
 
     /**
      * Browser.
      * @see Browsers
      */
     public enum Browser {
+        /** Latest version of Chrome. */
+        CHROME,
+
         /** All versions of Internet Explorer. */
         IE,
 
-        /** Internet Explorer 6. */
-        IE6,
+        /** Internet Explorer 8. */
+        IE8,
 
-        /** Internet Explorer 7. */
-        IE7,
+        /** Internet Explorer 11. */
+        IE11,
 
         /** All versions of Firefox. */
         FF,
 
-        /** Firefox 2. */
-        FF2,
+        /** Firefox 24. */
+        FF24,
 
-        /** Firefox 3. */
-        FF3,
+        /** Firefox 31. */
+        FF31,
 
-        /** Not Browser-specific, it will run only once. Don't use this with other Browsers. */
-        NONE;
+        /** Firefox 38. */
+        FF38,
     }
 
     /**
-     * The only {@link Browser}s that are expected to succeed, default value is all.
-     * For example, if you use <tt>@Browsers(Browser.INTERNET_EXPLORER_6)</tt> that means only IE6 is expected
-     * to succeed, but IE7, FF2 and FF3 should fail.
-     */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.METHOD)
-    public static @interface Browsers {
-
-        /**
-         * The browsers which the case succeeds (but fails with remaining ones).
-         */
-        Browser[] value() default {
-            Browser.IE, Browser.FF
-        };
-    }
-
-    /**
-     * Expected alerts.
+     * Allows to express the expected alerts (i.e. the messages passed to the
+     * window.alert function) for the different browsers for a unit test.
+     * Expected alerts can be retrieved within a unit test with {@link SimpleWebTestCase#getExpectedAlerts()}
+     * (resp. {@link WebDriverTestCase#getExpectedAlerts}) to be compared with the actual alerts but most of the time
+     * utility functions like {@link SimpleWebTestCase#loadPageWithAlerts(String)}
+     * (resp. {@link WebDriverTestCase#loadPageWithAlerts2(String)}) are used which do it
+     * after having loaded the page.
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.METHOD)
     public static @interface Alerts {
 
         /** Alerts that is used for all browsers (if defined, the other values are ignored). */
-        String[] value() default {EMPTY_DEFAULT };
+        String[] value() default { EMPTY_DEFAULT };
 
         /** Alerts for any Internet Explorer, it can be overridden by specific IE version. */
-        String[] IE() default {EMPTY_DEFAULT };
+        String[] IE() default { EMPTY_DEFAULT };
 
-        /** Alerts for Internet Explorer 6. If not defined, {@link #IE()} is used. */
-        String[] IE6() default {EMPTY_DEFAULT };
+        /** Alerts for Internet Explorer 8. If not defined, {@link #IE()} is used. */
+        String[] IE8() default { EMPTY_DEFAULT };
 
-        /** Alerts for Internet Explorer 7. If not defined, {@link #IE()} is used. */
-        String[] IE7() default {EMPTY_DEFAULT };
+        /** Alerts for Internet Explorer 11. If not defined, {@link #IE()} is used. */
+        String[] IE11() default { EMPTY_DEFAULT };
 
         /** Alerts for any Firefox, it can be overridden by specific FF version. */
-        String[] FF() default {EMPTY_DEFAULT };
+        String[] FF() default { EMPTY_DEFAULT };
 
-        /** Alerts for Firefox 2. If not defined, {@link #FF()} is used. */
-        String[] FF2() default {EMPTY_DEFAULT };
+        /** Alerts for Firefox 24. If not defined, {@link #FF()} is used. */
+        String[] FF24() default { EMPTY_DEFAULT };
 
-        /** Alerts for Firefox 3. If not defined, {@link #FF()} is used. */
-        String[] FF3() default {EMPTY_DEFAULT };
+        /** Alerts for Firefox 31. If not defined, {@link #FF()} is used. */
+        String[] FF31() default { EMPTY_DEFAULT };
+
+        /** Alerts for Firefox 38. If not defined, {@link #FF()} is used. */
+        String[] FF38() default { EMPTY_DEFAULT };
+
+        /** Alerts for latest Chrome. */
+        String[] CHROME() default { EMPTY_DEFAULT };
+
+        /** The default alerts, if nothing more specific is defined. */
+        String[] DEFAULT() default { EMPTY_DEFAULT };
     }
 
     /**
-     * Browsers with which the case is not yet implemented, default value is all.
+     * Marks a test as not yet working for a particular browser (default value is all).
+     * This will cause a failure to be considered as success and a success as failure forcing
+     * us to remove this annotation when a feature has been implemented even unintentionally.
      * @see Browser
      */
     @Retention(RetentionPolicy.RUNTIME)
@@ -175,25 +243,38 @@ public class BrowserRunner extends Suite {
          * The browsers with which the case is not yet implemented.
          */
         Browser[] value() default {
-            Browser.IE, Browser.FF
+            IE, FF, CHROME
         };
     }
 
-    static String getDescription(final BrowserVersion browserVersion) {
-        if (browserVersion == BrowserVersion.INTERNET_EXPLORER_6) {
-            return "IE6";
-        }
-        else if (browserVersion == BrowserVersion.INTERNET_EXPLORER_7) {
-            return "IE7";
-        }
-        else if (browserVersion == BrowserVersion.FIREFOX_2) {
-            return "FF2";
-        }
-        else if (browserVersion == BrowserVersion.FIREFOX_3) {
-            return "FF3";
-        }
-        else {
-            return browserVersion.getApplicationName() + browserVersion.getApplicationVersion();
-        }
+    /**
+     * Indicates that the test runs manually in a real browser but not when using WebDriver to drive the browser.
+     * @see Browser
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.METHOD)
+    public static @interface BuggyWebDriver {
+
+        /**
+         * The browsers with which the case is failing.
+         */
+        Browser[] value() default {
+            IE, FF, CHROME
+        };
     }
+
+    /**
+     * The number of tries that test will be executed.
+     * The test will fail if and only if all trials failed.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.METHOD)
+    public static @interface Tries {
+
+        /**
+         * The value.
+         */
+        int value() default 1;
+    }
+
 }

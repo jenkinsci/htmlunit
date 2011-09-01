@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,47 +15,46 @@
 package com.gargoylesoftware.htmlunit;
 
 import java.io.Serializable;
-import java.util.Arrays;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Collections;
+import java.util.Date;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-import org.apache.commons.httpclient.Cookie;
-import org.apache.commons.httpclient.HttpState;
-import org.apache.commons.httpclient.cookie.CookiePolicy;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.http.cookie.CookieOrigin;
+
+import com.gargoylesoftware.htmlunit.httpclient.HtmlUnitBrowserCompatCookieSpec;
+import com.gargoylesoftware.htmlunit.util.Cookie;
+import com.gargoylesoftware.htmlunit.util.UrlUtils;
 
 /**
  * Manages cookies for a {@link WebClient}. This class is thread-safe.
+ * You can disable Cookies by calling setCookiesEnabled(false). The
+ * CookieManager itself takes care of this and ignores all cookie request if
+ * disabled. If you override this your methods have to do the same.
  *
- * @version $Revision: 4852 $
+ * @version $Revision: 10403 $
  * @author Daniel Gredler
  * @author Ahmed Ashour
+ * @author Nicolas Belisle
+ * @author Ronald Brill
  */
 public class CookieManager implements Serializable {
-
-    /** Serial version UID. */
-    private static final long serialVersionUID = 4145377365165079425L;
-
-    /**
-     * HtmlUnit's cookie policy is to be browser-compatible. Code which requires access to
-     * HtmlUnit's cookie policy should use this constant, rather than making assumptions and using
-     * one of the HttpClient {@link CookiePolicy} constants directly.
-     */
-    public static final String HTMLUNIT_COOKIE_POLICY = CookiePolicy.BROWSER_COMPATIBILITY;
 
     /** Whether or not cookies are enabled. */
     private boolean cookiesEnabled_;
 
     /** The cookies added to this cookie manager. */
-    private final Set<Cookie> cookies_;
+    private final Set<Cookie> cookies_ = new LinkedHashSet<>();
 
     /**
      * Creates a new instance.
      */
     public CookieManager() {
         cookiesEnabled_ = true;
-        cookies_ = new LinkedHashSet<Cookie>();
     }
 
     /**
@@ -76,33 +75,109 @@ public class CookieManager implements Serializable {
 
     /**
      * Returns the currently configured cookies, in an unmodifiable set.
+     * If disabled, this returns an empty set.
      * @return the currently configured cookies, in an unmodifiable set
      */
     public synchronized Set<Cookie> getCookies() {
-        return Collections.unmodifiableSet(cookies_);
+        if (!isCookiesEnabled()) {
+            return Collections.<Cookie>emptySet();
+        }
+
+        final Set<Cookie> copy = new LinkedHashSet<>();
+        copy.addAll(cookies_);
+        return Collections.unmodifiableSet(copy);
     }
 
     /**
-     * Returns the currently configured cookies for the specified domain, in an unmodifiable set.
-     * @param domain the domain on which to filter the returned cookies
-     * @return the currently configured cookies for the specified domain, in an unmodifiable set
+     * Helper that builds a CookieOrigin.
+     * @param url the url to be used
+     * @return the new CookieOrigin
      */
-    public synchronized Set<Cookie> getCookies(final String domain) {
-        final Set<Cookie> cookies = new LinkedHashSet<Cookie>();
-        for (Cookie cookie : cookies_) {
-            if (StringUtils.equals(cookie.getDomain(), domain)) {
-                cookies.add(cookie);
+    public CookieOrigin buildCookieOrigin(final URL url) {
+        final URL normalizedUrl = replaceForCookieIfNecessary(url);
+
+        return new CookieOrigin(
+                normalizedUrl.getHost(),
+                getPort(normalizedUrl),
+                normalizedUrl.getPath(),
+                "https".equals(normalizedUrl.getProtocol()));
+    }
+
+    /**
+     * Clears all cookies that have expired before supplied date.
+     * If disabled, this returns false.
+     * @param date the date to use for comparison when clearing expired cookies
+     * @return whether any cookies were found expired, and were cleared
+     */
+    public synchronized boolean clearExpired(final Date date) {
+        if (!isCookiesEnabled()) {
+            return false;
+        }
+
+        if (date == null) {
+            return false;
+        }
+
+        boolean foundExpired = false;
+        for (final Iterator<Cookie> iter = cookies_.iterator(); iter.hasNext();) {
+            final Cookie cookie = iter.next();
+            if (cookie.getExpires() != null && date.after(cookie.getExpires())) {
+                iter.remove();
+                foundExpired = true;
             }
         }
-        return Collections.unmodifiableSet(cookies);
+        return foundExpired;
+    }
+
+    /**
+     * Gets the port of the URL.
+     * This functionality is implemented here as protected method to allow subclass to change it
+     * as workaround to <a href="http://code.google.com/p/googleappengine/issues/detail?id=4784>
+     * Google App Engine bug 4784</a>.
+     * @param url the URL
+     * @return the port use to connect the server
+     */
+    protected int getPort(final URL url) {
+        if (url.getPort() != -1) {
+            return url.getPort();
+        }
+        return url.getDefaultPort();
+    }
+
+    /**
+     * {@link org.apache.commons.httpclient.cookie.CookieSpec#match(String, int, String, boolean, Cookie[])} doesn't
+     * like empty hosts and negative ports, but these things happen if we're dealing with a local file. This method
+     * allows us to work around this limitation in HttpClient by feeding it a bogus host and port.
+     *
+     * @param url the URL to replace if necessary
+     * @return the replacement URL, or the original URL if no replacement was necessary
+     */
+    public URL replaceForCookieIfNecessary(URL url) {
+        final String protocol = url.getProtocol();
+        final boolean file = "file".equals(protocol);
+        if (file) {
+            try {
+                url = UrlUtils.getUrlWithNewHostAndPort(url,
+                        HtmlUnitBrowserCompatCookieSpec.LOCAL_FILESYSTEM_DOMAIN, 0);
+            }
+            catch (final MalformedURLException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return url;
     }
 
     /**
      * Returns the currently configured cookie with the specified name, or <tt>null</tt> if one does not exist.
+     * If disabled, this returns null.
      * @param name the name of the cookie to return
      * @return the currently configured cookie with the specified name, or <tt>null</tt> if one does not exist
      */
     public synchronized Cookie getCookie(final String name) {
+        if (!isCookiesEnabled()) {
+            return null;
+        }
+
         for (Cookie cookie : cookies_) {
             if (StringUtils.equals(cookie.getName(), name)) {
                 return cookie;
@@ -113,60 +188,44 @@ public class CookieManager implements Serializable {
 
     /**
      * Adds the specified cookie.
+     * If disabled, this does nothing.
      * @param cookie the cookie to add
      */
     public synchronized void addCookie(final Cookie cookie) {
-        if (cookie.getValue() == null) {
-            cookie.setValue("");
+        if (!isCookiesEnabled()) {
+            return;
         }
+
         cookies_.remove(cookie);
-        cookies_.add(cookie);
+
+        // don't add expired cookie
+        if (cookie.getExpires() == null || cookie.getExpires().after(new Date())) {
+            cookies_.add(cookie);
+        }
     }
 
     /**
      * Removes the specified cookie.
+     * If disabled, this does nothing.
      * @param cookie the cookie to remove
      */
     public synchronized void removeCookie(final Cookie cookie) {
-        if (cookie.getValue() == null) {
-            cookie.setValue("");
+        if (!isCookiesEnabled()) {
+            return;
         }
+
         cookies_.remove(cookie);
     }
 
     /**
      * Removes all cookies.
+     * If disabled, this does nothing.
      */
     public synchronized void clearCookies() {
-        cookies_.clear();
-    }
-
-    /**
-     * Updates the specified HTTP state's cookie configuration according to the current cookie settings.
-     * @param state the HTTP state to update
-     * @see #updateFromState(HttpState)
-     */
-    protected synchronized void updateState(final HttpState state) {
-        if (!cookiesEnabled_) {
+        if (!isCookiesEnabled()) {
             return;
         }
-        state.clearCookies();
-        for (Cookie cookie : cookies_) {
-            state.addCookie(cookie);
-        }
-    }
 
-    /**
-     * Updates the current cookie settings from the specified HTTP state's cookie configuration.
-     * @param state the HTTP state to update from
-     * @see #updateState(HttpState)
-     */
-    protected synchronized void updateFromState(final HttpState state) {
-        if (!cookiesEnabled_) {
-            return;
-        }
         cookies_.clear();
-        cookies_.addAll(Arrays.asList(state.getCookies()));
     }
-
 }

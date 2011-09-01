@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,19 +26,19 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 
 /**
  * Tests the <code>isDisabled()</code> method on all of the elements that must implement the <code>disabled</code>
  * attribute:  <code>button</code>, <code>input</code>, <code>optgroup</code>, <code>option</code>, <code>select</code>
  * and <code>textarea</code>.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 10603 $
  * @author David D. Kilzer
  * @author Ahmed Ashour
  */
 @RunWith(Parameterized.class)
-public class DisabledElementTest extends WebTestCase {
+public class DisabledElementTest extends SimpleWebTestCase {
 
     /**
      * Tests data.
@@ -121,11 +121,10 @@ public class DisabledElementTest extends WebTestCase {
         throws Exception {
 
         final String htmlContent = MessageFormat.format(htmlContent_, new Object[]{disabledAttribute});
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(BrowserVersion.FIREFOX_2, htmlContent, collectedAlerts);
+        final List<String> collectedAlerts = new ArrayList<>();
+        final HtmlPage page = loadPage(BrowserVersion.FIREFOX_38, htmlContent, collectedAlerts);
 
-        final HtmlForm form = page.getHtmlElementById("form1");
-        final DisabledElement element = (DisabledElement) form.getElementById("element1");
+        final DisabledElement element = (DisabledElement) page.getHtmlElementById("element1");
         assertEquals(expectedIsDisabled, element.isDisabled());
     }
 

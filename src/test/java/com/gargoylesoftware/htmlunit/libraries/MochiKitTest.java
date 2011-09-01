@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,16 +16,19 @@ package com.gargoylesoftware.htmlunit.libraries;
 
 import static org.junit.Assert.assertNotNull;
 
-import java.net.URL;
+import java.util.concurrent.TimeUnit;
 
-import org.junit.After;
+import org.apache.commons.lang3.StringUtils;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.html.HtmlDivision;
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Tests for compatibility with <a href="http://mochikit.com">MochiKit</a>.
@@ -33,20 +36,16 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
  * Note: the tests test_MochiKit-DOM-Safari.html, test_MochiKit-DragAndDrop.html and test_MochiKit-JSAN.html
  * are not run as they don't even pass in a "real" Firefox 3.
  * </p>
- * @version $Revision: 4661 $
+ * @version $Revision: 10050 $
  * @author Marc Guillemot
+ * @author Frank Danek
  */
 @RunWith(BrowserRunner.class)
-public class MochiKitTest extends LibraryTestCase {
+public class MochiKitTest extends WebDriverTestCase {
 
-    private static final String BASE_FILE_PATH = "MochiKit/1.4.1";
-    private WebClient webClient_;
+    private static final String BASE_FILE_PATH = "libraries/MochiKit/1.4.1";
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected String getLibraryDir() {
+    private String getLibraryDir() {
         return BASE_FILE_PATH;
     }
 
@@ -142,6 +141,7 @@ public class MochiKitTest extends LibraryTestCase {
      * @throws Exception if the test fails
      */
     @Test
+    @NotYetImplemented
     public void style() throws Exception {
         doTest("Style");
     }
@@ -155,28 +155,40 @@ public class MochiKitTest extends LibraryTestCase {
     }
 
     private void doTest(final String testName) throws Exception {
-        final URL url = getClass().getClassLoader().getResource(BASE_FILE_PATH
-            + "/tests/test_MochiKit-" + testName + ".html");
+        final String url = "http://localhost:" + PORT + "/tests/test_MochiKit-" + testName + ".html";
         assertNotNull(url);
 
-        webClient_ = getWebClient();
-        final HtmlPage page = webClient_.getPage(url);
-        webClient_.waitForBackgroundJavaScriptStartingBefore(2000);
-        final String expected = loadExpectation("test-" + testName);
-        final HtmlDivision div = page.getFirstByXPath("//div[@class = 'tests_report']");
+        final WebDriver driver = getWebDriver();
+        driver.get(url);
+
+        // make single test results visible
+        driver.manage().timeouts().implicitlyWait(5, TimeUnit.SECONDS);
+        driver.findElement(By.linkText("Toggle passed tests")).click();
+        driver.findElement(By.linkText("Toggle failed tests")).click();
+        driver.manage().timeouts().implicitlyWait(0, TimeUnit.SECONDS);
+
+        String expected = loadExpectation(testName);
+        expected = expected.trim();
+        expected = StringUtils.replace(expected, "\r\n", "\n");
+        final WebElement div = driver.findElement(By.xpath("//div[@class = 'tests_report']"));
 
         assertNotNull(div);
-        assertEquals(expected.trim(), div.asText().trim());
+        String actual = div.getText().trim();
+        actual = StringUtils.replace(actual, "\n\n", "\n");
+        assertEquals(expected.trim(), actual);
+    }
+
+    private String loadExpectation(final String testName) throws Exception {
+        final String resourcePrefix = "/" + getLibraryDir() + "/test-" + testName;
+        return loadExpectation(resourcePrefix, ".expected.txt");
     }
 
     /**
-     * Closes the open windows.
+     * Performs pre-test initialization.
+     * @throws Exception if an error occurs
      */
-    @After
-    public void tearDown() {
-        if (webClient_ != null) {
-            webClient_.closeAllWindows();
-        }
+    @Before
+    public void setUp() throws Exception {
+        startWebServer("src/test/resources/libraries/MochiKit/1.4.1", null, null);
     }
-
 }

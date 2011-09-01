@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,34 +14,72 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.CHROME;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.FF;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.FF38;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.IE;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.IE11;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.IE8;
 import static org.junit.Assert.fail;
 
-import java.net.URL;
+import java.lang.reflect.Field;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.htmlunit.HtmlUnitDriver;
+import org.openqa.selenium.ie.InternetExplorerDriver;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.ScriptException;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
+import com.gargoylesoftware.htmlunit.BrowserRunner.BuggyWebDriver;
 import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
+import com.gargoylesoftware.htmlunit.WebWindow;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import com.gargoylesoftware.htmlunit.html.HtmlTextArea;
+import com.gargoylesoftware.htmlunit.html.HtmlPageTest;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Tests for {@link HTMLDocument}.
  *
- * @version $Revision: 4855 $
+ * @version $Revision: 10478 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
+ * @author Ronald Brill
+ * @author Frank Danek
  */
 @RunWith(BrowserRunner.class)
-public class HTMLDocumentTest extends WebTestCase {
+public class HTMLDocumentTest extends WebDriverTestCase {
+    /** jQuery selectors that aren't CSS selectors. */
+    public static final String[] JQUERY_CUSTOM_SELECTORS = {"div.submenu-last:last",
+        "*#__sizzle__ div.submenu-last:last", "div:animated",  "div:animated", "*:button", "*:checkbox", "div:even",
+        "*:file", "div:first", "td:gt(4)", "div:has(p)", ":header", ":hidden", ":image", ":input", "td:lt(4)",
+        ":odd", ":password", ":radio", ":reset", ":selected", ":submit", ":text", ":visible"
+    };
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("[object HTMLDocument]")
+    public void scriptableToString() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_
+            + "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            + "    alert(document);\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
 
     /**
      * @throws Exception if the test fails
@@ -61,23 +99,22 @@ public class HTMLDocumentTest extends WebTestCase {
             + "    }\n"
             + "    </script>\n"
             + "</head>\n"
-            + "<body onload='test()'>"
+            + "<body onload='test()'>\n"
             + "<div id='myDiv'>\n"
             + "  <div></div>\n"
             + "</div>\n"
             + "</body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(FF3 = { "function", "div1", "span2", "span3", "2", "1", "1", "0", "0", "0" },
-            FF2 = { "undefined", "exception" },
-            IE = { "undefined", "exception" })
+    @Alerts(DEFAULT = { "function", "div1", "span2", "span3", "2", "1", "1", "0", "0", "0" },
+            IE8 = { "undefined", "exception" })
     public void getElementsByClassName() throws Exception {
         final String html
             = "<html><head><title>First</title><script>\n"
@@ -105,7 +142,7 @@ public class HTMLDocumentTest extends WebTestCase {
             + "<span class='red' id='span4'>bye</span>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -121,8 +158,27 @@ public class HTMLDocumentTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts("CSS1Compat")
+    public void compatMode_html() throws Exception {
+        compatMode("<!DOCTYPE html>");
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
     @Alerts("BackCompat")
-    public void compatMode_no_url() throws Exception {
+    @NotYetImplemented
+    public void compatMode_question() throws Exception {
+        compatMode("<?DOCTYPE html>");
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("BackCompat")
+    public void compatMode_html_transitional_40_noUrl() throws Exception {
         compatMode("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0 Transitional//EN\">");
     }
 
@@ -130,26 +186,18 @@ public class HTMLDocumentTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts("CSS1Compat")
-    public void compatMode_strict() throws Exception {
-        compatMode("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">");
+    @Alerts("BackCompat")
+    public void compatMode_html_transitional_noUrl() throws Exception {
+        compatMode("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">");
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts("CSS1Compat")
-    public void compatMode_strict_40() throws Exception {
-        compatMode("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">");
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    @Alerts(IE = "CSS1Compat", FF = "BackCompat")
-    public void compatMode_loose_40() throws Exception {
+    @Alerts(DEFAULT = "BackCompat",
+            IE8 = "CSS1Compat")
+    public void compatMode_html_transitional_40() throws Exception {
         compatMode("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0 Transitional//EN\" "
             + "\"http://www.w3.org/TR/html4/loose.dtd\">");
     }
@@ -159,7 +207,7 @@ public class HTMLDocumentTest extends WebTestCase {
      */
     @Test
     @Alerts("CSS1Compat")
-    public void compatMode_loose() throws Exception {
+    public void compatMode_html_transitional() throws Exception {
         compatMode("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" "
             + "\"http://www.w3.org/TR/html4/loose.dtd\">");
     }
@@ -169,7 +217,25 @@ public class HTMLDocumentTest extends WebTestCase {
      */
     @Test
     @Alerts("CSS1Compat")
-    public void compatMode_xhtml_traditional() throws Exception {
+    public void compatMode_html_strict_40() throws Exception {
+        compatMode("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">");
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("CSS1Compat")
+    public void compatMode_html_strict() throws Exception {
+        compatMode("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">");
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("CSS1Compat")
+    public void compatMode_xhtml_transitional() throws Exception {
         compatMode("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" "
             + "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">");
     }
@@ -198,14 +264,23 @@ public class HTMLDocumentTest extends WebTestCase {
             + "</body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        final WebDriver driver = loadPageWithAlerts2(html);
+        if (driver instanceof HtmlUnitDriver) {
+            final HtmlUnitDriver huDriver = (HtmlUnitDriver) driver;
+            final Field field = HtmlUnitDriver.class.getDeclaredField("currentWindow");
+            field.setAccessible(true);
+            final WebWindow webWindow = (WebWindow) field.get(huDriver);
+            final HtmlPage page = (HtmlPage) webWindow.getEnclosedPage();
+            assertEquals("BackCompat".equals(getExpectedAlerts()[0]), page.isQuirksMode());
+        }
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = "true", FF = "false")
+    @Alerts(DEFAULT = "false",
+            IE = "true")
     public void uniqueID() throws Exception {
         final String html = "<html>\n"
             + "<head>\n"
@@ -220,21 +295,22 @@ public class HTMLDocumentTest extends WebTestCase {
             + "</body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.FF)
-    @Alerts({ "[object HTMLDivElement]", "[object HTMLUnknownElement]", "[object Element]" })
+    @Alerts(DEFAULT = { "[object HTMLDivElement]", "[object HTMLUnknownElement]", "[object Element]" },
+            IE8 = "document.createElementNS not available")
     public void createDocumentNS() throws Exception {
         final String html = "<html>\n"
             + "<head>\n"
             + "<title>Test</title>\n"
             + "<script>\n"
             + "function test() {\n"
+            + "  if(!document.createElementNS) { alert('document.createElementNS not available'); return; }\n"
             + "  var elt = document.createElementNS('http://www.w3.org/1999/xhtml', 'div');\n"
             + "  alert(elt);\n"
             + "  var elt = document.createElementNS('http://www.w3.org/1999/xhtml', 'foo');\n"
@@ -244,25 +320,40 @@ public class HTMLDocumentTest extends WebTestCase {
             + "}\n"
             + "</script>\n"
             + "</head>\n"
-            + "<body onload='test()'>"
+            + "<body onload='test()'>\n"
             + "</body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.FF)
-    @Alerts("Hello")
-    public void createDocumentNS_xul() throws Exception {
-        final String html = "<html>\n"
-            + "<head>\n"
-            + "<title>Test</title>\n"
+    @Alerts(DEFAULT = "[object SVGSVGElement]",
+            IE8 = "exception")
+    public void createDocumentNS_svg() throws Exception {
+        final String html = "<html><body>\n"
             + "<script>\n"
-            + "function test() {\n"
+            + "try {\n"
+            + "  var elt = document.createElementNS('http://www.w3.org/2000/svg', 'svg');\n"
+            + "  alert(elt);\n"
+            + "} catch (e) { alert('exception'); }\n"
+            + "</script></body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("exception")
+    public void createDocumentNS_xul() throws Exception {
+        final String html = "<html><body>\n"
+            + "<script>\n"
+            + "try {\n"
             + "  var inner = document.createElementNS('http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul',"
             + "'label');\n"
             + "  inner.setAttribute('value', 'Hello');\n"
@@ -270,20 +361,20 @@ public class HTMLDocumentTest extends WebTestCase {
             + "  document.body.appendChild(inner);\n"
             + "  alert(document.body.lastChild.value);\n"
             + "}\n"
+            + "catch (e) { alert('exception'); }\n"
             + "</script>\n"
-            + "</head>\n"
-            + "<body onload='test()'>"
             + "</body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(FF = { "[object HTMLCollection]", "0" }, IE = { "[object]", "0" })
+    @Alerts(DEFAULT = { "[object HTMLCollection]", "0" },
+            IE8 = { "[object]", "0" })
     public void applets() throws Exception {
         final String html = "<html>\n"
             + "<head>\n"
@@ -295,19 +386,21 @@ public class HTMLDocumentTest extends WebTestCase {
             + "}\n"
             + "</script>\n"
             + "</head>\n"
-            + "<body onload='test()'>"
+            + "<body onload='test()'>\n"
             + "</body>\n"
             + "</html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(FF = "imported: [object HTMLScriptElement]", IE = "exception")
-    @NotYetImplemented(Browser.FF)
+    @Alerts(DEFAULT = { "imported: [object HTMLScriptElement]", "replaced" },
+            CHROME = { "imported: [object HTMLScriptElement]", "o", "replaced" },
+            IE8 = "exception")
+    @NotYetImplemented(CHROME)
     public void importNode_script() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "function test() {\n"
@@ -321,26 +414,61 @@ public class HTMLDocumentTest extends WebTestCase {
             + "  alert('imported: ' + importedScript);\n"
             + "  var theSpan = document.getElementById('s1');\n"
             + "  document.body.replaceChild(importedScript, theSpan);\n"
+            + "  alert('replaced');\n"
             + " } catch (e) { alert('exception') }\n"
             + "}\n"
             + "</script></head><body onload='test()'>\n"
             + "  <span id='s1'></span>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * This one is like {@link #importNode_script()}, but the script is
+     * a child of the imported node.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "imported: [object HTMLDivElement]", "replaced" },
+            CHROME = { "imported: [object HTMLDivElement]", "o", "replaced" },
+            IE8 = "exception")
+    @NotYetImplemented(CHROME)
+    public void importNode_scriptChild() throws Exception {
+        final String html = "<html><head><title>foo</title><script>\n"
+            + "function test() {\n"
+            + " try {\n"
+            + "  var d = document.implementation.createDocument(null, null, null);\n"
+            + "  var xhtml = \"<html xmlns='http://www.w3.org/1999/xhtml'><div id='myDiv'><sc\" "
+            + "   + \"ript>alert('o'); _scriptEvaluated=true;</scr\" + \"ipt></div></html>\";\n"
+            + "  var newDoc = (new DOMParser()).parseFromString(xhtml, 'text/xml');\n"
+            + "  var theDiv = newDoc.getElementById('myDiv');\n"
+            + "  var importedDiv = window.document.importNode(theDiv, true);\n"
+            + "  alert('imported: ' + importedDiv);\n"
+            + "  var theSpan = document.getElementById('s1');\n"
+            + "  document.body.replaceChild(importedDiv, theSpan);\n"
+            + "  alert('replaced');\n"
+            + " } catch (e) { alert('exception') }\n"
+            + "}\n"
+            + "</script></head><body onload='test()'>\n"
+            + "  <span id='s1'></span>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Browsers(Browser.FF)
-    @Alerts("clicked")
+    @Alerts(DEFAULT = "clicked",
+            IE8 = "document.addEventListener not available")
     public void dispatchEvent() throws Exception {
         final String html =
             "<html>\n"
             + "<script>\n"
             + "  function doTest() {\n"
+            + "    if (!document.createEvent) { return }\n"
             + "    var e = document.createEvent('MouseEvents');\n"
             + "    e.initMouseEvent('click', true, true, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);\n"
             + "    document.dispatchEvent(e);\n"
@@ -348,19 +476,24 @@ public class HTMLDocumentTest extends WebTestCase {
             + "  function clickListener() {\n"
             + "    alert('clicked');\n"
             + "  }\n"
-            + "  document.addEventListener('click', clickListener, true);\n"
+
+            + "  if (document.addEventListener) {\n"
+            + "    document.addEventListener('click', clickListener, true);\n"
+            + "  } else {\n"
+            + "    alert('document.addEventListener not available');\n"
+            + "  }\n"
             + "</script>\n"
             + "<body onload='doTest()'>foo</body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = { "undefined", "exception" },
-            IE = { "[object]", "0", "1", "f", "f", "f", "f", "urn:f", "urn:f", "true" })
+    @Alerts(DEFAULT = { "undefined", "exception" },
+            IE8 = { "[object]", "0", "1", "f", "f", "f", "f", "urn:f", "urn:f", "true" })
     public void namespaces() throws Exception {
         final String html =
               "<body><script>\n"
@@ -380,7 +513,7 @@ public class HTMLDocumentTest extends WebTestCase {
             + "}\n"
             + "catch(e) { alert('exception') }\n"
             + "</script></body>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -388,107 +521,27 @@ public class HTMLDocumentTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.IE)
-    @Alerts(IE = { "d", "1" })
+    @Alerts(DEFAULT = "exception",
+            IE8 = { "d", "1" })
     public void documentMethodsWithoutDocument() throws Exception {
         final String html
             = "<div id='d' name='d'>d</div>\n"
-            + "<script>var i = document.getElementById; alert(i('d').id);</script>\n"
-            + "<script>var n = document.getElementsByName; alert(n('d').length);</script>";
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    @NotYetImplemented
-    @Alerts("Hello There")
-    public void write() throws Exception {
-        final String html = "<html>\n"
-            + "<head>\n"
-            + "<title>Test</title>\n"
             + "<script>\n"
-            + "function test() {\n"
-            + "  document.write('<html><body><scr'+'ipt>alert(\"Hello There\")</scr'+'ipt></body></html>');\n"
-            + "}\n"
-            + "</script>\n"
-            + "</head>\n"
-            + "<body onload='test()'>"
-            + "</body>\n"
-            + "</html>";
-
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    @Alerts(IE = "[object]", FF = "null")
-    public void getElementById_caseSensitivity() throws Exception {
-        final String html = "<html>\n"
-            + "<head>\n"
-            + "    <script>\n"
-            + "    function test() {\n"
-            + "      alert(document.getElementById('MYDIV'));\n"
-            + "    }\n"
-            + "    </script>\n"
-            + "</head>\n"
-            + "<body onload='test()'>"
-            + "<div id='myDiv'>\n"
-            + "  <div></div>\n"
-            + "</div>\n"
-            + "</body>\n"
-            + "</html>";
-
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    @NotYetImplemented(Browser.IE)
-    public void readyState() throws Exception {
-        final String html = "<html>\n"
-            + "<head>\n"
-            + "    <script>\n"
-            + "    var doc;"
-            + "    function test() {\n"
-            + "      var iframe = document.createElement('iframe');\n"
-            + "      var textarea = document.getElementById('myTextarea');\n"
-            + "      textarea.parentNode.appendChild(iframe);\n"
-            + "      doc = iframe.contentWindow.document;\n"
-            + "      check();\n"
-            + "      setTimeout(check, 100);\n"
-            + "    }\n"
-            + "    function check() {\n"
-            + "      var textarea = document.getElementById('myTextarea');\n"
-            + "      textarea.value += doc.readyState + ',' + doc.body + '-';\n"
-            + "    }\n"
-            + "    </script>\n"
-            + "</head>\n"
-            + "<body onload='test()'>"
-            + "<div>\n"
-            + "  <textarea id='myTextarea' cols='80'></textarea>\n"
-            + "</div>\n"
-            + "</body>\n"
-            + "</html>";
-
-        final HtmlPage page = loadPageWithAlerts(html);
-        final String expected = getBrowserVersion().isIE() ? "loading,null-complete,[object]-"
-                : "undefined,[object HTMLBodyElement]-undefined,[object HTMLBodyElement]-";
-        page.getWebClient().waitForBackgroundJavaScript(500);
-        assertEquals(expected, page.<HtmlTextArea>getHtmlElementById("myTextarea").getText());
+            + "try {\n"
+            + "  var i = document.getElementById; alert(i('d').id);\n"
+            + "  var n = document.getElementsByName; alert(n('d').length);\n"
+            + "} catch(e) { alert('exception') }\n"
+            + "</script>";
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = {"#ffffff", "#ffffff", "#0000aa", "#0000aa", "#000000", "#000000" },
-            IE = {"#ffffff", "", "#0000aa", "#0000aa", "#000000", "#000000" })
+    @Alerts(DEFAULT = {"", "", "#0000aa", "#0000aa", "x", "x" },
+            IE = {"#ffffff", "", "#0000aa", "#0000aa", "#000000", "#000000" },
+            IE11 = {"#ffffff", "", "#0000aa", "#0000aa", "#000000", "#0" })
     public void bgColor() throws Exception {
         final String html =
             "<html>\n"
@@ -509,15 +562,17 @@ public class HTMLDocumentTest extends WebTestCase {
             + "  </head>\n"
             + "  <body id='body' onload='test()'>blah</body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = {"[object HTMLSpanElement]", "undefined" },
-            IE = {"[object]", "4", "red" })
+    @Alerts(DEFAULT = { "[object HTMLCollection]", "4", "red" },
+            IE8 = { "[object]", "4", "red" },
+            CHROME = { "[object NodeList]", "4", "red" })
+    @NotYetImplemented(CHROME)
     public void identicalIDs() throws Exception {
         final String html =
             "<html>\n"
@@ -539,200 +594,7 @@ public class HTMLDocumentTest extends WebTestCase {
             + "    <span id='Item' style='color:blue'></span>\n"
             + "  </body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    @Alerts({ "www.gargoylesoftware.com", "gargoylesoftware.com" })
-    public void domain() throws Exception {
-        final String html = "<html><head><title>foo</title><script>\n"
-            + "function doTest(){\n"
-            + "    alert(document.domain);\n"
-            + "    document.domain = 'gargoylesoftware.com';\n"
-            + "    alert(document.domain);\n"
-            + "}\n"
-            + "</script></head>\n"
-            + "<body onload='doTest()'>\n"
-            + "</body></html>";
-
-        loadPageWithAlerts(html);
-    }
-
-  /**
-    * @throws Exception if the test fails
-    */
-    @Test
-    @Browsers(Browser.FF)
-    public void domainMixedCaseNetscape() throws Exception {
-        final URL urlGargoyleUpperCase = new URL("http://WWW.GARGOYLESOFTWARE.COM/");
-
-        final String html = "<html><head><title>foo</title><script>\n"
-            + "function doTest(){\n"
-            + "    alert(document.domain);\n"
-            + "    document.domain = 'GaRgOyLeSoFtWaRe.CoM';\n"
-            + "    alert(document.domain);\n"
-            + "}\n"
-            + "</script></head>\n"
-            + "<body onload='doTest()'>\n"
-            + "</body></html>";
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-
-        loadPage(getBrowserVersion(), html, collectedAlerts, urlGargoyleUpperCase);
-
-        final String[] expectedAlerts = {"www.gargoylesoftware.com", "gargoylesoftware.com"};
-        assertEquals(expectedAlerts, collectedAlerts);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    @Alerts(FF = { "www.gargoylesoftware.com", "gargoylesoftware.com" },
-            IE = { "www.gargoylesoftware.com", "GaRgOyLeSoFtWaRe.CoM" })
-    public void domainMixedCase() throws Exception {
-        final String html = "<html><head><title>foo</title><script>\n"
-            + "function doTest(){\n"
-            + "    alert(document.domain);\n"
-            + "    document.domain = 'GaRgOyLeSoFtWaRe.CoM';\n"
-            + "    alert(document.domain);\n"
-            + "}\n"
-            + "</script></head>\n"
-            + "<body onload='doTest()'>\n"
-            + "</body></html>";
-
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void domainLong() throws Exception {
-        final String html = "<html><head><title>foo</title><script>\n"
-            + "function doTest(){\n"
-            + "    alert(document.domain);\n"
-            + "    document.domain = 'd4.d3.d2.d1.gargoylesoftware.com';\n"
-            + "    alert(document.domain);\n"
-            + "    document.domain = 'd1.gargoylesoftware.com';\n"
-            + "    alert(document.domain);\n"
-            + "}\n"
-            + "</script></head>\n"
-            + "<body onload='doTest()'>\n"
-            + "</body></html>";
-
-        final String[] expectedAlerts =
-        {"d4.d3.d2.d1.gargoylesoftware.com", "d4.d3.d2.d1.gargoylesoftware.com", "d1.gargoylesoftware.com"};
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(getWebClient(), html, collectedAlerts, new URL("http://d4.d3.d2.d1.gargoylesoftware.com"));
-        assertEquals(expectedAlerts, collectedAlerts);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void domainSetSelf() throws Exception {
-        final String html = "<html><head><title>foo</title><script>\n"
-            + "function doTest(){\n"
-            + "    alert(document.domain);\n"
-            + "    document.domain = 'localhost';\n"
-            + "    alert(document.domain);\n"
-            + "}\n"
-            + "</script></head>\n"
-            + "<body onload='doTest()'>\n"
-            + "</body></html>";
-
-        final String[] expectedAlerts = {"localhost", "localhost"};
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(getWebClient(), html, collectedAlerts, new URL("http://localhost"));
-        assertEquals(expectedAlerts, collectedAlerts);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void domainTooShort() throws Exception {
-        final String html = "<html><head><title>foo</title><script>\n"
-            + "function doTest(){\n"
-            + "    alert(document.domain);\n"
-            + "    document.domain = 'com';\n"
-            + "    alert(document.domain);\n"
-            + "}\n"
-            + "</script></head>\n"
-            + "<body onload='doTest()'>\n"
-            + "</body></html>";
-
-        final List<String> collectedAlerts = new ArrayList<String>();
-        try {
-            loadPage(getWebClient(), html, collectedAlerts);
-        }
-        catch (final ScriptException ex) {
-            return;
-        }
-        fail();
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    @Alerts(FF = { "www.gargoylesoftware.com", "www.gargoylesoftware.com" },
-            IE = { "www.gargoylesoftware.com", "www.gargoylesoftware.com", "exception" })
-    public void domain_set_for_about_blank() throws Exception {
-        final String html = "<html><head><title>foo</title><script>\n"
-            + "function doTest(){\n"
-            + "  var domain = document.domain;\n"
-            + "  alert(domain);\n"
-            + "  var frameDoc = frames[0].document;\n"
-            + "  alert(frameDoc.domain);\n"
-            + "  try {\n"
-            + "    frameDoc.domain = domain;\n"
-            + "  } catch (e) { alert('exception'); }\n"
-            + "}\n"
-            + "</script></head>\n"
-            + "<body onload='doTest()'>\n"
-            + "<iframe src='about:blank'></iframe>\n"
-            + "</body></html>";
-
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * Caused infinite loop at some point of 2.6 snapshot.
-     * See <a href="http://sourceforge.net/support/tracker.php?aid=2824922">Bug 2824922</a>
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void write2_html_endhtml_in_head() throws Exception {
-        final String html = "<html><head>\n"
-            + "<script>\n"
-            + "document.write('<HTML></HTML>');\n"
-            + "</script>\n"
-            + "</head><body>\n"
-            + "</body></html>\n";
-
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * We couldn't document.write() script elements that contained the '<' character...
-     * @exception Exception if the test fails
-     */
-    @Test
-    @Alerts("true")
-    public void writeScript() throws Exception {
-        final String html =
-              "<html><body><script>\n"
-            + "  document.write('<scr'+'ipt>alert(1<2)</sc'+'ript>');\n"
-            + "</script></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -755,7 +617,1744 @@ public class HTMLDocumentTest extends WebTestCase {
             + "  </s:form>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
+    /**
+     * Property lastModified returns the last modification date of the document.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "string", "Fri, 16 Oct 2009 13:59:47 GMT" },
+            IE8 = { "string", "Fri, 16 Oct 2009 13:59:47 UTC" })
+    public void lastModified() throws Exception {
+        final List<NameValuePair> responseHeaders = new ArrayList<>();
+        // TODO When ran with the IEDriver the IE11 is in a mysterious state after this test and cannot be restored
+        // to normal in an automatic way.
+        // All following tests will break until you restart your PC.
+        if (!(getWebDriver() instanceof InternetExplorerDriver && "IE11".equals(getBrowserVersion().getNickname()))) {
+            responseHeaders.add(new NameValuePair("Last-Modified", "Fri, 16 Oct 2009 13:59:47 GMT"));
+            testLastModified(responseHeaders);
+
+            // Last-Modified header has priority compared to Date header
+            responseHeaders.add(new NameValuePair("Date", "Fri, 17 Oct 2009 13:59:47 GMT"));
+            testLastModified(responseHeaders);
+        }
+
+        // but Date is taken, if no Last-Modified header is present (if not IE11)
+        responseHeaders.clear();
+        responseHeaders.add(new NameValuePair("Date", "Fri, 16 Oct 2009 13:59:47 GMT"));
+        testLastModified(responseHeaders);
+
+        // for some strange reasons, the selenium driven browser is in an invalid
+        // state after this test
+        shutDownAll();
+    }
+
+    private void testLastModified(final List<NameValuePair> responseHeaders) throws Exception {
+        final String html = "<html><head><title>foo</title><script>\n"
+            + "function doTest(){\n"
+            + "  alert(typeof document.lastModified);\n"
+            + "  var d = new Date(document.lastModified);\n"
+            + "  alert(d.toGMTString());\n" // to have results not depending on the user's time zone
+            + "}\n"
+            + "</script></head>\n"
+            + "<body onload='doTest()'>\n"
+            + "</body></html>";
+
+        getMockWebConnection().setResponse(getDefaultUrl(), html, 200, "OK", "text/html", responseHeaders);
+
+        loadPageWithAlerts2(getDefaultUrl());
+    }
+
+    /**
+     * If neither Date header nor Last-Modified header is present, current time is taken.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "true", "true" })
+    public void lastModified_noDateHeader() throws Exception {
+        final String html = "<html><head><title>foo</title><script>\n"
+            + "function doTest(){\n"
+            + "  var justBeforeLoading = " + System.currentTimeMillis() + ";\n"
+            + "  var d = new Date(document.lastModified);\n"
+            + "  alert(d.valueOf() >= justBeforeLoading - 1000);\n" // date string format has no ms, take 1s marge
+            + "  alert(d.valueOf() <= new Date().valueOf());\n"
+            + "}\n"
+            + "</script></head>\n"
+            + "<body onload='doTest()'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Regression test for bug 2919853 (format of <tt>document.lastModified</tt> was incorrect).
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void lastModified_format() throws Exception {
+        final String html
+            = "<html><body onload='document.getElementById(\"i\").value = document.lastModified'>\n"
+            + "<input id='i'></input></body></html>";
+
+        final WebDriver driver = loadPageWithAlerts2(html);
+        final String lastModified = driver.findElement(By.id("i")).getAttribute("value");
+
+        try {
+            new SimpleDateFormat("MM/dd/yyyy HH:mm:ss").parse(lastModified);
+        }
+        catch (final ParseException e) {
+            fail(e.getMessage());
+        }
+    }
+
+    /**
+     * Warning: this test works fine in real FF8 when started manually but fails through WebDriver.
+     * Warning: opens a modal panel when run through IEDriver which needs to be closed MANUALLY.
+     * If not all following test will fail.
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @BuggyWebDriver({ IE, FF38 }) // tested with FF8, works with ff24, fails with FF38
+    @Alerts(DEFAULT = { "0", "exception" },
+            FF = { "1", "[object HTMLBodyElement]" },
+            IE8 = "exception")
+    // TODO [IE11]MODALPANEL real IE11 opens a modal panel which webdriver cannot handle
+    @NotYetImplemented(CHROME)
+    public void designMode_selectionRange_empty() throws Exception {
+        designMode_selectionRange("");
+    }
+
+    /**
+     * Warning: opens a modal panel when run through IEDriver which needs to be closed MANUALLY.
+     * If not all following test will fail.
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @BuggyWebDriver({ IE, FF38 }) // tested with FF8, works with ff24, fails with FF38
+    @Alerts(DEFAULT = { "0", "exception" },
+            FF = { "1", "[object Text]" },
+            IE8 = "exception")
+    // TODO [IE11]MODALPANEL real IE11 opens a modal panel which webdriver cannot handle
+    @NotYetImplemented(CHROME)
+    public void designMode_selectionRange_text() throws Exception {
+        designMode_selectionRange("hello");
+    }
+
+    private void designMode_selectionRange(final String bodyContent) throws Exception {
+        final String html = "<html>\n"
+            + "<head><title>foo</title>\n"
+            + "<script>\n"
+            + "function doTest(){\n"
+            + "  try {\n"
+            + "    document.designMode = 'on';\n"
+            + "    var s = window.getSelection();\n"
+            + "    alert(s.rangeCount);\n"
+            + "    alert(s.getRangeAt(0).startContainer);\n"
+            + "  } catch(e) {alert('exception'); }\n"
+            + "}\n"
+            + "</script></head>\n"
+            + "<body onload='doTest()'>" // no \n here!
+            + bodyContent
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "false",
+            IE8 = "true")
+    public void all_detection() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_
+            + "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            + "    alert(!(!document.all));\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "[object HTMLAllCollection]",
+            FF24 = "[object HTML document.all class]",
+            FF31 = "[object HTML document.all class]",
+            FF38 = "[object HTMLAllCollection]",
+            IE8 = "[object HTMLCollection]")
+    public void all_scriptableToString() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_
+            + "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            + "    alert(document.all);\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "not defined",
+            IE = { "false", "1", "about:blank", "about:blank" },
+            IE11 = { "true", "1" })
+    @NotYetImplemented(IE)
+    public void frames() throws Exception {
+        final String html = "<html><head><script>\n"
+            + "function test(){\n"
+            + "  if (document.frames)\n"
+            + "  {\n"
+            + "    alert(document.frames == window.frames);\n"
+            + "    alert(document.frames.length);\n"
+            + "    alert(document.frames(0).location);\n"
+            + "    alert(document.frames('foo').location);\n"
+            + "  }\n"
+            + "  else\n"
+            + "    alert('not defined');\n"
+            + "}\n"
+            + "</script></head><body onload='test();'>\n"
+            + "<iframe src='about:blank' name='foo'></iframe>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * IE allows document.frameName to access a frame window.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "[object Window]", "true" },
+            FF = { "undefined", "false" },
+            IE8 = { "[object]", "true" })
+    public void frameAccessByName() throws Exception {
+        final String html = "<html><head><script>\n"
+            + "function test(){\n"
+            + "  alert(document.foo);\n"
+            + "  alert(window.frames[0] == document.foo);\n"
+            + "}\n"
+            + "</script></head>\n"
+            + "<body onload='test()'>\n"
+            + "  <iframe src='about:blank' name='foo'></iframe>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "0", "0" })
+    public void getElementsByName_notFound() throws Exception {
+        final String html
+            = "<html><head><title>Test</title><script>\n"
+            + "function doTest() {\n"
+            + "    alert(document.getElementsByName(null).length);\n"
+            + "    alert(document.getElementsByName('foo').length);\n"
+            + "}\n"
+            + "</script></head><body onload='doTest()'>\n"
+            + "  <div name='test'></div>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "2", "0" },
+            IE8 = { "0", "0" })
+    public void getElementsByName_emptyName() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_
+            + "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            + "    alert(document.getElementsByName('').length);\n"
+            + "    alert(document.getElementsByName(null).length);\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'>\n"
+            + "  <div name=''></div>\n"
+            + "  <div name=''></div>\n"
+            + "  <div></div>\n"
+            + "  <div></div>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "1", "2", "1", "2", "1", "2", "1", "2", "1", "2", "1", "2" },
+            IE8 = { "1", "2", "1", "2", "1", "2", "1", "2", "1", "2", "0", "0" })
+    @NotYetImplemented(IE8)
+    public void getElementsByName_elements() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_
+            + "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            + "    try {\n"
+            + "      alert(document.getElementsByName('form1').length);\n"
+            + "    } catch (e) { alert('exception:f1') }\n"
+            + "    try {\n"
+            + "      alert(document.getElementsByName('form2').length);\n"
+            + "    } catch (e) { alert('exception:f2') }\n"
+            + "    try {\n"
+            + "      alert(document.getElementsByName('frame1').length);\n"
+            + "    } catch (e) { alert('exception:f1') }\n"
+            + "    try {\n"
+            + "      alert(document.getElementsByName('frame2').length);\n"
+            + "    } catch (e) { alert('exception:f2') }\n"
+            + "    try {\n"
+            + "      alert(document.getElementsByName('input1').length);\n"
+            + "    } catch (e) { alert('exception:i1') }\n"
+            + "    try {\n"
+            + "      alert(document.getElementsByName('input2').length);\n"
+            + "    } catch (e) { alert('exception:i2') }\n"
+            + "    try {\n"
+            + "      alert(document.getElementsByName('anchor1').length);\n"
+            + "    } catch (e) { alert('exception:a1') }\n"
+            + "    try {\n"
+            + "      alert(document.getElementsByName('anchor2').length);\n"
+            + "    } catch (e) { alert('exception:a2') }\n"
+            + "    try {\n"
+            + "      alert(document.getElementsByName('image1').length);\n"
+            + "    } catch (e) { alert('exception:i1') }\n"
+            + "    try {\n"
+            + "      alert(document.getElementsByName('image2').length);\n"
+            + "    } catch (e) { alert('exception:i2') }\n"
+            + "    try {\n"
+            + "      alert(document.getElementsByName('element1').length);\n"
+            + "    } catch (e) { alert('exception:e1') }\n"
+            + "    try {\n"
+            + "      alert(document.getElementsByName('element2').length);\n"
+            + "    } catch (e) { alert('exception:e2') }\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'>\n"
+            + "  <form name='form1'></form>\n"
+            + "  <form name='form2'></form>\n"
+            + "  <form name='form2'></form>\n"
+            + "  <iframe name='frame1'></iframe>\n"
+            + "  <iframe name='frame2'></iframe>\n"
+            + "  <iframe name='frame2'></iframe>\n"
+            + "  <input type='text' name='input1' value='1'/>\n"
+            + "  <input type='text' name='input2' value='2'/>\n"
+            + "  <input type='text' name='input2' value='3'/>\n"
+            + "  <a name='anchor1'></a>\n"
+            + "  <a name='anchor2'></a>\n"
+            + "  <a name='anchor2'></a>\n"
+            + "  <img name='image1'>\n"
+            + "  <img name='image2'>\n"
+            + "  <img name='image2'>\n"
+            + "  <div name='element1'></table>\n"
+            + "  <div name='element2'></div>\n"
+            + "  <div name='element2'></div>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "1", "2" })
+    public void getElementsByName_frame() throws Exception {
+        final String html = "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Frameset//EN\""
+            + "\"http://www.w3.org/TR/html4/frameset.dtd\">\n"
+            + "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            + "    try {\n"
+            + "      alert(document.getElementsByName('frame1').length);\n"
+            + "    } catch (e) { alert('exception:f1') }\n"
+            + "    try {\n"
+            + "      alert(document.getElementsByName('frame2').length);\n"
+            + "    } catch (e) { alert('exception:f2') }\n"
+            + "  }\n"
+            + "</script></head>\n"
+            + "<frameset onload='test()'>\n"
+            + "  <frame src='" + URL_SECOND + "' name='frame1'>\n"
+            + "  <frame src='" + URL_SECOND + "' name='frame2'>\n"
+            + "  <frame src='" + URL_SECOND + "' name='frame2'>\n"
+            + "</frameset>"
+            + "</html>";
+
+        final String frame = HtmlPageTest.STANDARDS_MODE_PREFIX_
+                + "<html><head><title>frame</title></head><body></body></html>";
+        getMockWebConnection().setDefaultResponse(frame);
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "9" },
+            IE8 = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "exception:setAttributeNS", "8" })
+    public void getElementsByName_changedAfterGet() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_
+            + "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            // 1
+            + "    var collection = document.getElementsByName('image1');\n"
+            + "    alert(collection.length);\n"
+
+            // 2
+            + "    var newImage1 = document.createElement('img');\n"
+            + "    newImage1.name = 'image1';\n"
+            + "    document.getElementById('outer1').appendChild(newImage1);\n"
+            + "    alert(collection.length);\n"
+
+            // 3
+            + "    var newImage2 = document.createElement('img');\n"
+            + "    newImage2.name = 'image1';\n"
+            + "    document.getElementById('outer2').insertBefore(newImage2, null);\n"
+            + "    alert(collection.length);\n"
+
+            // 4
+            + "    var newImage3 = document.createElement('img');\n"
+            + "    newImage3.name = 'image1';\n"
+            + "    document.getElementById('outer3').replaceChild(newImage3, document.getElementById('inner3'));\n"
+            + "    alert(collection.length);\n"
+
+            // 5
+            + "    document.getElementById('outer4').outerHTML = '<img name=\"image1\">';\n"
+            + "    alert(collection.length);\n"
+
+            // 6
+            + "    document.getElementById('outer5').innerHTML = '<img name=\"image1\">';\n"
+            + "    alert(collection.length);\n"
+
+            // 7
+            + "    document.getElementById('outer6').insertAdjacentHTML('beforeend', '<img name=\"image1\">');\n"
+            + "    alert(collection.length);\n"
+
+            // 8
+            + "    document.getElementById('image3').setAttribute('name', 'image1');\n"
+            + "    alert(collection.length);\n"
+
+            // 9
+            + "    var newAttr = document.createAttribute('name');\n"
+            + "    newAttr.nodeValue = 'image1';\n"
+            + "    document.getElementById('image4').setAttributeNode(newAttr);\n"
+            + "    alert(collection.length);\n"
+
+            // 10
+            + "    try {\n"
+            + "      document.getElementById('image5').setAttributeNS(null, 'name', 'image1');\n"
+            + "      alert(collection.length);\n"
+            + "    } catch (e) { alert('exception:setAttributeNS') }\n"
+
+            // 9
+            + "    document.getElementById('outer1').removeChild(newImage1);\n"
+            + "    alert(collection.length);\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'>\n"
+            + "  <img name='image1'>\n"
+            + "  <div id='outer1'></div>\n"
+            + "  <div id='outer2'></div>\n"
+            + "  <div id='outer3'><div id='inner3'></div></div>\n"
+            + "  <div id='outer4'></div>\n"
+            + "  <div id='outer5'></div>\n"
+            + "  <div id='outer6'></div>\n"
+            + "  <img id='image2'>\n"
+            + "  <img id='image3'>\n"
+            + "  <img id='image4'>\n"
+            + "  <img id='image5'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Contains the cases of test {@link #getElementsByName_changedAfterGet()} that are not yet implemented.<br>
+     * If a case gets implemented, move it to {@link #getElementsByName_changedAfterGet()}.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "1", "2" })
+    @NotYetImplemented
+    public void getElementsByName_changedAfterGet_nyi() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_
+            + "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            // 1
+            + "    var collection = document.getElementsByName('image1');\n"
+            + "    alert(collection.length);\n"
+
+            // 2
+            + "    document.getElementById('image2').name = 'image1';\n"
+            + "    alert(collection.length);\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'>\n"
+            + "  <img name='image1'>\n"
+            + "  <img id='image2'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "9" },
+            IE8 = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "exception:setAttributeNS", "8" })
+    public void getElementsByName_changedAfterGet_nested() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_
+            + "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            // 1
+            + "    var collection = document.getElementsByName('image1');\n"
+            + "    alert(collection.length);\n"
+
+            // 2
+            + "    var newImage1 = document.createElement('img');\n"
+            + "    newImage1.name = 'image1';\n"
+            + "    document.getElementById('outer1').appendChild(newImage1);\n"
+            + "    alert(collection.length);\n"
+
+            // 3
+            + "    var newImage2 = document.createElement('img');\n"
+            + "    newImage2.name = 'image1';\n"
+            + "    document.getElementById('outer2').insertBefore(newImage2, null);\n"
+            + "    alert(collection.length);\n"
+
+            // 4
+            + "    var newImage3 = document.createElement('img');\n"
+            + "    newImage3.name = 'image1';\n"
+            + "    document.getElementById('outer3').replaceChild(newImage3, document.getElementById('inner3'));\n"
+            + "    alert(collection.length);\n"
+
+            // 5
+            + "    document.getElementById('outer4').outerHTML = '<img name=\"image1\">';\n"
+            + "    alert(collection.length);\n"
+
+            // 6
+            + "    document.getElementById('outer5').innerHTML = '<img name=\"image1\">';\n"
+            + "    alert(collection.length);\n"
+
+            // 7
+            + "    document.getElementById('outer6').insertAdjacentHTML('beforeend', '<img name=\"image1\">');\n"
+            + "    alert(collection.length);\n"
+
+            // 8
+            + "    document.getElementById('image3').setAttribute('name', 'image1');\n"
+            + "    alert(collection.length);\n"
+
+            // 9
+            + "    var newAttr = document.createAttribute('name');\n"
+            + "    newAttr.nodeValue = 'image1';\n"
+            + "    document.getElementById('image4').setAttributeNode(newAttr);\n"
+            + "    alert(collection.length);\n"
+
+            // 10
+            + "    try {\n"
+            + "      document.getElementById('image5').setAttributeNS(null, 'name', 'image1');\n"
+            + "      alert(collection.length);\n"
+            + "    } catch (e) { alert('exception:setAttributeNS') }\n"
+
+            // 9
+            + "    document.getElementById('outer1').removeChild(newImage1);\n"
+            + "    alert(collection.length);\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'>\n"
+            + "  <div>\n"
+            + "    <img name='image1'>\n"
+            + "    <div id='outer1'></div>\n"
+            + "    <div id='outer2'></div>\n"
+            + "    <div id='outer3'><div id='inner3'></div></div>\n"
+            + "    <div id='outer4'></div>\n"
+            + "    <div id='outer5'></div>\n"
+            + "    <div id='outer6'></div>\n"
+            + "    <img id='image2'>\n"
+            + "    <img id='image3'>\n"
+            + "    <img id='image4'>\n"
+            + "    <img id='image5'>\n"
+            + "  </div>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Contains the cases of test {@link #getElementsByName_changedAfterGet_nested()} that are not yet implemented.<br>
+     * If a case gets implemented, move it to {@link #getElementsByName_changedAfterGet_nested()}.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "1", "2" })
+    @NotYetImplemented
+    public void getElementsByName_changedAfterGet_nested_nyi() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_
+            + "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            // 1
+            + "    var collection = document.getElementsByName('image1');\n"
+            + "    alert(collection.length);\n"
+
+            // 2
+            + "    document.getElementById('image2').name = 'image1';\n"
+            + "    alert(collection.length);\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'>\n"
+            + "  <div>\n"
+            + "    <img name='image1'>\n"
+            + "    <img id='image2'>\n"
+            + "  </div>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Regression test for a bug introduced by the document proxy and detected by the Dojo JavaScript library tests.
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts("true")
+    public void equalityViaDifferentPaths() throws Exception {
+        final String html
+            = "<html><body>\n"
+            + "<script>alert(document.body.parentNode.parentNode === document)</script>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("exception")
+    public void getBoxObjectFor() throws Exception {
+        final String html = "<html><head><title>Test</title><script>\n"
+            + "function doTest() {\n"
+            + "  var e = document.getElementById('log');\n"
+            + "  try {\n"
+            + "    var a = document.getBoxObjectFor(e);\n"
+            + "    alert(a);\n"
+            + "    alert(a === document.getBoxObjectFor(e));\n"
+            + "    alert(a.screenX > 0);\n"
+            + "    alert(a.screenY > 0);\n"
+            + "  } catch (e) { alert('exception') }\n"
+            + "}\n"
+            + "</script></head><body onload='doTest()'>\n"
+            + "<div id='log'></div>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "32 commands supported", "not supported: foo, 123" },
+            CHROME = { "29 commands supported", "not supported: Copy, Cut, Paste, foo, 123" })
+    public void queryCommandSupported_common() throws Exception {
+        final String[] commands = {"BackColor", "Bold",
+            "Copy", "CreateLink", "Cut", "Delete",
+            "FontName", "FontSize", "ForeColor", "FormatBlock",
+            "Indent", "InsertHorizontalRule", "InsertImage", "InsertOrderedList",
+            "InsertParagraph", "InsertUnorderedList", "Italic",
+            "JustifyCenter", "JustifyFull", "JustifyLeft",  "JustifyRight",
+            "Outdent", "Paste", "Redo", "RemoveFormat",
+            "SelectAll", "StrikeThrough", "Subscript", "Superscript",
+            "Underline", "Undo", "Unlink",
+            "foo", "123" };
+        queryCommandSupported(commands);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "0 commands supported",
+            CHROME = "3 commands supported, not supported: 2D-Position, AbsolutePosition, "
+                    + "BlockDirLTR, BlockDirRTL, BrowseMode, ClearAuthenticationCache, CreateBookmark, "
+                    + "DirLTR, DirRTL, EditMode, InlineDirLTR, InlineDirRTL, InsertButton, InsertFieldset, "
+                    + "InsertIFrame, InsertInputButton, InsertInputCheckbox, InsertInputFileUpload, "
+                    + "InsertInputHidden, InsertInputImage, InsertInputPassword, InsertInputRadio, "
+                    + "InsertInputReset, InsertInputSubmit, InsertInputText, InsertMarquee, InsertSelectDropdown, "
+                    + "InsertSelectListbox, InsertTextArea, LiveResize, MultipleSelection, "
+                    + "Open, OverWrite, PlayImage, Refresh, RemoveParaFormat, SaveAs, SizeToControl, "
+                    + "SizeToControlHeight, SizeToControlWidth, Stop, StopImage, UnBookmark",
+            IE = "46 commands supported")
+    public void queryCommandSupported_disctinct() throws Exception {
+        final String[] commands = {"2D-Position", "AbsolutePosition",
+            "BlockDirLTR", "BlockDirRTL", "BrowseMode",
+            "ClearAuthenticationCache", "CreateBookmark",
+            "DirLTR", "DirRTL", "EditMode",
+            "InlineDirLTR", "InlineDirRTL", "InsertButton", "InsertFieldset",
+            "InsertIFrame", "InsertInputButton", "InsertInputCheckbox", "InsertInputFileUpload",
+            "InsertInputHidden", "InsertInputImage", "InsertInputPassword", "InsertInputRadio",
+            "InsertInputReset", "InsertInputSubmit", "InsertInputText", "InsertMarquee",
+            "InsertSelectDropdown", "InsertSelectListbox", "InsertTextArea",
+            "JustifyNone",
+            "LiveResize", "MultipleSelection", "Open", "OverWrite",
+            "PlayImage", "Print", "Refresh", "RemoveParaFormat",
+            "SaveAs", "SizeToControl", "SizeToControlHeight", "SizeToControlWidth", "Stop", "StopImage",
+            "UnBookmark", "Unselect"};
+
+        queryCommandSupported(commands);
+    }
+
+    private void queryCommandSupported(final String... commands) throws Exception {
+        final String jsCommandArray = "['" + StringUtils.join(commands, "', '") + "']";
+        final String html = "<html><head><title>Test</title><script>\n"
+            + "function doTest() {\n"
+            + "  var cmds = " + jsCommandArray + ";\n"
+            + "  var nbSupported = 0;\n"
+            + "  var cmdsNotSupported = [];\n"
+            + "  try {\n"
+            + "    for (var i=0; i<cmds.length; ++i) {\n"
+            + "      var cmd = cmds[i];"
+            + "      var b = document.queryCommandSupported(cmd);"
+            + "      if (b)\n"
+            + "        nbSupported++;\n"
+            + "      else\n"
+            + "        cmdsNotSupported[cmdsNotSupported.length] = cmd;\n"
+            + "    }"
+            + "  } catch (e) { alert('exception'); }\n"
+            + "  alert(nbSupported + ' commands supported');\n"
+            + "  if (nbSupported != 0 && cmdsNotSupported.length > 0)\n"
+            + "    alert('not supported: ' + cmdsNotSupported.join(', '));\n"
+            + "}\n"
+            + "</script></head><body onload='doTest()'>\n"
+            + "<div id='log'></div>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "3", "div1" })
+    public void querySelectorAll() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_ + "<html><head><title>Test</title>\n"
+            + "<style>\n"
+            + "  .red   {color:#FF0000;}\n"
+            + "  .green {color:#00FF00;}\n"
+            + "  .blue  {color:#0000FF;}\n"
+            + "</style>\n"
+            + "<script>\n"
+            + "function test() {\n"
+            + "  if(document.querySelectorAll) {\n"
+            + "    var redTags = document.querySelectorAll('.green,.red');\n"
+            + "    alert(redTags.length);\n"
+            + "    alert(redTags.item(0).id);\n"
+            + "  }\n"
+            + "  else\n"
+            + "    alert('undefined');\n"
+            + "}\n"
+            + "</script></head><body onload='test()'>\n"
+            + "  <div id='div1' class='red'>First</div>\n"
+            + "  <div id='div2' class='red'>Second</div>\n"
+            + "  <div id='div3' class='green'>Third</div>\n"
+            + "  <div id='div4' class='blue'>Fourth</div>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "[object NodeList]",
+            IE8 = "[object StaticNodeList]")
+    @NotYetImplemented({ CHROME, FF, IE11 })
+    public void querySelectorAllType() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_ + "<html><head><title>Test</title>\n"
+            + "<script>\n"
+            + "function test() {\n"
+            + "  alert(document.querySelectorAll('html'))\n;"
+            + "}\n"
+            + "</script></head><body onload='test()'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("exception")
+    public void querySelectorAll_badSelector() throws Exception {
+        for (final String selector : JQUERY_CUSTOM_SELECTORS) {
+            doTestQuerySelectorAll_badSelector(selector);
+        }
+    }
+
+    private void doTestQuerySelectorAll_badSelector(final String selector) throws Exception {
+        final String html = "<html><body><script>\n"
+            + "try {\n"
+            + "  document.querySelectorAll('" + selector + "');\n"
+            + "  alert('working');\n"
+            + "} catch(e) { alert('exception'); }\n"
+            + "</script></body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("exception")
+    public void querySelector_badSelector() throws Exception {
+        for (final String selector : JQUERY_CUSTOM_SELECTORS) {
+            doTestQuerySelector_badSelector(selector);
+        }
+    }
+
+    private void doTestQuerySelector_badSelector(final String selector) throws Exception {
+        final String html = "<html><body><script>\n"
+            + "try {\n"
+            + "  document.querySelector('" + selector + "');\n"
+            + "  alert('working: " + selector + "');\n"
+            + "} catch(e) { alert('exception'); }\n"
+            + "</script></body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "3", "div1" },
+            IE8 = "undefined")
+    public void querySelectorAll_quirks() throws Exception {
+        final String html = "<html><head><title>Test</title>\n"
+            + "<style>\n"
+            + "  .red   {color:#FF0000;}\n"
+            + "  .green {color:#00FF00;}\n"
+            + "  .blue  {color:#0000FF;}\n"
+            + "</style>\n"
+            + "<script>\n"
+            + "function test() {\n"
+            + "  if(document.querySelectorAll) {\n"
+            + "    var redTags = document.querySelectorAll('.red,.green');\n"
+            + "    alert(redTags.length);\n"
+            + "    alert(redTags.item(0).id);\n"
+            + "  }\n"
+            + "  else\n"
+            + "    alert('undefined');\n"
+            + "}\n"
+            + "</script></head><body onload='test()'>\n"
+            + "  <div id='div1' class='red'>First</div>\n"
+            + "  <div id='div2' class='red'>Second</div>\n"
+            + "  <div id='div3' class='green'>Third</div>\n"
+            + "  <div id='div4' class='blue'>Fourth</div>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "3",
+            IE8 = "undefined")
+    public void querySelectorAll_implicitAttribute() throws Exception {
+        final String html = "<html><head><title>Test</title>\n"
+            + "<script>\n"
+            + "function test() {\n"
+            + "  if(document.querySelectorAll) {\n"
+            + "    var result = document.querySelectorAll('[disabled]');\n"
+            + "    alert(result.length);\n"
+            + "  }\n"
+            + "  else\n"
+            + "    alert('undefined');\n"
+            + "}\n"
+            + "</script></head><body onload='test()'>\n"
+            + "  <select name='select4' id='select4' multiple='multiple'>\n"
+            + "    <optgroup disabled='disabled'>\n"
+            + "      <option id='option4a' class='emptyopt' value=''>Nothing</option>\n"
+            + "      <option id='option4b' disabled='disabled' selected='selected' value='1'>1</option>\n"
+            + "      <option id='option4c' selected='selected' value='2'>2</option>\n"
+            + "    </optgroup>\n"
+            + "    <option selected='selected' disabled='disabled' id='option4d' value='3'>3</option>\n"
+            + "    <option id='option4e'>no value</option>\n"
+            + "    </select>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "div1", "null" })
+    public void querySelector() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_ + "<html><head><title>Test</title>\n"
+            + "<style>\n"
+            + "  .red   {color:#FF0000;}\n"
+            + "  .green {color:#00FF00;}\n"
+            + "  .blue  {color:#0000FF;}\n"
+            + "</style>\n"
+            + "<script>\n"
+            + "function test() {\n"
+            + "  if(document.querySelector) {\n"
+            + "    alert(document.querySelector('.green,.red').id);\n"
+            + "    alert(document.querySelector('.orange'));\n"
+            + "  }\n"
+            + "  else\n"
+            + "    alert('undefined');\n"
+            + "}\n"
+            + "</script></head><body onload='test()'>\n"
+            + "  <div id='div1' class='red'>First</div>\n"
+            + "  <div id='div2' class='red'>Second</div>\n"
+            + "  <div id='div3' class='green'>Third</div>\n"
+            + "  <div id='div4' class='blue'>Fourth</div>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "1", "0" },
+            IE8 = { "0", "1" })
+    public void getElementsByTagName2() throws Exception {
+        final String html = "<html xmlns:ns1='http://example.com'>\n"
+            + "<head>\n"
+            + "  <script>\n"
+            + "    function test() {\n"
+            + "      alert(document.getElementsByTagName('ns1:ele').length);\n"
+            + "      alert(document.getElementsByTagName('ele').length);\n"
+            + "    }\n"
+            + "  </script>\n"
+            + "</head>\n"
+            + "<body onload='test()'>\n"
+            + "  <ns1:ele>&nbsp;</ns1:ele>\n"
+            + "</body>\n"
+            + "</html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "1", "0" })
+    @NotYetImplemented(IE8)
+    public void getElementsByTagName3() throws Exception {
+        final String html = "<html>\n"
+            + "<head>\n"
+            + "  <script>\n"
+            + "    function test() {\n"
+            + "      alert(document.getElementsByTagName('ns1:ele').length);\n"
+            + "      alert(document.getElementsByTagName('ele').length);\n"
+            + "    }\n"
+            + "  </script>\n"
+            + "</head>\n"
+            + "<body onload='test()'>\n"
+            + "  <ns1:ele>&nbsp;</ns1:ele>\n"
+            + "</body>\n"
+            + "</html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Even if clear() does nothing, it was missing until HtmlUnit-2.8 and this test was failing.
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void clear() throws Exception {
+        final String html = "<html><head>\n"
+            + "<script>\n"
+            + "document.clear();\n"
+            + "</script>\n"
+            + "</head><body>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts({ "true", "", "foo=bar", "foo=hello world" })
+    // TODO [IE11]SINGLE-VS-BULK test runs when executed as single but breaks as bulk
+    public void cookie_write_cookiesEnabled() throws Exception {
+        loadPageWithAlerts2(getCookieWriteHtmlCode());
+    }
+
+    static String getCookieWriteHtmlCode() {
+        final String html =
+              "<html><head><script>\n"
+            + "  alert(navigator.cookieEnabled);\n"
+            + "  alert(document.cookie);\n"
+            + "  document.cookie = 'foo=bar';\n"
+            + "  alert(document.cookie);\n"
+            + "  document.cookie = 'foo=hello world';\n"
+            + "  alert(document.cookie);\n"
+            + "</script>\n"
+            + "</head>\n"
+            + "<body>abc</body>\n"
+            + "</html>";
+        return html;
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(DEFAULT = { "", "a", "", "b", "" },
+            CHROME = { "", "a", "a", "b", "b" })
+    @NotYetImplemented(CHROME)
+    public void cookie_write2() throws Exception {
+        final String html =
+              "<html>\n"
+            + "    <head>\n"
+            + "        <script>\n"
+            + "            alert(document.cookie);\n"
+            + "            document.cookie='a';\n"
+            + "            alert(document.cookie);\n"
+            + "            document.cookie='';\n"
+            + "            alert(document.cookie);\n"
+            + "            document.cookie='b';\n"
+            + "            alert(document.cookie);\n"
+            + "            document.cookie='';\n"
+            + "            alert(document.cookie);\n"
+            + "        </script>\n"
+            + "    </head>\n"
+            + "    <body>abc</body>\n"
+            + "</html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts({ "", "a", "b" })
+    public void cookie_write_valueOnly() throws Exception {
+        final String html =
+              "<html>\n"
+            + "    <head>\n"
+            + "        <script>\n"
+            + "            alert(document.cookie);\n"
+            + "            document.cookie='a';\n"
+            + "            alert(document.cookie);\n"
+            + "            document.cookie='=b';\n"
+            + "            alert(document.cookie);\n"
+            + "        </script>\n"
+            + "    </head>\n"
+            + "    <body>abc</body>\n"
+            + "</html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Regression test for bug 3030247: expired cookie was saved.
+     * http://sourceforge.net/tracker/?func=detail&aid=3030247&group_id=47038&atid=448266
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "", "test2=1", "" })
+    public void writeCookieExpired() throws Exception {
+        final String html = "<html><body>\n"
+            + "<script>\n"
+            + "alert(document.cookie);\n"
+            + "document.cookie = 'test2=1';\n"
+            + "alert(document.cookie);\n"
+            + "document.cookie = 'test2=;expires=Fri, 02-Jan-1970 00:00:00 GMT';\n"
+            + "alert(document.cookie);\n"
+            + "</script></body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Only IE accepts more than the tag name.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "exception",
+            IE8 = "INPUT")
+    public void createElement_notOnlyTagName() throws Exception {
+        final String html = "<html><body>\n"
+            + "<script>\n"
+            + "try {\n"
+            + "  var t = document.createElement('<input name=x>');\n"
+            + "  alert(t.tagName);\n"
+            + "} catch(e) {"
+            + "  alert('exception');\n"
+            + "}\n"
+            + "</script>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("null")
+    public void getElementById_strict() throws Exception {
+        getElementById_strict(true);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "null",
+            IE8 = "")
+    public void getElementById_quirks() throws Exception {
+        getElementById_strict(false);
+    }
+
+    private void getElementById_strict(final boolean xhtml) throws Exception {
+        final String header = xhtml ? "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" "
+                + "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n" : "";
+        final String html = header + "<html><head>\n"
+            + "<script>\n"
+            + "  function test() {\n"
+            + "    alert(document.getElementById('myId'));\n"
+            + "  }\n"
+            + "</script>\n"
+            + "</head><body onload=test()>\n"
+            + "  <a name='myId'/>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "null",
+            IE8 = "[object]")
+    public void getElementById_caseSensitivity() throws Exception {
+        final String html = "<html>\n"
+            + "<head>\n"
+            + "    <script>\n"
+            + "    function test() {\n"
+            + "      alert(document.getElementById('MYDIV'));\n"
+            + "    }\n"
+            + "    </script>\n"
+            + "</head>\n"
+            + "<body onload='test()'>\n"
+            + "<div id='myDiv'>\n"
+            + "  <div></div>\n"
+            + "</div>\n"
+            + "</body>\n"
+            + "</html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "[object HTMLHeadElement]",
+            IE8 = "undefined")
+    public void head() throws Exception {
+        final String html = "<html><body>\n"
+            + "<script>\n"
+            + "  alert(document.head);\n"
+            + "</script>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(DEFAULT = {"", "", "#0000aa", "#0000aa", "x", "x" },
+            IE = {"#0000ff", "", "#0000aa", "#0000aa", "#000000", "#000000" },
+            IE11 = {"#0000ff", "", "#0000aa", "#0000aa", "#000000", "#0" })
+    public void alinkColor() throws Exception {
+        final String html =
+            "<html>\n"
+            + "  <head>\n"
+            + "    <script>\n"
+            + "      function test() {\n"
+            + "        var b = document.getElementById('body');\n"
+            + "        alert(document.alinkColor);\n"
+            + "        alert(b.aLink);\n"
+            + "        document.alinkColor = '#0000aa';\n"
+            + "        alert(document.alinkColor);\n"
+            + "        alert(b.aLink);\n"
+            + "        document.alinkColor = 'x';\n"
+            + "        alert(document.alinkColor);\n"
+            + "        alert(b.aLink);\n"
+            + "      }\n"
+            + "    </script>\n"
+            + "  </head>\n"
+            + "  <body id='body' onload='test()'>blah</body>\n"
+            + "</html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(DEFAULT = {"", "", "#0000aa", "#0000aa", "x", "x" },
+            IE = {"#0000ff", "", "#0000aa", "#0000aa", "#000000", "#000000" },
+            IE11 = {"#0000ff", "", "#0000aa", "#0000aa", "#000000", "#0" })
+    public void linkColor() throws Exception {
+        final String html =
+            "<html>\n"
+            + "  <head>\n"
+            + "    <script>\n"
+            + "      function test() {\n"
+            + "        var b = document.getElementById('body');\n"
+            + "        alert(document.linkColor);\n"
+            + "        alert(b.link);\n"
+            + "        document.linkColor = '#0000aa';\n"
+            + "        alert(document.linkColor);\n"
+            + "        alert(b.link);\n"
+            + "        document.linkColor = 'x';\n"
+            + "        alert(document.linkColor);\n"
+            + "        alert(b.link);\n"
+            + "      }\n"
+            + "    </script>\n"
+            + "  </head>\n"
+            + "  <body id='body' onload='test()'>blah</body>\n"
+            + "</html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(DEFAULT = {"", "", "#0000aa", "#0000aa", "x", "x" },
+            IE = {"#800080", "", "#0000aa", "#0000aa", "#000000", "#000000" },
+            IE11 = {"#800080", "", "#0000aa", "#0000aa", "#000000", "#0" })
+    public void vlinkColor() throws Exception {
+        final String html =
+            "<html>\n"
+            + "  <head>\n"
+            + "    <script>\n"
+            + "      function test() {\n"
+            + "        var b = document.getElementById('body');\n"
+            + "        alert(document.vlinkColor);\n"
+            + "        alert(b.vLink);\n"
+            + "        document.vlinkColor = '#0000aa';\n"
+            + "        alert(document.vlinkColor);\n"
+            + "        alert(b.vLink);\n"
+            + "        document.vlinkColor = 'x';\n"
+            + "        alert(document.vlinkColor);\n"
+            + "        alert(b.vLink);\n"
+            + "      }\n"
+            + "    </script>\n"
+            + "  </head>\n"
+            + "  <body id='body' onload='test()'>blah</body>\n"
+            + "</html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(DEFAULT = {"", "", "#0000aa", "#0000aa", "x", "x" },
+            IE = {"#000000", "", "#0000aa", "#0000aa", "#000000", "#000000" },
+            IE11 = {"#000000", "", "#0000aa", "#0000aa", "#000000", "#0" })
+    public void fgColor() throws Exception {
+        final String html =
+            "<html>\n"
+            + "  <head>\n"
+            + "    <script>\n"
+            + "      function test() {\n"
+            + "        var b = document.getElementById('body');\n"
+            + "        alert(document.fgColor);\n"
+            + "        alert(b.text);\n"
+            + "        document.fgColor = '#0000aa';\n"
+            + "        alert(document.fgColor);\n"
+            + "        alert(b.text);\n"
+            + "        document.fgColor = 'x';\n"
+            + "        alert(document.fgColor);\n"
+            + "        alert(b.text);\n"
+            + "      }\n"
+            + "    </script>\n"
+            + "  </head>\n"
+            + "  <body id='body' onload='test()'>blah</body>\n"
+            + "</html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(DEFAULT = { "", "true" },
+            IE8 = { })
+    public void getSelection() throws Exception {
+        final String html =
+            "<html>\n"
+            + "  <head>\n"
+            + "    <script>\n"
+            + "      function test() {\n"
+            + "        if (document.getSelection) {\n"
+            + "          alert(document.getSelection());\n"
+            + "          alert(document.getSelection() === window.getSelection());\n"
+            + "        }\n"
+            + "      }\n"
+            + "    </script>\n"
+            + "  </head>\n"
+            + "  <body id='body' onload='test()'>blah</body>\n"
+            + "</html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "true", "undefined", "false" },
+            IE = { "true", "[object]", "true" },
+            IE11 = { "true", "[object HTMLFormElement]", "true" })
+    public void document_xxx_formAccess() throws Exception {
+        final String html = "<html>\n"
+            + "<head>\n"
+            + "  <script>\n"
+            + "    function test() {\n"
+            + "      alert(document.foo == document.forms.foo);\n"
+            + "      alert(document.blah);\n"
+            + "      alert(document.blah == document.forms.foo)\n"
+            + "    }\n"
+            + "  </script>\n"
+            + "</head><body onload='test()'>\n"
+            + "  <div id='foo'>the div 1</div>\n"
+            + "  <form name='foo' id='blah'>\n"
+            + "    <input name='foo'>\n"
+            + "  </form>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(CHROME = { "windows-1252", "windows-1252", "windows-1252", "windows-1252" },
+            FF = { "windows-1252", "windows-1252", "undefined", "undefined" },
+            IE = { "undefined", "undefined", "iso-8859-1", "windows-1252" },
+            IE11 = { "ISO-8859-1", "iso-8859-1", "iso-8859-1", "windows-1252" })
+    public void encoding() throws Exception {
+        final String html = "<html>\n"
+            + "<head>\n"
+            + "  <script>\n"
+            + "    function test() {\n"
+            + "      alert(document.inputEncoding);\n"
+            + "      alert(document.characterSet);\n"
+            + "      alert(document.charset);\n"
+            + "      alert(document.defaultCharset);\n"
+            + "    }\n"
+            + "  </script>\n"
+            + "</head><body onload='test()'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(CHROME = { "windows-1252", "windows-1252", "windows-1252", "windows-1252" },
+            FF = { "windows-1252", "windows-1252", "undefined", "undefined" },
+            IE = { "undefined", "undefined", "iso-8859-1", "windows-1252" },
+            IE11 = { "ISO-8859-1", "iso-8859-1", "iso-8859-1", "windows-1252" })
+    public void encoding2() throws Exception {
+        final String html = "<html>\n"
+            + "<head>\n"
+            + "  <meta http-equiv='Content-Type' content='text/html; charset=ISO-8859-1'>\n"
+            + "  <script>\n"
+            + "    function test() {\n"
+            + "      alert(document.inputEncoding);\n"
+            + "      alert(document.characterSet);\n"
+            + "      alert(document.charset);\n"
+            + "      alert(document.defaultCharset);\n"
+            + "    }\n"
+            + "  </script>\n"
+            + "</head><body onload='test()'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(CHROME = { "windows-1252", "windows-1252", "windows-1252", "windows-1252" },
+            FF = { "windows-1252", "windows-1252", "undefined", "undefined" },
+            IE = { "undefined", "undefined", "iso-8859-1", "windows-1252" },
+            IE11 = { "ISO-8859-1", "iso-8859-1", "iso-8859-1", "windows-1252" })
+    public void encoding3() throws Exception {
+        final String html = "<html>\n"
+            + "<head>\n"
+            + "  <meta http-equiv='Content-Type' content='text/html; charset=iso-8859-1'>\n"
+            + "  <script>\n"
+            + "    function test() {\n"
+            + "      alert(document.inputEncoding);\n"
+            + "      alert(document.characterSet);\n"
+            + "      alert(document.charset);\n"
+            + "      alert(document.defaultCharset);\n"
+            + "    }\n"
+            + "  </script>\n"
+            + "</head><body onload='test()'>\n"
+            + "</body></html>";
+
+        final String[] expectedAlerts = getExpectedAlerts();
+        final WebDriver driver = loadPage2(html, URL_FIRST, "text/html", "ISO-8859-1");
+        verifyAlerts(driver, expectedAlerts);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(CHROME = { "UTF-8", "UTF-8", "UTF-8", "windows-1252" },
+            FF = { "UTF-8", "UTF-8", "undefined", "undefined" },
+            IE = { "undefined", "undefined", "utf-8", "windows-1252" },
+            IE11 = { "UTF-8", "utf-8", "utf-8", "windows-1252" })
+    public void encoding4() throws Exception {
+        final String html = "<html>\n"
+            + "<head>\n"
+            + "  <meta http-equiv='Content-Type' content='text/html; charset=iso-8859-1'>\n"
+            + "  <script>\n"
+            + "    function test() {\n"
+            + "      alert(document.inputEncoding);\n"
+            + "      alert(document.characterSet);\n"
+            + "      alert(document.charset);\n"
+            + "      alert(document.defaultCharset);\n"
+            + "    }\n"
+            + "  </script>\n"
+            + "</head><body onload='test()'>\n"
+            + "</body></html>";
+
+        final String[] expectedAlerts = getExpectedAlerts();
+        final WebDriver driver = loadPage2(html, URL_FIRST, "text/html;charset=UTF-8", "ISO-8859-1");
+        verifyAlerts(driver, expectedAlerts);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(CHROME = { "UTF-8", "UTF-8", "UTF-8", "windows-1252" },
+            FF = { "UTF-8", "UTF-8", "undefined", "undefined" },
+            IE = { "undefined", "undefined", "utf-8", "windows-1252" },
+            IE11 = { "UTF-8", "utf-8", "utf-8", "windows-1252" })
+    public void encoding5() throws Exception {
+        final String html = "<html>\n"
+            + "<head>\n"
+            + "  <meta http-equiv='Content-Type' content='text/html; charset=iso-8859-1'>\n"
+            + "  <script>\n"
+            + "    function test() {\n"
+            + "      alert(document.inputEncoding);\n"
+            + "      alert(document.characterSet);\n"
+            + "      alert(document.charset);\n"
+            + "      alert(document.defaultCharset);\n"
+            + "    }\n"
+            + "  </script>\n"
+            + "</head><body onload='test()'>\n"
+            + "</body></html>";
+
+        final String[] expectedAlerts = getExpectedAlerts();
+        final WebDriver driver = loadPage2(html, URL_FIRST, "text/html;charset=utf-8", "ISO-8859-1");
+        verifyAlerts(driver, expectedAlerts);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(CHROME = { "UTF-8", "UTF-8", "UTF-8", "windows-1252" },
+            FF = { "UTF-8", "UTF-8", "undefined", "undefined" },
+            IE = { "undefined", "undefined", "utf-8", "windows-1252" },
+            IE11 = { "UTF-8", "utf-8", "utf-8", "windows-1252" })
+    public void encoding6() throws Exception {
+        final String html = "<html>\n"
+            + "<head>\n"
+            + "  <meta charset='UTF-8'>\n"
+            + "  <script>\n"
+            + "    function test() {\n"
+            + "      alert(document.inputEncoding);\n"
+            + "      alert(document.characterSet);\n"
+            + "      alert(document.charset);\n"
+            + "      alert(document.defaultCharset);\n"
+            + "    }\n"
+            + "  </script>\n"
+            + "</head><body onload='test()'>\n"
+            + "  <a id='myId' href='test?è=è'>test</a>"
+            + "</body></html>";
+
+        final String[] expectedAlerts = getExpectedAlerts();
+        final WebDriver driver = loadPage2(html, URL_FIRST, "text/html", "UTF-8");
+        verifyAlerts(driver, expectedAlerts);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "?%C3%A8=%C3%A8",
+            IE = "?\u00E8=\u00E8")
+    public void encoding7() throws Exception {
+        final String html = "<html>\n"
+            + "<head>\n"
+            + "<meta charset='UTF-8'>\n"
+            + "</head><body>\n"
+            + "  <a id='myId' href='test?\u00E8=\u00E8'>test</a>"
+            + "</body></html>";
+
+        final WebDriver driver = loadPage2(html, URL_FIRST, "text/html", "UTF-8");
+        driver.findElement(By.id("myId")).click();
+        String actualQuery = driver.getCurrentUrl();
+        actualQuery = actualQuery.substring(actualQuery.indexOf('?'));
+        assertTrue(actualQuery.endsWith(getExpectedAlerts()[0]));
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "undefined", "BackCompat", "function", "function" },
+            IE8 = { "5", "BackCompat", "undefined", "undefined" },
+            IE11 = { "11", "BackCompat", "function", "function" })
+    public void documentMode() throws Exception {
+        documentMode("", "");
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "undefined", "CSS1Compat", "function", "function" },
+            IE8 = { "8", "CSS1Compat", "object", "object" },
+            IE11 = { "11", "CSS1Compat", "function", "function" })
+    @NotYetImplemented(IE8)
+    public void documentMode_doctypeStrict() throws Exception {
+        documentMode(HtmlPageTest.STANDARDS_MODE_PREFIX_, "");
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "undefined", "BackCompat", "function", "function" },
+            IE8 = { "8", "CSS1Compat", "object", "object" },
+            IE11 = { "11", "BackCompat", "function", "function" })
+    @NotYetImplemented(IE8)
+    public void documentMode_doctypeTransitional() throws Exception {
+        documentMode("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0 Transitional//EN\""
+                + " \"http://www.w3.org/TR/html4/loose.dtd\">\n", "");
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "undefined", "CSS1Compat", "function", "function" },
+            IE8 = { "8", "CSS1Compat", "object", "object" },
+            IE11 = { "11", "CSS1Compat", "function", "function" })
+    @NotYetImplemented(IE8)
+    public void documentMode_doctypeHTML5() throws Exception {
+        documentMode("<!DOCTYPE html>\n", "");
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "undefined", "BackCompat", "function", "function" },
+            IE = { "5", "BackCompat", "undefined", "undefined" })
+    public void documentMode_metaIE5() throws Exception {
+        documentMode("", "  <meta http-equiv='X-UA-Compatible' content='IE=5'>\n");
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "undefined", "BackCompat", "function", "function" },
+            IE = { "8", "CSS1Compat", "object", "object" })
+    @NotYetImplemented({ IE8, IE11 })
+    public void documentMode_metaIE8() throws Exception {
+        documentMode("", "  <meta http-equiv='X-UA-Compatible' content='IE=8'>\n");
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "undefined", "CSS1Compat", "function", "function" },
+            IE = { "8", "CSS1Compat", "object", "object" })
+    @NotYetImplemented({ IE8, IE11 })
+    public void documentMode_metaIE8_doctypeStrict() throws Exception {
+        documentMode(HtmlPageTest.STANDARDS_MODE_PREFIX_, "  <meta http-equiv='X-UA-Compatible' content='IE=8'>\n");
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "undefined", "BackCompat", "function", "function" },
+            IE8 = { "5", "BackCompat", "undefined", "undefined" },
+            IE11 = { "11", "BackCompat", "function", "function" })
+    public void documentMode_metaEmulateIE8() throws Exception {
+        documentMode("", "  <meta http-equiv='X-UA-Compatible' content='IE=Emulate8'>\n");
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "undefined", "CSS1Compat", "function", "function" },
+            IE8 = { "8", "CSS1Compat", "object", "object" },
+            IE11 = { "11", "CSS1Compat", "function", "function" })
+    @NotYetImplemented(IE8)
+    public void documentMode_metaEmulateIE8_doctypeStrict() throws Exception {
+        documentMode(HtmlPageTest.STANDARDS_MODE_PREFIX_,
+                "  <meta http-equiv='X-UA-Compatible' content='IE=Emulate8'>\n");
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "undefined", "BackCompat", "function", "function" },
+            IE = { "9", "CSS1Compat", "function", "function" },
+            IE8 = { "8", "CSS1Compat", "object", "object" })
+    @NotYetImplemented(IE8)
+    public void documentMode_metaIE9() throws Exception {
+        documentMode("", "  <meta http-equiv='X-UA-Compatible' content='IE=9'>\n");
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "undefined", "BackCompat", "function", "function" },
+            IE8 = { "8", "CSS1Compat", "object", "object" },
+            IE11 = { "11", "CSS1Compat", "function", "function" })
+    @NotYetImplemented(IE8)
+    public void documentMode_metaIEEdge() throws Exception {
+        documentMode("", "  <meta http-equiv='X-UA-Compatible' content='IE=edge'>\n");
+    }
+
+    private void documentMode(final String doctype, final String meta) throws Exception {
+        final String html = doctype
+            + "<html>\n"
+            + "<head>\n"
+            + meta
+            + "  <script>\n"
+            + "    function test() {\n"
+            + "      alert(document.documentMode);\n"
+            + "      alert(document.compatMode);\n"
+            + "      alert(typeof document.querySelectorAll);\n"
+            + "      alert(typeof document.createElement('div').querySelector);\n"
+            + "    }\n"
+            + "  </script>\n"
+            + "</head><body onload='test()'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Was producing "TypeError: Object's getDefaultValue() method returned an object" due to Delegator not delegating
+     * getDefaultValue(hint) to delegee when hint is null.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("false")
+    public void equalsString() throws Exception {
+        final String html = "<html><body>\n"
+            + "<script>\n"
+            + "  alert('foo' == document);\n"
+            + "</script>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Simple test that calls setCapture.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "releaseCapture available",
+            CHROME = "exception")
+    public void releaseCapture() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_
+            + "<html><head><title>foo</title>\n"
+            + "<script>\n"
+            + "  function test() {\n"
+            + "    try {\n"
+            + "      document.releaseCapture();\n"
+            + "      alert('releaseCapture available');\n"
+            + "    } catch(e) { alert('exception'); }\n"
+            + "  }\n"
+            + "</script>\n"
+            + "</head>\n"
+            + "<body onload='test()'>\n"
+            + "  <div id='myDiv'></div>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(IE = { "[object HTMLDocument]", "[object HTMLDocument]" },
+            IE8 = { "[object]", "exception" },
+            CHROME = { "[object HTMLDocument]", "function HTMLDocument() { [native code] }" },
+            FF = { "[object HTMLDocument]", "function HTMLDocument() {\n    [native code]\n}" })
+    public void type() throws Exception {
+        final String html = ""
+            + "<html><head><title>foo</title>\n"
+            + "<script>\n"
+            + "  function test() {\n"
+            + "    try {\n"
+            + "      alert(document);\n"
+            + "      alert(HTMLDocument);\n"
+            + "    } catch(e) { alert('exception'); }\n"
+            + "  }\n"
+            + "</script>\n"
+            + "</head>\n"
+            + "<body onload='test()'>\n"
+            + "  <div id='myDiv'></div>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
 }

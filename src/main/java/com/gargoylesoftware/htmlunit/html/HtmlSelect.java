@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,24 +14,29 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_SELECT_SET_VALUES_CHECKS_ONLY_VALUE_ATTRIBUTE;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.SELECT_DESELECT_ALL_IF_SWITCHING_UNKNOWN;
+
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.httpclient.NameValuePair;
 import org.w3c.dom.Node;
 
 import com.gargoylesoftware.htmlunit.ElementNotFoundException;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.WebAssert;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Wrapper for the HTML element "select".
  *
- * @version $Revision: 4854 $
+ * @version $Revision: 10424 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:gudujarlson@sf.net">Mike J. Bresnahan</a>
  * @author David K. Taylor
@@ -40,25 +45,28 @@ import com.gargoylesoftware.htmlunit.WebAssert;
  * @author Marc Guillemot
  * @author Daniel Gredler
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Frank Danek
  */
-public class HtmlSelect extends ClickableElement implements DisabledElement, SubmittableElement {
-
-    private static final long serialVersionUID = 7893240015923163203L;
+public class HtmlSelect extends HtmlElement implements DisabledElement, SubmittableElement, FormFieldWithNameHistory {
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "select";
 
+    private final String originalName_;
+    private Collection<String> newNames_ = Collections.emptySet();
+
     /**
      * Creates an instance.
      *
-     * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the page that contains this element
      * @param attributes the initial attributes
      */
-    HtmlSelect(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    HtmlSelect(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
+        super(qualifiedName, page, attributes);
+        originalName_ = getNameAttribute();
     }
 
     /**
@@ -107,8 +115,8 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
         List<HtmlOption> result;
         if (isMultipleSelectEnabled()) {
             // Multiple selections possible.
-            result = new ArrayList<HtmlOption>();
-            for (final HtmlElement element : getAllHtmlChildElements()) {
+            result = new ArrayList<>();
+            for (final HtmlElement element : getHtmlElementDescendants()) {
                 if (element instanceof HtmlOption && ((HtmlOption) element).isSelected()) {
                     result.add((HtmlOption) element);
                 }
@@ -116,9 +124,9 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
         }
         else {
             // Only a single selection is possible.
-            result = new ArrayList<HtmlOption>(1);
+            result = new ArrayList<>(1);
             HtmlOption lastSelected = null;
-            for (final HtmlElement element : getAllHtmlChildElements()) {
+            for (final HtmlElement element : getHtmlElementDescendants()) {
                 if (element instanceof HtmlOption) {
                     final HtmlOption option = (HtmlOption) element;
                     if (option.isSelected()) {
@@ -177,12 +185,13 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      * @param index the index of the option to remove
      */
     public void removeOption(final int index) {
-        final ChildElementsIterator iterator = new ChildElementsIterator();
+        final ChildElementsIterator iterator = new ChildElementsIterator(this);
         for (int i = 0; iterator.hasNext();) {
-            final HtmlElement element = iterator.nextElement();
+            final DomElement element = iterator.nextElement();
             if (element instanceof HtmlOption) {
                 if (i == index) {
                     element.remove();
+                    ensureSelectedIndex();
                     return;
                 }
                 i++;
@@ -196,12 +205,13 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      * @param newOption the new option to replace to indexed option
      */
     public void replaceOption(final int index, final HtmlOption newOption) {
-        final ChildElementsIterator iterator = new ChildElementsIterator();
+        final ChildElementsIterator iterator = new ChildElementsIterator(this);
         for (int i = 0; iterator.hasNext();) {
-            final HtmlElement element = iterator.nextElement();
+            final DomElement element = iterator.nextElement();
             if (element instanceof HtmlOption) {
                 if (i == index) {
                     element.replace(newOption);
+                    ensureSelectedIndex();
                     return;
                 }
                 i++;
@@ -219,6 +229,8 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      */
     public void appendOption(final HtmlOption newOption) {
         appendChild(newOption);
+
+        ensureSelectedIndex();
     }
 
     /**
@@ -244,20 +256,50 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      *
      * @param isSelected true if the option is to become selected
      * @param optionValue the value of the option that is to change
-     * @return the page that occupies this window after this change is made (may or
-     *         may not be the same as the original page)
+     * @param <P> the page type
+     * @return the page contained in the current window as returned
+     * by {@link com.gargoylesoftware.htmlunit.WebClient#getCurrentWindow()}
      */
-    public Page setSelectedAttribute(final String optionValue, final boolean isSelected) {
+    public <P extends Page> P setSelectedAttribute(final String optionValue, final boolean isSelected) {
+        return setSelectedAttribute(optionValue, isSelected, true);
+    }
+
+    /**
+     * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
+     *
+     * Sets the "selected" state of the specified option. If this "select" element
+     * is single-select, then calling this method will deselect all other options.
+     *
+     * Only options that are actually in the document may be selected.
+     *
+     * @param isSelected true if the option is to become selected
+     * @param optionValue the value of the option that is to change
+     * @param invokeOnFocus whether to set focus or not.
+     * @param <P> the page type
+     * @return the page contained in the current window as returned
+     * by {@link com.gargoylesoftware.htmlunit.WebClient#getCurrentWindow()}
+     */
+    @SuppressWarnings("unchecked")
+    public <P extends Page> P setSelectedAttribute(final String optionValue,
+            final boolean isSelected, final boolean invokeOnFocus) {
         try {
-            return setSelectedAttribute(getOptionByValue(optionValue), isSelected);
+            final boolean attributeOnly = hasFeature(JS_SELECT_SET_VALUES_CHECKS_ONLY_VALUE_ATTRIBUTE);
+            final HtmlOption selected;
+            if (attributeOnly) {
+                selected = getOptionByValueStrict(optionValue);
+            }
+            else {
+                selected = getOptionByValue(optionValue);
+            }
+            return setSelectedAttribute(selected, isSelected, invokeOnFocus);
         }
         catch (final ElementNotFoundException e) {
-            if (getPage().getWebClient().getBrowserVersion().isIE()) {
+            if (hasFeature(SELECT_DESELECT_ALL_IF_SWITCHING_UNKNOWN)) {
                 for (final HtmlOption o : getSelectedOptions()) {
                     o.setSelected(false);
                 }
             }
-            return getPage();
+            return (P) getPage();
         }
     }
 
@@ -269,11 +311,13 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      *
      * @param isSelected true if the option is to become selected
      * @param selectedOption the value of the option that is to change
-     * @return the page that occupies this window after this change is made (may or
-     *         may not be the same as the original page)
+     * @param <P> the page type
+     * @return the page contained in the current window as returned
+     * by {@link com.gargoylesoftware.htmlunit.WebClient#getCurrentWindow()}
      */
-    public Page setSelectedAttribute(final HtmlOption selectedOption, final boolean isSelected) {
-        return setSelectedAttribute(selectedOption, isSelected, true);
+    @SuppressWarnings("unchecked")
+    public <P extends Page> P setSelectedAttribute(final HtmlOption selectedOption, final boolean isSelected) {
+        return (P) setSelectedAttribute(selectedOption, isSelected, true);
     }
 
     /**
@@ -286,24 +330,26 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      *
      * @param isSelected true if the option is to become selected
      * @param selectedOption the value of the option that is to change
-     * @param invokeOnFocus whether to set focus or no.
-     * @return the page that occupies this window after this change is made (may or
-     *         may not be the same as the original page)
+     * @param invokeOnFocus whether to set focus or not.
+     * @param <P> the page type
+     * @return the page contained in the current window as returned
+     * by {@link com.gargoylesoftware.htmlunit.WebClient#getCurrentWindow()}
      */
-    public Page setSelectedAttribute(final HtmlOption selectedOption, final boolean isSelected,
+    @SuppressWarnings("unchecked")
+    public <P extends Page> P setSelectedAttribute(final HtmlOption selectedOption, final boolean isSelected,
         final boolean invokeOnFocus) {
         if (isSelected && invokeOnFocus) {
             ((HtmlPage) getPage()).setFocusedElement(this);
         }
 
-        final boolean changeSelectedState  = (selectedOption.isSelected() != isSelected);
+        final boolean changeSelectedState = selectedOption.isSelected() != isSelected;
 
         if (changeSelectedState) {
             doSelectOption(selectedOption, isSelected);
-            return HtmlInput.executeOnChangeHandlerIfAppropriate(this);
+            HtmlInput.executeOnChangeHandlerIfAppropriate(this);
         }
-        // nothing to do
-        return getPage();
+
+        return (P) getPage().getWebClient().getCurrentWindow().getEnclosedPage();
     }
 
     private void doSelectOption(final HtmlOption selectedOption,
@@ -352,6 +398,7 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
         for (final HtmlOption option : getOptions()) {
             option.reset();
         }
+        onAllChildrenAddedToPage(false);
     }
 
     /**
@@ -417,6 +464,16 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
         WebAssert.notNull("value", value);
         for (final HtmlOption option : getOptions()) {
             if (option.getValueAttribute().equals(value)) {
+                return option;
+            }
+        }
+        throw new ElementNotFoundException("option", "value", value);
+    }
+
+    private HtmlOption getOptionByValueStrict(final String value) throws ElementNotFoundException {
+        WebAssert.notNull("value", value);
+        for (final HtmlOption option : getOptions()) {
+            if (option.getAttribute("value").equals(value)) {
                 return option;
             }
         }
@@ -556,5 +613,88 @@ public class HtmlSelect extends ClickableElement implements DisabledElement, Sub
      */
     public final String getOnChangeAttribute() {
         return getAttribute("onchange");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setAttributeNS(final String namespaceURI, final String qualifiedName, final String attributeValue) {
+        if ("name".equals(qualifiedName)) {
+            if (newNames_.isEmpty()) {
+                newNames_ = new HashSet<>();
+            }
+            newNames_.add(attributeValue);
+        }
+        super.setAttributeNS(namespaceURI, qualifiedName, attributeValue);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public String getOriginalName() {
+        return originalName_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public Collection<String> getNewNames() {
+        return newNames_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public DisplayStyle getDefaultStyleDisplay() {
+        return DisplayStyle.INLINE_BLOCK;
+    }
+
+    /**
+     * Returns the value of the "selectedIndex" property.
+     * @return the selectedIndex property
+     */
+    public int getSelectedIndex() {
+        final List<HtmlOption> selectedOptions = getSelectedOptions();
+        if (selectedOptions.isEmpty()) {
+            return -1;
+        }
+        final List<HtmlOption> allOptions = getOptions();
+        return allOptions.indexOf(selectedOptions.get(0));
+    }
+
+    /**
+     * Sets the value of the "selectedIndex" property.
+     * @param index the new value
+     */
+    public void setSelectedIndex(final int index) {
+        for (final HtmlOption itemToUnSelect : getSelectedOptions()) {
+            setSelectedAttribute(itemToUnSelect, false);
+        }
+        if (index < 0) {
+            return;
+        }
+
+        final List<HtmlOption> allOptions = getOptions();
+
+        if (index < allOptions.size()) {
+            final HtmlOption itemToSelect = allOptions.get(index);
+            setSelectedAttribute(itemToSelect, true, false);
+        }
+    }
+
+    /**
+     * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
+     *
+     * Resets the selectedIndex if needed.
+     */
+    public void ensureSelectedIndex() {
+        if (getOptionSize() == 0) {
+            setSelectedIndex(-1);
+        }
+        else if (getSelectedIndex() == -1 && !isMultipleSelectEnabled()) {
+            setSelectedIndex(0);
+        }
     }
 }

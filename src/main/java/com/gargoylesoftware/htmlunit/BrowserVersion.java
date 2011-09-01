@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,41 +15,81 @@
 package com.gargoylesoftware.htmlunit;
 
 import java.io.Serializable;
-import java.util.ArrayList;
+import java.lang.reflect.Field;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Properties;
 import java.util.Set;
 
-import org.apache.commons.lang.builder.EqualsBuilder;
-import org.apache.commons.lang.builder.HashCodeBuilder;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
+
+import com.gargoylesoftware.htmlunit.javascript.configuration.BrowserFeature;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
 
 /**
  * Objects of this class represent one specific version of a given browser. Predefined
  * constants are provided for common browser versions.
  *
- * If you wish to create a BrowserVersion for a browser that doesn't have a constant defined
- * but aren't sure what values to pass into the constructor then point your browser at
- * <a href="http://htmlunit.sourceforge.net/cgi-bin/browserVersion">
- * http://htmlunit.sourceforge.net/cgi-bin/browserVersion</a>
- * and the code will be generated for you.
+ * <p>You can change the constants by something like:
+ * <pre id='htmlUnitCode'>
+ *      String applicationName = "APPNAME";
+ *      String applicationVersion = "APPVERSION";
+ *      String userAgent = "USERAGENT";
+ *      int browserVersionNumeric = NUMERIC;
  *
- * @version $Revision: 4489 $
+ *      BrowserVersion browser = new BrowserVersion(applicationName, applicationVersion, userAgent, browserVersionNumeric) {
+ *          public boolean hasFeature(BrowserVersionFeatures property) {
+ *
+ *              // change features here
+ *              return BrowserVersion.BROWSER.hasFeature(property);
+ *          }
+ *      };
+ * </pre>
+ * <script>
+ *     var pre = document.getElementById('htmlUnitCode');
+ *     pre.innerHTML = pre.innerHTML.replace('APPNAME', navigator.appName);
+ *     pre.innerHTML = pre.innerHTML.replace('APPVERSION', navigator.appVersion);
+ *     pre.innerHTML = pre.innerHTML.replace('USERAGENT', navigator.userAgent);
+ *     var isMicrosoft = navigator.appVersion.indexOf('Trident/') > 0;
+ *     var isChrome = navigator.appVersion.indexOf('Chrome') != -1;
+ *     var numeric = 38;
+ *     if (isMicrosoft) {
+ *         numeric = 11;
+ *     }
+ *     else if (isChrome) {
+ *         numeric = 43;
+ *     }
+ *     pre.innerHTML = pre.innerHTML.replace('NUMERIC', numeric);
+ *     var browser = "FIREFOX_38";
+ *     if (isMicrosoft) {
+ *         browser = "INTERNET_EXPLORER_11";
+ *     }
+ *     else if (isChrome) {
+ *         browser = "CHROME";
+ *     }
+ *     pre.innerHTML = pre.innerHTML.replace('BROWSER', browser);
+ * </script>
+ * However, note that the constants are not enough to fully customize the browser,
+ *   you also need to look into the {@link BrowserVersionFeatures} and the classes inside "javascript" package.
+ *
+ * @version $Revision: 10610 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Daniel Gredler
  * @author Marc Guillemot
  * @author Chris Erskine
  * @author Ahmed Ashour
+ * @author Frank Danek
+ * @author Ronald Brill
  */
-public class BrowserVersion implements Serializable {
+public class BrowserVersion implements Serializable, Cloneable {
 
-    private static final long serialVersionUID = 594005988985654117L;
-
-    private String applicationCodeName_ = APP_CODE_NAME;
+    private String applicationCodeName_ = "Mozilla";
     private String applicationMinorVersion_ = "0";
     private String applicationName_;
     private String applicationVersion_;
+    private String buildId_;
+    private String vendor_;
     private String browserLanguage_ = LANGUAGE_ENGLISH_US;
     private String cpuClass_ = CPU_CLASS_X86;
     private boolean onLine_ = true;
@@ -57,86 +97,169 @@ public class BrowserVersion implements Serializable {
     private String systemLanguage_ = LANGUAGE_ENGLISH_US;
     private String userAgent_;
     private String userLanguage_ = LANGUAGE_ENGLISH_US;
-    private String javaScriptVersion_;
-    private float javaScriptVersionNumeric_;
     private float browserVersionNumeric_;
-    private Set<PluginConfiguration> plugins_ = new HashSet<PluginConfiguration>();
-    private final List<BrowserVersionFeatures> features_ = new ArrayList<BrowserVersionFeatures>();
+    private final Set<PluginConfiguration> plugins_ = new HashSet<>();
+    private final Set<BrowserVersionFeatures> features_ = EnumSet.noneOf(BrowserVersionFeatures.class);
     private final String nickname_;
+    private String htmlAcceptHeader_;
+    private String imgAcceptHeader_;
+    private String cssAcceptHeader_;
+    private String scriptAcceptHeader_;
+    private String xmlHttpRequestAcceptHeader_;
+    private String[] headerNamesOrdered_;
 
-    /** Application code name for both Internet Explorer and Netscape series. */
-    public static final String APP_CODE_NAME = "Mozilla";
+    /**
+     * Application name for the Internet Explorer series of browsers.
+     */
+    private static final String INTERNET_EXPLORER = "Microsoft Internet Explorer";
 
-    /** Application name for the Internet Explorer series of browsers. */
-    public static final String INTERNET_EXPLORER = "Microsoft Internet Explorer";
+    /**
+     * Application name the Netscape navigator series of browsers.
+     */
+    private static final String NETSCAPE = "Netscape";
 
-    /** Application name the Netscape navigator series of browsers. */
-    public static final String NETSCAPE = "Netscape";
+    /**
+     * United States English language identifier.
+     */
+    private static final String LANGUAGE_ENGLISH_US = "en-us";
 
-    /** United States English language identifier. */
-    public static final String LANGUAGE_ENGLISH_US = "en-us";
+    /**
+     * The X86 CPU class.
+     */
+    private static final String CPU_CLASS_X86 = "x86";
 
-    /** The X86 CPU class. */
-    public static final String CPU_CLASS_X86 = "x86";
+    /**
+     * The WIN32 platform.
+     */
+    private static final String PLATFORM_WIN32 = "Win32";
 
-    /** The WIN32 platform. */
-    public static final String PLATFORM_WIN32 = "Win32";
+    /**
+     * Firefox 24 ESR.
+     * @since 2.14
+     * @deprecated as of 2.16
+     */
+    @Deprecated
+    public static final BrowserVersion FIREFOX_24 = new BrowserVersion(
+        NETSCAPE, "5.0 (Windows)",
+        "Mozilla/5.0 (Windows NT 6.1; rv:24.0) Gecko/20100101 Firefox/24.0",
+        (float) 24.0, "FF24", null);
 
-    /** Firefox 2. */
-    public static final BrowserVersion FIREFOX_2 = new BrowserVersion(
-        NETSCAPE, "5.0 (Windows; en-US)",
-        "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.4) Gecko/20070515 Firefox/2.0.0.4",
-        "1.2", 2, "FF2", null);
+    /**
+     * Firefox 31 ESR.
+     * @since 2.16
+     * @deprecated as of 2.17
+     */
+    @Deprecated
+    public static final BrowserVersion FIREFOX_31 = new BrowserVersion(
+        NETSCAPE, "5.0 (Windows)",
+        "Mozilla/5.0 (Windows NT 6.1; rv:31.0) Gecko/20100101 Firefox/31.0",
+        (float) 31.0, "FF31", null);
 
-    /** Firefox 3. */
-    public static final BrowserVersion FIREFOX_3 = new BrowserVersion(
-        NETSCAPE, "5.0 (Windows; en-US)",
-        "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.0.1) Gecko/2008070208 Firefox/3.0.1",
-        "1.2", 3, "FF3", null);
+    /**
+     * Firefox 38 ESR.
+     * @since 2.17
+     */
+    public static final BrowserVersion FIREFOX_38 = new BrowserVersion(
+        NETSCAPE, "5.0 (Windows)",
+        "Mozilla/5.0 (Windows NT 6.1; rv:38.0) Gecko/20100101 Firefox/38.0",
+        (float) 38.0, "FF38", null);
 
-    /** Internet Explorer 6. */
-    public static final BrowserVersion INTERNET_EXPLORER_6 = new BrowserVersion(
-        INTERNET_EXPLORER, "4.0 (compatible; MSIE 6.0b; Windows 98)",
-        "Mozilla/4.0 (compatible; MSIE 6.0; Windows 98)", "1.2", 6, "IE6", null);
+    /**
+     * Internet Explorer 8.
+     * It exists as Internet Explorer 11 has Enterprise Mode, which behaves as Internet Explorer 8.
+     */
+    public static final BrowserVersion INTERNET_EXPLORER_8 = new BrowserVersion(
+        INTERNET_EXPLORER, "4.0 (compatible; MSIE 8.0; Windows NT 6.0)",
+        "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.0)", 8, "IE8", null);
 
-    /** Internet Explorer 7. */
-    public static final BrowserVersion INTERNET_EXPLORER_7 = new BrowserVersion(
-        INTERNET_EXPLORER, "4.0 (compatible; MSIE 7.0; Windows NT 5.1; .NET CLR 1.1.4322)",
-        "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; .NET CLR 1.1.4322)", "1.2", 7, "IE7", null);
+    /** Internet Explorer 11. Work In Progress!!! */
+    public static final BrowserVersion INTERNET_EXPLORER_11 = new BrowserVersion(
+        NETSCAPE, "5.0 (Windows NT 6.1; Trident/7.0; rv:11.0) like Gecko",
+        "Mozilla/5.0 (Windows NT 6.1; Trident/7.0; rv:11.0) like Gecko", 11, "IE11", null);
+
+    /** Latest Chrome. Work In Progress!!! */
+    public static final BrowserVersion CHROME = new BrowserVersion(
+        NETSCAPE, "5.0 (Windows NT 6.1) AppleWebKit/537.81"
+        + " (KHTML, like Gecko) Chrome/43.0.2357.65 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.81"
+        + " (KHTML, like Gecko) Chrome/43.0.2357.65 Safari/537.36",
+        43, "Chrome", null);
 
     /** The default browser version. */
-    private static BrowserVersion DefaultBrowserVersion_ = INTERNET_EXPLORER_7;
+    private static BrowserVersion DefaultBrowserVersion_ = INTERNET_EXPLORER_8;
 
-    /** Register plugins for the Firefox browser versions. */
+    /** Register plugins for the browser versions. */
     static {
-        INTERNET_EXPLORER_6.initDefaultFeatures();
-        INTERNET_EXPLORER_7.initDefaultFeatures();
-        FIREFOX_2.initDefaultFeatures();
-        FIREFOX_3.initDefaultFeatures();
+        INTERNET_EXPLORER_8.initDefaultFeatures();
+        INTERNET_EXPLORER_11.initDefaultFeatures();
+
+        FIREFOX_24.initDefaultFeatures();
+        FIREFOX_31.initDefaultFeatures();
+        FIREFOX_38.initDefaultFeatures();
+
+        FIREFOX_24.setBrowserLanguage("en-US");
+        FIREFOX_24.setVendor("");
+        FIREFOX_24.buildId_ = "20140923194127";
+        FIREFOX_24.setHeaderNamesOrdered(new String[] {
+            "Host", "User-Agent", "Accept", "Accept-Language", "Accept-Encoding", "Referer", "Cookie", "Connection" });
+        FIREFOX_24.setHtmlAcceptHeader("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+        FIREFOX_24.setXmlHttpRequestAcceptHeader("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+        FIREFOX_24.setImgAcceptHeader("image/png,image/*;q=0.8,*/*;q=0.5");
+        FIREFOX_24.setCssAcceptHeader("text/css,*/*;q=0.1");
+
+        FIREFOX_31.setBrowserLanguage("en-US");
+        FIREFOX_31.setVendor("");
+        FIREFOX_31.buildId_ = "20150504194141";
+        FIREFOX_31.setHeaderNamesOrdered(new String[] {
+            "Host", "User-Agent", "Accept", "Accept-Language", "Accept-Encoding", "Referer", "Cookie", "Connection" });
+        FIREFOX_31.setHtmlAcceptHeader("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+        FIREFOX_31.setXmlHttpRequestAcceptHeader("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+        FIREFOX_31.setImgAcceptHeader("image/png,image/*;q=0.8,*/*;q=0.5");
+        FIREFOX_31.setCssAcceptHeader("text/css,*/*;q=0.1");
+
+        FIREFOX_38.setBrowserLanguage("en-US");
+        FIREFOX_38.setVendor("");
+        FIREFOX_38.buildId_ = "20150505103531";
+        FIREFOX_38.setHeaderNamesOrdered(new String[] {
+            "Host", "User-Agent", "Accept", "Accept-Language", "Accept-Encoding", "Referer", "Cookie", "Connection" });
+        FIREFOX_38.setHtmlAcceptHeader("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+        FIREFOX_38.setXmlHttpRequestAcceptHeader("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+        FIREFOX_38.setImgAcceptHeader("image/png,image/*;q=0.8,*/*;q=0.5");
+        FIREFOX_38.setCssAcceptHeader("text/css,*/*;q=0.1");
+
+        INTERNET_EXPLORER_8.setHtmlAcceptHeader("image/gif, image/jpeg, image/pjpeg, image/pjpeg, */*");
+
+        INTERNET_EXPLORER_11.setBrowserLanguage("en-US");
+        INTERNET_EXPLORER_11.setVendor("");
+        INTERNET_EXPLORER_11.setHeaderNamesOrdered(new String[] {
+            "Accept", "Referer", "Accept-Language", "User-Agent", "Accept-Encoding", "Host", "DNT", "Connection",
+            "Cookie" });
+        INTERNET_EXPLORER_11.setHtmlAcceptHeader("text/html, application/xhtml+xml, */*");
+        INTERNET_EXPLORER_11.setImgAcceptHeader("image/png, image/svg+xml, image/*;q=0.8, */*;q=0.5");
+        INTERNET_EXPLORER_11.setCssAcceptHeader("text/css, */*");
+        INTERNET_EXPLORER_11.setScriptAcceptHeader("application/javascript, */*;q=0.8");
+
         final PluginConfiguration flash = new PluginConfiguration("Shockwave Flash",
             "Shockwave Flash 9.0 r31", "libflashplayer.so");
         flash.getMimeTypes().add(new PluginConfiguration.MimeType("application/x-shockwave-flash",
             "Shockwave Flash", "swf"));
-        FIREFOX_2.getPlugins().add(flash);
-        FIREFOX_3.getPlugins().add(flash);
-    }
+        FIREFOX_24.getPlugins().add(flash);
+        FIREFOX_31.getPlugins().add(flash);
+        FIREFOX_38.getPlugins().add(flash);
 
-    /**
-     * Instantiates one.
-     *
-     * @param applicationName the name of the application
-     * @param applicationVersion the version string of the application
-     * @param userAgent the user agent string that will be sent to the server
-     * @param javaScriptVersion the version of JavaScript
-     * @param browserVersionNumeric the floating number version of the browser
-     * @deprecated as of 2.5, use {@link #BrowserVersion(String, String, String, float)}
-     */
-    @Deprecated
-    public BrowserVersion(final String applicationName, final String applicationVersion,
-        final String userAgent, final String javaScriptVersion, final float browserVersionNumeric) {
-
-        this(applicationName, applicationVersion, userAgent, javaScriptVersion,
-                browserVersionNumeric, applicationName + browserVersionNumeric, null);
+        CHROME.initDefaultFeatures();
+        CHROME.setApplicationCodeName("Mozilla");
+        CHROME.setVendor("Google Inc.");
+        CHROME.setPlatform("MacIntel");
+        CHROME.setCpuClass(null);
+        CHROME.setBrowserLanguage("en-US");
+        CHROME.setHeaderNamesOrdered(new String[] {
+            "Host", "Connection", "Accept", "User-Agent", "Referer", "Accept-Encoding", "Accept-Language", "Cookie" });
+        CHROME.setHtmlAcceptHeader("text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+        CHROME.setImgAcceptHeader("image/webp,*/*;q=0.8");
+        CHROME.setCssAcceptHeader("text/css,*/*;q=0.1");
+        CHROME.setScriptAcceptHeader("*/*");
+        // there are other issues with Chrome; a different productSub, etc.
     }
 
     /**
@@ -150,28 +273,8 @@ public class BrowserVersion implements Serializable {
     public BrowserVersion(final String applicationName, final String applicationVersion,
         final String userAgent, final float browserVersionNumeric) {
 
-        this(applicationName, applicationVersion, userAgent, null,
+        this(applicationName, applicationVersion, userAgent,
                 browserVersionNumeric, applicationName + browserVersionNumeric, null);
-    }
-
-    /**
-     * Instantiates one.
-     *
-     * @param applicationName the name of the application
-     * @param applicationVersion the version string of the application
-     * @param userAgent the user agent string that will be sent to the server
-     * @param javaScriptVersion the version of JavaScript
-     * @param browserVersionNumeric the floating number version of the browser
-     * @param features the browser features
-     * @deprecated as of 2.5, use {@link #BrowserVersion(String, String, String, float, BrowserVersionFeatures[])}
-     */
-    @Deprecated
-    public BrowserVersion(final String applicationName, final String applicationVersion,
-        final String userAgent, final String javaScriptVersion, final float browserVersionNumeric,
-        final BrowserVersionFeatures[] features) {
-
-        this(applicationName, applicationVersion, userAgent, javaScriptVersion,
-                browserVersionNumeric, applicationName + browserVersionNumeric, features);
     }
 
     /**
@@ -187,7 +290,7 @@ public class BrowserVersion implements Serializable {
         final String userAgent, final float browserVersionNumeric,
         final BrowserVersionFeatures[] features) {
 
-        this(applicationName, applicationVersion, userAgent, null,
+        this(applicationName, applicationVersion, userAgent,
                 browserVersionNumeric, applicationName + browserVersionNumeric, features);
     }
 
@@ -199,44 +302,65 @@ public class BrowserVersion implements Serializable {
      * @param userAgent the user agent string that will be sent to the server
      * @param javaScriptVersion the version of JavaScript
      * @param browserVersionNumeric the floating number version of the browser
-     * @param nickname the short name of the browser (like "FF2", "FF3", "IE6", ...)
+     * @param nickname the short name of the browser (like "FF3", "IE6", ...)
      * @param features the browser features
      */
     private BrowserVersion(final String applicationName, final String applicationVersion,
-        final String userAgent, final String javaScriptVersion, final float browserVersionNumeric,
+        final String userAgent, final float browserVersionNumeric,
         final String nickname, final BrowserVersionFeatures[] features) {
 
         applicationName_ = applicationName;
         setApplicationVersion(applicationVersion);
         userAgent_ = userAgent;
-        setJavaScriptVersion(javaScriptVersion);
         browserVersionNumeric_ = browserVersionNumeric;
         nickname_ = nickname;
+        htmlAcceptHeader_ = "*/*";
+        imgAcceptHeader_ = "*/*";
+        cssAcceptHeader_ = "*/*";
+        scriptAcceptHeader_ = "*/*";
+        xmlHttpRequestAcceptHeader_ = "*/*";
+
         if (features != null) {
             features_.addAll(Arrays.asList(features));
         }
     }
 
     private void initDefaultFeatures() {
-        try {
-            final Properties props = new Properties();
-            props.load(getClass().getResourceAsStream("/com/gargoylesoftware/htmlunit/javascript/configuration/"
-                    + nickname_ + ".properties"));
-            for (final Object key : props.keySet()) {
-                features_.add(BrowserVersionFeatures.valueOf(key.toString()));
+        final String expectedBrowserName;
+        if (isIE()) {
+            expectedBrowserName = "IE";
+        }
+        else if (isFirefox()) {
+            expectedBrowserName = "FF";
+        }
+        else {
+            expectedBrowserName = "CHROME";
+        }
+
+        for (final BrowserVersionFeatures features : BrowserVersionFeatures.values()) {
+            try {
+                final Field field = BrowserVersionFeatures.class.getField(features.name());
+                final BrowserFeature browserFeature = field.getAnnotation(BrowserFeature.class);
+                if (browserFeature != null) {
+                    for (final WebBrowser browser : browserFeature.value()) {
+                        if (expectedBrowserName.equals(browser.value().name())
+                                && browser.minVersion() <= getBrowserVersionNumeric()
+                                && browser.maxVersion() >= getBrowserVersionNumeric()) {
+                            features_.add(features);
+                        }
+                    }
+                }
             }
-        }
-        catch (final IllegalArgumentException iae) {
-            throw new RuntimeException("Invalid entry found in configuration file for BrowserVersion: " + nickname_);
-        }
-        catch (final Exception e) {
-            throw new RuntimeException("Configuration file not found for BrowserVersion: " + nickname_);
+            catch (final NoSuchFieldException e) {
+                // should never happen
+                throw new IllegalStateException();
+            }
         }
     }
 
     /**
      * Returns the default browser version that is used whenever a specific version isn't specified.
-     * Defaults to {@link #INTERNET_EXPLORER_7}.
+     * Defaults to {@link #INTERNET_EXPLORER_8}.
      * @return the default browser version
      */
     public static BrowserVersion getDefault() {
@@ -258,21 +382,31 @@ public class BrowserVersion implements Serializable {
      * @return whether or not this version is a version of IE
      */
     public final boolean isIE() {
-        return INTERNET_EXPLORER.equals(getApplicationName());
+        return getNickname().startsWith("IE");
     }
 
     /**
      * Returns <tt>true</tt> if this <tt>BrowserVersion</tt> instance represents some
-     * version of Firefox like {@link #FIREFOX_2} or {@link #FIREFOX_3}.
+     * version of Google Chrome. Note that Google Chrome does not return 'Chrome'
+     * in the application name, we have to look in the nickname.
+     * @return whether or not this version is a version of a Chrome browser.
+     */
+    public final boolean isChrome() {
+        return getNickname().startsWith("Chrome");
+    }
+
+    /**
+     * Returns <tt>true</tt> if this <tt>BrowserVersion</tt> instance represents some
+     * version of Firefox.
      * @return whether or not this version is a version of a Firefox browser
      */
     public final boolean isFirefox() {
-        return NETSCAPE.equals(getApplicationName());
+        return getNickname().startsWith("FF");
     }
 
     /**
      * Returns the application code name, for example "Mozilla".
-     * Default value is {@link #APP_CODE_NAME} if not explicitly configured.
+     * Default value is "Mozilla" if not explicitly configured.
      * @return the application code name
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms533077.aspx">MSDN documentation</a>
      */
@@ -306,6 +440,13 @@ public class BrowserVersion implements Serializable {
      */
     public String getApplicationVersion() {
         return applicationVersion_;
+    }
+
+    /**
+     * @return the vendor
+     */
+    public String getVendor() {
+        return vendor_;
     }
 
     /**
@@ -377,13 +518,48 @@ public class BrowserVersion implements Serializable {
     }
 
     /**
-     * Returns the version of JavaScript used by the browser, for example "1.2".
-     * @return the version of JavaScript used by the browser
-     * @deprecated As of 2.5, with no replacement
+     * Returns the value used by the browser for the accept header
+     * if requesting a page.
+     * @return the accept header string
      */
-    @Deprecated
-    public String getJavaScriptVersion() {
-        return javaScriptVersion_;
+    public String getHtmlAcceptHeader() {
+        return htmlAcceptHeader_;
+    }
+
+    /**
+     * Returns the value used by the browser for the accept header
+     * if requesting an script.
+     * @return the accept header string
+     */
+    public String getScriptAcceptHeader() {
+        return scriptAcceptHeader_;
+    }
+
+    /**
+     * Returns the value used by the browser for the accept header
+     * if performing an XMLHttpRequest.
+     * @return the accept header string
+     */
+    public String getXmlHttpRequestAcceptHeader() {
+        return xmlHttpRequestAcceptHeader_;
+    }
+
+    /**
+     * Returns the value used by the browser for the accept header
+     * if requesting an image.
+     * @return the accept header string
+     */
+    public String getImgAcceptHeader() {
+        return imgAcceptHeader_;
+    }
+
+    /**
+     * Returns the value used by the browser for the accept header
+     * if requesting a css declaration.
+     * @return the accept header string
+     */
+    public String getCssAcceptHeader() {
+        return cssAcceptHeader_;
     }
 
     /**
@@ -415,6 +591,13 @@ public class BrowserVersion implements Serializable {
     }
 
     /**
+     * @param vendor the vendor to set
+     */
+    public void setVendor(final String vendor) {
+        this.vendor_ = vendor;
+    }
+
+    /**
      * @param browserLanguage the browserLanguage to set
      */
     public void setBrowserLanguage(final String browserLanguage) {
@@ -426,21 +609,6 @@ public class BrowserVersion implements Serializable {
      */
     public void setCpuClass(final String cpuClass) {
         cpuClass_ = cpuClass;
-    }
-
-    /**
-     * @param javaScriptVersion the javaScriptVersion to set
-     * @deprecated As of 2.5, with no replacement
-     */
-    @Deprecated
-    public void setJavaScriptVersion(final String javaScriptVersion) {
-        javaScriptVersion_ = javaScriptVersion;
-        if (javaScriptVersion != null) {
-            javaScriptVersionNumeric_ = Float.parseFloat(javaScriptVersion);
-        }
-        else {
-            javaScriptVersionNumeric_ = 0;
-        }
     }
 
     /**
@@ -486,19 +654,46 @@ public class BrowserVersion implements Serializable {
     }
 
     /**
+     * @param htmlAcceptHeader the accept header to be used when retrieving pages
+     */
+    public void setHtmlAcceptHeader(final String htmlAcceptHeader) {
+        htmlAcceptHeader_ = htmlAcceptHeader;
+    }
+
+    /**
+     * @param imgAcceptHeader the accept header to be used when retrieving images
+     */
+    public void setImgAcceptHeader(final String imgAcceptHeader) {
+        imgAcceptHeader_ = imgAcceptHeader;
+    }
+
+    /**
+     * @param cssAcceptHeader the accept header to be used when retrieving pages
+     */
+    public void setCssAcceptHeader(final String cssAcceptHeader) {
+        cssAcceptHeader_ = cssAcceptHeader;
+    }
+
+    /**
+     * @param scriptAcceptHeader the accept header to be used when retrieving scripts
+     */
+    public void setScriptAcceptHeader(final String scriptAcceptHeader) {
+        scriptAcceptHeader_ = scriptAcceptHeader;
+    }
+
+    /**
+     * @param xmlHttpRequestAcceptHeader the accept header to be used when
+     * performing XMLHttpRequests
+     */
+    public void setXmlHttpRequestAcceptHeader(final String xmlHttpRequestAcceptHeader) {
+        xmlHttpRequestAcceptHeader_ = xmlHttpRequestAcceptHeader;
+    }
+
+    /**
      * @return the browserVersionNumeric
      */
     public float getBrowserVersionNumeric() {
         return browserVersionNumeric_;
-    }
-
-    /**
-     * @return the javaScriptVersionNumeric
-     * @deprecated As of 2.5, with no replacement
-     */
-    @Deprecated
-    public float getJavaScriptVersionNumeric() {
-        return javaScriptVersionNumeric_;
     }
 
     /**
@@ -544,4 +739,69 @@ public class BrowserVersion implements Serializable {
         return nickname_;
     }
 
+    /**
+     * Returns the buildId.
+     * @return the buildId
+     */
+    public String getBuildId() {
+        return buildId_;
+    }
+
+    /**
+     * Gets the headers names, so they are sent in the given order (if included in the request).
+     * @return headerNames the header names in ordered manner
+     */
+    public String[] getHeaderNamesOrdered() {
+        return headerNamesOrdered_;
+    }
+
+    /**
+     * Sets the headers names, so they are sent in the given order (if included in the request).
+     * @param headerNames the header names in ordered manner
+     */
+    public void setHeaderNamesOrdered(final String[] headerNames) {
+        this.headerNamesOrdered_ = headerNames;
+    }
+
+    @Override
+    public String toString() {
+        return nickname_;
+    }
+
+    /**
+     * Creates and return a copy of this object. Current instance and cloned
+     * object can be modified independently.
+     * @return a clone of this instance.
+     */
+    @Override
+    public BrowserVersion clone() {
+        final BrowserVersion clone = new BrowserVersion(getApplicationName(), getApplicationVersion(),
+                getUserAgent(), getBrowserVersionNumeric(), getNickname(), null);
+
+        clone.setApplicationCodeName(getApplicationCodeName());
+        clone.setApplicationMinorVersion(getApplicationMinorVersion());
+        clone.setVendor(getVendor());
+        clone.setBrowserLanguage(getBrowserLanguage());
+        clone.setCpuClass(getCpuClass());
+        clone.setOnLine(isOnLine());
+        clone.setPlatform(getPlatform());
+        clone.setSystemLanguage(getSystemLanguage());
+        clone.setUserLanguage(getUserLanguage());
+
+        clone.buildId_ = getBuildId();
+        clone.htmlAcceptHeader_ = getHtmlAcceptHeader();
+        clone.imgAcceptHeader_ = getImgAcceptHeader();
+        clone.cssAcceptHeader_ = getCssAcceptHeader();
+        clone.scriptAcceptHeader_ = getScriptAcceptHeader();
+        clone.xmlHttpRequestAcceptHeader_ = getXmlHttpRequestAcceptHeader();
+        clone.headerNamesOrdered_ = getHeaderNamesOrdered();
+
+        for (final PluginConfiguration pluginConf : getPlugins()) {
+            clone.getPlugins().add(pluginConf.clone());
+        }
+
+        clone.features_.addAll(features_);
+
+        return clone;
+    }
 }

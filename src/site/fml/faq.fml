@@ -37,6 +37,22 @@
 			</answer>
 		</faq>
 
+		<faq id="configurations">
+			<question>
+				What are the most important configurations?
+			</question>
+			<answer>
+				<p>
+            <source><![CDATA[
+    webClient.getOptions().setJavaScriptEnabled(...);
+    webClient.getOptions().setThrowExceptionOnFailingStatusCode(...);
+    webClient.getOptions().setThrowExceptionOnScriptError(...);
+    webClient.getOptions().getProxyConfig().set...();
+            ]]></source>
+				</p>
+			</answer>
+		</faq>
+
 		<faq id="AJAXDoesNotWork">
 			<question>
 				Nothing happens when using HtmlUnit with AJAX, although page works correctly in browsers. What's wrong?
@@ -67,13 +83,32 @@
 			</answer>
 		</faq>
 
-		<faq id="HowToSubmitAPatch">
+		<faq id="HowToModifyRequestOrResponse">
 			<question>
-				How do I submit a patch?
+				How to modify the outgoing request or incoming response?
 			</question>
 			<answer>
 				<p>
-					Refer to <a href="submittingPatches.html">"How to submit a patch"</a>
+					You can subclass HttpWebConnection and override getResponse() as:
+            <source><![CDATA[
+
+        new WebConnectionWrapper(webClient) {
+
+            public WebResponse getResponse(WebRequest request) throws IOException {
+                WebResponse response = super.getResponse(request);
+                if (request.getUrl().toExternalForm().contains("my_url")) {
+                    String content = response.getContentAsString("UTF-8");
+
+                    //change content
+
+                    WebResponseData data = new WebResponseData(content.getBytes("UTF-8"),
+                            response.getStatusCode(), response.getStatusMessage(), response.getResponseHeaders());
+                    response = new WebResponse(data, request, response.getLoadTime());
+                }
+                return response;
+            }
+        };
+            ]]></source>
 				</p>
 			</answer>
 		</faq>
@@ -84,9 +119,8 @@
 			</question>
 			<answer>
 				<p>
-					HtmlUnit relies on <a href="http://hc.apache.org/httpclient-3.x/index.html">commons-httpclient 3.1</a> for Cookie handling. 
-					The odds are pretty good that whatever cookie problems you're encountering already have a solution as explained in the <a href="http://hc.apache.org/httpclient-3.x/cookies.html">Cookie Guide</a>.
-					If that doesn't help then post something to the HtmlUnit mailing list.
+					HtmlUnit relies on <a href="http://hc.apache.org/">HttpClient 4</a> for Cookie handling. 
+					If you have an issue, please post it to the HtmlUnit mailing list.
 				</p>
 			</answer>
 		</faq>
@@ -136,25 +170,6 @@ INFO: Redirect requested but followRedirects is disabled
 			</answer>
 		</faq>
 
-		<faq id="SVNRights">
-			<question>
-				How do I get commit rights for the SVN repository?
-			</question>
-			<answer>
-				<p>
-					Submit a bunch of patches that improve the product and when the
-					existing commiters are satisfied with your work, you will be given
-					commit access.
-				</p>
-				<p>
-					As a rule of thumb, if your patches need to be "touched up" before
-					they can be committed, then you won't be getting commit access.  Refer
-					to the page on <a href="submittingPatches.html">submitting patches</a>
-					for an idea of what is expected.
-				</p>
-			</answer>
-		</faq>
-
 		<faq id="MemoryLeak">
 			<question>
 				HtmlUnit appears to be leaking memory; what's the deal?
@@ -162,8 +177,9 @@ INFO: Redirect requested but followRedirects is disabled
 			<answer>
 				<p>
 					Make sure (a) that you are using the latest version of HtmlUnit, and
-					(b) that you are calling WebClient.closeAllWindows() when you are
-					finished with your WebClient instance.
+					(b) that you are calling WebClient.close()
+					(or use <a href="http://docs.oracle.com/javase/tutorial/essential/exceptions/tryResourceClose.html">try-with-resources</a>)
+					when you are finished with your WebClient instance.
 				</p>
 			</answer>
 		</faq>

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,27 +18,26 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Tests for {@link CSSPrimitiveValue}.
  *
- * @version $Revision: 4712 $
+ * @version $Revision: 10045 $
  * @author Marc Guillemot
+ * @author Ronald Brill
  */
 @RunWith(BrowserRunner.class)
-public class CSSPrimitiveValueTest extends WebTestCase {
+public class CSSPrimitiveValueTest extends WebDriverTestCase {
 
     /**
      * @throws Exception on test failure
      */
     @Test
-    @Alerts(FF2 = { "[CSSPrimitiveValue]", "012345678910111213141516171819202122232425" },
-            FF3 = { "[object CSSPrimitiveValue]", "012345678910111213141516171819202122232425" },
-            IE = { "exception" })
+    @Alerts(DEFAULT = "exception",
+            FF = { "function CSSPrimitiveValue() {\n    [native code]\n}",
+                        "012345678910111213141516171819202122232425" })
     public void test() throws Exception {
         final String html = "<html><head><title>First</title>\n"
             + "<script>\n"
@@ -58,27 +57,37 @@ public class CSSPrimitiveValueTest extends WebTestCase {
             + "</script>\n"
             + "</head><body onload='test()'>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.FF)
-    @Alerts({ "rgb(0, 0, 255)", "0" })
+    @Alerts(DEFAULT = { "rgb(0, 0, 255)", "0" },
+            IE8 = "document.defaultView not available",
+            IE11 = "style.getPropertyCSSValue not available",
+            CHROME = "style.getPropertyCSSValue not available")
     public void getPropertyCSSValue() throws Exception {
         final String html = "<html><head><title>First</title><script>\n"
-            + "function doTest() {\n"
+            + "  function doTest() {\n"
             + "    var oDiv1 = document.getElementById('div1');\n"
-            + "    var style = document.defaultView.getComputedStyle(oDiv1, null);\n"
-            + "    var cssValue = style.getPropertyCSSValue('color');\n"
-            + "    alert(cssValue.cssText);\n"
-            + "    alert(style.getPropertyCSSValue('border-left-width').getFloatValue(CSSPrimitiveValue.CSS_PX));\n"
-            + "}\n"
+            + "    if (document.defaultView) {\n"
+            + "      var style = document.defaultView.getComputedStyle(oDiv1, null);\n"
+            + "      if (style.getPropertyCSSValue) {\n"
+            + "        var cssValue = style.getPropertyCSSValue('color');\n"
+            + "        alert(cssValue.cssText);\n"
+            + "        alert(style.getPropertyCSSValue('border-left-width').getFloatValue(CSSPrimitiveValue.CSS_PX));\n"
+            + "      } else {\n"
+            + "        alert('style.getPropertyCSSValue not available');\n"
+            + "      }\n"
+            + "    } else {\n"
+            + "      alert('document.defaultView not available');\n"
+            + "    }\n"
+            + "  }\n"
             + "</script></head>\n"
             + "<body onload='doTest()'>\n"
             + "<div id='div1' style='color: rgb(0, 0, 255)'>foo</div></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 }

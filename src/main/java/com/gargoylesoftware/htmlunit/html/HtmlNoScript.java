@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,22 +14,28 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.CSS_NOSCRIPT_DISPLAY_INLINE;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.NOSCRIPT_BODY_AS_TEXT;
+
 import java.util.Map;
 
+import org.w3c.dom.Node;
+
 import com.gargoylesoftware.htmlunit.SgmlPage;
+import com.gargoylesoftware.htmlunit.WebClient;
 
 /**
  * Wrapper for the HTML element "noscript".
  *
- * @version $Revision: 4097 $
+ * @version $Revision: 10214 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Frank Danek
  */
-public class HtmlNoScript extends ClickableElement {
-
-    private static final long serialVersionUID = -8157919390565102613L;
+public class HtmlNoScript extends HtmlElement {
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "noscript";
@@ -37,13 +43,47 @@ public class HtmlNoScript extends ClickableElement {
     /**
      * Creates an instance of HtmlNoScript
      *
-     * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the HtmlPage that contains this element
      * @param attributes the initial attributes
      */
-    HtmlNoScript(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    HtmlNoScript(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
+        super(qualifiedName, page, attributes);
     }
+
+    @Override
+    public DomNode appendChild(final Node node) {
+        final WebClient webClient = getPage().getWebClient();
+        if (!webClient.getOptions().isJavaScriptEnabled()
+            || webClient.getBrowserVersion().hasFeature(NOSCRIPT_BODY_AS_TEXT)) {
+            return super.appendChild(node);
+        }
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public DisplayStyle getDefaultStyleDisplay() {
+        if (!getPage().getWebClient().getOptions().isJavaScriptEnabled()) {
+            return DisplayStyle.BLOCK;
+        }
+        if (hasFeature(CSS_NOSCRIPT_DISPLAY_INLINE)) {
+            return DisplayStyle.INLINE;
+        }
+        return DisplayStyle.NONE;
+    }
+
+    /**
+     * Indicates if a node without children should be written in expanded form as XML
+     * (i.e. with closing tag rather than with "/&gt;")
+     * @return <code>true</code> to make generated XML readable as HTML
+     */
+    @Override
+    protected boolean isEmptyXmlTagExpanded() {
+        return true;
+    }
+
 }

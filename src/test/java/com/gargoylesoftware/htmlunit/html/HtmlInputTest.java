@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,27 +23,31 @@ import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.HttpMethod;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 
 /**
  * Tests for {@link HtmlInput}.
  *
- * @version $Revision: 4463 $
+ * @version $Revision: 9868 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
-public final class HtmlInputTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public final class HtmlInputTest extends SimpleWebTestCase {
 
     /**
      * Tests that selecting one radio button will deselect all the others.
      * @exception Exception If the test fails
      */
     @Test
-    public void testRadioButtonsAreMutuallyExclusive() throws Exception {
+    public void radioButtonsAreMutuallyExclusive() throws Exception {
         final String htmlContent
             = "<html><head><title>foo</title></head><body>\n"
             + "<form id='form1'>\n"
@@ -67,8 +71,7 @@ public final class HtmlInputTest extends WebTestCase {
         // Test that only one value for the radio button is being passed back to the server
         final HtmlPage secondPage = (HtmlPage) pushButton.click();
 
-        assertEquals("url", URL_GARGOYLE + "?foo=2&button=foo",
-                secondPage.getWebResponse().getRequestSettings().getUrl());
+        assertEquals("url", getDefaultUrl() + "?foo=2&button=foo", secondPage.getUrl());
         assertSame("method", HttpMethod.GET, webConnection.getLastMethod());
         assertNotNull(secondPage);
     }
@@ -77,7 +80,7 @@ public final class HtmlInputTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testSetChecked_CheckBox() throws Exception {
+    public void setChecked_CheckBox() throws Exception {
         final String htmlContent
             = "<html><head><title>foo</title></head><body>\n"
             + "<form id='form1'>\n"
@@ -101,7 +104,7 @@ public final class HtmlInputTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testGetChecked_RadioButton() throws Exception {
+    public void getChecked_RadioButton() throws Exception {
         final String htmlContent
             = "<html><head><title>foo</title></head><body>\n"
             + "<form id='form1'>\n"
@@ -124,13 +127,13 @@ public final class HtmlInputTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testOnChangeHandler() throws Exception {
+    public void onChangeHandler() throws Exception {
         final String htmlContent
             = "<html><head><title>foo</title></head><body>\n"
             + "<form id='form1'>\n"
             + "<input type='text' name='text1' onchange='alert(\"changed\")')>\n"
             + "</form></body></html>";
-        final List<String> collectedAlerts = new ArrayList<String>();
+        final List<String> collectedAlerts = new ArrayList<>();
         final HtmlPage page = loadPage(htmlContent, collectedAlerts);
 
         final HtmlForm form = page.getHtmlElementById("form1");
@@ -145,7 +148,7 @@ public final class HtmlInputTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testCheckboxDefaultValue() throws Exception {
+    public void checkboxDefaultValue() throws Exception {
         final String htmlContent
             = "<html><head><title>foo</title></head><body>\n"
             + "<form id='form1'>\n"
@@ -163,7 +166,7 @@ public final class HtmlInputTest extends WebTestCase {
      * @exception Exception If the test fails
      */
     @Test
-    public void testClickRadioButton() throws Exception {
+    public void clickRadioButton() throws Exception {
         final String htmlContent
             = "<html><head><title>foo</title></head><body>\n"
             + "<form id='form1'>\n"
@@ -189,7 +192,7 @@ public final class HtmlInputTest extends WebTestCase {
      * @exception Exception If the test fails
      */
     @Test
-    public void testInputNoType() throws Exception {
+    public void inputNoType() throws Exception {
         final String htmlContent
             = "<html><head><title>foo</title></head><body>\n"
             + "<form id='form1'>\n"
@@ -199,20 +202,20 @@ public final class HtmlInputTest extends WebTestCase {
         final HtmlPage page = loadPage(htmlContent);
         final HtmlForm form = page.getHtmlElementById("form1");
 
-        assertEquals("text", form.<HtmlInput>getInputByName("foo").getTypeAttribute());
+        assertEquals("text", form.getInputByName("foo").getTypeAttribute());
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    public void testOnChangeHandlerNotFiredOnLoad() throws Exception {
+    public void onChangeHandlerNotFiredOnLoad() throws Exception {
         final String htmlContent
             = "<html><head><title>foo</title></head><body>\n"
             + "<form id='form1'>\n"
             + "<input type='file' name='text1' onchange='alert(\"changed\")')>\n"
             + "</form></body></html>";
-        final List<String> collectedAlerts = new ArrayList<String>();
+        final List<String> collectedAlerts = new ArrayList<>();
         loadPage(htmlContent, collectedAlerts);
         assertEquals(Collections.EMPTY_LIST, collectedAlerts);
     }
@@ -221,7 +224,7 @@ public final class HtmlInputTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testBadInputType() throws Exception {
+    public void badInputType() throws Exception {
         final String htmlContent
             = "<html><head><title>foo</title></head>\n"
             + "<body onload='alert(document.form1.text1.type)'>\n"
@@ -231,7 +234,7 @@ public final class HtmlInputTest extends WebTestCase {
         final String[] expectedAlerts = {"text"};
         createTestPageForRealBrowserIfNeeded(htmlContent, expectedAlerts);
 
-        final List<String> collectedAlerts = new ArrayList<String>();
+        final List<String> collectedAlerts = new ArrayList<>();
         loadPage(htmlContent, collectedAlerts);
     }
 
@@ -239,7 +242,8 @@ public final class HtmlInputTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testOnchangeNull() throws Exception {
+    @Alerts({ "function handler() {\n}", "null" })
+    public void onchangeNull() throws Exception {
         final String html =
             "<html><head>\n"
             + "<script>\n"
@@ -255,10 +259,7 @@ public final class HtmlInputTest extends WebTestCase {
             + "<body onload=test()>\n"
             + "  <input id='myInput'>\n"
             + "</body></html>";
-        final String[] expectedAlerts = {"\nfunction handler() {\n}\n", "null"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(html, collectedAlerts);
-        assertEquals(expectedAlerts, collectedAlerts);
+        loadPageWithAlerts(html);
     }
 
     /**
@@ -266,7 +267,7 @@ public final class HtmlInputTest extends WebTestCase {
      * @exception Exception If the test fails
      */
     @Test
-    public void testSelect() throws Exception {
+    public void select() throws Exception {
         final String content
             = "<html><head><title>foo</title>\n"
             + "<script>\n"

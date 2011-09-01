@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,11 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_APPLET_OBJECT;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+
 import java.applet.Applet;
 import java.lang.reflect.Method;
 
@@ -25,24 +30,34 @@ import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
 
 import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.html.HtmlApplet;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
 
 /**
  * The JavaScript object "HTMLAppletElement".
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 10429 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
  * @author Daniel Gredler
  */
+@JsxClasses({
+        @JsxClass(domClass = HtmlApplet.class,
+                browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(isJSObject = false, isDefinedInStandardsMode = false, domClass = HtmlApplet.class,
+            browsers = @WebBrowser(value = IE, maxVersion = 8))
+    })
 public class HTMLAppletElement extends HTMLElement {
 
-    private static final long serialVersionUID = 1869359649341296910L;
-
     /**
-     * Creates an instance.
+     * The constructor.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
     public HTMLAppletElement() {
-        // Empty.
     }
 
     /**
@@ -52,7 +67,7 @@ public class HTMLAppletElement extends HTMLElement {
     public void setDomNode(final DomNode domNode) {
         super.setDomNode(domNode);
 
-        if (domNode.getPage().getWebClient().isAppletEnabled()) {
+        if (domNode.getPage().getWebClient().getOptions().isAppletEnabled()) {
             try {
                 createAppletMethodAndProperties();
             }
@@ -72,8 +87,6 @@ public class HTMLAppletElement extends HTMLElement {
         // Rhino should provide the possibility to declare delegate for Functions as it does for properties!!!
         for (final Method method : applet.getClass().getMethods()) {
             final Function f = new BaseFunction() {
-                private static final long serialVersionUID = 1748611972272176674L;
-
                 @Override
                 public Object call(final Context cx, final Scriptable scope,
                         final Scriptable thisObj, final Object[] args) {
@@ -105,11 +118,9 @@ public class HTMLAppletElement extends HTMLElement {
      * Returns the value of the "alt" property.
      * @return the value of the "alt" property
      */
-    public String jsxGet_alt() {
-        String alt = getDomNodeOrDie().getAttribute("alt");
-        if (alt == NOT_FOUND) {
-            alt = "";
-        }
+    @JsxGetter
+    public String getAlt() {
+        final String alt = getDomNodeOrDie().getAttribute("alt");
         return alt;
     }
 
@@ -117,7 +128,8 @@ public class HTMLAppletElement extends HTMLElement {
      * Returns the value of the "alt" property.
      * @param alt the value
      */
-    public void jsxSet_alt(final String alt) {
+    @JsxSetter
+    public void setAlt(final String alt) {
         getDomNodeOrDie().setAttribute("alt", alt);
     }
 
@@ -125,11 +137,9 @@ public class HTMLAppletElement extends HTMLElement {
      * Gets the "border" attribute.
      * @return the "border" attribute
      */
-    public String jsxGet_border() {
-        String border = getDomNodeOrDie().getAttribute("border");
-        if (border == NOT_FOUND) {
-            border = "";
-        }
+    @JsxGetter(@WebBrowser(IE))
+    public String getBorder() {
+        final String border = getDomNodeOrDie().getAttribute("border");
         return border;
     }
 
@@ -137,7 +147,8 @@ public class HTMLAppletElement extends HTMLElement {
      * Sets the "border" attribute.
      * @param border the "border" attribute
      */
-    public void jsxSet_border(final String border) {
+    @JsxSetter(@WebBrowser(IE))
+    public void setBorder(final String border) {
         getDomNodeOrDie().setAttribute("border", border);
     }
 
@@ -145,7 +156,8 @@ public class HTMLAppletElement extends HTMLElement {
      * Returns the value of the "align" property.
      * @return the value of the "align" property
      */
-    public String jsxGet_align() {
+    @JsxGetter
+    public String getAlign() {
         return getAlign(true);
     }
 
@@ -153,7 +165,93 @@ public class HTMLAppletElement extends HTMLElement {
      * Sets the value of the "align" property.
      * @param align the value of the "align" property
      */
-    public void jsxSet_align(final String align) {
+    @JsxSetter
+    public void setAlign(final String align) {
         setAlign(align, false);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Object getDefaultValue(final Class<?> hint) {
+        if ((String.class.equals(hint) || hint == null) && getBrowserVersion().hasFeature(JS_APPLET_OBJECT)) {
+            return "[object]";
+        }
+        return super.getDefaultValue(hint);
+    }
+
+    /**
+     * Returns the {@code dataFld} attribute.
+     * @return the {@code dataFld} attribute
+     */
+    @JsxGetter(@WebBrowser(value = IE, maxVersion = 8))
+    public String getDataFld() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code dataFld} attribute.
+     * @param dataFld {@code dataFld} attribute
+     */
+    @JsxSetter(@WebBrowser(value = IE, maxVersion = 8))
+    public void setDataFld(final String dataFld) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code dataFormatAs} attribute.
+     * @return the {@code dataFormatAs} attribute
+     */
+    @JsxGetter(@WebBrowser(value = IE, maxVersion = 8))
+    public String getDataFormatAs() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code dataFormatAs} attribute.
+     * @param dataFormatAs {@code dataFormatAs} attribute
+     */
+    @JsxSetter(@WebBrowser(value = IE, maxVersion = 8))
+    public void setDataFormatAs(final String dataFormatAs) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code dataSrc} attribute.
+     * @return the {@code dataSrc} attribute
+     */
+    @JsxGetter(@WebBrowser(value = IE, maxVersion = 8))
+    public String getDataSrc() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code dataSrc} attribute.
+     * @param dataSrc {@code dataSrc} attribute
+     */
+    @JsxSetter(@WebBrowser(value = IE, maxVersion = 8))
+    public void setDataSrc(final String dataSrc) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Gets the "classid" attribute.
+     * @return the "classid" attribute
+     */
+    @JsxGetter(@WebBrowser(value = IE, minVersion = 11))
+    public String getClassid() {
+        final String classid = getDomNodeOrDie().getAttribute("classid");
+        return classid;
+    }
+
+    /**
+     * Sets the "classid" attribute.
+     * @param classid the "classid" attribute
+     */
+    @JsxSetter(@WebBrowser(value = IE, minVersion = 11))
+    public void setClassid(final String classid) {
+        getDomNodeOrDie().setAttribute("classid", classid);
+        // see HTMLObjectElement.setClassid
     }
 }

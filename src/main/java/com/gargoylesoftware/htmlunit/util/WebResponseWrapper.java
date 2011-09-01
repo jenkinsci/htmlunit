@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,37 +16,33 @@ package com.gargoylesoftware.htmlunit.util;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
 import java.util.List;
 
-import org.apache.commons.httpclient.NameValuePair;
-
-import com.gargoylesoftware.htmlunit.HttpMethod;
-import com.gargoylesoftware.htmlunit.WebRequestSettings;
+import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebResponse;
 
 /**
  * Provides a convenient implementation of the {@link WebResponse} interface that can be subclassed
  * by developers wishing to adapt a particular WebResponse.
  * This class implements the Wrapper or Decorator pattern. Methods default to calling through to the wrapped
- * web connection object.
+ * web response object.
  *
- * @version $Revision: 4872 $
+ * @version $Revision: 9837 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
-public class WebResponseWrapper implements WebResponse {
-
-    private static final long serialVersionUID = -5167730179562144482L;
+public class WebResponseWrapper extends WebResponse {
 
     private final WebResponse wrappedWebResponse_;
 
     /**
      * Constructs a WebResponse object wrapping provided WebResponse.
      * @param webResponse the webResponse that does the real work
-     * @throws IllegalArgumentException if the connection is <code>null</code>
+     * @throws IllegalArgumentException if the webResponse is <code>null</code>
      */
     public WebResponseWrapper(final WebResponse webResponse) throws IllegalArgumentException {
+        super(null, null, 0);
         if (webResponse == null) {
             throw new IllegalArgumentException("Wrapped WebResponse can't be null");
         }
@@ -55,135 +51,109 @@ public class WebResponseWrapper implements WebResponse {
 
     /**
      * {@inheritDoc}
-     * The default behavior of this method is to return getContentAsStream() on the wrapped connection object.
+     * The default behavior of this method is to return getContentAsStream() on the wrapped webResponse object.
      */
+    @Override
     public InputStream getContentAsStream() throws IOException {
         return wrappedWebResponse_.getContentAsStream();
     }
 
     /**
      * {@inheritDoc}
-     * The default behavior of this method is to return getContentAsString() on the wrapped connection object.
+     * The default behavior of this method is to return getContentAsString() on the wrapped webResponse object.
      */
+    @Override
     public String getContentAsString() {
-        return wrappedWebResponse_.getContentAsString();
+        return wrappedWebResponse_.getContentAsString(getContentCharset());
     }
 
     /**
      * {@inheritDoc}
-     * The default behavior of this method is to return getContentAsString(String) on the wrapped connection object.
+     * The default behavior of this method is to return getContentAsString(String) on the wrapped webResponse object.
      */
+    @Override
     public String getContentAsString(final String encoding) {
         return wrappedWebResponse_.getContentAsString(encoding);
     }
 
     /**
      * {@inheritDoc}
-     * The default behavior of this method is to return getContentAsBytes() on the wrapped connection object.
+     * The default behavior of this method is to return getContentCharsetOrNull() on the wrapped webResponse object.
      */
-    public byte[] getContentAsBytes() {
-        return wrappedWebResponse_.getContentAsBytes();
-    }
-
-    /**
-     * {@inheritDoc}
-     * The default behavior of this method is to return getContentCharSet() on the wrapped connection object.
-     * @deprecated As of 2.6, please use @link {@link #getContentCharset()}
-     */
-    @Deprecated
-    public String getContentCharSet() {
-        return wrappedWebResponse_.getContentCharSet();
-    }
-
-    /**
-     * {@inheritDoc}
-     * The default behavior of this method is to return getContentCharsetOrNull() on the wrapped connection object.
-     */
+    @Override
     public String getContentCharsetOrNull() {
         return wrappedWebResponse_.getContentCharsetOrNull();
     }
 
     /**
      * {@inheritDoc}
-     * The default behavior of this method is to return getContentCharset() on the wrapped connection object.
+     * The default behavior of this method is to return getContentCharset() on the wrapped webResponse object.
      */
+    @Override
     public String getContentCharset() {
         return wrappedWebResponse_.getContentCharset();
     }
 
     /**
      * {@inheritDoc}
-     * The default behavior of this method is to return getContentType() on the wrapped connection object.
+     * The default behavior of this method is to return getContentType() on the wrapped webResponse object.
      */
+    @Override
     public String getContentType() {
         return wrappedWebResponse_.getContentType();
     }
 
     /**
      * {@inheritDoc}
-     * The default behavior of this method is to return getLoadTime() on the wrapped connection object.
+     * The default behavior of this method is to return getLoadTime() on the wrapped webResponse object.
      */
+    @Override
     public long getLoadTime() {
         return wrappedWebResponse_.getLoadTime();
     }
 
     /**
      * {@inheritDoc}
-     * The default behavior of this method is to return getRequestMethod() on the wrapped connection object.
-     * @deprecated As of 2.6, please use {@link #getRequestSettings()}.getHttpMethod()
+     * The default behavior of this method is to return getResponseHeaders() on the wrapped webResponse object.
      */
-    @Deprecated
-    public HttpMethod getRequestMethod() {
-        return wrappedWebResponse_.getRequestMethod();
-    }
-
-    /**
-     * {@inheritDoc}
-     * The default behavior of this method is to return getResponseHeaders() on the wrapped connection object.
-     */
+    @Override
     public List<NameValuePair> getResponseHeaders() {
         return wrappedWebResponse_.getResponseHeaders();
     }
 
     /**
      * {@inheritDoc}
-     * The default behavior of this method is to return getResponseHeaderValue() on the wrapped connection object.
+     * The default behavior of this method is to return getResponseHeaderValue() on the wrapped webResponse object.
      */
+    @Override
     public String getResponseHeaderValue(final String headerName) {
         return wrappedWebResponse_.getResponseHeaderValue(headerName);
     }
 
     /**
      * {@inheritDoc}
-     * The default behavior of this method is to return getStatusCode() on the wrapped connection object.
+     * The default behavior of this method is to return getStatusCode() on the wrapped webResponse object.
      */
+    @Override
     public int getStatusCode() {
         return wrappedWebResponse_.getStatusCode();
     }
 
     /**
      * {@inheritDoc}
-     * The default behavior of this method is to return getStatusMessage() on the wrapped connection object.
+     * The default behavior of this method is to return getStatusMessage() on the wrapped webResponse object.
      */
+    @Override
     public String getStatusMessage() {
         return wrappedWebResponse_.getStatusMessage();
     }
 
     /**
      * {@inheritDoc}
-     * The default behavior of this method is to return getRequestUrl() on the wrapped connection object.
-     * @deprecated As of 2.6, please use {@link #getRequestSettings()}.getUrl()
+     * The default behavior of this method is to return getWebRequest() on the wrapped webResponse object.
      */
-    @Deprecated
-    public URL getRequestUrl() {
-        return wrappedWebResponse_.getRequestUrl();
-    }
-
-    /**
-     * {@inheritDoc}
-     * The default behavior of this method is to return getRequestSettings() on the wrapped connection object.
-     */
-    public WebRequestSettings getRequestSettings() {
-        return wrappedWebResponse_.getRequestSettings();
+    @Override
+    public WebRequest getWebRequest() {
+        return wrappedWebResponse_.getWebRequest();
     }
 }

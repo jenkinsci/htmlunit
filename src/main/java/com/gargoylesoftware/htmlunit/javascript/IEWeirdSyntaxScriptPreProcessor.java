@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
  * A script preprocessor removing weird syntax supported by IE like semicolons before <code>catch</code> or
  * before <code>finally</code> in a try-catch-finally block.
  *
- * @version $Revision: 4185 $
+ * @version $Revision: 9837 $
  * @author Marc Guillemot
  */
 public class IEWeirdSyntaxScriptPreProcessor implements ScriptPreProcessor {
@@ -47,7 +47,7 @@ public class IEWeirdSyntaxScriptPreProcessor implements ScriptPreProcessor {
      * {@inheritDoc}
      */
     public String preProcess(final HtmlPage htmlPage, String sourceCode,
-            final String sourceName, final HtmlElement htmlElement) {
+            final String sourceName, final int lineNumber, final HtmlElement htmlElement) {
 
         if (sourceCode.contains("catch")) {
             sourceCode = patternCatch_.matcher(sourceCode).replaceAll("$1 $2");

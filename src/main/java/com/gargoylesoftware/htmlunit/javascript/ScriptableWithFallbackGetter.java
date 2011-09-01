@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,10 +22,11 @@ import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
  * able to return a value that has not been configured as a property (ex: the DOM node whose
  * ID or name matches the property name).
  *
- * @version $Revision: 4402 $
+ * @version $Revision: 10103 $
  * @author Marc Guillemot
  */
 public interface ScriptableWithFallbackGetter extends Scriptable {
+
     /**
      * Fallback called when no configured property is found with the given name
      * on the {@link Scriptable} object.

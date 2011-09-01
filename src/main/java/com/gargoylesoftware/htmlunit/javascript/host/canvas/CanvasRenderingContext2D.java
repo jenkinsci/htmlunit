@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,23 +14,82 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.canvas;
 
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.lang.reflect.Field;
+
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+
+import net.sourceforge.htmlunit.corejs.javascript.Context;
+import net.sourceforge.htmlunit.corejs.javascript.Undefined;
+
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import com.gargoylesoftware.htmlunit.html.HtmlImage;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxFunction;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLCanvasElement;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLImageElement;
 
 /**
- * A JavaScript object for a CanvasRenderingContext2D.
+ * A JavaScript object for {@code CanvasRenderingContext2D}.
  *
- * @version $Revision: 4481 $
+ * @version $Revision: 10538 $
  * @author Ahmed Ashour
+ * @author Marc Guillemot
+ * @author Frank Danek
+ * @author Ronald Brill
  */
+@JsxClass(browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) })
 public class CanvasRenderingContext2D extends SimpleScriptable {
 
-    private static final long serialVersionUID = -693023667459214244L;
+    private static final Log LOG = LogFactory.getLog(CanvasRenderingContext2D.class);
+
+    private final HTMLCanvasElement canvas_;
+    private final BufferedImage image_;
+    private final Graphics2D graphics2D_;
+
+    /**
+     * Default constructor.
+     */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
+    public CanvasRenderingContext2D() {
+        canvas_ = null;
+        image_ = null;
+        graphics2D_ = null;
+    }
+
+    /**
+     * Constructs in association with {@link HTMLCanvasElement}.
+     * @param canvas the {@link HTMLCanvasElement}
+     */
+    public CanvasRenderingContext2D(final HTMLCanvasElement canvas) {
+        canvas_ = canvas;
+        image_ = new BufferedImage(canvas.getWidth(), canvas.getHeight(), BufferedImage.TYPE_INT_RGB);
+        graphics2D_ = image_.createGraphics();
+    }
 
     /**
      * Returns the "fillStyle" property.
      * @return the "fillStyle" property
      */
-    public Object jsxGet_fillStyle() {
+    @JsxGetter
+    public Object getFillStyle() {
         return null;
     }
 
@@ -38,15 +97,41 @@ public class CanvasRenderingContext2D extends SimpleScriptable {
      * Sets the "fillStyle" property.
      * @param fillStyle the "fillStyle" property
      */
-    public void jsxSet_fillStyle(final Object fillStyle) {
-        //empty
+    @JsxSetter
+    public void setFillStyle(String fillStyle) {
+        fillStyle = fillStyle.replaceAll("\\s", "");
+        Color color = null;
+        if (fillStyle.startsWith("rgb(")) {
+            final String[] colors = fillStyle.substring(4, fillStyle.length() - 1).split(",");
+            color = new Color(Integer.parseInt(colors[0]), Integer.parseInt(colors[1]), Integer.parseInt(colors[2]));
+        }
+        else if (fillStyle.startsWith("rgba(")) {
+            final String[] colors = fillStyle.substring(5, fillStyle.length() - 1).split(",");
+            color = new Color(Integer.parseInt(colors[0]), Integer.parseInt(colors[1]), Integer.parseInt(colors[2]),
+                (int) (Float.parseFloat(colors[3]) * 255));
+        }
+        else if (fillStyle.startsWith("#")) {
+            color = Color.decode(fillStyle);
+        }
+        else {
+            try {
+                final Field f = Color.class.getField(fillStyle);
+                color = (Color) f.get(null);
+            }
+            catch (final Exception e) {
+                LOG.info("Can not find color '" + fillStyle + '\'');
+                color = Color.black;
+            }
+        }
+        graphics2D_.setColor(color);
     }
 
     /**
      * Returns the "strokeStyle" property.
      * @return the "strokeStyle" property
      */
-    public Object jsxGet_strokeStyle() {
+    @JsxGetter
+    public Object getStrokeStyle() {
         return null;
     }
 
@@ -54,7 +139,8 @@ public class CanvasRenderingContext2D extends SimpleScriptable {
      * Sets the "strokeStyle" property.
      * @param strokeStyle the "strokeStyle" property
      */
-    public void jsxSet_strokeStyle(final Object strokeStyle) {
+    @JsxSetter
+    public void setStrokeStyle(final Object strokeStyle) {
         //empty
     }
 
@@ -62,7 +148,8 @@ public class CanvasRenderingContext2D extends SimpleScriptable {
      * Returns the "lineWidth" property.
      * @return the "lineWidth" property
      */
-    public double jsxGet_lineWidth() {
+    @JsxGetter
+    public double getLineWidth() {
         return 0;
     }
 
@@ -70,7 +157,8 @@ public class CanvasRenderingContext2D extends SimpleScriptable {
      * Sets the "lineWidth" property.
      * @param lineWidth the "lineWidth" property
      */
-    public void jsxSet_lineWidth(final Object lineWidth) {
+    @JsxSetter
+    public void setLineWidth(final Object lineWidth) {
         //empty
     }
 
@@ -78,7 +166,8 @@ public class CanvasRenderingContext2D extends SimpleScriptable {
      * Returns the "globalAlpha" property.
      * @return the "globalAlpha" property
      */
-    public double jsxGet_globalAlpha() {
+    @JsxGetter
+    public double getGlobalAlpha() {
         return 0;
     }
 
@@ -86,100 +175,8 @@ public class CanvasRenderingContext2D extends SimpleScriptable {
      * Sets the "globalAlpha" property.
      * @param globalAlpha the "globalAlpha" property
      */
-    public void jsxSet_globalAlpha(final Object globalAlpha) {
-        //empty
-    }
-
-    /**
-     * Clears the specified rectangular area.
-     * @param x the x
-     * @param y the y
-     * @param w the width
-     * @param h the height
-     */
-    public void jsxFunction_clearRect(final double x, final double y, final double w, final double h) {
-        //empty
-    }
-
-    /**
-     * Paints the specified rectangular area.
-     * @param x the x
-     * @param y the y
-     * @param w the width
-     * @param h the height
-     */
-    public void jsxFunction_fillRect(final double x, final double y, final double w, final double h) {
-        //empty
-    }
-
-    /**
-     * Strokes the specified rectangular area.
-     * @param x the x
-     * @param y the y
-     * @param w the width
-     * @param h the height
-     */
-    public void jsxFunction_strokeRect(final double x, final double y, final double w, final double h) {
-        //empty
-    }
-
-    /**
-     * Begins the subpaths.
-     */
-    public void jsxFunction_beginPath() {
-        //empty
-    }
-
-    /**
-     * Closes the subpaths.
-     */
-    public void jsxFunction_closePath() {
-        //empty
-    }
-
-    /**
-     * Creates a new subpath.
-     * @param x the x
-     * @param y the y
-     */
-    public void jsxFunction_moveTo(final double x, final double y) {
-        //empty
-    }
-
-    /**
-     * Connect the last point to the given point.
-     * @param x the x
-     * @param y the y
-     */
-    public void jsxFunction_lineTo(final double x, final double y) {
-        //empty
-    }
-
-    /**
-     * Pushes state on state stack.
-     */
-    public void jsxFunction_save() {
-        //empty
-    }
-
-    /**
-     * Pops state stack and restore state.
-     */
-    public void jsxFunction_restore() {
-        //empty
-    }
-
-    /**
-     * Creates linear gradient.
-     * @param x0 the x0
-     * @param y0 the y0
-     * @param r0 the r0
-     * @param x1 the x1
-     * @param y1 the y1
-     * @param r1 the r1
-     */
-    public void jsxFunction_createLinearGradient(final double x0, final double y0, final double r0, final double x1,
-            final Object y1, final Object r1) {
+    @JsxSetter
+    public void setGlobalAlpha(final Object globalAlpha) {
         //empty
     }
 
@@ -192,7 +189,8 @@ public class CanvasRenderingContext2D extends SimpleScriptable {
      * @param endAngle the end angle
      * @param anticlockwise is anti-clockwise
      */
-    public void jsxFunction_arc(final double x, final double y, final double radius, final double startAngle,
+    @JsxFunction
+    public void arc(final double x, final double y, final double radius, final double startAngle,
                 final double endAngle, final boolean anticlockwise) {
         //empty
     }
@@ -205,8 +203,17 @@ public class CanvasRenderingContext2D extends SimpleScriptable {
      * @param y2 the y2
      * @param radius the radius
      */
-    public void jsxFunction_arcTo(final double x1, final double y1, final double x2, final double y2,
+    @JsxFunction
+    public void arcTo(final double x1, final double y1, final double x2, final double y2,
                 final double radius) {
+        //empty
+    }
+
+    /**
+     * Begins the subpaths.
+     */
+    @JsxFunction
+    public void beginPath() {
         //empty
     }
 
@@ -219,29 +226,408 @@ public class CanvasRenderingContext2D extends SimpleScriptable {
      * @param x the x
      * @param y the y
      */
-    public void jsxFunction_bezierCurveTo(final double cp1x, final double cp1y, final double cp2x, final double cp2y,
+    @JsxFunction
+    public void bezierCurveTo(final double cp1x, final double cp1y, final double cp2x, final double cp2y,
             final double x, final double y) {
         //empty
     }
 
     /**
-     * Fills the shape.
+     * Clears the specified rectangular area.
+     * @param x the x
+     * @param y the y
+     * @param w the width
+     * @param h the height
      */
-    public void jsxFunction_fill() {
-        //empty
-    }
-
-    /**
-     * Calculates the strokes of all the subpaths of the current path.
-     */
-    public void jsxFunction_stroke() {
+    @JsxFunction
+    public void clearRect(final double x, final double y, final double w, final double h) {
         //empty
     }
 
     /**
      * Creates a new clipping region.
      */
-    public void jsxFunction_clip() {
+    @JsxFunction
+    public void clip() {
         //empty
+    }
+
+    /**
+     * Closes the subpaths.
+     */
+    @JsxFunction
+    public void closePath() {
+        //empty
+    }
+
+    /**
+     * Creates a new, blank ImageData object with the specified dimensions.
+     */
+    @JsxFunction
+    public void createImageData() {
+        //empty
+    }
+
+    /**
+     * Creates linear gradient.
+     * @param x0 the x0
+     * @param y0 the y0
+     * @param r0 the r0
+     * @param x1 the x1
+     * @param y1 the y1
+     * @param r1 the r1
+     */
+    @JsxFunction
+    public void createLinearGradient(final double x0, final double y0, final double r0, final double x1,
+            final Object y1, final Object r1) {
+        //empty
+    }
+
+    /**
+     * Creates a pattern.
+     */
+    @JsxFunction
+    public void createPattern() {
+        //empty
+    }
+
+    /**
+     * Creates a gradient.
+     */
+    @JsxFunction
+    public void createRadialGradient() {
+        //empty
+    }
+
+    /**
+     * Draws images onto the canvas.
+     *
+     * @param image an element to draw into the context
+     * @param sx the X coordinate of the top left corner of the sub-rectangle of the source image
+     *        to draw into the destination context
+     * @param sy the Y coordinate of the top left corner of the sub-rectangle of the source image
+     *        to draw into the destination context
+     * @param sWidth the width of the sub-rectangle of the source image to draw into the destination context
+     * @param sHeight the height of the sub-rectangle of the source image to draw into the destination context
+     * @param dx the X coordinate in the destination canvas at which to place the top-left corner of the source image
+     * @param dy the Y coordinate in the destination canvas at which to place the top-left corner of the source image
+     * @param dWidth the width to draw the image in the destination canvas. This allows scaling of the drawn image
+     * @param dHeight the height to draw the image in the destination canvas. This allows scaling of the drawn image
+     */
+    @JsxFunction
+    @SuppressWarnings("unused")
+    public void drawImage(final Object image, final int sx, final int sy, final Object sWidth, final Object sHeight,
+            final Object dx, final Object dy, final Object dWidth, final Object dHeight) {
+        Integer dxI;
+        Integer dyI;
+        Integer dWidthI = null;
+        Integer dHeightI = null;
+        Integer sWidthI = null;
+        Integer sHeightI = null;
+        if (dx != Undefined.instance) {
+            dxI = ((Number) dx).intValue();
+            dyI = ((Number) dy).intValue();
+            dWidthI = ((Number) dWidth).intValue();
+            dHeightI = ((Number) dHeight).intValue();
+        }
+        else {
+            dxI = sx;
+            dyI = sy;
+        }
+        if (sWidth != Undefined.instance) {
+            sWidthI = ((Number) sWidth).intValue();
+            sHeightI = ((Number) sHeight).intValue();
+        }
+
+        try {
+            if (image instanceof HTMLImageElement) {
+                final ImageReader imageReader =
+                        ((HtmlImage) ((HTMLImageElement) image).getDomNodeOrDie()).getImageReader();
+                if (imageReader.getNumImages(true) != 0) {
+                    final BufferedImage img = imageReader.read(0);
+                    graphics2D_.drawImage(img, dxI, dyI, null);
+                }
+            }
+        }
+        catch (final IOException ioe) {
+            throw Context.throwAsScriptRuntimeEx(ioe);
+        }
+    }
+
+    /**
+     * Returns the Data URL.
+     *
+     * @param type an optional type
+     * @return the dataURL
+     */
+    public String toDataURL(String type) {
+        try {
+            if (type == null) {
+                type = "png";
+            }
+            return "data:" + type + ";base64," + encodeToString(image_, type);
+        }
+        catch (final IOException ioe) {
+            throw Context.throwAsScriptRuntimeEx(ioe);
+        }
+    }
+
+    private static String encodeToString(final BufferedImage image, final String type) throws IOException {
+        try (final ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+            ImageIO.write(image, type, bos);
+
+            final byte[] imageBytes = bos.toByteArray();
+
+            return new String(new Base64().encode(imageBytes));
+        }
+    }
+
+    /**
+     * Paints the specified ellipse.
+     * @param x the x
+     * @param y the y
+     * @param radiusX the radiusX
+     * @param radiusY the radiusY
+     * @param rotation the rotation
+     * @param startAngle the startAngle
+     * @param endAngle the endAngle
+     * @param anticlockwise the anticlockwise
+     */
+    @JsxFunction(@WebBrowser(CHROME))
+    public void ellipse(final double x, final double y,
+                    final double radiusX, final double radiusY,
+                    final double rotation, final double startAngle, final double endAngle,
+                    final boolean anticlockwise) {
+        //empty
+    }
+
+    /**
+     * Fills the shape.
+     */
+    @JsxFunction
+    public void fill() {
+        //empty
+    }
+
+    /**
+     * Paints the specified rectangular area.
+     * @param x the x
+     * @param y the y
+     * @param w the width
+     * @param h the height
+     */
+    @JsxFunction
+    public void fillRect(final int x, final int y, final int w, final int h) {
+        graphics2D_.fillRect(x, y, w, h);
+    }
+
+    /**
+     * Dummy placeholder.
+     */
+    @JsxFunction
+    public void fillText() {
+        //empty
+    }
+
+    /**
+     * Returns the {@code ImageData} object.
+     * @param sx x
+     * @param sy y
+     * @param sw width
+     * @param sh height
+     * @return the {@code ImageData} object
+     */
+    @JsxFunction
+    public ImageData getImageData(final int sx, final int sy, final int sw, final int sh) {
+        final ImageData imageData = new ImageData(image_, sx, sy, sw, sh);
+        imageData.setParentScope(getParentScope());
+        imageData.setPrototype(getPrototype(imageData.getClass()));
+        return imageData;
+    }
+
+    /**
+     * Dummy placeholder.
+     */
+    @JsxFunction({ @WebBrowser(IE), @WebBrowser(value = FF, minVersion = 31), @WebBrowser(CHROME) })
+    public void getLineDash() {
+        //empty
+    }
+
+    /**
+     * Dummy placeholder.
+     */
+    @JsxFunction
+    public void getLineData() {
+        //empty
+    }
+
+    /**
+     * Dummy placeholder.
+     */
+    @JsxFunction
+    public void isPointInPath() {
+        //empty
+    }
+
+    /**
+     * Connect the last point to the given point.
+     * @param x the x
+     * @param y the y
+     */
+    @JsxFunction
+    public void lineTo(final double x, final double y) {
+        //empty
+    }
+
+    /**
+     * Dummy placeholder.
+     */
+    @JsxFunction
+    public void measureText() {
+        //empty
+    }
+
+    /**
+     * Creates a new subpath.
+     * @param x the x
+     * @param y the y
+     */
+    @JsxFunction
+    public void moveTo(final double x, final double y) {
+        //empty
+    }
+
+    /**
+     * Dummy placeholder.
+     */
+    @JsxFunction
+    public void putImageData() {
+        //empty
+    }
+
+    /**
+     * Draws a quadratic Bézier curve.
+     * @param controlPointX the x-coordinate of the control point
+     * @param controlPointY the y-coordinate of the control point
+     * @param endPointX the x-coordinate of the end point
+     * @param endPointY the y-coordinate of the end point
+     */
+    @JsxFunction
+    public void quadraticCurveTo(final double controlPointX, final double controlPointY,
+            final double endPointX, final double endPointY) {
+        //empty
+    }
+
+    /**
+     * Dummy placeholder.
+     */
+    @JsxFunction
+    public void rect() {
+        //empty
+    }
+
+    /**
+     * Pops state stack and restore state.
+     */
+    @JsxFunction
+    public void restore() {
+        //empty
+    }
+
+    /**
+     * Dummy placeholder.
+     */
+    @JsxFunction
+    public void rotate() {
+        //empty
+    }
+
+    /**
+     * Pushes state on state stack.
+     */
+    @JsxFunction
+    public void save() {
+        //empty
+    }
+
+    /**
+     * Changes the transformation matrix to apply a scaling transformation with the given characteristics.
+     * @param x the scale factor in the horizontal direction
+     * @param y the scale factor in the vertical direction
+     */
+    @JsxFunction
+    public void scale(final Object x, final Object y) {
+      //empty
+    }
+
+    /**
+     * Dummy placeholder.
+     */
+    @JsxFunction({ @WebBrowser(IE), @WebBrowser(value = FF, minVersion = 31), @WebBrowser(CHROME) })
+    public void setLineDash() {
+        //empty
+    }
+
+    /**
+     * Dummy placeholder.
+     */
+    @JsxFunction
+    public void setTransform() {
+        //empty
+    }
+
+    /**
+     * Calculates the strokes of all the subpaths of the current path.
+     */
+    @JsxFunction
+    public void stroke() {
+        //empty
+    }
+
+    /**
+     * Strokes the specified rectangular area.
+     * @param x the x
+     * @param y the y
+     * @param w the width
+     * @param h the height
+     */
+    @JsxFunction
+    public void strokeRect(final double x, final double y, final double w, final double h) {
+        //empty
+    }
+
+    /**
+     * Dummy placeholder.
+     */
+    @JsxFunction
+    public void strokeText() {
+        //empty
+    }
+
+    /**
+     * Dummy placeholder.
+     */
+    @JsxFunction
+    public void transform() {
+        //empty
+    }
+
+    /**
+     * Changes the transformation matrix to apply a translation transformation with the given characteristics.
+     * @param x the translation distance in the horizontal direction
+     * @param y the translation distance in the vertical direction
+     */
+    @JsxFunction
+    public void translate(final Object x, final Object y) {
+      // empty
+    }
+
+    /**
+     * Returns the associated {@link HTMLCanvasElement}.
+     * @return the associated {@link HTMLCanvasElement}
+     */
+    @JsxGetter
+    public HTMLCanvasElement getCanvas() {
+        return canvas_;
     }
 }

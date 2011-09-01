@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,19 @@
  */
 package com.gargoylesoftware.htmlunit;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_WINDOW_OUTER_INNER_HEIGHT_DIFF_63;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_WINDOW_OUTER_INNER_HEIGHT_DIFF_89;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_WINDOW_OUTER_INNER_HEIGHT_DIFF_94;
+
 import java.util.ArrayList;
 import java.util.List;
-import java.util.ListIterator;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import com.gargoylesoftware.htmlunit.html.FrameWindow;
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.javascript.background.BackgroundJavaScriptFactory;
 import com.gargoylesoftware.htmlunit.javascript.background.JavaScriptJobManager;
-import com.gargoylesoftware.htmlunit.javascript.background.JavaScriptJobManagerImpl;
 
 /**
  * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
@@ -30,32 +35,30 @@ import com.gargoylesoftware.htmlunit.javascript.background.JavaScriptJobManagerI
  * exposed in any other places of the API. Internally we can cast to this class
  * when we need access to functionality that is not present in {@link WebWindow}
  *
- * @version $Revision: 4756 $
+ * @version $Revision: 10403 $
  * @author Brad Clarke
  * @author David K. Taylor
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
 public abstract class WebWindowImpl implements WebWindow {
+    private static final long serialVersionUID = 1272747208915903553L;
 
-    /** Serial version UID. */
-    private static final long serialVersionUID = -8407026088913790772L;
+    private static final Log LOG = LogFactory.getLog(WebWindowImpl.class);
 
     private WebClient webClient_;
     private Page enclosedPage_;
     private Object scriptObject_;
     private JavaScriptJobManager jobManager_;
-    private List<WebWindowImpl> childWindows_ = new ArrayList<WebWindowImpl>();
+    private final List<WebWindowImpl> childWindows_ = new ArrayList<>();
     private String name_ = "";
-    private History history_ = new History(this);
+    private final History history_ = new History(this);
+    private boolean closed_;
 
-    /**
-     * Never call this, used for Serialization.
-     * @deprecated As of 1.12
-     */
-    @Deprecated
-    protected WebWindowImpl() {
-        // Empty.
-    }
+    private int innerHeight_;
+    private int outerHeight_;
+    private int innerWidth_;
+    private int outerWidth_;
 
     /**
      * Creates a window and associates it with the client.
@@ -65,8 +68,31 @@ public abstract class WebWindowImpl implements WebWindow {
     public WebWindowImpl(final WebClient webClient) {
         WebAssert.notNull("webClient", webClient);
         webClient_ = webClient;
-        jobManager_ = new JavaScriptJobManagerImpl(this);
-        performRegistration();
+        jobManager_ = BackgroundJavaScriptFactory.theFactory().createJavaScriptJobManager(this);
+
+        boolean plus16 = false;
+        innerHeight_ = 605;
+        if (webClient.getBrowserVersion().hasFeature(JS_WINDOW_OUTER_INNER_HEIGHT_DIFF_63)) {
+            outerHeight_ = innerHeight_ + 63;
+            plus16 = true;
+        }
+        else if (webClient.getBrowserVersion().hasFeature(JS_WINDOW_OUTER_INNER_HEIGHT_DIFF_94)) {
+            outerHeight_ = innerHeight_ + 94;
+        }
+        else if (webClient.getBrowserVersion().hasFeature(JS_WINDOW_OUTER_INNER_HEIGHT_DIFF_89)) {
+            outerHeight_ = innerHeight_ + 89;
+            plus16 = true;
+        }
+        else {
+            outerHeight_ = innerHeight_ + 115;
+        }
+        innerWidth_ = 1256;
+        if (plus16) {
+            outerWidth_ = innerWidth_ + 16;
+        }
+        else {
+            outerWidth_ = innerWidth_ + 14;
+        }
     }
 
     /**
@@ -94,6 +120,9 @@ public abstract class WebWindowImpl implements WebWindow {
      * {@inheritDoc}
      */
     public void setEnclosedPage(final Page page) {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("setEnclosedPage: " + page);
+        }
         if (page == enclosedPage_) {
             return;
         }
@@ -152,20 +181,47 @@ public abstract class WebWindowImpl implements WebWindow {
      * @param child the child window to associate with this window
      */
     public void addChildWindow(final FrameWindow child) {
-        childWindows_.add(child);
+        synchronized (childWindows_) {
+            childWindows_.add(child);
+        }
     }
 
-    void destroyChildren() {
+    /**
+     * Destroy our childs.
+     */
+    protected void destroyChildren() {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("destroyChildren");
+        }
         getJobManager().removeAllJobs();
-        for (final ListIterator<WebWindowImpl> iter = childWindows_.listIterator(); iter.hasNext();) {
-            final WebWindowImpl window = iter.next();
-            final Page page = window.getEnclosedPage();
-            if (page instanceof HtmlPage) {
-                ((HtmlPage) page).cleanUp();
-            }
-            window.destroyChildren();
-            window.getJobManager().shutdown();
-            iter.remove();
+
+        // try to deal with js thread adding a new window in between
+        while (!childWindows_.isEmpty()) {
+            final WebWindowImpl window = childWindows_.get(0);
+            removeChildWindow(window);
+        }
+    }
+
+    /**
+     * <p><span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span></p>
+     *
+     * Destroy the child window.
+     * @param window the child to destroy
+     */
+    public void removeChildWindow(final WebWindowImpl window) {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("closing child window: " + window);
+        }
+        window.setClosed();
+        window.getJobManager().shutdown();
+        final Page page = window.getEnclosedPage();
+        if (page != null) {
+            page.cleanUp();
+        }
+        window.destroyChildren();
+
+        synchronized (childWindows_) {
+            childWindows_.remove(window);
         }
     }
 
@@ -189,6 +245,85 @@ public abstract class WebWindowImpl implements WebWindow {
      */
     public History getHistory() {
         return history_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isClosed() {
+        return closed_;
+    }
+
+    /**
+     * Sets this window as closed.
+     */
+    protected void setClosed() {
+        closed_ = true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getInnerWidth() {
+        return innerWidth_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setInnerWidth(final int innerWidth) {
+        innerWidth_ = innerWidth;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getOuterWidth() {
+        return outerWidth_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setOuterWidth(final int outerWidth) {
+        outerWidth_ = outerWidth;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getInnerHeight() {
+        return innerHeight_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setInnerHeight(final int innerHeight) {
+        innerHeight_ = innerHeight;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getOuterHeight() {
+        return outerHeight_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setOuterHeight(final int outerHeight) {
+        outerHeight_ = outerHeight;
     }
 
 }

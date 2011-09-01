@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,23 +20,26 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 
 /**
  * Tests for {@link HtmlResetInput}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 9868 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Ahmed Ashour
  */
-public class HtmlResetInputTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public class HtmlResetInputTest extends SimpleWebTestCase {
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    public void testReset() throws Exception {
+    public void reset() throws Exception {
         final String htmlContent
             = "<html><head><title>foo</title></head><body>\n"
             + "<form id='form1'>\n"
@@ -69,7 +72,10 @@ public class HtmlResetInputTest extends WebTestCase {
         page.<HtmlTextInput>getHtmlElementById("textfield1").setValueAttribute("Flintstone");
         page.<HtmlHiddenInput>getHtmlElementById("hidden1").setValueAttribute("Flintstone");
         page.<HtmlPasswordInput>getHtmlElementById("password1").setValueAttribute("Flintstone");
-        page.<HtmlIsIndex>getHtmlElementById("isindex1").setValue("Flintstone");
+        HtmlElement elem = page.getHtmlElementById("isindex1");
+        if (elem instanceof HtmlIsIndex) {
+            ((HtmlIsIndex) elem).setValue("Flintstone");
+        }
 
         // Check to make sure they did get changed
         assertEquals("bar", form.getCheckedRadioButton("radioButton").getValueAttribute());
@@ -79,7 +85,10 @@ public class HtmlResetInputTest extends WebTestCase {
         assertEquals("Flintstone", page.<HtmlTextArea>getHtmlElementById("textarea1").getText());
         assertEquals("Flintstone", page.<HtmlTextInput>getHtmlElementById("textfield1").getValueAttribute());
         assertEquals("Flintstone", page.<HtmlHiddenInput>getHtmlElementById("hidden1").getValueAttribute());
-        assertEquals("Flintstone", page.<HtmlIsIndex>getHtmlElementById("isindex1").getValue());
+        elem = page.getHtmlElementById("isindex1");
+        if (elem instanceof HtmlIsIndex) {
+            assertEquals("Flintstone", ((HtmlIsIndex) elem).getValue());
+        }
 
         final HtmlPage secondPage = resetInput.click();
         assertSame(page, secondPage);
@@ -91,16 +100,51 @@ public class HtmlResetInputTest extends WebTestCase {
         assertFalse(page.<HtmlOption>getHtmlElementById("option2").isSelected());
         assertEquals("Foobar", page.<HtmlTextArea>getHtmlElementById("textarea1").getText());
         assertEquals("foo", page.<HtmlTextInput>getHtmlElementById("textfield1").getValueAttribute());
-        assertEquals("foo", page.<HtmlHiddenInput>getHtmlElementById("hidden1").getValueAttribute());
+
+        // this is strange but this is the way the browsers are working
+        // com.gargoylesoftware.htmlunit.html.HtmlHiddenInputTest.reset()
+        if (getBrowserVersion().isIE() && getBrowserVersion().getBrowserVersionNumeric() < 9) {
+            assertEquals("foo", page.<HtmlHiddenInput>getHtmlElementById("hidden1").getValueAttribute());
+        }
+        else {
+            assertEquals("Flintstone", page.<HtmlHiddenInput>getHtmlElementById("hidden1").getValueAttribute());
+        }
+
         assertEquals("foo", page.<HtmlPasswordInput>getHtmlElementById("password1").getValueAttribute());
-        assertEquals("", page.<HtmlIsIndex>getHtmlElementById("isindex1").getValue());
+        elem = page.getHtmlElementById("isindex1");
+        if (elem instanceof HtmlIsIndex) {
+            assertEquals("", ((HtmlIsIndex) elem).getValue());
+        }
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    public void testOutsideForm() throws Exception {
+    public void resetClick_onClick() throws Exception {
+        final String htmlContent
+            = "<html><head><title>foo</title></head><body>\n"
+            + "<form id='form1' onSubmit='alert(\"bar\")' onReset='alert(\"reset\")'>\n"
+            + "    <button type='reset' name='button' id='button' "
+            + "onClick='alert(\"foo\")'>Push me</button>\n"
+            + "</form></body></html>";
+        final List<String> collectedAlerts = new ArrayList<>();
+        final HtmlPage page = loadPage(htmlContent, collectedAlerts);
+        final HtmlButton button = page.getHtmlElementById("button");
+
+        final HtmlPage secondPage = button.click();
+
+        final String[] expectedAlerts = {"foo", "reset"};
+        assertEquals(expectedAlerts, collectedAlerts);
+
+        assertSame(page, secondPage);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void outsideForm() throws Exception {
         final String html =
             "<html><head></head>\n"
             + "<body>\n"
@@ -108,7 +152,7 @@ public class HtmlResetInputTest extends WebTestCase {
             + "</body></html>";
 
         final String[] expectedAlerts = {"1"};
-        final List<String> collectedAlerts = new ArrayList<String>();
+        final List<String> collectedAlerts = new ArrayList<>();
         final HtmlPage page = loadPage(html, collectedAlerts);
         final HtmlResetInput input = page.getHtmlElementById("myInput");
         input.click();

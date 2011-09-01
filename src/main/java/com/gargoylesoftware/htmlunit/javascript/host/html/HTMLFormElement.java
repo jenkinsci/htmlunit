@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,34 +14,59 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
-import java.io.IOException;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.FORMFIELD_REACHABLE_BY_NEW_NAMES;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.FORMFIELD_REACHABLE_BY_ORIGINAL_NAME;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_FORM_ACTION_EXPANDURL;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_FORM_DISPATCHEVENT_SUBMITS;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_FORM_REJECT_INVALID_ENCODING;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_FORM_SUBMIT_FORCES_DOWNLOAD;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_FORM_USABLE_AS_FUNCTION;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+
 import java.net.MalformedURLException;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
+import net.sourceforge.htmlunit.corejs.javascript.Context;
+import net.sourceforge.htmlunit.corejs.javascript.Function;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
+import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
 
-import com.gargoylesoftware.htmlunit.Page;
-import com.gargoylesoftware.htmlunit.SgmlPage;
+import org.apache.commons.lang3.StringUtils;
+
+import com.gargoylesoftware.htmlunit.FormEncodingType;
 import com.gargoylesoftware.htmlunit.WebAssert;
+import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.WebRequest;
+import com.gargoylesoftware.htmlunit.html.DomNode;
+import com.gargoylesoftware.htmlunit.html.FormFieldWithNameHistory;
+import com.gargoylesoftware.htmlunit.html.HtmlAttributeChangeEvent;
 import com.gargoylesoftware.htmlunit.html.HtmlButton;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlForm;
 import com.gargoylesoftware.htmlunit.html.HtmlImage;
+import com.gargoylesoftware.htmlunit.html.HtmlImageInput;
 import com.gargoylesoftware.htmlunit.html.HtmlInput;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.html.HtmlSelect;
-import com.gargoylesoftware.htmlunit.html.HtmlSubmitInput;
 import com.gargoylesoftware.htmlunit.html.HtmlTextArea;
-import com.gargoylesoftware.htmlunit.html.SubmittableElement;
-import com.gargoylesoftware.htmlunit.javascript.JavaScriptEngine;
-import com.gargoylesoftware.htmlunit.javascript.PostponedAction;
-import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
-import com.gargoylesoftware.htmlunit.javascript.host.Event;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxFunction;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
+import com.gargoylesoftware.htmlunit.javascript.host.event.Event;
+import com.gargoylesoftware.htmlunit.protocol.javascript.JavaScriptURLConnection;
 
 /**
  * A JavaScript object for a Form.
  *
- * @version $Revision: 4892 $
+ * @version $Revision: 10580 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Daniel Gredler
  * @author Kent Tong
@@ -49,24 +74,26 @@ import com.gargoylesoftware.htmlunit.javascript.host.Event;
  * @author Marc Guillemot
  * @author Ahmed Ashour
  * @author Sudhan Moghe
+ * @author Ronald Brill
+ * @author Frank Danek
  *
  * @see <a href="http://msdn.microsoft.com/en-us/library/ms535249.aspx">MSDN documentation</a>
  */
-public class HTMLFormElement extends HTMLElement {
+@JsxClasses({
+        @JsxClass(domClass = HtmlForm.class,
+                browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(domClass = HtmlForm.class,
+            isJSObject = false, browsers = @WebBrowser(value = IE, maxVersion = 8))
+    })
+public class HTMLFormElement extends HTMLElement implements Function {
 
-    private static final long serialVersionUID = -1860993922147246513L;
     private HTMLCollection elements_; // has to be a member to have equality (==) working
 
     /**
-     * Creates an instance. A default constructor is required for all JavaScript objects.
+     * Creates an instance.
      */
-    public HTMLFormElement() { }
-
-    /**
-     * JavaScript constructor. This must be declared in every JavaScript file because
-     * the rhino engine won't walk up the hierarchy looking for constructors.
-     */
-    public final void jsConstructor() {
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
+    public HTMLFormElement() {
     }
 
     /**
@@ -83,7 +110,8 @@ public class HTMLFormElement extends HTMLElement {
      * Returns the value of the JavaScript attribute "name".
      * @return the value of this attribute
      */
-    public String jsxGet_name() {
+    @JsxGetter
+    public String getName() {
         return getHtmlForm().getNameAttribute();
     }
 
@@ -91,7 +119,8 @@ public class HTMLFormElement extends HTMLElement {
      * Sets the value of the JavaScript attribute "name".
      * @param name the new value
      */
-    public void jsxSet_name(final String name) {
+    @JsxSetter
+    public void setName(final String name) {
         WebAssert.notNull("name", name);
         getHtmlForm().setNameAttribute(name);
     }
@@ -100,36 +129,69 @@ public class HTMLFormElement extends HTMLElement {
      * Returns the value of the JavaScript attribute "elements".
      * @return the value of this attribute
      */
-    public HTMLCollection jsxGet_elements() {
+    @JsxGetter
+    public HTMLCollection getElements() {
         if (elements_ == null) {
             final HtmlForm htmlForm = getHtmlForm();
 
-            elements_ = new HTMLCollection(this) {
-                private static final long serialVersionUID = -2554743215194459203L;
+            elements_ = new HTMLCollection(htmlForm, false, "HTMLFormElement.elements") {
+                private boolean filterChildrenOfNestedForms_;
 
                 @Override
                 protected List<Object> computeElements() {
                     final List<Object> response = super.computeElements();
+                    // it would be more performant to avoid iterating through
+                    // nested forms but as it is a corner case of ill formed HTML
+                    // the needed refactoring would take too much time
+                    // => filter here and not in isMatching as it won't be needed in most
+                    // of the cases
+                    if (filterChildrenOfNestedForms_) {
+                        for (final Iterator<Object> iter = response.iterator(); iter.hasNext();) {
+                            final HtmlElement field = (HtmlElement) iter.next();
+                            if (field.getEnclosingForm() != htmlForm) {
+                                iter.remove();
+                            }
+                        }
+                    }
                     response.addAll(htmlForm.getLostChildren());
                     return response;
                 }
-            };
-            final String xpath = ".//*[(name() = 'input' or name() = 'button'"
-                    + " or name() = 'select' or name() = 'textarea')]";
-            elements_.init(htmlForm, xpath);
 
+                @Override
+                protected Object getWithPreemption(final String name) {
+                    return HTMLFormElement.this.getWithPreemption(name);
+                }
+
+                @Override
+                public EffectOnCache getEffectOnCache(final HtmlAttributeChangeEvent event) {
+                    return EffectOnCache.NONE;
+                }
+
+                @Override
+                protected boolean isMatching(final DomNode node) {
+                    if (node instanceof HtmlForm) {
+                        filterChildrenOfNestedForms_ = true;
+                        return false;
+                    }
+
+                    return node instanceof HtmlInput || node instanceof HtmlButton
+                        || node instanceof HtmlTextArea || node instanceof HtmlSelect;
+                }
+            };
         }
+
         return elements_;
     }
 
     /**
      * Returns the value of the JavaScript attribute "length".
-     * Does not count input type=image elements as browsers (IE6, Mozilla 1.7) do
+     * Does not count input type=image elements as browsers (IE6, Firfox 1.7) do
      * (cf <a href="http://msdn.microsoft.com/en-us/library/ms534101.aspx">MSDN doc</a>)
      * @return the value of this attribute
      */
-    public int jsxGet_length() {
-        final int all = jsxGet_elements().jsxGet_length();
+    @JsxGetter
+    public int getLength() {
+        final int all = getElements().getLength();
         final int images = getHtmlForm().getElementsByAttribute("input", "type", "image").size();
         return all - images;
     }
@@ -138,9 +200,10 @@ public class HTMLFormElement extends HTMLElement {
      * Returns the value of the JavaScript attribute "action".
      * @return the value of this attribute
      */
-    public String jsxGet_action() {
+    @JsxGetter
+    public String getAction() {
         String action = getHtmlForm().getActionAttribute();
-        if (getBrowserVersion().isFirefox()) {
+        if (getBrowserVersion().hasFeature(JS_FORM_ACTION_EXPANDURL)) {
             try {
                 action = ((HtmlPage) getHtmlForm().getPage()).getFullyQualifiedUrl(action).toExternalForm();
             }
@@ -148,7 +211,6 @@ public class HTMLFormElement extends HTMLElement {
                 // nothing, return action attribute
             }
         }
-
         return action;
     }
 
@@ -156,7 +218,8 @@ public class HTMLFormElement extends HTMLElement {
      * Sets the value of the JavaScript attribute "action".
      * @param action the new value
      */
-    public void jsxSet_action(final String action) {
+    @JsxSetter
+    public void setAction(final String action) {
         WebAssert.notNull("action", action);
         getHtmlForm().setActionAttribute(action);
     }
@@ -165,7 +228,8 @@ public class HTMLFormElement extends HTMLElement {
      * Returns the value of the JavaScript attribute "method".
      * @return the value of this attribute
      */
-    public String jsxGet_method() {
+    @JsxGetter
+    public String getMethod() {
         return getHtmlForm().getMethodAttribute();
     }
 
@@ -173,7 +237,8 @@ public class HTMLFormElement extends HTMLElement {
      * Sets the value of the JavaScript attribute "method".
      * @param method the new value
      */
-    public void jsxSet_method(final String method) {
+    @JsxSetter
+    public void setMethod(final String method) {
         WebAssert.notNull("method", method);
         getHtmlForm().setMethodAttribute(method);
     }
@@ -182,7 +247,8 @@ public class HTMLFormElement extends HTMLElement {
      * Returns the value of the JavaScript attribute "target".
      * @return the value of this attribute
      */
-    public String jsxGet_target() {
+    @JsxGetter
+    public String getTarget() {
         return getHtmlForm().getTargetAttribute();
     }
 
@@ -190,7 +256,8 @@ public class HTMLFormElement extends HTMLElement {
      * Returns the <tt>onsubmit</tt> event handler for this element.
      * @return the <tt>onsubmit</tt> event handler for this element
      */
-    public Object jsxGet_onsubmit() {
+    @JsxGetter(@WebBrowser(IE))
+    public Object getOnsubmit() {
         return getEventHandlerProp("onsubmit");
     }
 
@@ -198,7 +265,8 @@ public class HTMLFormElement extends HTMLElement {
      * Sets the <tt>onsubmit</tt> event handler for this element.
      * @param onsubmit the <tt>onsubmit</tt> event handler for this element
      */
-    public void jsxSet_onsubmit(final Object onsubmit) {
+    @JsxSetter(@WebBrowser(IE))
+    public void setOnsubmit(final Object onsubmit) {
         setEventHandlerProp("onsubmit", onsubmit);
     }
 
@@ -206,26 +274,60 @@ public class HTMLFormElement extends HTMLElement {
      * Sets the value of the JavaScript attribute "target".
      * @param target the new value
      */
-    public void jsxSet_target(final String target) {
+    @JsxSetter
+    public void setTarget(final String target) {
         WebAssert.notNull("target", target);
         getHtmlForm().setTargetAttribute(target);
+    }
+
+    /**
+     * Returns the value of the JavaScript attribute "enctype".
+     * @return the value of this attribute
+     */
+    @JsxGetter
+    public String getEnctype() {
+        final String encoding = getHtmlForm().getEnctypeAttribute();
+        if (!FormEncodingType.URL_ENCODED.getName().equals(encoding)
+                && !FormEncodingType.MULTIPART.getName().equals(encoding)
+                && !"text/plain".equals(encoding)) {
+            return FormEncodingType.URL_ENCODED.getName();
+        }
+        return encoding;
+    }
+
+    /**
+     * Sets the value of the JavaScript attribute "enctype".
+     * @param enctype the new value
+     */
+    @JsxSetter
+    public void setEnctype(final String enctype) {
+        WebAssert.notNull("encoding", enctype);
+        if (getBrowserVersion().hasFeature(JS_FORM_REJECT_INVALID_ENCODING)) {
+            if (!FormEncodingType.URL_ENCODED.getName().equals(enctype)
+                    && !FormEncodingType.MULTIPART.getName().equals(enctype)) {
+                throw Context.reportRuntimeError("Cannot set the encoding property to invalid value: '"
+                        + enctype + "'");
+            }
+        }
+        getHtmlForm().setEnctypeAttribute(enctype);
     }
 
     /**
      * Returns the value of the JavaScript attribute "encoding".
      * @return the value of this attribute
      */
-    public String jsxGet_encoding() {
-        return getHtmlForm().getEnctypeAttribute();
+    @JsxGetter
+    public String getEncoding() {
+        return getEnctype();
     }
 
     /**
      * Sets the value of the JavaScript attribute "encoding".
      * @param encoding the new value
      */
-    public void jsxSet_encoding(final String encoding) {
-        WebAssert.notNull("encoding", encoding);
-        getHtmlForm().setEnctypeAttribute(encoding);
+    @JsxSetter
+    public void setEncoding(final String encoding) {
+        setEnctype(encoding);
     }
 
     private HtmlForm getHtmlForm() {
@@ -234,33 +336,23 @@ public class HTMLFormElement extends HTMLElement {
 
     /**
      * Submits the form (at the end of the current script execution).
-     *
-     * @throws IOException if an IO error occurs
      */
-    public void jsxFunction_submit()
-        throws IOException {
+    @JsxFunction
+    public void submit() {
+        final HtmlPage page = (HtmlPage) getDomNodeOrDie().getPage();
+        final WebClient webClient = page.getWebClient();
 
-        boolean postpone = false;
-        final Event currentEvent = getWindow().getCurrentEvent();
-        if (currentEvent != null) {
-            // Use target instead of srcElement because target is read-only,
-            // but srcElement is writable from JavaScript.
-            final SimpleScriptable src = (SimpleScriptable) currentEvent.jsxGet_target();
-            postpone = src.getDomNodeOrNull() instanceof HtmlSubmitInput;
-        }
-
-        if (postpone) {
-            final SgmlPage page = getDomNodeOrDie().getPage();
-            final JavaScriptEngine jsEngine = page.getWebClient().getJavaScriptEngine();
-            final PostponedAction action = new PostponedAction() {
-                public void execute() throws IOException {
-                    getHtmlForm().submit((SubmittableElement) null);
-                }
-            };
-            jsEngine.addPostponedAction(action);
+        final String action = getHtmlForm().getActionAttribute().trim();
+        if (StringUtils.startsWithIgnoreCase(action, JavaScriptURLConnection.JAVASCRIPT_PREFIX)) {
+            final String js = action.substring(JavaScriptURLConnection.JAVASCRIPT_PREFIX.length());
+            webClient.getJavaScriptEngine().execute(page, js, "Form action", 0);
         }
         else {
-            getHtmlForm().submit((SubmittableElement) null);
+            // download should be done ASAP, response will be loaded into a window later
+            final WebRequest request = getHtmlForm().getWebRequest(null);
+            final String target = page.getResolvedTarget(getTarget());
+            final boolean forceDownload = webClient.getBrowserVersion().hasFeature(JS_FORM_SUBMIT_FORCES_DOWNLOAD);
+            webClient.download(page.getEnclosingWindow(), target, request, forceDownload, "JS form.submit()");
         }
     }
 
@@ -274,41 +366,26 @@ public class HTMLFormElement extends HTMLElement {
      *              when a collection is returned
      * @return an object or a collection of objects if successful, or null otherwise
      */
-    public Object jsxFunction_item(final Object index, final Object subIndex) {
+    @JsxFunction(@WebBrowser(IE))
+    public Object item(final Object index, final Object subIndex) {
         if (index instanceof Number) {
-            return jsxGet_elements().jsxFunction_item(index);
+            return getElements().item(index);
         }
-        final HtmlForm htmlForm = getHtmlForm();
 
-        final HTMLCollection elements = new HTMLCollection(this) {
-            private static final long serialVersionUID = -2554743215194459203L;
+        final String name = Context.toString(index);
+        final Object response = getWithPreemption(name);
+        if (subIndex instanceof Number && response instanceof HTMLCollection) {
+            return ((HTMLCollection) response).item(subIndex);
+        }
 
-            @Override
-            protected List<Object> computeElements() {
-                final List<Object> response = super.computeElements();
-                response.addAll(htmlForm.getLostChildren());
-                return response;
-            }
-        };
-        final String xpath = ".//*[((name() = 'input' or name() = 'button'"
-                + " or name() = 'select' or name() = 'textarea')) and @name='" + index + "']";
-        elements.init(htmlForm, xpath);
-        if (elements.getLength() == 0) {
-            return null;
-        }
-        else if (elements.getLength() == 1) {
-            return elements.jsxFunction_item(0);
-        }
-        if (subIndex instanceof Number) {
-            return elements.jsxFunction_item(subIndex);
-        }
-        return elements;
+        return response;
     }
 
     /**
      * Resets this form.
      */
-    public void jsxFunction_reset() {
+    @JsxFunction
+    public void reset() {
         getHtmlForm().reset();
     }
 
@@ -320,68 +397,87 @@ public class HTMLFormElement extends HTMLElement {
      */
     @Override
     protected Object getWithPreemption(final String name) {
-        final HtmlForm form = getHtmlForm();
-        final Page page = form.getPage();
-        if (page instanceof HtmlPage) {
-            // Try to satisfy this request using a map-backed operation before punting and using XPath.
-            // XPath operations are very expensive, and this method gets invoked quite a bit.
-            // Approach: Try to match the string to a name or ID, accepting only inputs (not type=image),
-            // buttons, selects and textareas that are in this form. We also include img elements
-            // (the second XPath search below) in the search, because any results with more than one element
-            // will end up using the XPath search anyway, so it doesn't hurt when looking for single elements.
-            final List<HtmlElement> elements = ((HtmlPage) page).getElementsByIdAndOrName(name);
-            if (elements.isEmpty()) {
-                return NOT_FOUND;
+        if (getDomNodeOrNull() == null) {
+            return NOT_FOUND;
+        }
+        final List<HtmlElement> elements = findElements(name);
+
+        if (elements.isEmpty()) {
+            return NOT_FOUND;
+        }
+        if (elements.size() == 1) {
+            return getScriptableFor(elements.get(0));
+        }
+
+        final HTMLCollection collection = new HTMLCollection(getHtmlForm(), elements) {
+            @Override
+            protected List<Object> computeElements() {
+                return new ArrayList<Object>(findElements(name));
             }
-            if (elements.size() == 1) {
-                final HtmlElement element = elements.get(0);
-                final String tagName = element.getTagName();
-                final String type = element.getAttribute("type").toLowerCase();
-                if ((HtmlInput.TAG_NAME.equals(tagName) && !"image".equals(type))
-                        || HtmlButton.TAG_NAME.equals(tagName)
-                        || HtmlSelect.TAG_NAME.equals(tagName)
-                        || HtmlTextArea.TAG_NAME.equals(tagName)
-                        || HtmlImage.TAG_NAME.equals(tagName)) {
-                    if (form.isAncestorOf(element) || form.getLostChildren().contains(element)) {
-                        return getScriptableFor(element);
+        };
+        return collection;
+    }
+
+    private List<HtmlElement> findElements(final String name) {
+        final List<HtmlElement> elements = new ArrayList<>();
+        addElements(name, getHtmlForm().getHtmlElementDescendants(), elements);
+        addElements(name, getHtmlForm().getLostChildren(), elements);
+
+        // If no form fields are found, IE and Firefox are able to find img elements by ID or name.
+        if (elements.isEmpty()) {
+            for (final DomNode node : getHtmlForm().getChildren()) {
+                if (node instanceof HtmlImage) {
+                    final HtmlImage img = (HtmlImage) node;
+                    if (name.equals(img.getId()) || name.equals(img.getNameAttribute())) {
+                        elements.add(img);
                     }
                 }
-                else {
-                    return NOT_FOUND;
+            }
+        }
+
+        return elements;
+    }
+
+    private void addElements(final String name, final Iterable<HtmlElement> nodes,
+        final List<HtmlElement> addTo) {
+        for (final HtmlElement node : nodes) {
+            if (isAccessibleByIdOrName(node, name)) {
+                addTo.add(node);
+            }
+        }
+    }
+
+    /**
+     * Indicates if the element can be reached by id or name in expressions like "myForm.myField".
+     * @param element the element to test
+     * @param name the name used to address the element
+     * @return <code>true</code> if this element matches the conditions
+     */
+    private boolean isAccessibleByIdOrName(final HtmlElement element, final String name) {
+        if (element instanceof FormFieldWithNameHistory && !(element instanceof HtmlImageInput)) {
+            if (element.getEnclosingForm() != getHtmlForm()) {
+                return false; // nested forms
+            }
+            if (name.equals(element.getId())) {
+                return true;
+            }
+            final FormFieldWithNameHistory elementWithNames = (FormFieldWithNameHistory) element;
+            if (getBrowserVersion().hasFeature(FORMFIELD_REACHABLE_BY_ORIGINAL_NAME)) {
+                if (name.equals(elementWithNames.getOriginalName())) {
+                    return true;
+                }
+            }
+            else if (name.equals(element.getAttribute("name"))) {
+                return true;
+            }
+
+            if (getBrowserVersion().hasFeature(FORMFIELD_REACHABLE_BY_NEW_NAMES)) {
+                if (elementWithNames.getNewNames().contains(name)) {
+                    return true;
                 }
             }
         }
-        // The shortcut wasn't enough, which means we probably need to perform the XPath operation anyway.
-        // Note that the XPath expression below HAS TO MATCH the tag name checks performed in the shortcut above.
-        // Approach: Try to match the string to a name or ID, accepting only inputs (not type=image),
-        // buttons, selects and textareas that are in this form. We *don't* include img elements, which will
-        // only be searched if the first search fails.
-        // See IsDescendantOfContextualFormFunction for info on the "is-descendant-of-contextual-form()" function.
-        HTMLCollection collection = new HTMLCollection(this);
-        final String xpath = "//*[is-descendant-of-contextual-form()"
-            + " and (@name = '" + name + "' or @id = '" + name + "')"
-            + " and ((name() = 'input' and translate(@type, 'IMAGE', 'image') != 'image') or name() = 'button'"
-            + " or name() = 'select' or name() = 'textarea')]";
-        collection.init(form, xpath);
-        int length = collection.jsxGet_length();
-        // If no form fields are found, IE and Firefox are able to find img elements by ID or name.
-        if (length == 0) {
-            collection = new HTMLCollection(this);
-            final String xpath2 = "//*[is-descendant-of-contextual-form()"
-                + " and (@name = '" + name + "' or @id = '" + name + "')"
-                + " and name() = 'img']";
-            collection.init(form, xpath2);
-        }
-        // Return whatever we have at this point.
-        Object result = collection;
-        length = collection.jsxGet_length();
-        if (length == 0) {
-            result = NOT_FOUND;
-        }
-        else if (length == 1) {
-            result = collection.get(0, collection);
-        }
-        return result;
+        return false;
     }
 
     /**
@@ -395,6 +491,46 @@ public class HTMLFormElement extends HTMLElement {
         if (getDomNodeOrNull() == null) {
             return NOT_FOUND; // typically for the prototype
         }
-        return jsxGet_elements().get(index, ((HTMLFormElement) start).jsxGet_elements());
+        return getElements().get(index, ((HTMLFormElement) start).getElements());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public Object call(final Context cx, final Scriptable scope, final Scriptable thisObj, final Object[] args) {
+        if (!getBrowserVersion().hasFeature(JS_FORM_USABLE_AS_FUNCTION)) {
+            throw Context.reportRuntimeError("Not a function.");
+        }
+        if (args.length > 0) {
+            final Object arg = args[0];
+            if (arg instanceof String) {
+                return ScriptableObject.getProperty(this, (String) arg);
+            }
+            else if (arg instanceof Number) {
+                return ScriptableObject.getProperty(this, ((Number) arg).intValue());
+            }
+        }
+        return Context.getUndefinedValue();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public Scriptable construct(final Context cx, final Scriptable scope, final Object[] args) {
+        if (!getBrowserVersion().hasFeature(JS_FORM_USABLE_AS_FUNCTION)) {
+            throw Context.reportRuntimeError("Not a function.");
+        }
+        return null;
+    }
+
+    @Override
+    public boolean dispatchEvent(final Event event) {
+        final boolean result = super.dispatchEvent(event);
+
+        if (Event.TYPE_SUBMIT.equals(event.getType())
+                && getBrowserVersion().hasFeature(JS_FORM_DISPATCHEVENT_SUBMITS)) {
+            submit();
+        }
+        return result;
     }
 }

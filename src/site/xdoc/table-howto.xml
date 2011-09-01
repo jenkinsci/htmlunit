@@ -4,7 +4,7 @@
     <properties>
         <title>Table Tutorial</title>
         <author email="mbowler@GargoyleSoftware.com">Mike Bowler</author>
-        <revision>$Revision: 4314 $</revision>
+        <revision>$Revision: 8659 $</revision>
     </properties>
 
     <body>
@@ -74,13 +74,13 @@ System.out.println("Cell (1,2)=" + table.getCellAt(1,2));]]></source>
                 <td>5</td>
                 <td>Bicycle</td>
             </tr>
-        </tbody>>
+        </tbody>
         <tbody>
             <tr>
                 <td>2</td>
                 <td>Tricycle</td>
             </tr>
-        </tbody>>
+        </tbody>
     </table>
 </body></html>]]></source>
 
@@ -96,7 +96,7 @@ final HtmlTableFooter footer = table.getFooter();
 final List<HtmlTableRow> footerRows = footer.getRows();
 
 for (final HtmlTableBody body : table.getBodies()) {
-    final List rows = body.getRows();
+    final List<HtmlTableRow> rows = body.getRows();
     ...
 }]]></source>
             </p>

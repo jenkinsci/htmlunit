@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,13 +33,13 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
  * An exception that will be thrown if an error occurs during the processing of
  * a script.
  *
- * @version $Revision: 4402 $
+ * @version $Revision: 9837 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Marc Guillemot
+ * @author Frank Danek
  */
 public class ScriptException extends RuntimeException {
 
-    private static final long serialVersionUID = 4788896649084231283L;
     private final String scriptSourceCode_;
     private final HtmlPage page_;
 
@@ -222,6 +222,21 @@ public class ScriptException extends RuntimeException {
         if (getCause() instanceof RhinoException) {
             final RhinoException cause = (RhinoException) getCause();
             return cause.lineNumber();
+        }
+
+        return -1;
+    }
+
+    /**
+     * Returns the column number of the source that was executing at the time of the exception.
+     *
+     * @return the column number or -1 if the exception was not thrown due to the
+     * execution of a script.
+     */
+    public int getFailingColumnNumber() {
+        if (getCause() instanceof RhinoException) {
+            final RhinoException cause = (RhinoException) getCause();
+            return cause.columnNumber();
         }
 
         return -1;

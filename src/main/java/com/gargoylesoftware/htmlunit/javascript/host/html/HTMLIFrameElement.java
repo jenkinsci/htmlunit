@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,32 +14,62 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
-import com.gargoylesoftware.htmlunit.html.BaseFrame;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+import net.sourceforge.htmlunit.corejs.javascript.Context;
+
+import com.gargoylesoftware.htmlunit.html.BaseFrameElement;
+import com.gargoylesoftware.htmlunit.html.HtmlInlineFrame;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
 import com.gargoylesoftware.htmlunit.javascript.host.Window;
+import com.gargoylesoftware.htmlunit.javascript.host.WindowProxy;
 
 /**
- * A JavaScript object for {@link com.gargoylesoftware.htmlunit.html.HtmlInlineFrame}.
+ * A JavaScript object for {@link HtmlInlineFrame}.
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 10429 $
  * @author Marc Guillemot
  * @author Chris Erskine
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
+@JsxClasses({
+        @JsxClass(domClass = HtmlInlineFrame.class,
+                browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(domClass = HtmlInlineFrame.class,
+        isJSObject = false, browsers = @WebBrowser(value = IE, maxVersion = 8))
+    })
 public class HTMLIFrameElement extends HTMLElement {
 
-    private static final long serialVersionUID = -7005081332114203694L;
-
     /**
-     * Creates an instance. A default constructor is required for all JavaScript objects.
+     * Creates an instance.
      */
-    public HTMLIFrameElement() { }
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
+    public HTMLIFrameElement() {
+    }
 
     /**
      * Returns the value of URL loaded in the frame.
      * @return the value of this attribute
      */
-    public String jsxGet_src() {
+    @JsxGetter
+    public String getSrc() {
         return getFrame().getSrcAttribute();
+    }
+
+    /**
+     * Sets the value of the source of the contained frame.
+     * @param src the new value
+     */
+    @JsxSetter
+    public void setSrc(final String src) {
+        getFrame().setSrcAttribute(src);
     }
 
     /**
@@ -47,34 +77,28 @@ public class HTMLIFrameElement extends HTMLElement {
      * @return <code>null</code> if no document is contained
      * @see <a href="http://www.mozilla.org/docs/dom/domref/dom_frame_ref4.html">Gecko DOM Reference</a>
      */
-    public HTMLDocument jsxGet_contentDocument() {
-        return ((Window) getFrame().getEnclosedWindow().getScriptObject()).jsxGet_document();
+    @JsxGetter
+    public DocumentProxy getContentDocument() {
+        return ((Window) getFrame().getEnclosedWindow().getScriptObject()).getDocument_js();
     }
 
     /**
      * Returns the window the frame contains, if any.
      * @return the window
-     * @see <a href="http://www.mozilla.org/docs/dom/domref/dom_frame_ref5.html">
-     * Gecko DOM Reference</a>
+     * @see <a href="http://www.mozilla.org/docs/dom/domref/dom_frame_ref5.html">Gecko DOM Reference</a>
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms533692.aspx">MSDN documentation</a>
      */
-    public Window jsxGet_contentWindow() {
-        return (Window) getFrame().getEnclosedWindow().getScriptObject();
-    }
-
-    /**
-     * Sets the value of the source of the contained frame.
-     * @param src the new value
-     */
-    public void jsxSet_src(final String src) {
-        getFrame().setSrcAttribute(src);
+    @JsxGetter
+    public WindowProxy getContentWindow() {
+        return Window.getProxy(getFrame().getEnclosedWindow());
     }
 
     /**
      * Returns the value of the name attribute.
      * @return the value of this attribute
      */
-    public String jsxGet_name() {
+    @JsxGetter
+    public String getName() {
         return getFrame().getNameAttribute();
     }
 
@@ -82,19 +106,21 @@ public class HTMLIFrameElement extends HTMLElement {
      * Sets the value of the name attribute.
      * @param name the new value
      */
-    public void jsxSet_name(final String name) {
+    @JsxSetter
+    public void setName(final String name) {
         getFrame().setNameAttribute(name);
     }
 
-    private BaseFrame getFrame() {
-        return (BaseFrame) getDomNodeOrDie();
+    private BaseFrameElement getFrame() {
+        return (BaseFrameElement) getDomNodeOrDie();
     }
 
     /**
      * Sets the <tt>onload</tt> event handler for this element.
      * @param eventHandler the <tt>onload</tt> event handler for this element
      */
-    public void jsxSet_onload(final Object eventHandler) {
+    @JsxSetter
+    public void setOnload(final Object eventHandler) {
         setEventHandlerProp("onload", eventHandler);
     }
 
@@ -102,7 +128,8 @@ public class HTMLIFrameElement extends HTMLElement {
      * Returns the <tt>onload</tt> event handler for this element.
      * @return the <tt>onload</tt> event handler for this element
      */
-    public Object jsxGet_onload() {
+    @JsxGetter
+    public Object getOnload() {
         return getEventHandlerProp("onload");
     }
 
@@ -110,11 +137,9 @@ public class HTMLIFrameElement extends HTMLElement {
      * Gets the "border" attribute.
      * @return the "border" attribute
      */
-    public String jsxGet_border() {
-        String border = getDomNodeOrDie().getAttribute("border");
-        if (border == NOT_FOUND) {
-            border = "";
-        }
+    @JsxGetter(@WebBrowser(IE))
+    public String getBorder() {
+        final String border = getDomNodeOrDie().getAttribute("border");
         return border;
     }
 
@@ -122,7 +147,8 @@ public class HTMLIFrameElement extends HTMLElement {
      * Sets the "border" attribute.
      * @param border the "border" attribute
      */
-    public void jsxSet_border(final String border) {
+    @JsxSetter(@WebBrowser(IE))
+    public void setBorder(final String border) {
         getDomNodeOrDie().setAttribute("border", border);
     }
 
@@ -130,7 +156,8 @@ public class HTMLIFrameElement extends HTMLElement {
      * Returns the value of the "align" property.
      * @return the value of the "align" property
      */
-    public String jsxGet_align() {
+    @JsxGetter
+    public String getAlign() {
         return getAlign(true);
     }
 
@@ -138,7 +165,8 @@ public class HTMLIFrameElement extends HTMLElement {
      * Sets the value of the "align" property.
      * @param align the value of the "align" property
      */
-    public void jsxSet_align(final String align) {
+    @JsxSetter
+    public void setAlign(final String align) {
         setAlign(align, false);
     }
 
@@ -146,17 +174,17 @@ public class HTMLIFrameElement extends HTMLElement {
      * Returns the value of the "width" property.
      * @return the value of the "width" property
      */
-    public String jsxGet_width() {
-        final boolean ie = getBrowserVersion().isIE();
-        final Boolean returnNegativeValues = ie ? true : null;
-        return getWidthOrHeight("width", returnNegativeValues);
+    @JsxGetter(propertyName = "width")
+    public String getWidth_js() {
+        return getWidthOrHeight("width", Boolean.TRUE);
     }
 
     /**
      * Sets the value of the "width" property.
      * @param width the value of the "width" property
      */
-    public void jsxSet_width(final String width) {
+    @JsxSetter
+    public void setWidth(final String width) {
         setWidthOrHeight("width", width, true);
     }
 
@@ -164,18 +192,71 @@ public class HTMLIFrameElement extends HTMLElement {
      * Returns the value of the "width" property.
      * @return the value of the "width" property
      */
-    public String jsxGet_height() {
-        final boolean ie = getBrowserVersion().isIE();
-        final Boolean returnNegativeValues = ie ? true : null;
-        return getWidthOrHeight("height", returnNegativeValues);
+    @JsxGetter(propertyName = "height")
+    public String getHeight_js() {
+        return getWidthOrHeight("height", Boolean.TRUE);
     }
 
     /**
-     * Sets the value of the "width" property.
-     * @param width the value of the "width" property
+     * Sets the value of the "height" property.
+     * @param height the value of the "height" property
      */
-    public void jsxSet_height(final String width) {
-        setWidthOrHeight("height", width, true);
+    @JsxSetter
+    public void setHeight(final String height) {
+        setWidthOrHeight("height", height, true);
     }
 
+    /**
+     * Returns the {@code dataFld} attribute.
+     * @return the {@code dataFld} attribute
+     */
+    @JsxGetter(@WebBrowser(value = IE, maxVersion = 8))
+    public String getDataFld() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code dataFld} attribute.
+     * @param dataFld {@code dataFld} attribute
+     */
+    @JsxSetter(@WebBrowser(value = IE, maxVersion = 8))
+    public void setDataFld(final String dataFld) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code dataFormatAs} attribute.
+     * @return the {@code dataFormatAs} attribute
+     */
+    @JsxGetter(@WebBrowser(value = IE, maxVersion = 8))
+    public String getDataFormatAs() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code dataFormatAs} attribute.
+     * @param dataFormatAs {@code dataFormatAs} attribute
+     */
+    @JsxSetter(@WebBrowser(value = IE, maxVersion = 8))
+    public void setDataFormatAs(final String dataFormatAs) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code dataSrc} attribute.
+     * @return the {@code dataSrc} attribute
+     */
+    @JsxGetter(@WebBrowser(value = IE, maxVersion = 8))
+    public String getDataSrc() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code dataSrc} attribute.
+     * @param dataSrc {@code dataSrc} attribute
+     */
+    @JsxSetter(@WebBrowser(value = IE, maxVersion = 8))
+    public void setDataSrc(final String dataSrc) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
 }

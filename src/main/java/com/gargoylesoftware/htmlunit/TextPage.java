@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,18 +14,18 @@
  */
 package com.gargoylesoftware.htmlunit;
 
+import java.net.URL;
+
 /**
  * A generic page that will be returned for any text related content.
  * Specifically any content types that start with "text/"
  *
- * @version $Revision: 4756 $
+ * @version $Revision: 9837 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
+ * @author Ronald Brill
  */
 public class TextPage implements Page {
-
-    /** Serial version UID. */
-    private static final long serialVersionUID = -3338485355330723848L;
 
     private final WebResponse webResponse_;
     private final String content_;
@@ -47,12 +47,14 @@ public class TextPage implements Page {
      * Initializes this page.
      */
     public void initialize() {
+        // nothing to do here
     }
 
     /**
      * Cleans up this page.
      */
     public void cleanUp() {
+        webResponse_.cleanUp();
     }
 
     /**
@@ -81,5 +83,17 @@ public class TextPage implements Page {
     public WebWindow getEnclosingWindow() {
         return enclosingWindow_;
     }
-}
 
+    /**
+     * Returns the URL of this page.
+     * @return the URL of this page
+     */
+    public URL getUrl() {
+        return getWebResponse().getWebRequest().getUrl();
+    }
+
+    @Override
+    public boolean isHtmlPage() {
+        return false;
+    }
+}

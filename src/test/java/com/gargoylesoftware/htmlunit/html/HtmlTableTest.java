@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,26 +22,29 @@ import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 
 /**
  * Tests for {@link HtmlTable}.
  *
- * @version $Revision: 4781 $
+ * @version $Revision: 9868 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Ahmed Ashour
  * @author Marc Guillemot
+ * @author Ronald Brill
  */
-public class HtmlTableTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public class HtmlTableTest extends SimpleWebTestCase {
 
     /**
      * Tests getTableCell(int,int).
      * @exception Exception If the test fails
      */
     @Test
-    public void testGetTableCell() throws Exception {
+    public void getCellAt() throws Exception {
         final String htmlContent
             = "<html><head><title>foo</title></head><body>\n"
             + "<table id='table1' summary='Test table'>\n"
@@ -73,13 +76,19 @@ public class HtmlTableTest extends WebTestCase {
      * @exception Exception If the test fails
      */
     @Test
-    public void testGetCellAt() throws Exception {
+    public void getCellAtColspan() throws Exception {
         final String htmlContent
             = "<html><head><title>foo</title></head><body>\n"
             + "<table id='table1'>\n"
-            + "<tr><td>row 1 col 1</td></tr>\n"
-            + "<tr><td>row 2 col 1</td><td>row 2 col 2</td></tr>\n"
-            + "<tr><td colspan='1'>row 3 col 1&2</td></tr>\n"
+            + "<tr>\n"
+            + "  <td>row 1 col 1</td>\n"
+            + "</tr>\n"
+            + "<tr>\n"
+            + "  <td>row 2 col 1</td><td>row 2 col 2</td>\n"
+            + "</tr>\n"
+            + "<tr>\n"
+            + "  <td colspan='1'>row 3 col 1&2</td>\n"
+            + "</tr>\n"
             + "</table>\n"
             + "</body></html>";
         final HtmlPage page = loadPage(htmlContent);
@@ -90,7 +99,7 @@ public class HtmlTableTest extends WebTestCase {
         Assert.assertEquals("cell (0,0) contents", "row 1 col 1", cell1.asText());
 
         final HtmlTableCell cell2 = table.getCellAt(0, 1);
-        Assert.assertEquals("cell (0,1) contents", null, cell2);
+        Assert.assertNull("cell (0,1) contents", cell2);
 
         final HtmlTableCell cell3 = table.getCellAt(1, 0);
         Assert.assertEquals("cell (1,0) contents", "row 2 col 1", cell3.asText());
@@ -101,7 +110,165 @@ public class HtmlTableTest extends WebTestCase {
         final HtmlTableCell cell5 = table.getCellAt(2, 0);
         Assert.assertEquals("cell (2, 0) contents", "row 3 col 1&2", cell5.asText());
         final HtmlTableCell cell6 = table.getCellAt(2, 1);
-        Assert.assertEquals("cell (2, 1) contents", null, cell6);
+        Assert.assertNull("cell (2, 1) contents", cell6);
+    }
+
+    /**
+     * Tests getCellAt(int,int).
+     * @exception Exception If the test fails
+     */
+    @Test
+    public void getCellAtComplex() throws Exception {
+        final String htmlContent
+            = "<html><head><title>foo</title></head><body>\n"
+            + "<table id='table1' border='1'>\n"
+            + "  <tr>\n"
+            + "    <th colspan='1'>H 1.1</th><th>H 1.2</th>\n"
+            + "    <th colspan='2' rowspan='2'>H 1.3</th><th>H 1.5</th>\n"
+            + "  </tr>\n"
+            + "  <tr>\n"
+            + "    <th>H 2.1</th><th>H 2.2</th><th>H 2.5</th>\n"
+            + "  </tr>\n"
+            + "  <tr>\n"
+            + "    <td rowspan='3'>1.1</td><td colspan='3'>1.2</td><td>1.5</td>\n"
+            + "  </tr>\n"
+            + "  <tr>\n"
+            + "    <td rowspan='2'>2.2</td><td>2.3</td><td rowspan='4' colspan='2'>2.4</td>\n"
+            + "  </tr>\n"
+            + "  <tr>\n"
+            + "    <td>3.3</td>\n"
+            + "  </tr>\n"
+            + "  <tr>\n"
+            + "    <td>4.1</td><td>4.2</td><td>4.3</td>\n"
+            + "  </tr>\n"
+            + "  <tr>\n"
+            + "    <td>5.1</td>\n"
+            + "    <td colspan='2' rowspan='2'>5.2</td>\n"
+            + "  </tr>\n"
+            + "  <tr>\n"
+            + "    <td>6.1</td><td>6.4</td><td>6.5</td>\n"
+            + "  </tr>\n"
+            + "</table>\n"
+            + "</body></html>";
+        final HtmlPage page = loadPage(htmlContent);
+
+        final HtmlTable table = page.getHtmlElementById("table1");
+
+        // first row
+        HtmlTableCell cell = table.getCellAt(0, 0);
+        Assert.assertEquals("cell (0,0) contents", "H 1.1", cell.asText());
+        cell = table.getCellAt(0, 1);
+        Assert.assertEquals("cell (0,1) contents", "H 1.2", cell.asText());
+        cell = table.getCellAt(0, 2);
+        Assert.assertEquals("cell (0,2) contents", "H 1.3", cell.asText());
+        cell = table.getCellAt(0, 3);
+        Assert.assertEquals("cell (0,3) contents", "H 1.3", cell.asText());
+        cell = table.getCellAt(0, 4);
+        Assert.assertEquals("cell (0,4) contents", "H 1.5", cell.asText());
+        cell = table.getCellAt(0, 5);
+        Assert.assertNull("cell (0,5) contents", cell);
+
+        // second row
+        cell = table.getCellAt(1, 0);
+        Assert.assertEquals("cell (1,0) contents", "H 2.1", cell.asText());
+        cell = table.getCellAt(1, 1);
+        Assert.assertEquals("cell (1,1) contents", "H 2.2", cell.asText());
+        cell = table.getCellAt(1, 2);
+        Assert.assertEquals("cell (1,2) contents", "H 1.3", cell.asText());
+        cell = table.getCellAt(1, 3);
+        Assert.assertEquals("cell (1,3) contents", "H 1.3", cell.asText());
+        cell = table.getCellAt(1, 4);
+        Assert.assertEquals("cell (1,4) contents", "H 2.5", cell.asText());
+        cell = table.getCellAt(1, 5);
+        Assert.assertNull("cell (0,5) contents", cell);
+
+        // third row
+        cell = table.getCellAt(2, 0);
+        Assert.assertEquals("cell (2,0) contents", "1.1", cell.asText());
+        cell = table.getCellAt(2, 1);
+        Assert.assertEquals("cell (2,1) contents", "1.2", cell.asText());
+        cell = table.getCellAt(2, 2);
+        Assert.assertEquals("cell (2,2) contents", "1.2", cell.asText());
+        cell = table.getCellAt(2, 3);
+        Assert.assertEquals("cell (2,3) contents", "1.2", cell.asText());
+        cell = table.getCellAt(2, 4);
+        Assert.assertEquals("cell (2,4) contents", "1.5", cell.asText());
+        cell = table.getCellAt(2, 5);
+        Assert.assertNull("cell (2,5) contents", cell);
+
+        // fourth row
+        cell = table.getCellAt(3, 0);
+        Assert.assertEquals("cell (3,0) contents", "1.1", cell.asText());
+        cell = table.getCellAt(3, 1);
+        Assert.assertEquals("cell (3,1) contents", "2.2", cell.asText());
+        cell = table.getCellAt(3, 2);
+        Assert.assertEquals("cell (3,2) contents", "2.3", cell.asText());
+        cell = table.getCellAt(3, 3);
+        Assert.assertEquals("cell (3,3) contents", "2.4", cell.asText());
+        cell = table.getCellAt(3, 4);
+        Assert.assertEquals("cell (3,4) contents", "2.4", cell.asText());
+        cell = table.getCellAt(3, 5);
+        Assert.assertNull("cell (3,5) contents", cell);
+
+        // fifth row
+        cell = table.getCellAt(4, 0);
+        Assert.assertEquals("cell (4,0) contents", "1.1", cell.asText());
+        cell = table.getCellAt(4, 1);
+        Assert.assertEquals("cell (4,1) contents", "2.2", cell.asText());
+        cell = table.getCellAt(4, 2);
+        Assert.assertEquals("cell (4,2) contents", "3.3", cell.asText());
+        cell = table.getCellAt(4, 3);
+        Assert.assertEquals("cell (4,3) contents", "2.4", cell.asText());
+        cell = table.getCellAt(4, 4);
+        Assert.assertEquals("cell (4,4) contents", "2.4", cell.asText());
+        cell = table.getCellAt(4, 5);
+        Assert.assertNull("cell (4,5) contents", cell);
+
+        // sixth row
+        cell = table.getCellAt(5, 0);
+        Assert.assertEquals("cell (5,0) contents", "4.1", cell.asText());
+        cell = table.getCellAt(5, 1);
+        Assert.assertEquals("cell (5,1) contents", "4.2", cell.asText());
+        cell = table.getCellAt(5, 2);
+        Assert.assertEquals("cell (5,2) contents", "4.3", cell.asText());
+        cell = table.getCellAt(5, 3);
+        Assert.assertEquals("cell (5,3) contents", "2.4", cell.asText());
+        cell = table.getCellAt(5, 4);
+        Assert.assertEquals("cell (5,4) contents", "2.4", cell.asText());
+        cell = table.getCellAt(5, 5);
+        Assert.assertNull("cell (5,5) contents", cell);
+
+        // seventh row
+        cell = table.getCellAt(6, 0);
+        Assert.assertEquals("cell (6,0) contents", "5.1", cell.asText());
+        cell = table.getCellAt(6, 1);
+        Assert.assertEquals("cell (6,1) contents", "5.2", cell.asText());
+        cell = table.getCellAt(6, 2);
+        Assert.assertEquals("cell (6,2) contents", "5.2", cell.asText());
+        cell = table.getCellAt(6, 3);
+        Assert.assertEquals("cell (6,3) contents", "2.4", cell.asText());
+        cell = table.getCellAt(6, 4);
+        Assert.assertEquals("cell (6,4) contents", "2.4", cell.asText());
+        cell = table.getCellAt(6, 5);
+        Assert.assertNull("cell (6,5) contents", cell);
+
+        // eighth row
+        cell = table.getCellAt(7, 0);
+        Assert.assertEquals("cell (7,0) contents", "6.1", cell.asText());
+        cell = table.getCellAt(7, 1);
+        Assert.assertEquals("cell (7,1) contents", "5.2", cell.asText());
+        cell = table.getCellAt(7, 2);
+        Assert.assertEquals("cell (7,2) contents", "5.2", cell.asText());
+        cell = table.getCellAt(7, 3);
+        Assert.assertEquals("cell (7,3) contents", "6.4", cell.asText());
+        cell = table.getCellAt(7, 4);
+        Assert.assertEquals("cell (7,4) contents", "6.5", cell.asText());
+        cell = table.getCellAt(7, 5);
+        Assert.assertNull("cell (6,5) contents", cell);
+
+        // after the table
+        cell = table.getCellAt(8, 0);
+        Assert.assertNull("cell (8,0) contents", cell);
     }
 
     /**
@@ -109,7 +276,7 @@ public class HtmlTableTest extends WebTestCase {
      * @exception Exception If the test fails
      */
     @Test
-    public void testGetTableCell_NotFound() throws Exception {
+    public void getTableCell_NotFound() throws Exception {
         final String htmlContent
             = "<html><head><title>foo</title></head><body>\n"
             + "<table id='table1' summary='Test table'>\n"
@@ -129,7 +296,7 @@ public class HtmlTableTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testGetTableRows() throws Exception {
+    public void getTableRows() throws Exception {
         final String htmlContent
             = "<html><head><title>foo</title></head><body>\n"
             + "<table id='table1'>\n"
@@ -145,7 +312,7 @@ public class HtmlTableTest extends WebTestCase {
 
         final HtmlTable table = page.getHtmlElementById("table1");
 
-        final List<HtmlTableRow> expectedRows = new ArrayList<HtmlTableRow>();
+        final List<HtmlTableRow> expectedRows = new ArrayList<>();
         expectedRows.add(table.getRowById("row1"));
         expectedRows.add(table.getRowById("row2"));
         expectedRows.add(table.getRowById("row3"));
@@ -160,7 +327,7 @@ public class HtmlTableTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testGetTableRows_WithHeadBodyFoot() throws Exception {
+    public void getTableRows_WithHeadBodyFoot() throws Exception {
         final String htmlContent
             = "<html><head><title>foo</title></head><body>\n"
             + "<table id='table1'>\n"
@@ -182,7 +349,7 @@ public class HtmlTableTest extends WebTestCase {
 
         final HtmlTable table = page.getHtmlElementById("table1");
 
-        final List<HtmlTableRow> expectedRows = new ArrayList<HtmlTableRow>();
+        final List<HtmlTableRow> expectedRows = new ArrayList<>();
         expectedRows.add(table.getRowById("row1"));
         expectedRows.add(table.getRowById("row2"));
         expectedRows.add(table.getRowById("row3"));
@@ -197,7 +364,7 @@ public class HtmlTableTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testRowGroupings_AllDefined() throws Exception {
+    public void rowGroupings_AllDefined() throws Exception {
         final String htmlContent
             = "<html><head><title>foo</title></head><body>\n"
             + "<table id='table1'>\n"
@@ -232,7 +399,7 @@ public class HtmlTableTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testRowGroupings_NoneDefined()
+    public void rowGroupings_NoneDefined()
         throws Exception {
 
         final String htmlContent
@@ -259,7 +426,7 @@ public class HtmlTableTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testGetCaptionText() throws Exception {
+    public void getCaptionText() throws Exception {
         final String htmlContent
             = "<html><head><title>foo</title></head><body>\n"
             + "<table id='table1' summary='Test table'>\n"
@@ -282,7 +449,7 @@ public class HtmlTableTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testInsertionOfTbodyTags() throws Exception {
+    public void insertionOfTbodyTags() throws Exception {
         final String htmlContent
             = "<html><head><title>foo</title></head><body>\n"
             + "<table>\n"
@@ -312,7 +479,7 @@ public class HtmlTableTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testJSInTable() throws Exception {
+    public void jsInTable() throws Exception {
         final String content
             = "<html><head><title>foo</title></head><body>\n"
             + "<table>\n"
@@ -327,32 +494,9 @@ public class HtmlTableTest extends WebTestCase {
         final String[] expectedAlerts = {"foo", "BODY"};
         createTestPageForRealBrowserIfNeeded(content, expectedAlerts);
 
-        final List<String> collectedAlerts = new ArrayList<String>();
+        final List<String> collectedAlerts = new ArrayList<>();
         loadPage(content, collectedAlerts);
 
-        assertEquals(expectedAlerts, collectedAlerts);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testSimpleScriptable() throws Exception {
-        final String html = "<html><head>\n"
-            + "<script>\n"
-            + "  function test() {\n"
-            + "    alert(document.getElementById('myId'));\n"
-            + "  }\n"
-            + "</script>\n"
-            + "</head><body onload='test()'>\n"
-            + "  <table id='myId'/>\n"
-            + "</body></html>";
-
-        final String[] expectedAlerts = {"[object HTMLTableElement]"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        createTestPageForRealBrowserIfNeeded(html, expectedAlerts);
-        final HtmlPage page = loadPage(BrowserVersion.FIREFOX_2, html, collectedAlerts);
-        assertTrue(HtmlTable.class.isInstance(page.getHtmlElementById("myId")));
         assertEquals(expectedAlerts, collectedAlerts);
     }
 

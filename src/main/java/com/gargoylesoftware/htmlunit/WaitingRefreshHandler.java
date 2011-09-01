@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import org.apache.commons.logging.LogFactory;
  * If you want a refresh handler that ignores the wait time, see
  * {@link ImmediateRefreshHandler}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 9837 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Daniel Gredler
  */
@@ -80,14 +80,16 @@ public class WaitingRefreshHandler implements RefreshHandler {
              * ignore it since this is the thread now doing the navigation. Eventually we should
              * refactor to force all navigation to happen back on the main thread.
              */
-            LOG.debug("Waiting thread was interrupted. Ignoring interruption to continue navigation.");
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Waiting thread was interrupted. Ignoring interruption to continue navigation.");
+            }
         }
         final WebWindow window = page.getEnclosingWindow();
         if (window == null) {
             return;
         }
         final WebClient client = window.getWebClient();
-        client.getPage(window, new WebRequestSettings(url));
+        client.getPage(window, new WebRequest(url));
     }
 
 }

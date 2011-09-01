@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,31 +18,38 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Tests for {@link com.gargoylesoftware.htmlunit.javascript.host.Namespace}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 9843 $
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Frank Danek
  */
 @RunWith(BrowserRunner.class)
-public class NamespaceTest extends WebTestCase {
+public class NamespaceTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = { "me,http://mysite" })
+    @Alerts(DEFAULT = "no namespaces",
+            IE8 = "me, http://mysite")
     public void test() throws Exception {
         final String html
             = "<html xmlns='http://www.w3.org/1999/xhtml' xmlns:me='http://mysite'>\n"
             + "<script>\n"
             + "  function test() {\n"
-            + "    if (document.namespaces)\n"
-            + "      for (var i=0; i < document.namespaces.length; i++)\n"
-            + "        alert(document.namespaces[i].name + ',' + document.namespaces[i].urn);\n"
+            + "    if (document.namespaces) {\n"
+            + "      for (var i=0; i < document.namespaces.length; i++) {\n"
+            + "        alert(document.namespaces[i].name + ', ' + document.namespaces[i].urn);\n"
+            + "      }\n"
+            + "    } else {\n"
+            + "      alert('no namespaces');\n"
+            + "    }\n"
             + "  }\n"
             + "</script>\n"
             + "</head>\n"
@@ -50,6 +57,6 @@ public class NamespaceTest extends WebTestCase {
             + "<app:dIv xmlns='http://anotherURL'></app:dIv>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 }

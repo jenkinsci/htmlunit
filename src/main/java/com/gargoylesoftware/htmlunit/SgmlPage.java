@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,11 +15,13 @@
 package com.gargoylesoftware.htmlunit;
 
 import java.io.IOException;
+import java.net.URL;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.DocumentType;
 import org.w3c.dom.Element;
 
+import com.gargoylesoftware.htmlunit.html.DomAttr;
 import com.gargoylesoftware.htmlunit.html.DomDocumentFragment;
 import com.gargoylesoftware.htmlunit.html.DomDocumentType;
 import com.gargoylesoftware.htmlunit.html.DomElement;
@@ -29,17 +31,16 @@ import com.gargoylesoftware.htmlunit.html.DomNode;
  * A basic class to be implemented by {@link com.gargoylesoftware.htmlunit.html.HtmlPage} and
  * {@link com.gargoylesoftware.htmlunit.xml.XmlPage}.
  *
- * @version $Revision: 4773 $
+ * @version $Revision: 9837 $
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
 public abstract class SgmlPage extends DomNode implements Page, Document {
 
-    private static final long serialVersionUID = -8803248938782701094L;
     private DomDocumentType documentType_;
     private final WebResponse webResponse_;
     private WebWindow enclosingWindow_;
     private final WebClient webClient_;
-    private DomElement documentElement_;
 
     /**
      * Creates an instance of SgmlPage.
@@ -57,7 +58,8 @@ public abstract class SgmlPage extends DomNode implements Page, Document {
     /**
      * {@inheritDoc}
      */
-    public void cleanUp() throws IOException {
+    public void cleanUp() {
+        webResponse_.cleanUp();
     }
 
     /**
@@ -71,6 +73,7 @@ public abstract class SgmlPage extends DomNode implements Page, Document {
      * {@inheritDoc}
      */
     public void initialize() throws IOException {
+        // nothing to do here
     }
 
     /**
@@ -176,26 +179,21 @@ public abstract class SgmlPage extends DomNode implements Page, Document {
      * @return the document element
      */
     public DomElement getDocumentElement() {
-        if (documentElement_ == null) {
-            DomNode childNode = getFirstChild();
-            while (childNode != null && !(childNode instanceof DomElement)) {
-                childNode = childNode.getNextSibling();
-            }
-            documentElement_ = (DomElement) childNode;
+        DomNode childNode = getFirstChild();
+        while (childNode != null && !(childNode instanceof DomElement)) {
+            childNode = childNode.getNextSibling();
         }
-        return documentElement_;
+        return (DomElement) childNode;
     }
 
     /**
-     * Creates a clone of this instance, and clears cached state to be not shared with the original.
-     *
+     * Creates a clone of this instance.
      * @return a clone of this instance
      */
     @Override
     protected SgmlPage clone() {
         try {
             final SgmlPage result = (SgmlPage) super.clone();
-            result.documentElement_ = null;
             return result;
         }
         catch (final CloneNotSupportedException e) {
@@ -208,7 +206,11 @@ public abstract class SgmlPage extends DomNode implements Page, Document {
      */
     @Override
     public String asXml() {
-        return getDocumentElement().asXml();
+        final DomElement documentElement = getDocumentElement();
+        if (documentElement == null) {
+            return "";
+        }
+        return documentElement.asXml();
     }
 
     /**
@@ -226,4 +228,31 @@ public abstract class SgmlPage extends DomNode implements Page, Document {
         getDocumentElement().normalize();
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getCanonicalXPath() {
+        return "/";
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public DomAttr createAttribute(final String name) {
+        return new DomAttr(getPage(), null, name, "", false);
+    }
+
+    /**
+     * Returns the URL of this page.
+     * @return the URL of this page
+     */
+    public URL getUrl() {
+        return getWebResponse().getWebRequest().getUrl();
+    }
+
+    @Override
+    public boolean isHtmlPage() {
+        return false;
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,12 +24,14 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
  * A factory for elements encountered in parsing the input which are not represented
  * by dedicated element classes.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 9837 $
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
  * @author David K. Taylor
+ * @author Ronald Brill
+ * @author Frank Danek
  */
-public final class UnknownElementFactory implements IElementFactory {
+public final class UnknownElementFactory implements ElementFactory {
 
     /** The singleton instance. */
     public static final UnknownElementFactory instance = new UnknownElementFactory();
@@ -43,7 +45,7 @@ public final class UnknownElementFactory implements IElementFactory {
      */
     public HtmlElement createElement(final SgmlPage page, final String tagName, final Attributes attributes) {
         String namespace = null;
-        if (page instanceof HtmlPage && tagName.indexOf(':') != -1) {
+        if (page != null && page.isHtmlPage() && tagName.indexOf(':') != -1) {
             final HtmlPage htmlPage = (HtmlPage) page;
             final String prefix = tagName.substring(0, tagName.indexOf(':'));
             final Map<String, String> namespaces = htmlPage.getNamespaces();
@@ -59,7 +61,15 @@ public final class UnknownElementFactory implements IElementFactory {
      */
     public HtmlElement createElementNS(final SgmlPage page, final String namespaceURI,
             final String qualifiedName, final Attributes attributes) {
+        return createElementNS(page, namespaceURI, qualifiedName, attributes, false);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public HtmlElement createElementNS(final SgmlPage page, final String namespaceURI,
+            final String qualifiedName, final Attributes attributes, final boolean checkBrowserCompatibility) {
         final Map<String, DomAttr> attributeMap = DefaultElementFactory.setAttributes(page, attributes);
-        return new HtmlUnknownElement(page, namespaceURI, qualifiedName, attributeMap);
+        return new HtmlUnknownElement(page, qualifiedName, attributeMap);
     }
 }

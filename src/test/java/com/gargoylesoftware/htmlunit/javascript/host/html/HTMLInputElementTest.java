@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,47 +14,37 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
-import static org.junit.Assert.assertSame;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.CHROME;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.FF;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.IE11;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.IE8;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-import org.apache.commons.httpclient.NameValuePair;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.MockWebConnection;
-import com.gargoylesoftware.htmlunit.Page;
-import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
-import com.gargoylesoftware.htmlunit.html.HtmlAnchor;
-import com.gargoylesoftware.htmlunit.html.HtmlButtonInput;
-import com.gargoylesoftware.htmlunit.html.HtmlCheckBoxInput;
-import com.gargoylesoftware.htmlunit.html.HtmlElement;
-import com.gargoylesoftware.htmlunit.html.HtmlForm;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.html.HtmlImageInput;
-import com.gargoylesoftware.htmlunit.html.HtmlInput;
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import com.gargoylesoftware.htmlunit.html.HtmlRadioButtonInput;
-import com.gargoylesoftware.htmlunit.html.HtmlSubmitInput;
-import com.gargoylesoftware.htmlunit.html.HtmlTextInput;
 
 /**
  * Tests for {@link HTMLInputElement} and buttons.
  *
- * @version $Revision: 4900 $
+ * @version $Revision: 10621 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Marc Guillemot
  * @author Chris Erskine
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Frank Danek
  */
 @RunWith(BrowserRunner.class)
-public class HTMLInputElementTest extends WebTestCase {
+public class HTMLInputElementTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if the test fails
@@ -65,12 +55,12 @@ public class HTMLInputElementTest extends WebTestCase {
         final String html
             = "<html><head><title>foo</title><script>\n"
             + "function doTest(){\n"
-            + "    alert(document.form1.textfield1.value)\n"
-            + "    alert(document.form1.textfield1.type)\n"
-            + "    alert(document.form1.textfield1.name)\n"
-            + "    alert(document.form1.textfield1.form.name)\n"
-            + "    document.form1.textfield1.value='cat'\n"
-            + "    alert(document.form1.textfield1.value)\n"
+            + "    alert(document.form1.textfield1.value);\n"
+            + "    alert(document.form1.textfield1.type);\n"
+            + "    alert(document.form1.textfield1.name);\n"
+            + "    alert(document.form1.textfield1.form.name);\n"
+            + "    document.form1.textfield1.value='cat';\n"
+            + "    alert(document.form1.textfield1.value);\n"
             + "}\n"
             + "</script></head><body onload='doTest()'>\n"
             + "<p>hello world</p>\n"
@@ -79,35 +69,55 @@ public class HTMLInputElementTest extends WebTestCase {
             + "</form>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts({
-            "button", "button", "checkbox", "file", "hidden", "select-one",
-            "select-multiple", "password", "reset", "reset", "submit",
-            "submit", "text", "textarea" })
+    @Alerts(CHROME = "button, button, checkbox, file, hidden, select-one, select-multiple, password, reset, reset, "
+                + "submit, submit, text, textarea, color, date, text, datetime-local, time, week, month, number, "
+                + "range, search, email, tel, url",
+            FF = "button, button, checkbox, file, hidden, select-one, select-multiple, password, reset, reset, "
+                + "submit, submit, text, textarea, color, text, text, text, text, text, text, number, range, "
+                + "search, email, tel, url",
+            IE11 = "button, button, checkbox, file, hidden, select-one, select-multiple, password, reset, reset, "
+                + "submit, submit, text, textarea, text, text, text, text, text, text, text, number, range, "
+                + "search, email, tel, url"
+            )
+    @NotYetImplemented
     public void textProperties() throws Exception {
         final String html
             = "<html><head><title>foo</title><script>\n"
             + "function doTest(){\n"
-            + "    alert(document.form1.button1.type)\n"
-            + "    alert(document.form1.button2.type)\n"
-            + "    alert(document.form1.checkbox1.type)\n"
-            + "    alert(document.form1.fileupload1.type)\n"
-            + "    alert(document.form1.hidden1.type)\n"
-            + "    alert(document.form1.select1.type)\n"
-            + "    alert(document.form1.select2.type)\n"
-            + "    alert(document.form1.password1.type)\n"
-            + "    alert(document.form1.reset1.type)\n"
-            + "    alert(document.form1.reset2.type)\n"
-            + "    alert(document.form1.submit1.type)\n"
-            + "    alert(document.form1.submit2.type)\n"
-            + "    alert(document.form1.textInput1.type)\n"
-            + "    alert(document.form1.textarea1.type)\n"
+            + "    alert(document.form1.button1.type);\n"
+            + "    alert(document.form1.button2.type);\n"
+            + "    alert(document.form1.checkbox1.type);\n"
+            + "    alert(document.form1.fileupload1.type);\n"
+            + "    alert(document.form1.hidden1.type);\n"
+            + "    alert(document.form1.select1.type);\n"
+            + "    alert(document.form1.select2.type);\n"
+            + "    alert(document.form1.password1.type);\n"
+            + "    alert(document.form1.reset1.type);\n"
+            + "    alert(document.form1.reset2.type);\n"
+            + "    alert(document.form1.submit1.type);\n"
+            + "    alert(document.form1.submit2.type);\n"
+            + "    alert(document.form1.textInput1.type);\n"
+            + "    alert(document.form1.textarea1.type);\n"
+            + "    alert(document.form1.color1.type);\n"
+            + "    alert(document.form1.date1.type);\n"
+            + "    alert(document.form1.datetime1.type);\n"
+            + "    alert(document.form1.datetimeLocal1.type);\n"
+            + "    alert(document.form1.time1.type);\n"
+            + "    alert(document.form1.week1.type);\n"
+            + "    alert(document.form1.month1.type);\n"
+            + "    alert(document.form1.number1.type);\n"
+            + "    alert(document.form1.range1.type);\n"
+            + "    alert(document.form1.search1.type);\n"
+            + "    alert(document.form1.email1.type);\n"
+            + "    alert(document.form1.tel1.type);\n"
+            + "    alert(document.form1.url1.type);\n"
             + "}\n"
             + "</script></head><body onload='doTest()'>\n"
             + "<p>hello world</p>\n"
@@ -131,10 +141,23 @@ public class HTMLInputElementTest extends WebTestCase {
             + "    <button type='submit' name='submit2'></button>\n"
             + "    <input type='text' name='textInput1' />\n"
             + "    <textarea name='textarea1'>foo</textarea>\n"
+            + "    <input type='color' name='color1' />\n"
+            + "    <input type='date' name='date1' />\n"
+            + "    <input type='datetime' name='datetime1' />\n"
+            + "    <input type='datetime-local' name='datetimeLocal1' />\n"
+            + "    <input type='time' name='time1' />\n"
+            + "    <input type='week' name='week1' />\n"
+            + "    <input type='month' name='month1' />\n"
+            + "    <input type='number' name='number1' />\n"
+            + "    <input type='range' name='range1' />\n"
+            + "    <input type='search' name='search1' />\n"
+            + "    <input type='email' name='email1' />\n"
+            + "    <input type='tel' name='tel1' />\n"
+            + "    <input type='url' name='url1' />\n"
             + "</form>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -146,9 +169,9 @@ public class HTMLInputElementTest extends WebTestCase {
         final String html
             = "<html><head><title>foo</title><script>\n"
             + "function test() {\n"
-            + "    alert(document.form1.checkbox1.checked)\n"
-            + "    document.form1.checkbox1.checked=true\n"
-            + "    alert(document.form1.checkbox1.checked)\n"
+            + "    alert(document.form1.checkbox1.checked);\n"
+            + "    document.form1.checkbox1.checked = true;\n"
+            + "    alert(document.form1.checkbox1.checked);\n"
             + "}\n"
             + "</script></head><body>\n"
             + "<p>hello world</p>\n"
@@ -158,31 +181,31 @@ public class HTMLInputElementTest extends WebTestCase {
             + "<a href='javascript:test()' id='clickme'>click me</a>\n"
             + "</body></html>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(getBrowserVersion(), html, collectedAlerts);
-        final HtmlCheckBoxInput checkBox = page.getHtmlElementById("checkbox1");
-        assertFalse(checkBox.isChecked());
-        page.<HtmlAnchor>getHtmlElementById("clickme").click();
-        assertTrue(checkBox.isChecked());
+        final WebDriver driver = loadPage2(html);
+        final WebElement checkBox = driver.findElement(By.id("checkbox1"));
+        assertFalse(checkBox.isSelected());
+        driver.findElement(By.id("clickme")).click();
+        assertTrue(checkBox.isSelected());
 
-        assertEquals(getExpectedAlerts(), collectedAlerts);
+        assertEquals(getExpectedAlerts(), getCollectedAlerts(driver));
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts({ "true", "false", "false", "false", "true", "false" })
     public void checkedAttribute_Radio() throws Exception {
         final String html
             = "<html><head><title>foo</title><script>\n"
             + "function test() {\n"
-            + "    alert(document.form1.radio1[0].checked)\n"
-            + "    alert(document.form1.radio1[1].checked)\n"
-            + "    alert(document.form1.radio1[2].checked)\n"
-            + "    document.form1.radio1[1].checked=true\n"
-            + "    alert(document.form1.radio1[0].checked)\n"
-            + "    alert(document.form1.radio1[1].checked)\n"
-            + "    alert(document.form1.radio1[2].checked)\n"
+            + "    alert(document.form1.radio1[0].checked);\n"
+            + "    alert(document.form1.radio1[1].checked);\n"
+            + "    alert(document.form1.radio1[2].checked);\n"
+            + "    document.form1.radio1[1].checked = true;\n"
+            + "    alert(document.form1.radio1[0].checked);\n"
+            + "    alert(document.form1.radio1[1].checked);\n"
+            + "    alert(document.form1.radio1[2].checked);\n"
             + "}\n"
             + "</script></head><body>\n"
             + "<p>hello world</p>\n"
@@ -194,41 +217,40 @@ public class HTMLInputElementTest extends WebTestCase {
             + "<a href='javascript:test()' id='clickme'>click me</a>\n"
             + "</body></html>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(getBrowserVersion(), html, collectedAlerts);
-        final HtmlRadioButtonInput radioA = page.getHtmlElementById("radioA");
-        final HtmlRadioButtonInput radioB = page.getHtmlElementById("radioB");
-        final HtmlRadioButtonInput radioC = page.getHtmlElementById("radioC");
-        assertTrue(radioA.isChecked());
-        assertFalse(radioB.isChecked());
-        assertFalse(radioC.isChecked());
-        page.<HtmlAnchor>getHtmlElementById("clickme").click();
-        assertFalse(radioA.isChecked());
-        assertTrue(radioB.isChecked());
-        assertFalse(radioC.isChecked());
+        final WebDriver driver = loadPage2(html);
+        final WebElement radioA = driver.findElement(By.id("radioA"));
+        final WebElement radioB = driver.findElement(By.id("radioB"));
+        final WebElement radioC = driver.findElement(By.id("radioC"));
+        assertTrue(radioA.isSelected());
+        assertFalse(radioB.isSelected());
+        assertFalse(radioC.isSelected());
 
-        final String[] expectedAlerts = {"true", "false", "false", "false", "true", "false"};
+        driver.findElement(By.id("clickme")).click();
+        assertFalse(radioA.isSelected());
+        assertTrue(radioB.isSelected());
+        assertFalse(radioC.isSelected());
 
-        assertEquals(expectedAlerts, collectedAlerts);
+        assertEquals(getExpectedAlerts(), getCollectedAlerts(driver));
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts({ "false", "true", "false", "true", "false", "true" })
     public void disabledAttribute() throws Exception {
         final String html
             = "<html><head><title>foo</title><script>\n"
             + "function test() {\n"
-            + "    alert(document.form1.button1.disabled)\n"
-            + "    alert(document.form1.button2.disabled)\n"
-            + "    alert(document.form1.button3.disabled)\n"
-            + "    document.form1.button1.disabled=true\n"
-            + "    document.form1.button2.disabled=false\n"
-            + "    document.form1.button3.disabled=true\n"
-            + "    alert(document.form1.button1.disabled)\n"
-            + "    alert(document.form1.button2.disabled)\n"
-            + "    alert(document.form1.button3.disabled)\n"
+            + "    alert(document.form1.button1.disabled);\n"
+            + "    alert(document.form1.button2.disabled);\n"
+            + "    alert(document.form1.button3.disabled);\n"
+            + "    document.form1.button1.disabled = true;\n"
+            + "    document.form1.button2.disabled = false;\n"
+            + "    document.form1.button3.disabled = true;\n"
+            + "    alert(document.form1.button1.disabled);\n"
+            + "    alert(document.form1.button2.disabled);\n"
+            + "    alert(document.form1.button3.disabled);\n"
             + "}\n"
             + "</script></head><body>\n"
             + "<p>hello world</p>\n"
@@ -240,24 +262,20 @@ public class HTMLInputElementTest extends WebTestCase {
             + "<a href='javascript:test()' id='clickme'>click me</a>\n"
             + "</body></html>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(getBrowserVersion(), html, collectedAlerts);
-        final HtmlForm form = page.getFormByName("form1");
+        final WebDriver driver = loadPage2(html);
 
-        final HtmlSubmitInput button1 = form.getInputByName("button1");
-        final HtmlSubmitInput button2 = form.getInputByName("button2");
-        final HtmlSubmitInput button3 = form.getInputByName("button3");
-        assertFalse(button1.isDisabled());
-        assertTrue(button2.isDisabled());
-        assertFalse(button3.isDisabled());
-        page.<HtmlAnchor>getHtmlElementById("clickme").click();
-        assertTrue(button1.isDisabled());
-        assertFalse(button2.isDisabled());
-        assertTrue(button3.isDisabled());
+        final WebElement button1 = driver.findElement(By.name("button1"));
+        final WebElement button2 = driver.findElement(By.name("button2"));
+        final WebElement button3 = driver.findElement(By.name("button3"));
+        assertTrue(button1.isEnabled());
+        assertFalse(button2.isEnabled());
+        assertTrue(button3.isEnabled());
+        driver.findElement(By.id("clickme")).click();
+        assertFalse(button1.isEnabled());
+        assertTrue(button2.isEnabled());
+        assertFalse(button3.isEnabled());
 
-        final String[] expectedAlerts = {"false", "true", "false", "true", "false", "true"};
-
-        assertEquals(expectedAlerts, collectedAlerts);
+        assertEquals(getExpectedAlerts(), getCollectedAlerts(driver));
     }
 
     /**
@@ -272,15 +290,16 @@ public class HTMLInputElementTest extends WebTestCase {
             + "}\n"
             + "</script></head><body>\n"
             + "<p>hello world</p>\n"
-            + "<form name='form1' method='post' onsubmit='doTest()'>\n"
+            + "<form name='form1' onsubmit='doTest()'>\n"
             + " <input type='text' name='textfield1' id='textfield1' value='foo' />\n"
+            + " <input type='submit' id='clickMe'/>\n"
             + "</form>\n"
             + "</body></html>";
 
-        final HtmlPage page = loadPage(getBrowserVersion(), html, null);
-
-        final HtmlForm form = page.getFormByName("form1");
-        form.submit(null);
+        getMockWebConnection().setDefaultResponse("");
+        final WebDriver driver = loadPage2(html);
+        driver.findElement(By.id("clickMe")).click();
+        assertEquals(getDefaultUrl() + "?textfield1=blue", driver.getCurrentUrl());
     }
 
     /**
@@ -295,38 +314,42 @@ public class HTMLInputElementTest extends WebTestCase {
             + "}\n"
             + "</script></head><body>\n"
             + "<p>hello world</p>\n"
-            + "<form name='form1' method='post' onsubmit='doTest()'>\n"
+            + "<form name='form1' onsubmit='doTest()'>\n"
             + " <input type='text' name='textfield1' id='textfield1' value='foo' />\n"
+            + " <input type='submit' id='clickMe'/>\n"
             + "</form>\n"
             + "</body></html>";
 
-        final HtmlPage page = loadPage(getBrowserVersion(), html, null);
-
-        final HtmlForm form = page.getFormByName("form1");
-        form.submit(null);
+        getMockWebConnection().setDefaultResponse("");
+        final WebDriver driver = loadPage2(html);
+        driver.findElement(By.id("clickMe")).click();
+        assertEquals(getDefaultUrl() + "?textfield1=foo", driver.getCurrentUrl());
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts("true")
     public void thisDotFormInOnClick() throws Exception {
-        final String htmlContent = "<html>\n"
-            + "<head><title>First</title></head>\n"
+        final String html = "<html>\n"
             + "<body>\n"
             + "<form name='form1'>\n"
-            + "<input type='submit' name='button1' onClick=\"this.form.target='_blank'; return false;\">\n"
+            + "<input type='submit' id='clickMe' onClick=\"this.form.target='_blank'; return false;\">\n"
             + "</form>\n"
+            + "<script>\n"
+            + "alert(document.forms[0].target == '');\n"
+            + "</script>\n"
             + "</body></html>";
 
-        final HtmlPage page = loadPage(getBrowserVersion(), htmlContent, null);
-        assertEquals("First", page.getTitleText());
+        final WebDriver driver = loadPageWithAlerts2(html);
 
-        assertEquals("", page.getFormByName("form1").getTargetAttribute());
+        // HtmlUnitDriver is buggy, it returns null here
+//        assertEquals("", driver.findElement(By.name("form1")).getAttribute("target"));
 
-        ((HtmlSubmitInput) page.getFormByName("form1").getInputByName("button1")).click();
+        driver.findElement(By.id("clickMe")).click();
 
-        assertEquals("_blank", page.getFormByName("form1").getTargetAttribute());
+        assertEquals("_blank", driver.findElement(By.name("form1")).getAttribute("target"));
     }
 
     /**
@@ -356,7 +379,7 @@ public class HTMLInputElementTest extends WebTestCase {
             + "</form>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -367,37 +390,27 @@ public class HTMLInputElementTest extends WebTestCase {
         final String html = "<html><head><title>foo</title><script>\n"
             + "function doTest(){\n"
             + " document.form1.textfield1.name = 'changed';\n"
-            + " alert(document.form1.changed.name);\n"
             + "}\n"
             + "</script></head><body>\n"
             + "<p>hello world</p>\n"
-            + "<form name='form1' method='post' onsubmit='doTest()'>\n"
+            + "<form name='form1' onsubmit='doTest()'>\n"
             + " <input type='text' name='textfield1' id='textfield1' value='foo' />\n"
-            + " <input type='submit' name='button1' value='pushme' />\n"
+            + " <input type='submit' name='button1' id='clickMe' value='pushme' />\n"
             + "</form>\n"
             + "</body></html>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(getBrowserVersion(), html, collectedAlerts);
-        final MockWebConnection connection = (MockWebConnection) page.getWebClient().getWebConnection();
+        getMockWebConnection().setDefaultResponse("");
+        final WebDriver driver = loadPage2(html);
+        driver.findElement(By.id("clickMe")).click();
 
-        final HtmlForm form = page.getFormByName("form1");
-        form.<HtmlInput>getInputByName("button1").click();
-
-        final String[] expectedAlerts = {"changed"};
-        assertEquals(expectedAlerts, collectedAlerts);
-
-        final List<NameValuePair> expectedParameters = Arrays.asList(new NameValuePair[] {
-            new NameValuePair("changed", "foo"),
-            new NameValuePair("button1", "pushme")
-        });
-        assertEquals(expectedParameters, connection.getLastParameters());
+        assertEquals(getDefaultUrl() + "?changed=foo&button1=pushme", driver.getCurrentUrl());
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts("foo")
     public void onChange() throws Exception {
         final String html = "<html><head><title>foo</title>\n"
             + "</head><body>\n"
@@ -408,24 +421,22 @@ public class HTMLInputElementTest extends WebTestCase {
             + "</form>\n"
             + "</body></html>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(getBrowserVersion(), html, collectedAlerts);
+        final WebDriver driver = loadPage2(html);
 
-        final HtmlForm form = page.getFormByName("form1");
-        final HtmlTextInput textinput = form.getInputByName("text1");
-        textinput.setValueAttribute("foo");
-        final HtmlButtonInput button = form.getInputByName("myButton");
+        final WebElement textinput = driver.findElement(By.name("text1"));
+        textinput.sendKeys("foo");
+        final WebElement button = driver.findElement(By.name("myButton"));
         button.click();
-        assertEquals("from button", textinput.getValueAttribute());
+        assertEquals("from button", textinput.getAttribute("value"));
 
-        final String[] expectedAlerts = {"foo"};
-        assertEquals(expectedAlerts, collectedAlerts);
+        assertEquals(getExpectedAlerts(), getCollectedAlerts(driver));
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts("foo")
     public void onChangeSetByJavaScript() throws Exception {
         final String html = "<html><head><title>foo</title>\n"
             + "</head><body>\n"
@@ -439,19 +450,15 @@ public class HTMLInputElementTest extends WebTestCase {
             + "</script>\n"
             + "</body></html>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(getBrowserVersion(), html, collectedAlerts);
+        final WebDriver driver = loadPage2(html);
 
-        final HtmlForm form = page.getFormByName("form1");
-        final HtmlTextInput textinput = form.getInputByName("text1");
-        textinput.setValueAttribute("foo");
-        final HtmlButtonInput button = form.getInputByName("myButton");
+        final WebElement textinput = driver.findElement(By.name("text1"));
+        textinput.sendKeys("foo");
+        final WebElement button = driver.findElement(By.name("myButton"));
         button.click();
-        assertEquals("from button", textinput.getValueAttribute());
+        assertEquals("from button", textinput.getAttribute("value"));
 
-        final String[] expectedAlerts = {"foo"};
-        assertEquals(expectedAlerts, collectedAlerts);
-        createTestPageForRealBrowserIfNeeded(html, expectedAlerts);
+        assertEquals(getExpectedAlerts(), getCollectedAlerts(driver));
     }
 
     /**
@@ -473,7 +480,7 @@ public class HTMLInputElementTest extends WebTestCase {
             + "<input type='checkbox' name='myCheckbox'/>\n"
             + "</form></body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -499,35 +506,12 @@ public class HTMLInputElementTest extends WebTestCase {
             + "<input type='radio' name='myRadio'/>\n"
             + "</form></body></html>";
 
-        final HtmlPage page = loadPageWithAlerts(html);
+        final WebDriver driver = loadPageWithAlerts2(html);
 
-        assertTrue(HtmlImageInput.class.isInstance(page.getFormByName("myForm").getInputByName("myRadio")));
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    @Alerts({"radio", "hidden", "image" })
-    public void changeType2() throws Exception {
-        final String html
-            = "<html><head><title>First</title><script>\n"
-            + "function doTest() {\n"
-            + "    var input = document.myForm.myRadio;\n"
-            + "    alert(input.type);\n"
-            + "    input.type = 'hidden';\n"
-            + "    alert(input.type);\n"
-            + "    input.setAttribute('type', 'image');\n"
-            + "    alert(input.type);\n"
-            + "}\n</script></head>\n"
-            + "<body onload='doTest()'>\n"
-            + "<form name='myForm' action='foo'>"
-            + "<input type='radio' name='myRadio'/>\n"
-            + "</form></body></html>";
-
-        final HtmlPage page = loadPageWithAlerts(html);
-
-        assertTrue(HtmlImageInput.class.isInstance(page.getFormByName("myForm").getInputByName("myRadio")));
+        if (driver instanceof HtmlUnitDriver) {
+            final WebElement myRadio = driver.findElement(By.name("myRadio"));
+            assertTrue(toHtmlElement(myRadio) instanceof HtmlImageInput);
+        }
     }
 
     /**
@@ -536,6 +520,15 @@ public class HTMLInputElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts({
+            "button: false, false, function, function, , ",
+            "submit: false, false, function, function, submit it!, submit it!",
+            "file: false, false, function, function, , ",
+            "checkbox: true, true, function, function, , on",
+            "radio: true, true, function, function, , on",
+            "text: false, false, function, function, , ",
+            "password: false, false, function, function, , "
+        })
     public void defaultValues() throws Exception {
         final String html
             = "<html><head></head><body>\n"
@@ -551,7 +544,7 @@ public class HTMLInputElementTest extends WebTestCase {
                 + "<script>\n"
                 + "function details(_oInput) {\n"
                 + "  alert(_oInput.type + ': '\n"
-                + "  + _oInput.checked + ', ' \n"
+                + "  + _oInput.checked + ', '\n"
                 + "  + _oInput.defaultChecked + ', '\n"
                 + "  + ((String(_oInput.click).indexOf('function') != -1) ? 'function' : 'unknown') + ', '\n"
                 + "  + ((String(_oInput.select).indexOf('function') != -1) ? 'function' : 'unknown') + ', '\n"
@@ -569,20 +562,8 @@ public class HTMLInputElementTest extends WebTestCase {
                 + "details(oForm.myPwd);\n"
                 + "</script>\n"
                 + "</body></html>";
-        final String[] expectedAlerts = {
-            "button: false, false, function, function, , ",
-            "submit: false, false, function, function, submit it!, submit it!",
-            "file: false, false, function, function, , ",
-            "checkbox: true, true, function, function, , on",
-            "radio: true, true, function, function, , on",
-            "text: false, false, function, function, , ",
-            "password: false, false, function, function, , "
-        };
-        createTestPageForRealBrowserIfNeeded(html, expectedAlerts);
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(getBrowserVersion(), html, collectedAlerts);
-        assertEquals(expectedAlerts, collectedAlerts);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -604,28 +585,24 @@ public class HTMLInputElementTest extends WebTestCase {
             + "<form name='myForm' action='foo'>\n"
             + "</form></body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts("123")
     public void buttonOutsideForm() throws Exception {
-        final String content
+        final String html
             = "<html><head><title>foo</title></head><body>\n"
-            + "<button id='clickMe' onclick='alert(123)'>click me</button>\n"
+            + "<button id='clickme' onclick='alert(123)'>click me</button>\n"
             + "</body></html>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(getBrowserVersion(), content, collectedAlerts);
-        final Page page2 = page.<HtmlElement>getHtmlElementById("clickMe").click();
+        final WebDriver driver = loadPage2(html);
+        driver.findElement(By.id("clickme")).click();
 
-        assertSame(page, page2);
-
-        final String[] expectedAlerts = {"123"};
-
-        assertEquals(expectedAlerts, collectedAlerts);
+        assertEquals(getExpectedAlerts(), getCollectedAlerts(driver));
     }
 
     /**
@@ -634,33 +611,31 @@ public class HTMLInputElementTest extends WebTestCase {
      */
     @Test
     public void onChangeCallsFormSubmit() throws Exception {
-        final String content
+        final String html
             = "<html><head>\n"
             + "</head>\n"
             + "<body>\n"
-            + "<form name='test' action='foo'>\n"
-            + "<input name='field1' onchange='submit()'>\n"
-            + "</form>\n"
+            + "  <form name='test' action='foo'>\n"
+            + "    <input name='field1' onchange='submit()'>\n"
+            + "    <img src='unknown.gif'>\n"
+            + "  </form>\n"
             + "</body></html>";
 
-        final WebClient webClient = getWebClient();
-        final MockWebConnection webConnection = new MockWebConnection();
+        getMockWebConnection().setDefaultResponse("<html><title>page 2</title><body></body></html>");
 
-        webConnection.setDefaultResponse("<html><title>page 2</title><body></body></html>");
-        webConnection.setResponse(URL_FIRST, content);
-        webClient.setWebConnection(webConnection);
-
-        final HtmlPage page = webClient.getPage(URL_FIRST);
-        final HtmlPage page2 = (HtmlPage)
-            page.getFormByName("test").<HtmlInput>getInputByName("field1").setValueAttribute("bla");
-        assertEquals("page 2", page2.getTitleText());
+        final WebDriver driver = loadPage2(html);
+        driver.findElement(By.name("field1")).sendKeys("bla");
+        driver.findElement(By.tagName("img")).click();
+        assertEquals("page 2", driver.getTitle());
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts({"undefined", "30", "undefined", "30", "30", "30", "40", "50", "string", "number" })
+    @Alerts(DEFAULT = {"undefined", "30", "undefined", "30", "30", "30", "40", "50", "string", "number" },
+            IE8 = {"undefined", "30", "undefined", "30", "30", "30", "30", "50", "number", "number" })
+    @NotYetImplemented(IE8)
     public void maxLength() throws Exception {
         final String html
             = "<html><head><title>First</title><script>\n"
@@ -684,38 +659,135 @@ public class HTMLInputElementTest extends WebTestCase {
             + "<input type='text' id='text1' maxlength='30'/>\n"
             + "</form></body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.FF)
-    @Alerts("hello")
-    public void selectionRange() throws Exception {
+    @Alerts(DEFAULT = { "undefined", "undefined", "undefined", "30", "30", "30",
+                "undefined", "40", "string", "number" },
+            CHROME = {"undefined", "30", "undefined", "30", "30", "30", "40", "50", "string", "number" },
+            IE8 = { "30", "undefined", "undefined", "30", "30", "30", "undefined", "30", "string", "number" })
+    @NotYetImplemented(IE8)
+    public void minLength() throws Exception {
         final String html
-            = "<html><head><title>foo</title><script>\n"
-            + "function test() {\n"
-            + "    var input = document.getElementById('myInput');\n"
-            + "    input.setSelectionRange(2, 7);\n"
-            + "    alert('hello');"
-            + "}\n"
-            + "</script></head><body onload='test()'>\n"
-            + "<input id='myInput' value='some test'>\n"
-            + "</body></html>";
+            = "<html><head><title>First</title><script>\n"
+            + "function doTest() {\n"
+            + "    var input = document.getElementById('text1');\n"
+            + "    alert(input.minlength);\n"
+            + "    alert(input.minLength);\n"
+            + "    alert(input.MinLength);\n"
+            + "    alert(input.getAttribute('minlength'));\n"
+            + "    alert(input.getAttribute('minLength'));\n"
+            + "    alert(input.getAttribute('MinLength'));\n"
+            + "    input.setAttribute('MiNlenGth', 40);\n"
+            + "    alert(input.minLength);\n"
+            + "    input.minLength = 50;\n"
+            + "    alert(input.getAttribute('minlength'));\n"
+            + "    alert(typeof input.getAttribute('minLength'));\n"
+            + "    alert(typeof input.minLength);\n"
+            + "}\n</script></head>\n"
+            + "<body onload='doTest()'>\n"
+            + "<form name='myForm' action='foo'>\n"
+            + "<input type='text' id='text1' minlength='30'/>\n"
+            + "</form></body></html>";
 
-        final HtmlPage page = loadPageWithAlerts(html);
-        final HtmlTextInput input = page.getHtmlElementById("myInput");
-        assertEquals("me te", input.getSelectedText());
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts({"text text", "password password", "hidden hidden",
-            "checkbox checkbox", "radio radio", "file file", "checkbox checkbox" })
+    public void typeMaxLength() throws Exception {
+        final String html
+            = "<html><body>\n"
+            + "<form>\n"
+            + "<input type='text' id='text1' maxlength='5'/>\n"
+            + "<input type='password' id='password1' maxlength='6'/>\n"
+            + "</form></body></html>";
+
+        final WebDriver webDriver = loadPage2(html);
+        final WebElement textField = webDriver.findElement(By.id("text1"));
+        textField.sendKeys("123456789");
+        assertEquals("12345", textField.getAttribute("value"));
+        textField.sendKeys("\b7");
+        assertEquals("12347", textField.getAttribute("value"));
+
+        final WebElement passwordField = webDriver.findElement(By.id("password1"));
+        passwordField.sendKeys("123456789");
+        assertEquals("123456", passwordField.getAttribute("value"));
+        passwordField.sendKeys("\b7");
+        assertEquals("123457", passwordField.getAttribute("value"));
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void typeMaxLengthZero() throws Exception {
+        final String html
+            = "<html><body>\n"
+            + "<form>\n"
+            + "<input type='text' id='text1' maxlength='0'/>\n"
+            + "<input type='password' id='password1' maxlength='0'/>\n"
+            + "</form></body></html>";
+
+        final WebDriver webDriver = loadPage2(html);
+        final WebElement textField = webDriver.findElement(By.id("text1"));
+        textField.sendKeys("123456789");
+        assertEquals("", textField.getAttribute("value"));
+        textField.sendKeys("\b7");
+        assertEquals("", textField.getAttribute("value"));
+
+        final WebElement passwordField = webDriver.findElement(By.id("password1"));
+        passwordField.sendKeys("123456789");
+        assertEquals("", passwordField.getAttribute("value"));
+        passwordField.sendKeys("\b7");
+        assertEquals("", passwordField.getAttribute("value"));
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void typeMaxLengthAndBlanks() throws Exception {
+        final String html
+            = "<html><body>\n"
+            + "<form>\n"
+            + "<input type='text' id='text1' maxlength=' 2 '/>\n"
+            + "<input type='password' id='password1' maxlength='    4  '/>\n"
+            + "</form></body></html>";
+
+        final WebDriver webDriver = loadPage2(html);
+        final WebElement textField = webDriver.findElement(By.id("text1"));
+        textField.sendKeys("123456789");
+        assertEquals("12", textField.getAttribute("value"));
+        textField.sendKeys("\b7");
+        assertEquals("17", textField.getAttribute("value"));
+
+        final WebElement passwordField = webDriver.findElement(By.id("password1"));
+        passwordField.sendKeys("123456789");
+        assertEquals("1234", passwordField.getAttribute("value"));
+        passwordField.sendKeys("\b7");
+        assertEquals("1237", passwordField.getAttribute("value"));
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = {"text text", "password password", "hidden hidden",
+            "checkbox checkbox", "radio radio", "file file", "checkbox checkbox" },
+            CHROME = {"text TeXt", "password PassWord", "hidden Hidden",
+                    "checkbox CheckBox", "radio rAdiO", "file FILE", "checkbox CHECKBOX" },
+            FF = {"text TeXt", "password PassWord", "hidden Hidden",
+            "checkbox CheckBox", "radio rAdiO", "file FILE", "checkbox CHECKBOX" },
+            IE11 = {"text TeXt", "password PassWord", "hidden Hidden",
+            "checkbox CheckBox", "radio rAdiO", "file FILE", "checkbox checkbox" })
+    @NotYetImplemented({ FF, IE11, CHROME })
     public void typeCase() throws Exception {
         final String html
             = "<html><head><title>foo</title><script>\n"
@@ -746,7 +818,7 @@ public class HTMLInputElementTest extends WebTestCase {
             + "</form>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -765,44 +837,76 @@ public class HTMLInputElementTest extends WebTestCase {
             + "<input id='myInput' value='some test' readonly='false'>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = {"", "hello", "left", "hi", "right" },
-            IE = {"", "error", "", "", "error", "", "" })
-    public void align() throws Exception {
-        final String html =
-            "<html>\n"
-            + "  <head>\n"
-            + "    <script>\n"
-            + "      function test() {\n"
-            + "        var i = document.getElementById('i');\n"
-            + "        alert(i.align);\n"
-            + "        set(i, 'hello');\n"
-            + "        alert(i.align);\n"
-            + "        set(i, 'left');\n"
-            + "        alert(i.align);\n"
-            + "        set(i, 'hi');\n"
-            + "        alert(i.align);\n"
-            + "        set(i, 'right');\n"
-            + "        alert(i.align);\n"
-            + "      }\n"
-            + "      function set(e, value) {\n"
-            + "        try {\n"
-            + "          e.align = value;\n"
-            + "        } catch (e) {\n"
-            + "          alert('error');\n"
-            + "        }\n"
-            + "      }\n"
-            + "    </script>\n"
-            + "  </head>\n"
-            + "  <body onload='test()'><input type='text' id='i' /></body>\n"
-            + "</html>";
-        loadPageWithAlerts(html);
+    @Alerts(DEFAULT = { "left", "right", "bottom", "middle", "top", "wrong", "" },
+            IE = { "left", "right", "bottom", "middle", "top", "", "" },
+            IE11 = { "", "", "", "", "", "", "" })
+    @NotYetImplemented({ IE8, IE11 })
+    public void getAlign() throws Exception {
+        final String html
+            = "<html><body>\n"
+            + "  <form>\n"
+            + "    <input id='i1' align='left' />\n"
+            + "    <input id='i2' align='right' />\n"
+            + "    <input id='i3' align='bottom' />\n"
+            + "    <input id='i4' align='middle' />\n"
+            + "    <input id='i5' align='top' />\n"
+            + "    <input id='i6' align='wrong' />\n"
+            + "    <input id='i7' />\n"
+            + "  </form>\n"
+
+            + "<script>\n"
+            + "  for (i=1; i<=7; i++) {\n"
+            + "    alert(document.getElementById('i'+i).align);\n"
+            + "  };\n"
+            + "</script>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(DEFAULT = { "CenTer", "8", "foo", "left", "right", "bottom", "middle", "top" },
+            IE = { "center", "error", "center", "error", "center", "left", "right", "bottom", "middle", "top" },
+            IE11 = { "", "error", "", "error", "", "", "", "", "", "" })
+    @NotYetImplemented({ IE8, IE11 })
+    public void setAlign() throws Exception {
+        final String html
+            = "<html><body>\n"
+            + "  <form>\n"
+            + "    <input id='i1' type='text' align='left' value=''/>\n"
+            + "  </form>\n"
+
+            + "<script>\n"
+            + "  function setAlign(elem, value) {\n"
+            + "    try {\n"
+            + "      elem.align = value;\n"
+            + "    } catch (e) { alert('error'); }\n"
+            + "    alert(elem.align);\n"
+            + "  }\n"
+
+            + "  var elem = document.getElementById('i1');\n"
+            + "  setAlign(elem, 'CenTer');\n"
+
+            + "  setAlign(elem, '8');\n"
+            + "  setAlign(elem, 'foo');\n"
+
+            + "  setAlign(elem, 'left');\n"
+            + "  setAlign(elem, 'right');\n"
+            + "  setAlign(elem, 'bottom');\n"
+            + "  setAlign(elem, 'middle');\n"
+            + "  setAlign(elem, 'top');\n"
+            + "</script>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -812,24 +916,325 @@ public class HTMLInputElementTest extends WebTestCase {
     @Alerts({ "", "A", "a", "A", "a8", "8Afoo", "8", "@" })
     public void accessKey() throws Exception {
         final String html
-            = "<html><body><input id='a1'></input><input id='a2' accesskey='A'></input><script>\n"
-            + "var a1 = document.getElementById('a1'), a2 = document.getElementById('a2');\n"
-            + "alert(a1.accessKey);\n"
-            + "alert(a2.accessKey);\n"
-            + "a1.accessKey = 'a';\n"
-            + "a2.accessKey = 'A';\n"
-            + "alert(a1.accessKey);\n"
-            + "alert(a2.accessKey);\n"
-            + "a1.accessKey = 'a8';\n"
-            + "a2.accessKey = '8Afoo';\n"
-            + "alert(a1.accessKey);\n"
-            + "alert(a2.accessKey);\n"
-            + "a1.accessKey = '8';\n"
-            + "a2.accessKey = '@';\n"
-            + "alert(a1.accessKey);\n"
-            + "alert(a2.accessKey);\n"
+            = "<html><body>\n"
+            + "  <input id='a1'>\n"
+            + "  <input id='a2' accesskey='A'>\n"
+            + "  <script>\n"
+            + "    var a1 = document.getElementById('a1');\n"
+            + "    var a2 = document.getElementById('a2');\n"
+            + "    alert(a1.accessKey);\n"
+            + "    alert(a2.accessKey);\n"
+
+            + "    a1.accessKey = 'a';\n"
+            + "    alert(a1.accessKey);\n"
+
+            + "    a1.accessKey = 'A';\n"
+            + "    alert(a1.accessKey);\n"
+
+            + "    a1.accessKey = 'a8';\n"
+            + "    alert(a1.accessKey);\n"
+
+            + "    a1.accessKey = '8Afoo';\n"
+            + "    alert(a1.accessKey);\n"
+
+            + "    a1.accessKey = '8';\n"
+            + "    alert(a1.accessKey);\n"
+
+            + "    a1.accessKey = '@';\n"
+            + "    alert(a1.accessKey);\n"
             + "</script></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(DEFAULT = { "test", "4", "42", "2", "[object HTMLInputElement]", "25" },
+            IE8 = { "test", "4", "42", "2", "[object]", "8" })
+    public void getAttributeAndSetValue() throws Exception {
+        final String html =
+            "<html>\n"
+            + "  <head><title>foo</title>\n"
+            + "    <script>\n"
+            + "      function test() {\n"
+            + "        var t = document.getElementById('t');\n"
+            + "        t.value = 'test';\n"
+            + "        alert(t.value);\n"
+            + "        if (t.value != null)\n"
+            + "          alert(t.value.length);\n"
+
+            + "        t.value = 42;\n"
+            + "        alert(t.value);\n"
+            + "        if (t.value != null)\n"
+            + "          alert(t.value.length);\n"
+
+            + "        t.value = document.getElementById('t');\n"
+            + "        alert(t.value);\n"
+            + "        if (t.value != null)\n"
+            + "          alert(t.value.length);\n"
+            + "      }\n"
+            + "    </script>\n"
+            + "  </head>\n"
+            + "  <body onload='test()'>\n"
+            + "    <input id='t'>\n"
+            + "  </body>\n"
+            + "</html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(DEFAULT = { "null", "4", "", "0" },
+            IE8 = { "null", "4", "null", "4" })
+    @NotYetImplemented({ FF, IE11, CHROME })
+    public void getAttributeAndSetValueNull() throws Exception {
+        final String html =
+            "<html>\n"
+            + "  <head><title>foo</title>\n"
+            + "    <script>\n"
+            + "      function test() {\n"
+            + "        var t = document.getElementById('t');\n"
+            + "        t.value = 'null';\n"
+            + "        alert(t.value);\n"
+            + "        if (t.value != null)\n"
+            + "          alert(t.value.length);\n"
+
+            + "        t.value = null;\n"
+            + "        alert(t.value);\n"
+            + "        if (t.value != null)\n"
+            + "          alert(t.value.length);\n"
+            + "      }\n"
+            + "    </script>\n"
+            + "  </head>\n"
+            + "  <body onload='test()'>\n"
+            + "    <input id='t'>\n"
+            + "  </body>\n"
+            + "</html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "0", "0", "2", "7" },
+            IE8 = { "undefined", "undefined", "input.setSelectionRange not available" })
+    public void selectionRange() throws Exception {
+        final String html
+            = "<html><head><title>foo</title><script>\n"
+            + "function test() {\n"
+            + "    var input = document.getElementById('myInput');\n"
+            + "    alert(input.selectionStart);"
+            + "    alert(input.selectionEnd);"
+
+            + "    if (!input.setSelectionRange) { alert('input.setSelectionRange not available'); return };\n"
+            + "    input.setSelectionRange(2, 7);\n"
+            + "    alert(input.selectionStart);"
+            + "    alert(input.selectionEnd);"
+            + "}\n"
+            + "</script></head>\n"
+            + "<body onload='test()'>\n"
+            + "  <input id='myInput' value='some test'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void submitNonRequired() throws Exception {
+        final String html
+            = "<html><head><script>\n"
+            + "function submitMe() {\n"
+            + "    alert('onsubmit');\n"
+            + "}\n"
+            + "</script></head>\n"
+            + "<body>\n"
+            + "  <form onsubmit='submitMe()'>\n"
+            + "    <input id='myInput' name='myName' value=''>\n"
+            + "    <input id='mySubmit' type='submit'>\n"
+            + "  </form>\n"
+            + "</body></html>";
+
+        final WebDriver driver = loadPage2(html);
+        driver.findElement(By.id("mySubmit")).click();
+        assertTrue(driver.getCurrentUrl().contains("myName"));
+        // because we have a new page
+        assertTrue(getCollectedAlerts(driver).isEmpty());
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @NotYetImplemented
+    public void submitRequired() throws Exception {
+        final String html
+            = "<html><head><script>\n"
+            + "function submitMe() {\n"
+            + "    alert('onsubmit');\n"
+            + "}\n"
+            + "</script></head>\n"
+            + "<body>\n"
+            + "  <form onsubmit='submitMe()'>\n"
+            + "    <input id='myInput' name='myName' value='' required>\n"
+            + "    <input id='mySubmit' type='submit'>\n"
+            + "  </form>\n"
+            + "</body></html>";
+
+        final WebDriver driver = loadPage2(html);
+        driver.findElement(By.id("mySubmit")).click();
+        assertFalse(driver.getCurrentUrl().contains("myName"));
+        assertTrue(getCollectedAlerts(driver).isEmpty());
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("false, true")
+    @NotYetImplemented
+    public void checkValidity() throws Exception {
+        final String html
+            = "<html><head><script>\n"
+            + "function checkStatus() {\n"
+            + "    alert(document.getElementById('myInput').checkValidity());\n"
+            + "}\n"
+            + "</script></head>\n"
+            + "<body>\n"
+            + "  <form>\n"
+            + "    <input id='myInput' name='myName' required>\n"
+            + "    <input id='mySubmit' type='submit'>\n"
+            + "  </form>\n"
+            + "  <button id='myButton' onclick='checkStatus()'>Check Status</button>\n"
+            + "</body></html>";
+
+        final WebDriver driver = loadPage2(html);
+        driver.findElement(By.id("myButton")).click();
+        driver.findElement(By.id("myInput")).sendKeys("something");
+        driver.findElement(By.id("myButton")).click();
+        verifyAlerts(driver, getExpectedAlerts());
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void maxLengthJavaScript() throws Exception {
+        final String html
+            = "<html><head><script>\n"
+            + "function updateValue() {\n"
+            + "    document.getElementById('myInput').value = 'abcdefg';\n"
+            + "}\n"
+            + "</script></head>\n"
+            + "<body>\n"
+            + "  <form>\n"
+            + "    <input id='myInput' name='myName' maxlength='2'>\n"
+            + "    <input id='mySubmit' type='submit'>\n"
+            + "  </form>\n"
+            + "  <button id='myButton' onclick='updateValue()'>Update Value</button>\n"
+            + "</body></html>";
+
+        final WebDriver driver = loadPage2(html);
+        driver.findElement(By.id("myButton")).click();
+        assertEquals("abcdefg", driver.findElement(By.id("myInput")).getAttribute("value"));
+        driver.findElement(By.id("mySubmit")).click();
+        assertEquals(URL_FIRST + "?myName=abcdefg", driver.getCurrentUrl());
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void maxLength2() throws Exception {
+        final String html
+            = "<html><head><script>\n"
+            + "</script></head>\n"
+            + "<body>\n"
+            + "  <form>\n"
+            + "    <input id='myInput' name='myName' maxlength='2'>\n"
+            + "    <input id='mySubmit' type='submit'>\n"
+            + "  </form>\n"
+            + "</body></html>";
+
+        final WebDriver driver = loadPage2(html);
+        driver.findElement(By.id("myInput")).sendKeys("abcdefg");
+        assertEquals("ab", driver.findElement(By.id("myInput")).getAttribute("value"));
+        driver.findElement(By.id("mySubmit")).click();
+        assertEquals(URL_FIRST + "?myName=ab", driver.getCurrentUrl());
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "30", "undefined", "30", "30",
+                "40", "50", "string", "string" },
+            CHROME = {"30", "undefined", "30", "30", "40", "50", "string", "string" },
+            IE8 = { "30", "undefined", "30", "30", "undefined", "40", "string", "string" })
+    @NotYetImplemented(IE8)
+    public void min() throws Exception {
+        final String html
+            = "<html><head><title>First</title><script>\n"
+            + "function doTest() {\n"
+            + "    var input = document.getElementById('text1');\n"
+            + "    alert(input.min);\n"
+            + "    alert(input.Min);\n"
+            + "    alert(input.getAttribute('min'));\n"
+            + "    alert(input.getAttribute('Min'));\n"
+            + "    input.setAttribute('MiN', 40);\n"
+            + "    alert(input.min);\n"
+            + "    input.min = 50;\n"
+            + "    alert(input.getAttribute('min'));\n"
+            + "    alert(typeof input.getAttribute('min'));\n"
+            + "    alert(typeof input.min);\n"
+            + "}\n</script></head>\n"
+            + "<body onload='doTest()'>\n"
+            + "<form name='myForm' action='foo'>\n"
+            + "<input type='text' id='text1' min='30'/>\n"
+            + "</form></body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "30", "undefined", "30", "30",
+                "40", "50", "string", "string" },
+            CHROME = {"30", "undefined", "30", "30", "40", "50", "string", "string" },
+            IE8 = { "30", "undefined", "30", "30", "undefined", "40", "string", "string" })
+    @NotYetImplemented(IE8)
+    public void max() throws Exception {
+        final String html
+            = "<html><head><title>First</title><script>\n"
+            + "function doTest() {\n"
+            + "    var input = document.getElementById('text1');\n"
+            + "    alert(input.max);\n"
+            + "    alert(input.Max);\n"
+            + "    alert(input.getAttribute('max'));\n"
+            + "    alert(input.getAttribute('Max'));\n"
+            + "    input.setAttribute('MaX', 40);\n"
+            + "    alert(input.max);\n"
+            + "    input.max = 50;\n"
+            + "    alert(input.getAttribute('max'));\n"
+            + "    alert(typeof input.getAttribute('max'));\n"
+            + "    alert(typeof input.max);\n"
+            + "}\n</script></head>\n"
+            + "<body onload='doTest()'>\n"
+            + "<form name='myForm' action='foo'>\n"
+            + "<input type='text' id='text1' max='30'/>\n"
+            + "</form></body></html>";
+
+        loadPageWithAlerts2(html);
     }
 
 }

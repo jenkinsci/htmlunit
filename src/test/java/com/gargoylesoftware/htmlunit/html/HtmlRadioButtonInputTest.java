@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,39 +17,45 @@ package com.gargoylesoftware.htmlunit.html;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 
 /**
  * Tests for {@link HtmlRadioButtonInput}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 9868 $
  * @author Mike Bresnahan
  * @author Marc Guillemot
  * @author Bruce Faulkner
  * @author Ahmed Ashour
  */
-public class HtmlRadioButtonInputTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public class HtmlRadioButtonInputTest extends SimpleWebTestCase {
 
     /**
      * Verifies that a asText() returns "checked" or "unchecked" according to the state of the radio.
      * @throws Exception if the test fails
      */
     @Test
-    public void test_asTextWhenNotChecked() throws Exception {
-        final String htmlContent
-            = "<html><head><title>foo</title></head><body>\n"
+    public void asTextWhenNotChecked() throws Exception {
+        final String html
+            = "<html><head></head><body>\n"
             + "<form id='form1'>\n"
             + "    <input type='radio' name='radio' id='radio'>Check me</input>\n"
             + "</form></body></html>";
 
-        final HtmlPage page = loadPage(htmlContent);
+        final HtmlPage page = loadPage(html);
 
         final HtmlRadioButtonInput radio = page.getHtmlElementById("radio");
         assertEquals("unchecked", radio.asText());
+        assertEquals("uncheckedCheck me", page.asText());
         radio.setChecked(true);
         assertEquals("checked", radio.asText());
     }
@@ -58,16 +64,17 @@ public class HtmlRadioButtonInputTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testOnchangeHandlerInvoked() throws Exception {
-        final String htmlContent
+    @Alerts(DEFAULT = "newtrue",
+            IE8 = "on")
+    public void onchangeHandlerInvoked() throws Exception {
+        final String html
             = "<html><head><title>foo</title></head><body>\n"
             + "<form id='form1'>\n"
             + "    <input type='radio' name='radio' id='radio'"
             + "onchange='this.value=\"new\" + this.checked'>Check me</input>\n"
             + "</form></body></html>";
 
-        final HtmlPage page = loadPage(htmlContent);
-
+        final HtmlPage page = loadPage(html);
         final HtmlRadioButtonInput radio = page.getHtmlElementById("radio");
 
         assertFalse(radio.isChecked());
@@ -75,24 +82,22 @@ public class HtmlRadioButtonInputTest extends WebTestCase {
         radio.setChecked(true);
 
         assertTrue(radio.isChecked());
-
-        assertEquals("newtrue", radio.getValueAttribute());
+        assertEquals(getExpectedAlerts()[0], radio.getValueAttribute());
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    public void testOnchangeHandlerNotInvokedIfNotChanged() throws Exception {
-        final String htmlContent
+    public void onchangeHandlerNotInvokedIfNotChanged() throws Exception {
+        final String html
             = "<html><head><title>foo</title></head><body>\n"
             + "<form id='form1'>\n"
             + "    <input type='radio' name='radio' id='radio'"
             + "onchange='this.value=\"new\" + this.checked'>Check me</input>\n"
             + "</form></body></html>";
 
-        final HtmlPage page = loadPage(htmlContent);
-
+        final HtmlPage page = loadPage(html);
         final HtmlRadioButtonInput radio = page.getHtmlElementById("radio");
 
         assertFalse(radio.isChecked());
@@ -108,8 +113,9 @@ public class HtmlRadioButtonInputTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testUpdateStateFirstForOnclickHandler() throws Exception {
-        final String htmlContent
+    @Alerts({ "oneItem.checked: false twoItems.checked: true", "oneItem.checked: true twoItems.checked: false" })
+    public void updateStateFirstForOnclickHandler() throws Exception {
+        final String html
             = "<html><head><title>foo</title></head><body>\n"
             + "<script type='text/javascript'>\n"
             + "    function itemOnClickHandler() {\n"
@@ -127,8 +133,8 @@ public class HtmlRadioButtonInputTest extends WebTestCase {
             + "<label for='twoItems'>2</label>\n"
             + "</form></body></html>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(htmlContent, collectedAlerts);
+        final List<String> collectedAlerts = new ArrayList<>();
+        final HtmlPage page = loadPage(html, collectedAlerts);
 
         final HtmlRadioButtonInput oneItem = page.getHtmlElementById("oneItem");
         final HtmlRadioButtonInput twoItems = page.getHtmlElementById("twoItems");
@@ -146,78 +152,45 @@ public class HtmlRadioButtonInputTest extends WebTestCase {
         assertTrue(oneItem.isChecked());
         assertFalse(twoItems.isChecked());
 
-        final String[] expectedAlerts = {
-            "oneItem.checked: false twoItems.checked: true",
-            "oneItem.checked: true twoItems.checked: false"};
-        assertEquals(expectedAlerts, collectedAlerts);
+        assertEquals(getExpectedAlerts(), collectedAlerts);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    public void testSetChecked() throws Exception {
-        final String firstContent
+    @Alerts(DEFAULT = "Second",
+            IE8 = "First")
+    public void setChecked() throws Exception {
+        final String firstHtml
             = "<html><head><title>First</title></head><body>\n"
             + "<form>\n"
             + "<input id='myRadio' type='radio' onchange=\"window.location.href='" + URL_SECOND + "'\">\n"
             + "</form>\n"
             + "</body></html>";
-        final String secondContent
+        final String secondHtml
             = "<html><head><title>Second</title></head><body></body></html>";
 
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
-        webConnection.setResponse(URL_FIRST, firstContent);
-        webConnection.setResponse(URL_SECOND, secondContent);
+        webConnection.setResponse(URL_FIRST, firstHtml);
+        webConnection.setResponse(URL_SECOND, secondHtml);
         client.setWebConnection(webConnection);
 
         final HtmlPage page = client.getPage(URL_FIRST);
         final HtmlRadioButtonInput radio = page.getHtmlElementById("myRadio");
 
         final HtmlPage secondPage = (HtmlPage) radio.setChecked(true);
-
-        assertEquals("Second", secondPage.getTitleText());
-    }
-
-    /**
-     * Test <code>input.checked</code> if the radio <code>&lt;input&gt;</code> do not have distinct 'value'.
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testRadioInputChecked() throws Exception {
-        final String content
-            = "<html><head>\n"
-            + "</head>\n"
-            + "<body>\n"
-            + "<form name='myForm'>\n"
-            + "  <input type='radio' name='myRadio'>\n"
-            + "  <input type='radio' name='myRadio'>\n"
-            + "</form>\n"
-            + "<script>\n"
-            + "  var r1 = document.forms.myForm.myRadio[0];\n"
-            + "  var r2 = document.forms.myForm.myRadio[1];\n"
-            + "  alert(r1.checked + ',' + r2.checked);\n"
-            + "  r1.checked = true;\n"
-            + "  alert(r1.checked + ',' + r2.checked);\n"
-            + "  r2.checked = true;\n"
-            + "  alert(r1.checked + ',' + r2.checked);\n"
-            + "</script>\n"
-            + "</body></html>";
-
-        final String[] expectedAlerts = {"false,false", "true,false", "false,true"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(content, collectedAlerts);
-        assertEquals(expectedAlerts, collectedAlerts);
+        assertEquals(getExpectedAlerts()[0], secondPage.getTitleText());
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    public void testSetCheckedOutsideForm() throws Exception {
-        final String content
+    public void setCheckedOutsideForm() throws Exception {
+        final String html
             = "<html><head>\n"
             + "</head>\n"
             + "<body>\n"
@@ -229,8 +202,8 @@ public class HtmlRadioButtonInputTest extends WebTestCase {
             + "</form>\n"
             + "</body></html>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(content, collectedAlerts);
+        final List<String> collectedAlerts = new ArrayList<>();
+        final HtmlPage page = loadPage(html, collectedAlerts);
 
         final HtmlRadioButtonInput radio1 = page.getHtmlElementById("radio1");
         final HtmlRadioButtonInput radio2 = page.getHtmlElementById("radio2");
@@ -271,4 +244,44 @@ public class HtmlRadioButtonInputTest extends WebTestCase {
         assertTrue(radio4.isChecked());
     }
 
+    /**
+     * Regression test for bug 2815614.
+     * Clicking an element should force the enclosing window to become the current one.
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void clickResponse() throws Exception {
+        final String html
+            = "<html><head>\n"
+            + "</head>\n"
+            + "<body>\n"
+            + "<form name='myForm'>\n"
+            + "  <input type='radio' name='myRadio' id='radio1' value=v1>\n"
+            + "  <input type='radio' name='myRadio' value=v2>\n"
+            + "  <button onclick='openPopup();' type='button' id='clickMe'>click me</button>\n"
+            + "</form>\n"
+            + "<script>\n"
+            + "function doSomething() {\n"
+            + "  // nothing\n"
+            + "}\n"
+            + "function openPopup() {\n"
+            + "  window.open('popup.html');\n"
+            + "}\n"
+            + "</script>\n"
+            + "</body></html>";
+
+        final HtmlPage page = loadPage(html);
+        final WebClient webClient = page.getWebClient();
+        Assert.assertSame(page.getEnclosingWindow(), webClient.getCurrentWindow());
+
+        // open popup
+        final HtmlPage page2 = page.getHtmlElementById("clickMe").click();
+        Assert.assertNotSame(page, page2);
+        Assert.assertSame(page2.getEnclosingWindow(), webClient.getCurrentWindow());
+
+        // click radio buttons in the original page
+        final HtmlPage page3 = page.getHtmlElementById("radio1").click();
+        Assert.assertSame(page, page3);
+        Assert.assertSame(page3.getEnclosingWindow(), webClient.getCurrentWindow());
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import net.sourceforge.htmlunit.corejs.javascript.debug.Debugger;
  * An adapter class for debugger implementations. The methods in this class are empty. This class
  * exists as a convenience for creating debugger objects.
  *
- * @version $Revision: 4409 $
+ * @version $Revision: 9837 $
  * @author Daniel Gredler
  */
 public class DebuggerAdapter implements Debugger {

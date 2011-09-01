@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,27 +14,32 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Tests for {@link HtmlInsertedText}, and {@link HtmlDeletedText}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 9842 $
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
-public class HtmlModificationTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public class HtmlModificationTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    public void testSimpleScriptable() throws Exception {
+    @Alerts(DEFAULT = { "[object HTMLModElement]", "[object HTMLModElement]" },
+            IE8 = { "[object]", "[object]" })
+    public void simpleScriptable() throws Exception {
         final String html = "<html><head>\n"
             + "<script>\n"
             + "  function test() {\n"
@@ -48,11 +53,12 @@ public class HtmlModificationTest extends WebTestCase {
 
         //both values should be HTMLModElement
         //see http://forums.mozillazine.org/viewtopic.php?t=623715
-        final String[] expectedAlerts = {"[object HTMLInsElement]", "[object HTMLDelElement]"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(BrowserVersion.FIREFOX_2, html, collectedAlerts);
-        assertTrue(HtmlInsertedText.class.isInstance(page.getHtmlElementById("myId1")));
-        assertTrue(HtmlDeletedText.class.isInstance(page.getHtmlElementById("myId2")));
-        assertEquals(expectedAlerts, collectedAlerts);
+
+        final WebDriver driver = loadPageWithAlerts2(html);
+        if (driver instanceof HtmlUnitDriver) {
+            final HtmlPage page = (HtmlPage) getWebWindowOf((HtmlUnitDriver) driver).getEnclosedPage();
+            assertTrue(HtmlInsertedText.class.isInstance(page.getHtmlElementById("myId1")));
+            assertTrue(HtmlDeletedText.class.isInstance(page.getHtmlElementById("myId2")));
+        }
     }
 }

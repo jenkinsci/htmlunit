@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,21 +14,31 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+
+import com.gargoylesoftware.htmlunit.html.HtmlDirectory;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
+
 /**
  * The JavaScript object "HTMLDirectoryElement".
  *
- * @version $Revision: 4774 $
+ * @version $Revision: 9937 $
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Frank Danek
  */
+@JsxClass(domClass = HtmlDirectory.class, browsers = { @WebBrowser(FF),
+            @WebBrowser(value = IE, minVersion = 11), @WebBrowser(CHROME) })
 public class HTMLDirectoryElement extends HTMLListElement {
-
-    private static final long serialVersionUID = 4454249445181775636L;
 
     /**
      * Creates an instance.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
     public HTMLDirectoryElement() {
-        // Empty.
     }
-
 }

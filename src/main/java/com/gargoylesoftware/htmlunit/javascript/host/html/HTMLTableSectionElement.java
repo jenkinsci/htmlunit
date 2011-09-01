@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,21 +14,48 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
-import com.gargoylesoftware.htmlunit.javascript.host.RowContainer;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_INNER_HTML_READONLY_FOR_SOME_TAGS;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_INNER_TEXT_READONLY_FOR_TABLE;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_TABLE_VALIGN_SUPPORTS_IE_VALUES;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+import net.sourceforge.htmlunit.corejs.javascript.Context;
+
+import com.gargoylesoftware.htmlunit.html.HtmlTableBody;
+import com.gargoylesoftware.htmlunit.html.HtmlTableFooter;
+import com.gargoylesoftware.htmlunit.html.HtmlTableHeader;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
 
 /**
  * A JavaScript object representing "HTMLTableSectionElement", it is used by
- * {@link com.gargoylesoftware.htmlunit.html.HtmlTableBody},
- * {@link com.gargoylesoftware.htmlunit.html.HtmlTableHeader}, and
- * {@link com.gargoylesoftware.htmlunit.html.HtmlTableFooter}.
+ * {@link HtmlTableBody}, {@link HtmlTableHeader}, and {@link HtmlTableFooter}.
  *
- * @version $Revision: 4583 $
+ * @version $Revision: 10429 $
  * @author Daniel Gredler
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
+@JsxClasses({
+        @JsxClass(domClass = HtmlTableBody.class,
+                browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(domClass = HtmlTableBody.class,
+            isJSObject = false, browsers = @WebBrowser(value = IE, maxVersion = 8)),
+        @JsxClass(domClass = HtmlTableHeader.class,
+            browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(domClass = HtmlTableHeader.class,
+            isJSObject = false, browsers = @WebBrowser(value = IE, maxVersion = 8)),
+            @JsxClass(domClass = HtmlTableFooter.class,
+            browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(domClass = HtmlTableFooter.class,
+            isJSObject = false, browsers = @WebBrowser(value = IE, maxVersion = 8))
+    })
 public class HTMLTableSectionElement extends RowContainer {
-
-    private static final long serialVersionUID = -3564660687852337070L;
 
     /** The valid "vAlign" values for this element, when emulating IE. */
     private static final String[] VALIGN_VALID_VALUES_IE = {"top", "bottom", "middle", "baseline"};
@@ -39,15 +66,16 @@ public class HTMLTableSectionElement extends RowContainer {
     /**
      * Creates an instance.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
     public HTMLTableSectionElement() {
-        // Empty.
     }
 
     /**
      * Returns the value of the "vAlign" property.
      * @return the value of the "vAlign" property
      */
-    public String jsxGet_vAlign() {
+    @JsxGetter
+    public String getVAlign() {
         return getVAlign(getValidVAlignValues(), VALIGN_DEFAULT_VALUE);
     }
 
@@ -55,7 +83,8 @@ public class HTMLTableSectionElement extends RowContainer {
      * Sets the value of the "vAlign" property.
      * @param vAlign the value of the "vAlign" property
      */
-    public void jsxSet_vAlign(final Object vAlign) {
+    @JsxSetter
+    public void setVAlign(final Object vAlign) {
         setVAlign(vAlign, getValidVAlignValues());
     }
 
@@ -65,7 +94,7 @@ public class HTMLTableSectionElement extends RowContainer {
      */
     private String[] getValidVAlignValues() {
         String[] valid;
-        if (getBrowserVersion().isIE()) {
+        if (getBrowserVersion().hasFeature(JS_TABLE_VALIGN_SUPPORTS_IE_VALUES)) {
             valid = VALIGN_VALID_VALUES_IE;
         }
         else {
@@ -78,32 +107,97 @@ public class HTMLTableSectionElement extends RowContainer {
      * Returns the value of the "ch" property.
      * @return the value of the "ch" property
      */
-    public String jsxGet_ch() {
-        return getCh();
+    @Override
+    @JsxGetter
+    public String getCh() {
+        return super.getCh();
     }
 
     /**
      * Sets the value of the "ch" property.
      * @param ch the value of the "ch" property
      */
-    public void jsxSet_ch(final String ch) {
-        setCh(ch);
+    @Override
+    @JsxSetter
+    public void setCh(final String ch) {
+        super.setCh(ch);
     }
 
     /**
      * Returns the value of the "chOff" property.
      * @return the value of the "chOff" property
      */
-    public String jsxGet_chOff() {
-        return getChOff();
+    @Override
+    @JsxGetter
+    public String getChOff() {
+        return super.getChOff();
     }
 
     /**
      * Sets the value of the "chOff" property.
      * @param chOff the value of the "chOff" property
      */
-    public void jsxSet_chOff(final String chOff) {
-        setChOff(chOff);
+    @Override
+    @JsxSetter
+    public void setChOff(final String chOff) {
+        super.setChOff(chOff);
     }
 
+    /**
+     * Returns the value of the <tt>bgColor</tt> attribute.
+     * @return the value of the <tt>bgColor</tt> attribute
+     * @see <a href="http://msdn.microsoft.com/en-us/library/ms533505.aspx">MSDN Documentation</a>
+     */
+    @JsxGetter(@WebBrowser(IE))
+    public String getBgColor() {
+        return getDomNodeOrDie().getAttribute("bgColor");
+    }
+
+    /**
+     * Sets the value of the <tt>bgColor</tt> attribute.
+     * @param bgColor the value of the <tt>bgColor</tt> attribute
+     * @see <a href="http://msdn.microsoft.com/en-us/library/ms533505.aspx">MSDN Documentation</a>
+     */
+    @JsxSetter(@WebBrowser(IE))
+    public void setBgColor(final String bgColor) {
+        setColorAttribute("bgColor", bgColor);
+    }
+
+    /**
+     * Overwritten to throw an exception in IE8/9.
+     * @param value the new value for replacing this node
+     */
+    @JsxSetter
+    @Override
+    public void setOuterHTML(final Object value) {
+        throw Context.reportRuntimeError("outerHTML is read-only for tag '"
+                            + getDomNodeOrDie().getNodeName() + "'");
+    }
+
+    /**
+     * Overwritten to throw an exception in IE8/9.
+     * @param value the new value for the contents of this node
+     */
+    @JsxSetter
+    @Override
+    public void setInnerHTML(final Object value) {
+        if (getBrowserVersion().hasFeature(JS_INNER_HTML_READONLY_FOR_SOME_TAGS)) {
+            throw Context.reportRuntimeError("innerHTML is read-only for tag '"
+                            + getDomNodeOrDie().getNodeName() + "'");
+        }
+        super.setInnerHTML(value);
+    }
+
+    /**
+     * Overwritten to throw an exception because this is readonly.
+     * @param value the new value for the contents of this node
+     */
+    @Override
+    protected void setInnerTextImpl(final String value) {
+        if (getBrowserVersion().hasFeature(JS_INNER_TEXT_READONLY_FOR_TABLE)) {
+            throw Context.reportRuntimeError("innerText is read-only for tag '"
+                    + getDomNodeOrDie().getNodeName() + "'");
+        }
+        super.setInnerTextImpl(value);
+    }
 }

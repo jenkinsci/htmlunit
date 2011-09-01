@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.CSS_DISPLAY_BLOCK2;
+
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -21,23 +23,22 @@ import java.util.Map;
 
 import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebRequestSettings;
+import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebResponse;
 
 /**
  * Wrapper for the HTML element "link". <b>Note:</b> This is not a clickable link,
  * that one is an HtmlAnchor
  *
- * @version $Revision: 4873 $
+ * @version $Revision: 10214 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
  * @author Marc Guillemot
+ * @author Frank Danek
  */
-public class HtmlLink extends ClickableElement {
-
-    private static final long serialVersionUID = 323745155296983364L;
+public class HtmlLink extends HtmlElement {
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "link";
@@ -46,14 +47,13 @@ public class HtmlLink extends ClickableElement {
     /**
      * Creates an instance of HtmlLink
      *
-     * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the HtmlPage that contains this element
      * @param attributes the initial attributes
      */
-    HtmlLink(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    HtmlLink(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
+        super(qualifiedName, page, attributes);
     }
 
     /**
@@ -165,21 +165,32 @@ public class HtmlLink extends ClickableElement {
     public WebResponse getWebResponse(final boolean downloadIfNeeded) throws IOException {
         if (downloadIfNeeded && cachedWebResponse_ == null) {
             final WebClient webclient = getPage().getWebClient();
-            cachedWebResponse_ = webclient.loadWebResponse(getWebRequestSettings());
+            cachedWebResponse_ = webclient.loadWebResponse(getWebRequest());
         }
         return cachedWebResponse_;
     }
 
     /**
-     * Returns the request settings which will allow us to retrieve the content referenced by the "href" attribute.
-     * @return the request settings which will allow us to retrieve the content referenced by the "href" attribute
+     * Returns the request which will allow us to retrieve the content referenced by the "href" attribute.
+     * @return the request which will allow us to retrieve the content referenced by the "href" attribute
      * @throws MalformedURLException in case of problem resolving the URL
      */
-    public WebRequestSettings getWebRequestSettings() throws MalformedURLException {
+    public WebRequest getWebRequest() throws MalformedURLException {
         final HtmlPage page = (HtmlPage) getPage();
         final URL url = page.getFullyQualifiedUrl(getHrefAttribute());
-        final WebRequestSettings request = new WebRequestSettings(url);
-        request.setAdditionalHeader("Referer", page.getWebResponse().getRequestSettings().getUrl().toExternalForm());
+        final WebRequest request = new WebRequest(url);
+        request.setAdditionalHeader("Referer", page.getUrl().toExternalForm());
         return request;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public DisplayStyle getDefaultStyleDisplay() {
+        if (hasFeature(CSS_DISPLAY_BLOCK2)) {
+            return DisplayStyle.NONE;
+        }
+        return DisplayStyle.INLINE;
     }
 }

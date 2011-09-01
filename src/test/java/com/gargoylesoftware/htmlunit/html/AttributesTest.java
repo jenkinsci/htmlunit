@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,18 @@ package com.gargoylesoftware.htmlunit.html;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.MockWebConnection;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
+import com.gargoylesoftware.htmlunit.WebClient;
 
 /**
  * <p>Tests for all the generated attribute accessors. This test case will
@@ -33,20 +38,21 @@ import com.gargoylesoftware.htmlunit.WebTestCase;
  * <p>With the new custom DOM, this test has somewhat lost its significance.
  * We simply set and get the attributes and compare the results.</p>
  *
- * @version $Revision: 4060 $
+ * @version $Revision: 10591 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Christian Sell
  * @author Marc Guillemot
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Frank Danek
  */
 public class AttributesTest extends TestCase {
 
-    private final Class< ? > classUnderTest_;
+    private final Class<?> classUnderTest_;
     private final Method method_;
-    private final HtmlPage page_;
     private final String attributeName_;
 
-    private static final List<String> EXCLUDED_METHODS = new ArrayList<String>();
+    private static final List<String> EXCLUDED_METHODS = new ArrayList<>();
     static {
         EXCLUDED_METHODS.add("getHtmlElementsByAttribute");
         EXCLUDED_METHODS.add("getOneHtmlElementByAttribute");
@@ -61,39 +67,85 @@ public class AttributesTest extends TestCase {
      * @throws Exception if the tests cannot be created
      */
     public static Test suite() throws Exception {
-        final HtmlPage page = WebTestCase.loadPage("<html><head><title>foo</title></head><body></body></html>");
-
         final TestSuite suite = new TestSuite();
         final String[] classesToTest = {
-            "HtmlAddress", "HtmlAnchor", "HtmlApplet", "HtmlArea",
-            "HtmlBase", "HtmlBaseFont", "HtmlBidirectionalOverride",
-            "HtmlBlockQuote", "HtmlBody", "HtmlBreak", "HtmlButton",
-            "HtmlButtonInput", "HtmlCaption", "HtmlCenter",
-            "HtmlCheckBoxInput", "HtmlDefinitionDescription",
-            "HtmlDefinitionList", "HtmlDefinitionTerm",
-            "HtmlDeletedText", "HtmlDivision", /*"HtmlElement", */
-            "HtmlFieldSet", "HtmlFileInput", "HtmlFont", "HtmlForm",
-            "HtmlFrame", "HtmlFrameSet", "HtmlHead", "HtmlHeading1",
-            "HtmlHeading2", "HtmlHeading3", "HtmlHeading4", "HtmlHeading5",
-            "HtmlHeading6", "HtmlHiddenInput", "HtmlHorizontalRule",
-            "HtmlImage", "HtmlImageInput", "HtmlInlineFrame",
+            "HtmlAbbreviated", "HtmlAcronym",
+            "HtmlAnchor", "HtmlAddress", "HtmlApplet", "HtmlArea",
+            "HtmlArticle", "HtmlAside", "HtmlAudio",
+            "HtmlBackgroundSound", "HtmlBase", "HtmlBaseFont",
+            "HtmlBidirectionalIsolation",
+            "HtmlBidirectionalOverride", "HtmlBig", "HtmlBlink",
+            "HtmlBlockQuote", "HtmlBody", "HtmlBold",
+            "HtmlBreak", "HtmlButton", "HtmlCanvas", "HtmlCaption",
+            "HtmlCenter", "HtmlCitation", "HtmlCode", "HtmlCommand", "DomComment",
+            "HtmlContent", "HtmlData", "HtmlDataList",
+            "HtmlDefinition", "HtmlDefinitionDescription",
+            "HtmlDeletedText", "HtmlDetails", "HtmlDialog", "HtmlDirectory",
+            "HtmlDivision", "HtmlDefinitionList",
+            "HtmlDefinitionTerm", "HtmlEmbed",
+            "HtmlEmphasis",
+            "HtmlFieldSet", "HtmlFigureCaption", "HtmlFigure",
+            "HtmlFont", "HtmlForm", "HtmlFooter",
+            "HtmlFrame", "HtmlFrameSet",
+            "HtmlHead", "HtmlHeader",
+            "HtmlHeading1", "HtmlHeading2", "HtmlHeading3",
+            "HtmlHeading4", "HtmlHeading5", "HtmlHeading6",
+            "HtmlHorizontalRule", "HtmlHtml", "HtmlInlineFrame",
             "HtmlInlineQuotation",
-            "HtmlInsertedText", "HtmlIsIndex", "HtmlLabel",
-            "HtmlLegend", "HtmlLink", "HtmlListItem", "HtmlMap",
-            "HtmlMenu", "HtmlMeta", "HtmlNoFrames", "HtmlNoScript",
-            "HtmlObject", "HtmlOption", "HtmlOptionGroup", "HtmlOrderedList",
-            /*"HtmlPage",*/ "HtmlParagraph", "HtmlParameter", "HtmlPasswordInput",
-            "HtmlPreformattedText", "HtmlRadioButtonInput", "HtmlResetInput",
-            "HtmlScript", "HtmlSelect", "HtmlSpan", "HtmlStyle", "HtmlSubmitInput",
-            "HtmlTable", "HtmlTableBody", /*"HtmlTableCell",*/ "HtmlTableColumn",
-            "HtmlTableColumnGroup", "HtmlTableDataCell",
-            "HtmlTableFooter", "HtmlTableHeader", "HtmlTableHeaderCell",
-            "HtmlTableRow", "HtmlTextArea", "HtmlDirectory", "HtmlTextInput",
-            "HtmlTitle", "HtmlUnorderedList"
+            "HtmlImage", "HtmlImage", "HtmlInsertedText", "HtmlIsIndex",
+            "HtmlItalic", "HtmlKeyboard", "HtmlKeygen", "HtmlLabel", "HtmlLayer",
+            "HtmlLegend", "HtmlListing", "HtmlListItem",
+            "HtmlLink",
+            "HtmlMap", "HtmlMain", "HtmlMark", "HtmlMarquee",
+            "HtmlMenu", "HtmlMenuItem", "HtmlMeta", "HtmlMeter", "HtmlMultiColumn",
+            "HtmlNav", "HtmlNextId",
+            "HtmlNoBreak", "HtmlNoEmbed", "HtmlNoFrames", "HtmlNoLayer",
+            "HtmlNoScript", "HtmlObject", "HtmlOrderedList",
+            "HtmlOptionGroup", "HtmlOption", "HtmlOutput",
+            "HtmlParagraph",
+            "HtmlParameter", "HtmlPicture", "HtmlPlainText", "HtmlPreformattedText",
+            "HtmlProgress",
+            "HtmlRp", "HtmlRt", "HtmlRuby",
+            "HtmlS", "HtmlSample",
+            "HtmlScript", "HtmlSection", "HtmlSelect", "HtmlSmall",
+            "HtmlSource", "HtmlSpan",
+            "HtmlStrike", "HtmlStrong", "HtmlStyle",
+            "HtmlSubscript", "HtmlSummary", "HtmlSuperscript",
+            "HtmlTable", "HtmlTableColumn", "HtmlTableColumnGroup",
+            "HtmlTableBody", "HtmlTableDataCell", "HtmlTableHeaderCell",
+            "HtmlTableRow", "HtmlTextArea", "HtmlTableFooter",
+            "HtmlTableHeader", "HtmlTeletype", "HtmlTemplate", "HtmlTrack",
+            "HtmlTime", "HtmlTitle",
+            "HtmlUnderlined", "HtmlUnorderedList",
+            "HtmlVariable", "HtmlVideo",
+            "HtmlWordBreak", "HtmlExample"
         };
+
+        final HashSet<String> supportedTags = new HashSet<>(DefaultElementFactory.SUPPORTED_TAGS_);
+
         for (final String testClass : classesToTest) {
-            final Class< ? > clazz = Class.forName("com.gargoylesoftware.htmlunit.html." + testClass);
-            addTestsForClass(clazz, page, suite);
+            final Class<?> clazz = Class.forName("com.gargoylesoftware.htmlunit.html." + testClass);
+            addTestsForClass(clazz, suite);
+
+            String tag;
+            if (DomComment.class == clazz) {
+                tag = "comment";
+            }
+            else {
+                tag = (String) clazz.getField("TAG_NAME").get(null);
+            }
+            supportedTags.remove(tag);
+            try {
+                tag = (String) clazz.getField("TAG_NAME2").get(null);
+                supportedTags.remove(tag);
+            }
+            catch (final NoSuchFieldException e) {
+                // ignore
+            }
+        }
+
+        if (!supportedTags.isEmpty()) {
+            throw new RuntimeException("Missing tag class(es) " + supportedTags.toString());
         }
         return suite;
     }
@@ -106,12 +158,8 @@ public class AttributesTest extends TestCase {
      * @param suite the suite that all the tests will be placed inside
      * @throws Exception if the tests cannot be created
      */
-    private static void addTestsForClass(
-            final Class< ? > clazz,
-            final HtmlPage page,
-            final TestSuite suite)
-        throws
-            Exception {
+    private static void addTestsForClass(final Class<?> clazz, final TestSuite suite)
+        throws Exception {
 
         final Method[] methods = clazz.getMethods();
         for (final Method method : methods) {
@@ -120,29 +168,29 @@ public class AttributesTest extends TestCase {
                 && methodName.endsWith("Attribute")
                 && !EXCLUDED_METHODS.contains(methodName)) {
 
-                String attributeName = methodName.substring(3, methodName.length() - 9).toLowerCase();
-                if (attributeName.equals("xmllang")) {
+                String attributeName = methodName.substring(3, methodName.length() - 9).toLowerCase(Locale.ENGLISH);
+                if ("xmllang".equals(attributeName)) {
                     attributeName = "xml:lang";
                 }
-                else if (attributeName.equals("columns")) {
+                else if ("columns".equals(attributeName)) {
                     attributeName = "cols";
                 }
-                else if (attributeName.equals("columnspan")) {
+                else if ("columnspan".equals(attributeName)) {
                     attributeName = "colspan";
                 }
-                else if (attributeName.equals("textdirection")) {
+                else if ("textdirection".equals(attributeName)) {
                     attributeName = "dir";
                 }
-                else if (attributeName.equals("httpequiv")) {
+                else if ("httpequiv".equals(attributeName)) {
                     attributeName = "http-equiv";
                 }
-                else if (attributeName.equals("acceptcharset")) {
+                else if ("acceptcharset".equals(attributeName)) {
                     attributeName = "accept-charset";
                 }
-                else if (attributeName.equals("htmlfor")) {
+                else if ("htmlfor".equals(attributeName)) {
                     attributeName = "for";
                 }
-                suite.addTest(new AttributesTest(attributeName, clazz, method, page));
+                suite.addTest(new AttributesTest(attributeName, clazz, method));
             }
         }
     }
@@ -153,18 +201,15 @@ public class AttributesTest extends TestCase {
      * @param attributeName the name of the attribute to test
      * @param classUnderTest the class containing the attribute
      * @param method the "getter" method for the specified attribute
-     * @param page the page that will be passed into the constructor of the object to be tested
      */
     public AttributesTest(
             final String attributeName,
-            final Class< ? > classUnderTest,
-            final Method method,
-            final HtmlPage page) {
+            final Class<?> classUnderTest,
+            final Method method) {
 
         super(createTestName(classUnderTest, method));
         classUnderTest_ = classUnderTest;
         method_ = method;
-        page_ = page;
         attributeName_ = attributeName;
     }
 
@@ -174,7 +219,7 @@ public class AttributesTest extends TestCase {
      * @param method the getter method for the attribute
      * @return the test name
      */
-    private static String createTestName(final Class< ? > clazz, final Method method) {
+    private static String createTestName(final Class<?> clazz, final Method method) {
         String className = clazz.getName();
         final int index = className.lastIndexOf('.');
         className = className.substring(index + 1);
@@ -188,14 +233,21 @@ public class AttributesTest extends TestCase {
      */
     @Override
     protected void runTest() throws Exception {
-        final String value = new String("value");
+        try (final WebClient webClient = new WebClient(BrowserVersion.INTERNET_EXPLORER_11)) {
+            final MockWebConnection connection = new MockWebConnection();
+            connection.setDefaultResponse("<html><head><title>foo</title></head><body></body></html>");
+            webClient.setWebConnection(connection);
+            final HtmlPage page = webClient.getPage(SimpleWebTestCase.URL_FIRST);
 
-        final HtmlElement objectToTest = getNewInstanceForClassUnderTest();
-        objectToTest.setAttribute(attributeName_, value);
+            final String value = "value";
 
-        final Object noObjects[] = new Object[0];
-        final Object result = method_.invoke(objectToTest, noObjects);
-        assertSame(value, result);
+            final DomElement objectToTest = getNewInstanceForClassUnderTest(page);
+            objectToTest.setAttribute(attributeName_, value);
+
+            final Object[] noObjects = new Object[0];
+            final Object result = method_.invoke(objectToTest, noObjects);
+            assertSame(value, result);
+        }
     }
 
     /**
@@ -203,23 +255,23 @@ public class AttributesTest extends TestCase {
      * @return the new instance
      * @throws Exception if the new object cannot be created
      */
-    private HtmlElement getNewInstanceForClassUnderTest() throws Exception {
-        final HtmlElement newInstance;
+    private DomElement getNewInstanceForClassUnderTest(final HtmlPage page) throws Exception {
+        final DomElement newInstance;
         if (classUnderTest_ == HtmlTableRow.class) {
             newInstance = HTMLParser.getFactory(HtmlTableRow.TAG_NAME).createElement(
-                    page_, HtmlTableRow.TAG_NAME, null);
+                    page, HtmlTableRow.TAG_NAME, null);
         }
         else if (classUnderTest_ == HtmlTableHeaderCell.class) {
             newInstance = HTMLParser.getFactory(HtmlTableHeaderCell.TAG_NAME).createElement(
-                    page_, HtmlTableHeaderCell.TAG_NAME, null);
+                    page, HtmlTableHeaderCell.TAG_NAME, null);
         }
         else if (classUnderTest_ == HtmlTableDataCell.class) {
             newInstance = HTMLParser.getFactory(HtmlTableDataCell.TAG_NAME).createElement(
-                    page_, HtmlTableDataCell.TAG_NAME, null);
+                    page, HtmlTableDataCell.TAG_NAME, null);
         }
         else {
             final String tagName = (String) classUnderTest_.getField("TAG_NAME").get(null);
-            newInstance = new DefaultElementFactory().createElement(page_, tagName, null);
+            newInstance = HTMLParser.getFactory(tagName).createElement(page, tagName, null);
         }
 
         return newInstance;

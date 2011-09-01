@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,24 +14,25 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 
 /**
  * Tests for {@link HtmlOption}.
  *
- * @version $Revision: 4380 $
+ * @version $Revision: 9926 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Marc Guillemot
  * @author Ahmed Ashour
  * @author Daniel Gredler
+ * @author Ronald Brill
  */
-public class HtmlOptionTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public class HtmlOptionTest extends SimpleWebTestCase {
 
     /**
      * @throws Exception if the test fails
@@ -39,14 +40,17 @@ public class HtmlOptionTest extends WebTestCase {
     @Test
     public void testSelect() throws Exception {
         final String htmlContent
-            = "<html><head><title>foo</title></head><body>\n"
-            + "<form id='form1'><select name='select1' id='select1'>\n"
-            + "<option value='option1' id='option1'>Option1</option>\n"
-            + "<option value='option2' id='option2' selected='selected'>Option2</option>\n"
-            + "<option value='option3' id='option3'>Option3</option>\n"
-            + "</select>\n"
-            + "<input type='submit' name='button' value='foo'/>\n"
-            + "</form></body></html>";
+            = "<html>\n"
+            + "<head><title>foo</title></head>\n"
+            + "<body>\n"
+            + "  <form id='form1'>\n"
+            + "    <select name='select1' id='select1'>\n"
+            + "      <option value='option1' id='option1'>Option1</option>\n"
+            + "      <option value='option2' id='option2' selected='selected'>Option2</option>\n"
+            + "      <option value='option3' id='option3'>Option3</option>\n"
+            + "    </select>\n"
+            + "  </form>\n"
+            + "</body></html>";
         final HtmlPage page = loadPage(htmlContent);
 
         final HtmlOption option1 = page.getHtmlElementById("option1");
@@ -76,13 +80,16 @@ public class HtmlOptionTest extends WebTestCase {
     @Test
     public void testGetValue() throws Exception {
         final String htmlContent
-            = "<html><head><title>foo</title></head><body>\n"
-            + "<form id='form1'><select name='select1' id='select1'>\n"
-            + "<option value='option1' id='option1'>Option1</option>\n"
-            + "<option id='option2' selected>Number Two</option>\n"
-            + "</select>\n"
-            + "<input type='submit' name='button' value='foo'/>\n"
-            + "</form></body></html>";
+            = "<html>\n"
+            + "<head><title>foo</title></head>\n"
+            + "<body>\n"
+            + "  <form id='form1'>\n"
+            + "    <select name='select1' id='select1'>\n"
+            + "      <option value='option1' id='option1'>Option1</option>\n"
+            + "      <option id='option2' selected>Number Two</option>\n"
+            + "  </select>\n"
+            + "  </form>\n"
+            + "</body></html>";
 
         final HtmlPage page = loadPage(htmlContent);
 
@@ -99,15 +106,17 @@ public class HtmlOptionTest extends WebTestCase {
     @Test
     public void testGetValue_ContentsIsValue() throws Exception {
         final String htmlContent
-            = "<html><head><title>foo</title></head><body>\n"
-            + "<form id='form1'>\n"
-            + "<select name='select1' id='select1'>\n"
-            + "     <option id='option1'>Option1</option>\n"
-            + "     <option id='option2' selected>Number Two</option>\n"
-            + "     <option id='option3'>\n  Number 3 with blanks </option>\n"
-            + "</select>\n"
-            + "<input type='submit' name='button' value='foo'/>\n"
-            + "</form></body></html>";
+            = "<html>\n"
+            + "<head><title>foo</title></head>\n"
+            + "<body>\n"
+            + "  <form id='form1'>\n"
+            + "    <select name='select1' id='select1'>\n"
+            + "      <option id='option1'>Option1</option>\n"
+            + "      <option id='option2' selected>Number Two</option>\n"
+            + "      <option id='option3'>\n  Number 3 with blanks </option>\n"
+            + "    </select>\n"
+            + "  </form>\n"
+            + "</body></html>";
 
         final HtmlPage page = loadPage(htmlContent);
 
@@ -128,12 +137,11 @@ public class HtmlOptionTest extends WebTestCase {
     public void testClick() throws Exception {
         final String htmlContent
             = "<html><body>\n"
-            + "<form id='form1'>\n"
-            + "<select name='select1' id='select1'>\n"
-            + "     <option id='option1'>Option1</option>\n"
-            + "     <option id='option2' selected>Number Two</option>\n"
-            + "</select>\n"
-            + "<input type='submit' name='button' value='foo'/>\n"
+            + "  <form id='form1'>\n"
+            + "    <select name='select1' id='select1'>\n"
+            + "      <option id='option1'>Option1</option>\n"
+            + "      <option id='option2' selected>Number Two</option>\n"
+            + "    </select>\n"
             + "</form></body></html>";
         final HtmlPage page = loadPage(htmlContent);
 
@@ -149,15 +157,20 @@ public class HtmlOptionTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testAsText() throws Exception {
-        final String htmlContent = "<html><head><title>foo</title></head><body>\n"
-            + "<form><select>\n"
-            + "<option id='option1'>option1</option>\n"
-            + "<option id='option2' label='Number Two'/>\n"
-            + "<option id='option3' label='overridden'>Number Three</option>\n"
-            + "<option id='option4'>Number&nbsp;4</option>\n"
-            + "</select>\n"
-            + "</form></body></html>";
+    public void asText() throws Exception {
+        final String htmlContent
+            = "<html>\n"
+            + "<head><title>foo</title></head>\n"
+            + "<body>\n"
+            + "  <form>\n"
+            + "    <select>\n"
+            + "      <option id='option1'>option1</option>\n"
+            + "      <option id='option2' label='Number Two'/>\n"
+            + "      <option id='option3' label='overridden'>Number Three</option>\n"
+            + "      <option id='option4'>Number&nbsp;4</option>\n"
+            + "    </select>\n"
+            + "  </form>\n"
+            + "</body></html>";
 
         final HtmlPage page = loadPage(htmlContent);
 
@@ -173,41 +186,11 @@ public class HtmlOptionTest extends WebTestCase {
     }
 
     /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testSimpleScriptable() throws Exception {
-        final String html = "<html><head>\n"
-            + "<script>\n"
-            + "  function test() {\n"
-            + "    alert(document.getElementById('myId'));\n"
-            + "  }\n"
-            + "</script>\n"
-            + "</head><body onload='test()'>\n"
-            + "<select>\n"
-            + "  <option id='myId'>test1</option>\n"
-            + "  <option id='myId2'>test2</option>\n"
-            + "</select>\n"
-            + "</body></html>";
-
-        final String[] expectedAlerts = {"[object HTMLOptionElement]"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(BrowserVersion.FIREFOX_2, html, collectedAlerts);
-        assertTrue(HtmlOption.class.isInstance(page.getHtmlElementById("myId")));
-        assertEquals(expectedAlerts, collectedAlerts);
-    }
-
-    /**
      * @throws Exception if an error occurs
      */
     @Test
+    @Alerts({ "false", "false", "true", "true", "false" })
     public void testDisabled() throws Exception {
-        testDisabled(BrowserVersion.FIREFOX_2, true, false);
-        testDisabled(BrowserVersion.INTERNET_EXPLORER_6, false, false);
-        testDisabled(BrowserVersion.INTERNET_EXPLORER_7, false, false);
-    }
-
-    private void testDisabled(final BrowserVersion version, final boolean d1, final boolean d2) throws Exception {
         final String html = "<html><body onload='test()'><form name='f'>\n"
             + "  <select name='s' id='s'>\n"
             + "    <option value='o1' id='o1'>One</option>\n"
@@ -228,12 +211,10 @@ public class HtmlOptionTest extends WebTestCase {
             + "    }\n"
             + "  </script>\n"
             + "</form></body></html>";
-        final String[] expected = {"false", "false", "true", "true", "false"};
-        final List<String> actual = new ArrayList<String>();
-        final HtmlPage page = loadPage(version, html, actual);
-        assertEquals(expected, actual);
-        assertEquals(d1, ((HtmlOption) page.getElementById("o1")).isDisabled());
-        assertEquals(d2, ((HtmlOption) page.getElementById("o2")).isDisabled());
-    }
 
+        final HtmlPage page = loadPageWithAlerts(html);
+        final boolean disabled = !getBrowserVersion().isIE();
+        assertEquals(disabled, ((HtmlOption) page.getElementById("o1")).isDisabled());
+        assertFalse(((HtmlOption) page.getElementById("o2")).isDisabled());
+    }
 }

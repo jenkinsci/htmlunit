@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,27 +16,31 @@ package com.gargoylesoftware.htmlunit.html;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Tests for {@link HtmlFieldSet}.
  *
- * @version $Revision: 4562 $
+ * @version $Revision: 9842 $
  * @author Ahmed Ashour
  * @author Daniel Gredler
+ * @author Frank Danek
  */
 @RunWith(BrowserRunner.class)
-public class HtmlFieldSetTest extends WebTestCase {
+public class HtmlFieldSetTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = { "[object]", "[object]" },
-        FF = { "[object HTMLFieldSetElement]", "[object HTMLFormElement]" })
+    @Alerts(DEFAULT = { "[object HTMLFieldSetElement]", "[object HTMLFormElement]" },
+            IE8 = { "[object]", "[object]" })
     public void simpleScriptable() throws Exception {
         final String html
             = "<html><head>\n"
@@ -54,16 +58,19 @@ public class HtmlFieldSetTest extends WebTestCase {
             + "    </fieldset>\n"
             + "  </form>\n"
             + "</body></html>";
-        final HtmlPage page = loadPageWithAlerts(html);
-        assertTrue(HtmlFieldSet.class.isInstance(page.getHtmlElementById("fs")));
+        final WebDriver driver = loadPageWithAlerts2(html);
+        if (driver instanceof HtmlUnitDriver) {
+            final HtmlElement element = toHtmlElement(driver.findElement(By.id("fs")));
+            assertTrue(element instanceof HtmlFieldSet);
+        }
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = { "undefined", "undefined", "undefined", "center", "8", "foo" },
-        IE = { "left", "right", "", "error", "error", "center", "right", "" })
+    @Alerts(DEFAULT = { "undefined", "undefined", "undefined", "center", "8", "foo" },
+            IE = { "left", "right", "", "error", "error", "center", "right", "" })
     public void align() throws Exception {
         final String html
             = "<html><body>\n"
@@ -100,7 +107,7 @@ public class HtmlFieldSetTest extends WebTestCase {
             + "  alert(fs3.align);\n"
             + "</script>\n"
             + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
 }

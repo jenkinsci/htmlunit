@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,21 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.HTMLELEMENT_ALIGN_INVALID;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_TABLE_VALIGN_SUPPORTS_IE_VALUES;
+
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+
 /**
  * Contains attributes common to various table components.
  *
- * @version $Revision: 4589 $
+ * @version $Revision: 10000 $
  * @author Daniel Gredler
  */
+@JsxClass(isJSObject = false, isDefinedInStandardsMode = false)
 public class HTMLTableComponent extends HTMLElement {
-
-    /** Serial version UID. */
-    private static final long serialVersionUID = 8789769971205129198L;
 
     /** The valid "vAlign" values for this element, when emulating IE. */
     private static final String[] VALIGN_VALID_VALUES_IE = {"top", "bottom", "middle", "baseline"};
@@ -32,26 +37,21 @@ public class HTMLTableComponent extends HTMLElement {
     private static final String VALIGN_DEFAULT_VALUE = "top";
 
     /**
-     * Creates an instance.
-     */
-    public HTMLTableComponent() {
-        // Empty.
-    }
-
-    /**
      * Returns the value of the "align" property.
      * @return the value of the "align" property
      */
-    public String jsxGet_align() {
-        final boolean returnInvalidValues = getBrowserVersion().isFirefox();
-        return getAlign(returnInvalidValues);
+    @JsxGetter
+    public String getAlign() {
+        final boolean invalidValues = getBrowserVersion().hasFeature(HTMLELEMENT_ALIGN_INVALID);
+        return getAlign(invalidValues);
     }
 
     /**
      * Sets the value of the "align" property.
      * @param align the value of the "align" property
      */
-    public void jsxSet_align(final String align) {
+    @JsxSetter
+    public void setAlign(final String align) {
         setAlign(align, false);
     }
 
@@ -59,7 +59,8 @@ public class HTMLTableComponent extends HTMLElement {
      * Returns the value of the "vAlign" property.
      * @return the value of the "vAlign" property
      */
-    public String jsxGet_vAlign() {
+    @JsxGetter
+    public String getVAlign() {
         return getVAlign(getValidVAlignValues(), VALIGN_DEFAULT_VALUE);
     }
 
@@ -67,7 +68,8 @@ public class HTMLTableComponent extends HTMLElement {
      * Sets the value of the "vAlign" property.
      * @param vAlign the value of the "vAlign" property
      */
-    public void jsxSet_vAlign(final Object vAlign) {
+    @JsxSetter
+    public void setVAlign(final Object vAlign) {
         setVAlign(vAlign, getValidVAlignValues());
     }
 
@@ -77,7 +79,7 @@ public class HTMLTableComponent extends HTMLElement {
      */
     private String[] getValidVAlignValues() {
         String[] valid;
-        if (getBrowserVersion().isIE()) {
+        if (getBrowserVersion().hasFeature(JS_TABLE_VALIGN_SUPPORTS_IE_VALUES)) {
             valid = VALIGN_VALID_VALUES_IE;
         }
         else {
@@ -90,32 +92,40 @@ public class HTMLTableComponent extends HTMLElement {
      * Returns the value of the "ch" property.
      * @return the value of the "ch" property
      */
-    public String jsxGet_ch() {
-        return getCh();
+    @Override
+    @JsxGetter
+    public String getCh() {
+        return super.getCh();
     }
 
     /**
      * Sets the value of the "ch" property.
      * @param ch the value of the "ch" property
      */
-    public void jsxSet_ch(final String ch) {
-        setCh(ch);
+    @Override
+    @JsxSetter
+    public void setCh(final String ch) {
+        super.setCh(ch);
     }
 
     /**
      * Returns the value of the "chOff" property.
      * @return the value of the "chOff" property
      */
-    public String jsxGet_chOff() {
-        return getChOff();
+    @Override
+    @JsxGetter
+    public String getChOff() {
+        return super.getChOff();
     }
 
     /**
      * Sets the value of the "chOff" property.
      * @param chOff the value of the "chOff" property
      */
-    public void jsxSet_chOff(final String chOff) {
-        setChOff(chOff);
+    @Override
+    @JsxSetter
+    public void setChOff(final String chOff) {
+        super.setChOff(chOff);
     }
 
 }

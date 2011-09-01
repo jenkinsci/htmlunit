@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,30 +14,33 @@
  */
 
 package com.gargoylesoftware.htmlunit.html;
-
 import java.util.Iterator;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.xml.sax.helpers.AttributesImpl;
 
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 
 /**
  * Tests for {@link DefaultElementFactory}.
  *
- * @version $Revision: 4524 $
+ * @version $Revision: 10103 $
  * @author <a href="mailto:marvin.java@gmail.com">Marcos Vinicius B. de Souza</a>
  * @author Marc Guillemot
  * @author Ahmed Ashour
  * @since 1.2
  */
-public class DefaultElementFactoryTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public class DefaultElementFactoryTest extends SimpleWebTestCase {
+
     /**
      * Test that the attribute order is the same as the provided one.
      * @throws Exception if the test fails
      */
     @Test
-    public void testAttributeOrder() throws Exception {
+    public void attributeOrder() throws Exception {
         // Construct the test page.
         final String html = "<html><head><title>test page</title></head>\n"
                 + "<body><div>test message</div></body></html>";
@@ -86,7 +89,7 @@ public class DefaultElementFactoryTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testAttributeOrderLive() throws Exception {
+    public void attributeOrderLive() throws Exception {
         final String html = "<html><body>\n"
             + "<a href='http://www.google.com' tabindex='2' accesskey='F'>foo</a>\n"
             + "</body></html>";

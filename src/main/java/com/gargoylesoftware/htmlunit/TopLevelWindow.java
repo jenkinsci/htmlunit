@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,15 +22,14 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 /**
  * A window representing a top level browser window.
  *
- * @version $Revision: 4756 $
+ * @version $Revision: 9837 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author David D. Kilzer
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
 public class TopLevelWindow extends WebWindowImpl {
-
-    private static final long serialVersionUID = 2448888802967514906L;
 
     /** Logging support. */
     private static final Log LOG = LogFactory.getLog(TopLevelWindow.class);
@@ -43,10 +42,11 @@ public class TopLevelWindow extends WebWindowImpl {
      * @param name the name of the new window
      * @param webClient the web client that "owns" this window
      */
-    public TopLevelWindow(final String name, final WebClient webClient) {
+    protected TopLevelWindow(final String name, final WebClient webClient) {
         super(webClient);
         WebAssert.notNull("name", name);
         setName(name);
+        performRegistration();
     }
 
     /**
@@ -70,8 +70,10 @@ public class TopLevelWindow extends WebWindowImpl {
      */
     @Override
     protected boolean isJavaScriptInitializationNeeded() {
-        return this.getScriptObject() == null
-            || !(getEnclosedPage().getWebResponse() instanceof StringWebResponse);
+        final Page enclosedPage = getEnclosedPage();
+        return getScriptObject() == null
+            || enclosedPage.getUrl() == WebClient.URL_ABOUT_BLANK
+            || !(enclosedPage.getWebResponse() instanceof StringWebResponse);
         // TODO: find a better way to distinguish content written by document.open(),...
     }
 
@@ -104,17 +106,23 @@ public class TopLevelWindow extends WebWindowImpl {
      * Closes this window.
      */
     public void close() {
+        setClosed();
         final Page page = getEnclosedPage();
-        if (page instanceof HtmlPage) {
-            final HtmlPage htmlPage = (HtmlPage) page;
-            if (!htmlPage.isOnbeforeunloadAccepted()) {
-                LOG.debug("The registered OnbeforeunloadHandler rejected the window close event.");
-                return;
+        if (page != null) {
+            if (page.isHtmlPage()) {
+                final HtmlPage htmlPage = (HtmlPage) page;
+                if (!htmlPage.isOnbeforeunloadAccepted()) {
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("The registered OnbeforeunloadHandler rejected the window close event.");
+                    }
+                    return;
+                }
             }
-            htmlPage.cleanUp();
+            page.cleanUp();
         }
-        destroyChildren();
+
         getJobManager().shutdown();
+        destroyChildren();
         getWebClient().deregisterWebWindow(this);
     }
 

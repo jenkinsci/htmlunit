@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import java.io.IOException;
 /**
  * An object which handles the actual communication portion of page retrieval/submission.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 9837 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Daniel Gredler
  * @author Marc Guillemot
@@ -28,10 +28,10 @@ public interface WebConnection {
 
     /**
      * Submits a request and retrieves a response.
-     * @param settings Settings to make the request with
-     * @return the response to the request defined by the specified request settings
+     * @param request the request
+     * @return the response to the request defined by the specified request
      * @exception IOException if an IO error occurs
      */
-    WebResponse getResponse(final WebRequestSettings settings) throws IOException;
+    WebResponse getResponse(final WebRequest request) throws IOException;
 
 }

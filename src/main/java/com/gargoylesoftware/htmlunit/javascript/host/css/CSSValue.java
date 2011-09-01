@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,23 +14,30 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.css;
 
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
-import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstant;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
+import com.gargoylesoftware.htmlunit.javascript.host.Element;
 
 /**
  * A JavaScript object for a CSSValue.
  *
  * @see org.w3c.dom.css.CSSValue
- * @version $Revision: 4789 $
+ * @version $Revision: 10305 $
  * @author Marc Guillemot
  */
+@JsxClass(browsers = @WebBrowser(FF))
 public class CSSValue extends SimpleScriptable {
-
-    private static final long serialVersionUID = 5433037821970827600L;
 
     /**
      * The value is inherited and the <code>cssText</code> contains "inherit".
      */
+    @JsxConstant
     public static final short CSS_INHERIT = org.w3c.dom.css.CSSValue.CSS_INHERIT;
 
     /**
@@ -39,6 +46,7 @@ public class CSSValue extends SimpleScriptable {
      * binding-specific casting methods on this instance of the
      * <code>CSSValue</code> interface.
      */
+    @JsxConstant
     public static final short CSS_PRIMITIVE_VALUE = org.w3c.dom.css.CSSValue.CSS_PRIMITIVE_VALUE;
 
     /**
@@ -47,11 +55,13 @@ public class CSSValue extends SimpleScriptable {
      * binding-specific casting methods on this instance of the
      * <code>CSSValue</code> interface.
      */
+    @JsxConstant
     public static final short CSS_VALUE_LIST = org.w3c.dom.css.CSSValue.CSS_VALUE_LIST;
 
     /**
      * The value is a custom value.
      */
+    @JsxConstant
     public static final short CSS_CUSTOM = org.w3c.dom.css.CSSValue.CSS_CUSTOM;
 
     /**
@@ -62,6 +72,7 @@ public class CSSValue extends SimpleScriptable {
     /**
      * Creates an instance. JavaScript objects must have a default constructor to instantiate prototype.
      */
+    @JsxConstructor
     public CSSValue() {
         // Empty.
     }
@@ -70,7 +81,7 @@ public class CSSValue extends SimpleScriptable {
      * Creates an instance and sets its parent scope to the one of the provided element.
      * @param element the element to which this style is bound
      */
-    CSSValue(final HTMLElement element, final org.w3c.dom.css.CSSValue cssValue) {
+    CSSValue(final Element element, final org.w3c.dom.css.CSSValue cssValue) {
         setParentScope(element.getParentScope());
         setPrototype(getPrototype(getClass()));
         setDomNode(element.getDomNodeOrNull(), false);
@@ -81,7 +92,8 @@ public class CSSValue extends SimpleScriptable {
      * A string representation of the current value.
      * @return the string representation
      */
-    public String jsxGet_cssText() {
+    @JsxGetter
+    public String getCssText() {
         return wrappedCssValue_.getCssText();
     }
 }

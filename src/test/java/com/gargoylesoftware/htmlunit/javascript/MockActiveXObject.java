@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,11 @@ package com.gargoylesoftware.htmlunit.javascript;
 /**
  * This is a Java object that is used to test the ActiveX binding to Java objects.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 10103 $
  * @author <a href="mailto:bcurren@esomnie.com">Ben Curren</a>
  */
 public class MockActiveXObject {
+
     /**
      * Test property.
      */

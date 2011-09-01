@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,20 @@
  */
 package com.gargoylesoftware.htmlunit.javascript;
 
-import java.io.Serializable;
-
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.HTMLCONDITIONAL_COMMENTS;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_ARGUMENTS_IS_OBJECT;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_ARGUMENTS_READ_ONLY_ACCESSED_FROM_FUNCTION;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_ERROR_STACK;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_EVAL_LOCAL_SCOPE;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_IGNORES_LAST_LINE_CONTAINING_UNCOMMENTED;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_NON_ECMA_GET_YEAR;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_PARENT_PROTO_PROPERTIES;
 import net.sourceforge.htmlunit.corejs.javascript.Callable;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.ContextFactory;
 import net.sourceforge.htmlunit.corejs.javascript.ErrorReporter;
 import net.sourceforge.htmlunit.corejs.javascript.Evaluator;
+import net.sourceforge.htmlunit.corejs.javascript.Function;
 import net.sourceforge.htmlunit.corejs.javascript.Script;
 import net.sourceforge.htmlunit.corejs.javascript.ScriptRuntime;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
@@ -40,16 +47,14 @@ import com.gargoylesoftware.htmlunit.javascript.regexp.HtmlUnitRegExpProxy;
  * ContextFactory that supports termination of scripts if they exceed a timeout. Based on example from
  * <a href="http://www.mozilla.org/rhino/apidocs/org/mozilla/javascript/ContextFactory.html">ContextFactory</a>.
  *
- * @version $Revision: 4789 $
+ * @version $Revision: 10425 $
  * @author Andre Soereng
  * @author Ahmed Ashour
  * @author Marc Guillemot
  */
-public class HtmlUnitContextFactory extends ContextFactory implements Serializable {
+public class HtmlUnitContextFactory extends ContextFactory {
 
-    private static final long serialVersionUID = -1282169475857079041L;
-
-    private static final int INSTRUCTION_COUNT_THRESHOLD = 10000;
+    private static final int INSTRUCTION_COUNT_THRESHOLD = 10_000;
 
     private final BrowserVersion browserVersion_;
     private final WebClient webClient_;
@@ -57,6 +62,7 @@ public class HtmlUnitContextFactory extends ContextFactory implements Serializab
     private Debugger debugger_;
     private final ErrorReporter errorReporter_;
     private final WrapFactory wrapFactory_ = new HtmlUnitWrapFactory();
+    private boolean deminifyFunctionCode_ = false;
 
     /**
      * Creates a new instance of HtmlUnitContextFactory.
@@ -112,6 +118,24 @@ public class HtmlUnitContextFactory extends ContextFactory implements Serializab
     }
 
     /**
+     * Configures if the code of <code>new Function("...some code...")</code> should be deminified to be more readable
+     * when using the debugger. This is a small performance cost.
+     * @param deminify the new value
+     */
+    public void setDeminifyFunctionCode(final boolean deminify) {
+        deminifyFunctionCode_ = deminify;
+    }
+
+    /**
+     * Indicates code of calls like <code>new Function("...some code...")</code> should be deminified to be more
+     * readable when using the debugger.
+     * @return the de-minify status
+     */
+    public boolean isDeminifyFunctionCode() {
+        return deminifyFunctionCode_;
+    }
+
+    /**
      * Custom context to store execution time and handle timeouts.
      */
     private class TimeoutContext extends Context {
@@ -139,20 +163,7 @@ public class HtmlUnitContextFactory extends ContextFactory implements Serializab
 
             // this method gets called by Context.compileString and by ScriptRuntime.evalSpecial
             // which is used for window.eval. We have to take care in which case we are.
-            final boolean isWindowEval = (compiler != null);
-
-            // Pre process the source code
-            final HtmlPage page = (HtmlPage) Context.getCurrentContext()
-                .getThreadLocal(JavaScriptEngine.KEY_STARTING_PAGE);
-            source = preProcess(page, source, sourceName, null);
-
-            // PreProcess IE Conditional Compilation if needed
-            if (browserVersion_.isIE()) {
-                final ScriptPreProcessor ieCCPreProcessor = new IEConditionalCompilationScriptPreProcessor();
-                source = ieCCPreProcessor.preProcess(page, source, sourceName, null);
-//                sourceCode = IEWeirdSyntaxScriptPreProcessor.getInstance()
-//                    .preProcess(htmlPage, sourceCode, sourceName, null);
-            }
+            final boolean isWindowEval = compiler != null;
 
             // Remove HTML comments around the source if needed
             if (!isWindowEval) {
@@ -161,7 +172,8 @@ public class HtmlUnitContextFactory extends ContextFactory implements Serializab
                     source = source.replaceFirst("<!--", "// <!--");
                 }
                 // IE ignores the last line containing uncommented -->
-                if (browserVersion_.isIE() && sourceCodeTrimmed.endsWith("-->")) {
+                if (browserVersion_.hasFeature(JS_IGNORES_LAST_LINE_CONTAINING_UNCOMMENTED)
+                        && sourceCodeTrimmed.endsWith("-->")) {
                     final int lastDoubleSlash = source.lastIndexOf("//");
                     final int lastNewLine = Math.max(source.lastIndexOf('\n'), source.lastIndexOf('\r'));
                     if (lastNewLine > lastDoubleSlash) {
@@ -170,8 +182,38 @@ public class HtmlUnitContextFactory extends ContextFactory implements Serializab
                 }
             }
 
+            // Pre process the source code
+            final HtmlPage page = (HtmlPage) Context.getCurrentContext()
+                .getThreadLocal(JavaScriptEngine.KEY_STARTING_PAGE);
+            source = preProcess(page, source, sourceName, lineno, null);
+
+            //source = new StringScriptPreProcessor(HtmlUnitContextFactory.this)
+            //    .preProcess(page, source, sourceName, lineno, null);
+
+            // PreProcess IE Conditional Compilation if needed
+            if (browserVersion_.hasFeature(HTMLCONDITIONAL_COMMENTS)) {
+                final ScriptPreProcessor ieCCPreProcessor = new IEConditionalCompilationScriptPreProcessor();
+                source = ieCCPreProcessor.preProcess(page, source, sourceName, lineno, null);
+//                sourceCode = IEWeirdSyntaxScriptPreProcessor.getInstance()
+//                    .preProcess(htmlPage, sourceCode, sourceName, null);
+            }
+
             return super.compileString(source, compiler, compilationErrorReporter,
                     sourceName, lineno, securityDomain);
+        }
+
+        @Override
+        protected Function compileFunction(final Scriptable scope, String source,
+                final Evaluator compiler, final ErrorReporter compilationErrorReporter,
+                final String sourceName, final int lineno, final Object securityDomain) {
+
+            if (deminifyFunctionCode_) {
+                final Function f = super.compileFunction(scope, source, compiler,
+                        compilationErrorReporter, sourceName, lineno, securityDomain);
+                source = decompileFunction(f, 4).trim().replace("\n    ", "\n");
+            }
+            return super.compileFunction(scope, source, compiler,
+                    compilationErrorReporter, sourceName, lineno, securityDomain);
         }
     }
 
@@ -183,17 +225,19 @@ public class HtmlUnitContextFactory extends ContextFactory implements Serializab
      * @param htmlPage the page
      * @param sourceCode the code to process
      * @param sourceName a name for the chunk of code (used in error messages)
+     * @param lineNumber the line number of the source code
      * @param htmlElement the HTML element that will act as the context
      * @return the source code after being pre processed
      * @see com.gargoylesoftware.htmlunit.ScriptPreProcessor
      */
     protected String preProcess(
-        final HtmlPage htmlPage, final String sourceCode, final String sourceName, final HtmlElement htmlElement) {
+        final HtmlPage htmlPage, final String sourceCode, final String sourceName, final int lineNumber,
+        final HtmlElement htmlElement) {
 
         String newSourceCode = sourceCode;
         final ScriptPreProcessor preProcessor = webClient_.getScriptPreProcessor();
         if (preProcessor != null) {
-            newSourceCode = preProcessor.preProcess(htmlPage, sourceCode, sourceName, htmlElement);
+            newSourceCode = preProcessor.preProcess(htmlPage, sourceCode, sourceName, lineNumber, htmlElement);
             if (newSourceCode == null) {
                 newSourceCode = "";
             }
@@ -222,7 +266,9 @@ public class HtmlUnitContextFactory extends ContextFactory implements Serializab
         }
 
         // register custom RegExp processing
-        ScriptRuntime.setRegExpProxy(cx, new HtmlUnitRegExpProxy(ScriptRuntime.getRegExpProxy(cx)));
+        ScriptRuntime.setRegExpProxy(cx, new HtmlUnitRegExpProxy(ScriptRuntime.getRegExpProxy(cx), browserVersion_));
+
+        cx.setMaximumInterpreterStackDepth(10_000);
 
         return cx;
     }
@@ -230,7 +276,7 @@ public class HtmlUnitContextFactory extends ContextFactory implements Serializab
     /**
      * Configures the {@link ErrorReporter} on the context.
      * @param context the context to configure
-     * @see {@link Context#setErrorReporter(ErrorReporter)}
+     * @see Context#setErrorReporter(ErrorReporter)
      */
     protected void configureErrorReporter(final Context context) {
         context.setErrorReporter(errorReporter_);
@@ -272,14 +318,37 @@ public class HtmlUnitContextFactory extends ContextFactory implements Serializab
             case Context.FEATURE_RESERVED_KEYWORD_AS_IDENTIFIER:
                 return true;
             case Context.FEATURE_PARENT_PROTO_PROPERTIES:
-                return !browserVersion_.isIE();
+                return !browserVersion_.hasFeature(JS_PARENT_PROTO_PROPERTIES);
             case Context.FEATURE_NON_ECMA_GET_YEAR:
-                return browserVersion_.isIE();
-            case Context.FEATURE_HTMLUNIT_WRITE_READONLY_PROPERTIES:
-                return browserVersion_.hasFeature(BrowserVersionFeatures.SET_READONLY_PROPERTIES);
+                return browserVersion_.hasFeature(JS_NON_ECMA_GET_YEAR);
+            case Context.FEATURE_HTMLUNIT_ASK_OBJECT_TO_WRITE_READONLY:
+                return true;
+            case Context.FEATURE_HTMLUNIT_JS_CATCH_JAVA_EXCEPTION:
+                return false;
+            case Context.FEATURE_HTMLUNIT_ARGUMENTS_IS_OBJECT:
+                return browserVersion_.hasFeature(JS_ARGUMENTS_IS_OBJECT);
+            case Context.FEATURE_HTMLUNIT_FUNCTION_NULL_SETTER:
+                return true;
+            case Context.FEATURE_HTMLUNIT_FN_ARGUMENTS_IS_RO_VIEW:
+                return browserVersion_.hasFeature(JS_ARGUMENTS_READ_ONLY_ACCESSED_FROM_FUNCTION);
+            case Context.FEATURE_HTMLUNIT_EVAL_LOCAL_SCOPE:
+                return browserVersion_.hasFeature(JS_EVAL_LOCAL_SCOPE);
+            case Context.FEATURE_HTMLUNIT_ERROR_STACK:
+                return browserVersion_.hasFeature(JS_ERROR_STACK);
+            case Context.FEATURE_HTMLUNIT_CONSTRUCTOR:
+                return browserVersion_.hasFeature(BrowserVersionFeatures.JS_CONSTRUCTOR)
+                        ||   !((HtmlPage) Context.getCurrentContext()
+                                .getThreadLocal(JavaScriptEngine.KEY_STARTING_PAGE)).isQuirksMode();
+            case Context.FEATURE_HTMLUNIT_FUNCTION_OBJECT_METHOD:
+                return browserVersion_.hasFeature(BrowserVersionFeatures.JS_FUNCTION_OBJECT_METHOD);
+            case Context.FEATURE_HTMLUNIT_FUNCTION_DECLARED_FORWARD_IN_BLOCK:
+                return browserVersion_.hasFeature(BrowserVersionFeatures.JS_FUNCTION_DECLARED_FORWARD_IN_BLOCK);
+            case Context.FEATURE_HTMLUNIT_PARSE_INT_RADIX_10:
+                return browserVersion_.hasFeature(BrowserVersionFeatures.JS_PARSE_INT_RADIX_10);
+            case Context.FEATURE_HTMLUNIT_ENUM_NUMBERS_FIRST:
+                return browserVersion_.hasFeature(BrowserVersionFeatures.JS_ENUM_NUMBERS_FIRST);
             default:
                 return super.hasFeature(cx, featureIndex);
         }
     }
-
 }

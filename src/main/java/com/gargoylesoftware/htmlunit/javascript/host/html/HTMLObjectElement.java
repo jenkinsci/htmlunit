@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,41 +14,62 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.HTML_OBJECT_CLASSID;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_OBJECT_OBJECT;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+
+import java.util.Map;
+
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
+import net.sourceforge.htmlunit.corejs.javascript.Wrapper;
 
-import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.html.HtmlElement;
+import com.gargoylesoftware.htmlunit.html.HtmlObject;
+import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.javascript.HtmlUnitContextFactory;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
 import com.gargoylesoftware.htmlunit.javascript.host.ActiveXObjectImpl;
-import com.gargoylesoftware.htmlunit.javascript.host.FormChild;
 
 /**
  * The JavaScript object "HTMLObjectElement".
  *
- * @version $Revision: 4649 $
+ * @version $Revision: 10429 $
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
-public class HTMLObjectElement extends FormChild {
+@JsxClasses({
+        @JsxClass(domClass = HtmlObject.class,
+                browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(domClass = HtmlObject.class,
+            isJSObject = false, browsers = @WebBrowser(value = IE, maxVersion = 8))
+    })
+public class HTMLObjectElement extends FormChild implements Wrapper {
 
-    private static final long serialVersionUID = -916091257587937486L;
-
-    private SimpleScriptable wrappedActiveX_;
+    private Scriptable wrappedActiveX_;
 
     /**
      * Creates an instance.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
     public HTMLObjectElement() {
-        // Empty.
     }
 
     /**
      * Returns the value of the "alt" property.
      * @return the value of the "alt" property
      */
-    public String jsxGet_alt() {
-        String alt = getDomNodeOrDie().getAttribute("alt");
-        if (alt == NOT_FOUND) {
-            alt = "";
-        }
+    @JsxGetter(@WebBrowser(IE))
+    public String getAlt() {
+        final String alt = getDomNodeOrDie().getAttribute("alt");
         return alt;
     }
 
@@ -56,7 +77,8 @@ public class HTMLObjectElement extends FormChild {
      * Returns the value of the "alt" property.
      * @param alt the value
      */
-    public void jsxSet_alt(final String alt) {
+    @JsxSetter(@WebBrowser(IE))
+    public void setAlt(final String alt) {
         getDomNodeOrDie().setAttribute("alt", alt);
     }
 
@@ -64,11 +86,9 @@ public class HTMLObjectElement extends FormChild {
      * Gets the "border" attribute.
      * @return the "border" attribute
      */
-    public String jsxGet_border() {
-        String border = getDomNodeOrDie().getAttribute("border");
-        if (border == NOT_FOUND) {
-            border = "";
-        }
+    @JsxGetter
+    public String getBorder() {
+        final String border = getDomNodeOrDie().getAttribute("border");
         return border;
     }
 
@@ -76,7 +96,8 @@ public class HTMLObjectElement extends FormChild {
      * Sets the "border" attribute.
      * @param border the "border" attribute
      */
-    public void jsxSet_border(final String border) {
+    @JsxSetter
+    public void setBorder(final String border) {
         getDomNodeOrDie().setAttribute("border", border);
     }
 
@@ -84,11 +105,9 @@ public class HTMLObjectElement extends FormChild {
      * Gets the "classid" attribute.
      * @return the "classid" attribute
      */
-    public String jsxGet_classid() {
-        String classid = getDomNodeOrDie().getAttribute("classid");
-        if (classid == NOT_FOUND) {
-            classid = "";
-        }
+    @JsxGetter(@WebBrowser(value = IE, minVersion = 11))
+    public String getClassid() {
+        final String classid = getDomNodeOrDie().getAttribute("classid");
         return classid;
     }
 
@@ -96,17 +115,44 @@ public class HTMLObjectElement extends FormChild {
      * Sets the "classid" attribute.
      * @param classid the "classid" attribute
      */
-    public void jsxSet_classid(final String classid) {
+    @JsxSetter(@WebBrowser(value = IE, minVersion = 11))
+    public void setClassid(final String classid) {
         getDomNodeOrDie().setAttribute("classid", classid);
-        if (classid.indexOf(':') != -1 && getBrowserVersion().isIE()
-                && getWindow().getWebWindow().getWebClient().isActiveXNative()
-                && System.getProperty("os.name").contains("Windows")) {
-            try {
-                wrappedActiveX_ = new ActiveXObjectImpl(classid);
-                wrappedActiveX_.setParentScope(getParentScope());
+        if (classid.indexOf(':') != -1 && getBrowserVersion().hasFeature(HTML_OBJECT_CLASSID)) {
+            final WebClient webClient = getWindow().getWebWindow().getWebClient();
+            final Map<String, String> map = webClient.getActiveXObjectMap();
+            if (map != null) {
+                final String xClassString = map.get(classid);
+                if (xClassString != null) {
+                    try {
+                        final Class<?> xClass = Class.forName(xClassString);
+                        final Object object = xClass.newInstance();
+                        boolean contextCreated = false;
+                        if (Context.getCurrentContext() == null) {
+                            new HtmlUnitContextFactory(webClient).enterContext();
+                            contextCreated = true;
+                        }
+                        wrappedActiveX_ = Context.toObject(object, getParentScope());
+                        if (contextCreated) {
+                            Context.exit();
+                        }
+                    }
+                    catch (final Exception e) {
+                        throw Context.reportRuntimeError("ActiveXObject Error: failed instantiating class "
+                                + xClassString + " because " + e.getMessage() + ".");
+                    }
+                    return;
+                }
             }
-            catch (final Exception e) {
-                Context.throwAsScriptRuntimeEx(e);
+            if (webClient.getOptions().isActiveXNative()
+                    && System.getProperty("os.name").contains("Windows")) {
+                try {
+                    wrappedActiveX_ = new ActiveXObjectImpl(classid);
+                    wrappedActiveX_.setParentScope(getParentScope());
+                }
+                catch (final Exception e) {
+                    Context.throwAsScriptRuntimeEx(e);
+                }
             }
         }
     }
@@ -133,5 +179,84 @@ public class HTMLObjectElement extends FormChild {
         else {
             super.put(name, start, value);
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Object unwrap() {
+        if (wrappedActiveX_ instanceof Wrapper) {
+            return ((Wrapper) wrappedActiveX_).unwrap();
+        }
+        return wrappedActiveX_;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Object getDefaultValue(final Class<?> hint) {
+        if ((String.class.equals(hint) || hint == null) && getBrowserVersion().hasFeature(JS_OBJECT_OBJECT)) {
+            final HtmlElement htmlElement = getDomNodeOrNull();
+            if (htmlElement != null && !((HtmlPage) htmlElement.getPage()).isQuirksMode()) {
+                return "[object]";
+            }
+        }
+        return super.getDefaultValue(hint);
+    }
+
+    /**
+     * Returns the {@code dataFld} attribute.
+     * @return the {@code dataFld} attribute
+     */
+    @JsxGetter(@WebBrowser(value = IE, maxVersion = 8))
+    public String getDataFld() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code dataFld} attribute.
+     * @param dataFld {@code dataFld} attribute
+     */
+    @JsxSetter(@WebBrowser(value = IE, maxVersion = 8))
+    public void setDataFld(final String dataFld) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code dataFormatAs} attribute.
+     * @return the {@code dataFormatAs} attribute
+     */
+    @JsxGetter(@WebBrowser(value = IE, maxVersion = 8))
+    public String getDataFormatAs() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code dataFormatAs} attribute.
+     * @param dataFormatAs {@code dataFormatAs} attribute
+     */
+    @JsxSetter(@WebBrowser(value = IE, maxVersion = 8))
+    public void setDataFormatAs(final String dataFormatAs) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code dataSrc} attribute.
+     * @return the {@code dataSrc} attribute
+     */
+    @JsxGetter(@WebBrowser(value = IE, maxVersion = 8))
+    public String getDataSrc() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code dataSrc} attribute.
+     * @param dataSrc {@code dataSrc} attribute
+     */
+    @JsxSetter(@WebBrowser(value = IE, maxVersion = 8))
+    public void setDataSrc(final String dataSrc) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
     }
 }

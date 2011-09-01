@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +18,18 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Tests for {@link HTMLAreaElement}.
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 9935 $
  * @author Daniel Gredler
+ * @author Ahmed Ashour
  */
 @RunWith(BrowserRunner.class)
-public class HTMLAreaElementTest extends WebTestCase {
+public class HTMLAreaElementTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if an error occurs
@@ -54,7 +55,34 @@ public class HTMLAreaElementTest extends WebTestCase {
             + "alert(a1.accessKey);\n"
             + "alert(a2.accessKey);\n"
             + "</script></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(IE = { "", "[object HTMLAreaElement]" },
+            IE8 = { "", "exception" },
+            CHROME = { "", "function HTMLAreaElement() { [native code] }" },
+            FF = { "", "function HTMLAreaElement() {\n    [native code]\n}" })
+    public void type() throws Exception {
+        final String html = ""
+            + "<html><head><title>foo</title>\n"
+            + "<script>\n"
+            + "  function test() {\n"
+            + "  var elem = document.getElementById('a1');\n"
+            + "    try {\n"
+            + "      alert(elem);\n"
+            + "      alert(HTMLAreaElement);\n"
+            + "    } catch(e) { alert('exception'); }\n"
+            + "  }\n"
+            + "</script>\n"
+            + "</head>\n"
+            + "<body onload='test()'>\n"
+            + "  <map><area id='a1'/><area id='a2' accesskey='A'/></map>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
 }

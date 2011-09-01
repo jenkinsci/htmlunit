@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,36 +14,55 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
-import static org.apache.commons.lang.ArrayUtils.contains;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_CLEAR_RESTRICT;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
+
+import org.apache.commons.lang3.ArrayUtils;
+
+import com.gargoylesoftware.htmlunit.html.HtmlBreak;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
 
 /**
  * The JavaScript object "HTMLBRElement".
  *
- * @version $Revision: 4569 $
+ * @version $Revision: 10429 $
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
+@JsxClasses({
+        @JsxClass(domClass = HtmlBreak.class,
+            browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(domClass = HtmlBreak.class,
+            isJSObject = false, browsers = @WebBrowser(value = IE, maxVersion = 8))
+    })
 public class HTMLBRElement extends HTMLElement {
 
-    private static final long serialVersionUID = -3785200238092986918L;
-
-    /** Valid values for the {@link #jsxGet_clear() clear} property. */
+    /** Valid values for the {@link #getClear() clear} property. */
     private static final String[] VALID_CLEAR_VALUES = new String[] {"left", "right", "all", "none"};
 
     /**
      * Creates an instance.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
     public HTMLBRElement() {
-        // Empty.
     }
 
     /**
      * Returns the value of the <tt>clear</tt> property.
      * @return the value of the <tt>clear</tt> property
      */
-    public String jsxGet_clear() {
+    @JsxGetter
+    public String getClear() {
         final String clear = getDomNodeOrDie().getAttribute("clear");
-        if (!contains(VALID_CLEAR_VALUES, clear) && getBrowserVersion().isIE()) {
+        if (getBrowserVersion().hasFeature(JS_CLEAR_RESTRICT) && !ArrayUtils.contains(VALID_CLEAR_VALUES, clear)) {
             return "";
         }
         return clear;
@@ -53,11 +72,19 @@ public class HTMLBRElement extends HTMLElement {
      * Sets the value of the <tt>clear</tt> property.
      * @param clear the value of the <tt>clear</tt> property
      */
-    public void jsxSet_clear(final String clear) {
-        if (!contains(VALID_CLEAR_VALUES, clear) && getBrowserVersion().isIE()) {
-            Context.throwAsScriptRuntimeEx(new Exception("Invalid clear property value: '" + clear + "'."));
+    @JsxSetter
+    public void setClear(final String clear) {
+        if (getBrowserVersion().hasFeature(JS_CLEAR_RESTRICT) && !ArrayUtils.contains(VALID_CLEAR_VALUES, clear)) {
+            throw Context.reportRuntimeError("Invalid clear property value: '" + clear + "'.");
         }
         getDomNodeOrDie().setAttribute("clear", clear);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected boolean isEndTagForbidden() {
+        return true;
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,23 +14,41 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+import net.sourceforge.htmlunit.corejs.javascript.Context;
+
+import com.gargoylesoftware.htmlunit.html.HtmlArea;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.DOMTokenList;
 
 /**
  * The JavaScript object "HTMLAreaElement".
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 10429 $
  * @author Ahmed Ashour
- */
+ * @author Ronald Brill
+*/
+@JsxClasses({
+        @JsxClass(domClass = HtmlArea.class,
+                browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(isJSObject = false, domClass = HtmlArea.class,
+            browsers = @WebBrowser(value = IE, maxVersion = 8))
+    })
 public class HTMLAreaElement extends HTMLElement {
 
-    private static final long serialVersionUID = -6024985411914294862L;
-
     /**
-     * Creates an instance.
+     * The constructor.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
     public HTMLAreaElement() {
-        // Empty.
     }
 
     /**
@@ -40,7 +58,7 @@ public class HTMLAreaElement extends HTMLElement {
      * @return the default value
      */
     @Override
-    public Object getDefaultValue(final Class< ? > hint) {
+    public Object getDefaultValue(final Class<?> hint) {
         final HtmlElement element = getDomNodeOrNull();
         if (element == null) {
             return super.getDefaultValue(null);
@@ -52,19 +70,34 @@ public class HTMLAreaElement extends HTMLElement {
      * Returns the value of the "alt" property.
      * @return the value of the "alt" property
      */
-    public String jsxGet_alt() {
-        String alt = getDomNodeOrDie().getAttribute("alt");
-        if (alt == NOT_FOUND) {
-            alt = "";
-        }
-        return alt;
+    @JsxGetter
+    public String getAlt() {
+        return getDomNodeOrDie().getAttribute("alt");
     }
 
     /**
      * Returns the value of the "alt" property.
      * @param alt the value
      */
-    public void jsxSet_alt(final String alt) {
+    @JsxSetter
+    public void setAlt(final String alt) {
         getDomNodeOrDie().setAttribute("alt", alt);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected boolean isEndTagForbidden() {
+        return true;
+    }
+
+    /**
+     * Returns the {@code relList} attribute.
+     * @return the {@code relList} attribute
+     */
+    @JsxGetter(@WebBrowser(FF))
+    public DOMTokenList getRelList() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
     }
 }

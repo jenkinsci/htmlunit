@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,23 +14,25 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import java.util.Locale;
+
 import com.gargoylesoftware.htmlunit.SgmlPage;
 import com.gargoylesoftware.htmlunit.WebAssert;
 import com.gargoylesoftware.htmlunit.html.xpath.XPathUtils;
-import com.gargoylesoftware.htmlunit.xml.XmlPage;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.Document;
 
 /**
- * Intermediate base class for DOM Nodes that have namespaces. That includes HtmlElement
- * and HtmlAttr.
+ * Intermediate base class for DOM Nodes that have namespaces. That includes HtmlElement and HtmlAttr.
  *
- * @version $Revision: 4563 $
+ * @version $Revision: 10304 $
  * @author David K. Taylor
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Frank Danek
  */
 public abstract class DomNamespaceNode extends DomNode {
 
-    private static final long serialVersionUID = 4121331154432606647L;
-    private final String namespaceURI_;
+    private String namespaceURI_;
     private String qualifiedName_;
     private final String localName_;
     private String prefix_;
@@ -46,6 +48,7 @@ public abstract class DomNamespaceNode extends DomNode {
         super(page);
         WebAssert.notNull("qualifiedName", qualifiedName);
         qualifiedName_ = qualifiedName;
+
         if (qualifiedName.indexOf(':') != -1) {
             namespaceURI_ = namespaceURI;
             final int colonPosition = qualifiedName_.indexOf(':');
@@ -53,12 +56,7 @@ public abstract class DomNamespaceNode extends DomNode {
             prefix_ = qualifiedName_.substring(0, colonPosition);
         }
         else {
-            if (page instanceof XmlPage || page instanceof XHtmlPage) {
-                namespaceURI_ = namespaceURI;
-            }
-            else {
-                namespaceURI_ = null;
-            }
+            namespaceURI_ = namespaceURI;
             localName_ = qualifiedName_;
             prefix_ = null;
         }
@@ -69,6 +67,13 @@ public abstract class DomNamespaceNode extends DomNode {
      */
     @Override
     public String getNamespaceURI() {
+        if (getPage().isHtmlPage() && !(getPage() instanceof XHtmlPage)
+            && HTMLParser.XHTML_NAMESPACE.equals(namespaceURI_)
+            && XPathUtils.isProcessingXPath()) {
+            // for Xalan processing we have to strip the 'default' XHTML namespace for HTML pages to be able to find
+            // the elements by XPath without needing to add the namespace to it
+            return null;
+        }
         return namespaceURI_;
     }
 
@@ -79,7 +84,7 @@ public abstract class DomNamespaceNode extends DomNode {
     public String getLocalName() {
         final boolean caseSensitive = getPage().hasCaseSensitiveTagNames();
         if (!caseSensitive && XPathUtils.isProcessingXPath()) { // and this method was called from Xalan
-            return localName_.toLowerCase();
+            return localName_.toLowerCase(Locale.ENGLISH);
         }
         return localName_;
     }
@@ -109,5 +114,23 @@ public abstract class DomNamespaceNode extends DomNode {
      */
     public String getQualifiedName() {
         return qualifiedName_;
+    }
+
+   /**
+    * {@inheritDoc}
+    */
+    @Override
+    public void processImportNode(final Document doc) {
+        super.processImportNode(doc);
+
+        // if we importing from an namespace aware source
+        // we have to drop the XHtmlNamespace because we did this already
+        // for the html document itself
+        final SgmlPage page = (SgmlPage) doc.getDomNodeOrDie();
+        if (page.isHtmlPage() && !(page instanceof XHtmlPage)) {
+            if (HTMLParser.XHTML_NAMESPACE.equals(namespaceURI_)) {
+                namespaceURI_ = null;
+            }
+        }
     }
 }

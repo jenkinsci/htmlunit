@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,35 +14,34 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
-import java.util.ArrayList;
-import java.util.List;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.CHROME;
 
+import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 
 /**
  * Tests for {@link HtmlOptionGroup}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 10050 $
  * @author Ahmed Ashour
  * @author Daniel Gredler
  */
-public class HtmlOptionGroupTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public class HtmlOptionGroupTest extends SimpleWebTestCase {
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    public void testSimpleScriptable() throws Exception {
+    public void enclosingSelect() throws Exception {
         final String html = "<html><head>\n"
-            + "<script>\n"
-            + "  function test() {\n"
-            + "    alert(document.getElementById('myId'));\n"
-            + "  }\n"
-            + "</script>\n"
-            + "</head><body onload='test()'>\n"
+            + "</head><body>\n"
             + "  <select>\n"
             + "    <optgroup id='myId' label='my label'>\n"
             + "      <option>My Option</option>\n"
@@ -50,24 +49,18 @@ public class HtmlOptionGroupTest extends WebTestCase {
             + "  </select>\n"
             + "</body></html>";
 
-        final String[] expectedAlerts = {"[object HTMLOptGroupElement]"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(BrowserVersion.FIREFOX_2, html, collectedAlerts);
-        assertTrue(HtmlOptionGroup.class.isInstance(page.getHtmlElementById("myId")));
-        assertEquals(expectedAlerts, collectedAlerts);
+        final HtmlPage page = loadPage(html);
+        final HtmlOptionGroup optionGroup = page.getHtmlElementById("myId");
+        Assert.assertNotNull(optionGroup.getEnclosingSelect());
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
+    @Alerts({ "false", "false", "true", "false", "true", "false", "false", "false" })
+    @NotYetImplemented(CHROME)
     public void testDisabled() throws Exception {
-        testDisabled(BrowserVersion.FIREFOX_2, true, false);
-        testDisabled(BrowserVersion.INTERNET_EXPLORER_6, false, false);
-        testDisabled(BrowserVersion.INTERNET_EXPLORER_7, false, false);
-    }
-
-    private void testDisabled(final BrowserVersion version, final boolean d1, final boolean d2) throws Exception {
         final String html = "<html><body onload='test()'><form name='f'>\n"
             + "  <select name='s' id='s'>\n"
             + "    <optgroup id='g1' label='group 1'>\n"
@@ -98,12 +91,11 @@ public class HtmlOptionGroupTest extends WebTestCase {
             + "    }\n"
             + "  </script>\n"
             + "</form></body></html>";
-        final String[] expected = {"false", "false", "true", "false", "true", "false", "false", "false"};
-        final List<String> actual = new ArrayList<String>();
-        final HtmlPage page = loadPage(version, html, actual);
-        assertEquals(expected, actual);
-        assertEquals(d1, ((HtmlOptionGroup) page.getElementById("g1")).isDisabled());
-        assertEquals(d2, ((HtmlOptionGroup) page.getElementById("g2")).isDisabled());
+
+        final HtmlPage page = loadPageWithAlerts(html);
+        final boolean disabled = getBrowserVersion().isFirefox();
+        assertEquals(disabled, ((HtmlOptionGroup) page.getElementById("g1")).isDisabled());
+        assertFalse(((HtmlOptionGroup) page.getElementById("g2")).isDisabled());
     }
 
 }

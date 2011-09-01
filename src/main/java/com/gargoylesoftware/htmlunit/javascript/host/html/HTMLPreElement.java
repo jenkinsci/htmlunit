@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,32 +14,49 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+
+import com.gargoylesoftware.htmlunit.html.HtmlExample;
+import com.gargoylesoftware.htmlunit.html.HtmlListing;
+import com.gargoylesoftware.htmlunit.html.HtmlPreformattedText;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
+
 /**
  * The JavaScript object "HTMLPreElement".
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 10429 $
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
+@JsxClasses({
+        @JsxClass(domClass = HtmlExample.class, browsers = @WebBrowser(CHROME)),
+        @JsxClass(domClass = HtmlPreformattedText.class,
+            browsers = { @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11), @WebBrowser(CHROME) }),
+        @JsxClass(domClass = HtmlListing.class, browsers = @WebBrowser(CHROME))
+    })
 public class HTMLPreElement extends HTMLElement {
-
-    private static final long serialVersionUID = 1869359649341296910L;
 
     /**
      * Creates an instance.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
     public HTMLPreElement() {
-        // Empty.
     }
 
     /**
      * Returns the value of the "cite" property.
      * @return the value of the "cite" property
      */
-    public String jsxGet_cite() {
-        String cite = getDomNodeOrDie().getAttribute("cite");
-        if (cite == NOT_FOUND) {
-            cite = "";
-        }
+    @JsxGetter(@WebBrowser(IE))
+    public String getCite() {
+        final String cite = getDomNodeOrDie().getAttribute("cite");
         return cite;
     }
 
@@ -47,7 +64,8 @@ public class HTMLPreElement extends HTMLElement {
      * Returns the value of the "cite" property.
      * @param cite the value
      */
-    public void jsxSet_cite(final String cite) {
+    @JsxSetter(@WebBrowser(IE))
+    public void setCite(final String cite) {
         getDomNodeOrDie().setAttribute("cite", cite);
     }
 }

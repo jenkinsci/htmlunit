@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,29 +14,32 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.StringWebResponse;
+import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.WebWindow;
 import com.gargoylesoftware.htmlunit.WebWindowImpl;
 
 /**
  * The web window for a frame or iframe.
  *
- * @version $Revision: 4756 $
+ * @version $Revision: 9837 $
  * @author Brad Clarke
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
 public class FrameWindow extends WebWindowImpl {
 
-    private static final long serialVersionUID = -4767759560108055220L;
-    private final BaseFrame frame_;
+    private final BaseFrameElement frame_;
 
     /**
      * Creates an instance for a given frame.
      */
-    FrameWindow(final BaseFrame frame) {
+    FrameWindow(final BaseFrameElement frame) {
         super(frame.getPage().getWebClient());
         frame_ = frame;
         final WebWindowImpl parent = (WebWindowImpl) getParentWindow();
+        performRegistration();
         parent.addChildWindow(this);
     }
 
@@ -77,7 +80,7 @@ public class FrameWindow extends WebWindowImpl {
      */
     @Override
     protected boolean isJavaScriptInitializationNeeded() {
-        return this.getScriptObject() == null
+        return getScriptObject() == null
             || !(getEnclosedPage().getWebResponse() instanceof StringWebResponse);
         // TODO: find a better way to distinguish content written by document.open(),...
     }
@@ -93,10 +96,30 @@ public class FrameWindow extends WebWindowImpl {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setEnclosedPage(final Page page) {
+        super.setEnclosedPage(page);
+
+        // we have updated a frame window by javascript write();
+        // so we have to disable future updates during initialization
+        // see com.gargoylesoftware.htmlunit.html.HtmlPage.loadFrames()
+        final WebResponse webResponse = page.getWebResponse();
+        if (webResponse instanceof StringWebResponse) {
+            final StringWebResponse response = (StringWebResponse) webResponse;
+            if (response.isFromJavascript()) {
+                final BaseFrameElement frame = getFrameElement();
+                frame.setContentLoaded();
+            }
+        }
+    }
+
+    /**
      * Gets the DOM node of the (i)frame containing this window.
      * @return the DOM node
      */
-    public BaseFrame getFrameElement() {
+    public BaseFrameElement getFrameElement() {
         return frame_;
     }
 
@@ -107,5 +130,14 @@ public class FrameWindow extends WebWindowImpl {
     @Override
     public String toString() {
         return "FrameWindow[name=\"" + getName() + "\"]";
+    }
+
+    /**
+     * Closes this frame window.
+     */
+    public void close() {
+        final WebWindowImpl parent = (WebWindowImpl) getParentWindow();
+        parent.removeChildWindow(this);
+        getWebClient().deregisterWebWindow(this);
     }
 }

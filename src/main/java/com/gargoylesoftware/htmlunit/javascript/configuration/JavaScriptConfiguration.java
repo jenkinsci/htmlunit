@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,218 +14,538 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.configuration;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.lang.reflect.Method;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.xml.sax.InputSource;
-import org.xml.sax.SAXParseException;
+import java.util.WeakHashMap;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
-import com.gargoylesoftware.htmlunit.html.HtmlAbbreviated;
-import com.gargoylesoftware.htmlunit.html.HtmlAcronym;
-import com.gargoylesoftware.htmlunit.html.HtmlAddress;
-import com.gargoylesoftware.htmlunit.html.HtmlBackgroundSound;
-import com.gargoylesoftware.htmlunit.html.HtmlBidirectionalOverride;
-import com.gargoylesoftware.htmlunit.html.HtmlBig;
-import com.gargoylesoftware.htmlunit.html.HtmlBlink;
-import com.gargoylesoftware.htmlunit.html.HtmlBlockQuote;
-import com.gargoylesoftware.htmlunit.html.HtmlBold;
-import com.gargoylesoftware.htmlunit.html.HtmlCenter;
-import com.gargoylesoftware.htmlunit.html.HtmlCitation;
-import com.gargoylesoftware.htmlunit.html.HtmlCode;
-import com.gargoylesoftware.htmlunit.html.HtmlDefinition;
-import com.gargoylesoftware.htmlunit.html.HtmlDefinitionDescription;
-import com.gargoylesoftware.htmlunit.html.HtmlDefinitionTerm;
-import com.gargoylesoftware.htmlunit.html.HtmlDivision;
-import com.gargoylesoftware.htmlunit.html.HtmlElement;
-import com.gargoylesoftware.htmlunit.html.HtmlEmphasis;
-import com.gargoylesoftware.htmlunit.html.HtmlHeading1;
-import com.gargoylesoftware.htmlunit.html.HtmlHeading2;
-import com.gargoylesoftware.htmlunit.html.HtmlHeading3;
-import com.gargoylesoftware.htmlunit.html.HtmlHeading4;
-import com.gargoylesoftware.htmlunit.html.HtmlHeading5;
-import com.gargoylesoftware.htmlunit.html.HtmlHeading6;
-import com.gargoylesoftware.htmlunit.html.HtmlInlineQuotation;
-import com.gargoylesoftware.htmlunit.html.HtmlItalic;
-import com.gargoylesoftware.htmlunit.html.HtmlKeyboard;
-import com.gargoylesoftware.htmlunit.html.HtmlListing;
-import com.gargoylesoftware.htmlunit.html.HtmlMarquee;
-import com.gargoylesoftware.htmlunit.html.HtmlMultiColumn;
-import com.gargoylesoftware.htmlunit.html.HtmlNoBreak;
-import com.gargoylesoftware.htmlunit.html.HtmlNoEmbed;
-import com.gargoylesoftware.htmlunit.html.HtmlNoFrames;
-import com.gargoylesoftware.htmlunit.html.HtmlNoScript;
-import com.gargoylesoftware.htmlunit.html.HtmlPlainText;
-import com.gargoylesoftware.htmlunit.html.HtmlS;
-import com.gargoylesoftware.htmlunit.html.HtmlSample;
-import com.gargoylesoftware.htmlunit.html.HtmlSmall;
-import com.gargoylesoftware.htmlunit.html.HtmlSpan;
-import com.gargoylesoftware.htmlunit.html.HtmlStrike;
-import com.gargoylesoftware.htmlunit.html.HtmlStrong;
-import com.gargoylesoftware.htmlunit.html.HtmlSubscript;
-import com.gargoylesoftware.htmlunit.html.HtmlSuperscript;
-import com.gargoylesoftware.htmlunit.html.HtmlTableBody;
-import com.gargoylesoftware.htmlunit.html.HtmlTableColumn;
-import com.gargoylesoftware.htmlunit.html.HtmlTableColumnGroup;
-import com.gargoylesoftware.htmlunit.html.HtmlTableFooter;
-import com.gargoylesoftware.htmlunit.html.HtmlTableHeader;
-import com.gargoylesoftware.htmlunit.html.HtmlTeletype;
-import com.gargoylesoftware.htmlunit.html.HtmlUnderlined;
-import com.gargoylesoftware.htmlunit.html.HtmlVariable;
-import com.gargoylesoftware.htmlunit.html.HtmlExample;
+import com.gargoylesoftware.htmlunit.javascript.NamedNodeMap;
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
-import com.gargoylesoftware.htmlunit.javascript.StrictErrorHandler;
-import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLDivElement;
-import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLHeadingElement;
-import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLQuoteElement;
-import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLSpanElement;
-import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLTableColElement;
-import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLTableSectionElement;
+import com.gargoylesoftware.htmlunit.javascript.host.ActiveXObject;
+import com.gargoylesoftware.htmlunit.javascript.host.ApplicationCache;
+import com.gargoylesoftware.htmlunit.javascript.host.BarProp;
+import com.gargoylesoftware.htmlunit.javascript.host.BatteryManager;
+import com.gargoylesoftware.htmlunit.javascript.host.BoxObject;
+import com.gargoylesoftware.htmlunit.javascript.host.BroadcastChannel;
+import com.gargoylesoftware.htmlunit.javascript.host.Cache;
+import com.gargoylesoftware.htmlunit.javascript.host.CacheStorage;
+import com.gargoylesoftware.htmlunit.javascript.host.ClientRect;
+import com.gargoylesoftware.htmlunit.javascript.host.ClientRectList;
+import com.gargoylesoftware.htmlunit.javascript.host.ClipboardData;
+import com.gargoylesoftware.htmlunit.javascript.host.Console;
+import com.gargoylesoftware.htmlunit.javascript.host.DeviceStorage;
+import com.gargoylesoftware.htmlunit.javascript.host.Element;
+import com.gargoylesoftware.htmlunit.javascript.host.Event;
+import com.gargoylesoftware.htmlunit.javascript.host.External;
+import com.gargoylesoftware.htmlunit.javascript.host.FontFace;
+import com.gargoylesoftware.htmlunit.javascript.host.Gamepad;
+import com.gargoylesoftware.htmlunit.javascript.host.GamepadButton;
+import com.gargoylesoftware.htmlunit.javascript.host.History;
+import com.gargoylesoftware.htmlunit.javascript.host.ImageBitmap;
+import com.gargoylesoftware.htmlunit.javascript.host.InputMethodContext;
+import com.gargoylesoftware.htmlunit.javascript.host.KeyboardEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.Location;
+import com.gargoylesoftware.htmlunit.javascript.host.MessageChannel;
+import com.gargoylesoftware.htmlunit.javascript.host.MessagePort;
+import com.gargoylesoftware.htmlunit.javascript.host.MimeType;
+import com.gargoylesoftware.htmlunit.javascript.host.MimeTypeArray;
+import com.gargoylesoftware.htmlunit.javascript.host.MouseEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.Namespace;
+import com.gargoylesoftware.htmlunit.javascript.host.NamespaceCollection;
+import com.gargoylesoftware.htmlunit.javascript.host.Navigator;
+import com.gargoylesoftware.htmlunit.javascript.host.Notification;
+import com.gargoylesoftware.htmlunit.javascript.host.PermissionStatus;
+import com.gargoylesoftware.htmlunit.javascript.host.Permissions;
+import com.gargoylesoftware.htmlunit.javascript.host.Plugin;
+import com.gargoylesoftware.htmlunit.javascript.host.PluginArray;
+import com.gargoylesoftware.htmlunit.javascript.host.Popup;
+import com.gargoylesoftware.htmlunit.javascript.host.Promise;
+import com.gargoylesoftware.htmlunit.javascript.host.Proxy;
+import com.gargoylesoftware.htmlunit.javascript.host.PushManager;
+import com.gargoylesoftware.htmlunit.javascript.host.PushSubscription;
+import com.gargoylesoftware.htmlunit.javascript.host.ReadableByteStream;
+import com.gargoylesoftware.htmlunit.javascript.host.ReadableStream;
+import com.gargoylesoftware.htmlunit.javascript.host.Screen;
+import com.gargoylesoftware.htmlunit.javascript.host.ScreenOrientation;
+import com.gargoylesoftware.htmlunit.javascript.host.Set;
+import com.gargoylesoftware.htmlunit.javascript.host.SharedWorker;
+import com.gargoylesoftware.htmlunit.javascript.host.SimpleArray;
+import com.gargoylesoftware.htmlunit.javascript.host.Storage;
+import com.gargoylesoftware.htmlunit.javascript.host.Symbol;
+import com.gargoylesoftware.htmlunit.javascript.host.TextDecoder;
+import com.gargoylesoftware.htmlunit.javascript.host.TextEncoder;
+import com.gargoylesoftware.htmlunit.javascript.host.Touch;
+import com.gargoylesoftware.htmlunit.javascript.host.TouchList;
+import com.gargoylesoftware.htmlunit.javascript.host.URL;
+import com.gargoylesoftware.htmlunit.javascript.host.URLSearchParams;
+import com.gargoylesoftware.htmlunit.javascript.host.WeakMap;
+import com.gargoylesoftware.htmlunit.javascript.host.WeakSet;
+import com.gargoylesoftware.htmlunit.javascript.host.WebSocket;
+import com.gargoylesoftware.htmlunit.javascript.host.Window;
+import com.gargoylesoftware.htmlunit.javascript.host.XPathExpression;
+import com.gargoylesoftware.htmlunit.javascript.host.arrays.ArrayBuffer;
+import com.gargoylesoftware.htmlunit.javascript.host.arrays.ArrayBufferView;
+import com.gargoylesoftware.htmlunit.javascript.host.arrays.ArrayBufferViewBase;
+import com.gargoylesoftware.htmlunit.javascript.host.arrays.DataView;
+import com.gargoylesoftware.htmlunit.javascript.host.arrays.Float32Array;
+import com.gargoylesoftware.htmlunit.javascript.host.arrays.Float64Array;
+import com.gargoylesoftware.htmlunit.javascript.host.arrays.Int16Array;
+import com.gargoylesoftware.htmlunit.javascript.host.arrays.Int32Array;
+import com.gargoylesoftware.htmlunit.javascript.host.arrays.Int8Array;
+import com.gargoylesoftware.htmlunit.javascript.host.arrays.Uint16Array;
+import com.gargoylesoftware.htmlunit.javascript.host.arrays.Uint32Array;
+import com.gargoylesoftware.htmlunit.javascript.host.arrays.Uint8Array;
+import com.gargoylesoftware.htmlunit.javascript.host.arrays.Uint8ClampedArray;
+import com.gargoylesoftware.htmlunit.javascript.host.canvas.CanvasGradient;
+import com.gargoylesoftware.htmlunit.javascript.host.canvas.CanvasPattern;
+import com.gargoylesoftware.htmlunit.javascript.host.canvas.CanvasRenderingContext2D;
+import com.gargoylesoftware.htmlunit.javascript.host.canvas.ImageData;
+import com.gargoylesoftware.htmlunit.javascript.host.canvas.Path2D;
+import com.gargoylesoftware.htmlunit.javascript.host.canvas.TextMetrics;
+import com.gargoylesoftware.htmlunit.javascript.host.canvas.WebGLActiveInfo;
+import com.gargoylesoftware.htmlunit.javascript.host.canvas.WebGLBuffer;
+import com.gargoylesoftware.htmlunit.javascript.host.canvas.WebGLFramebuffer;
+import com.gargoylesoftware.htmlunit.javascript.host.canvas.WebGLProgram;
+import com.gargoylesoftware.htmlunit.javascript.host.canvas.WebGLRenderbuffer;
+import com.gargoylesoftware.htmlunit.javascript.host.canvas.WebGLRenderingContext;
+import com.gargoylesoftware.htmlunit.javascript.host.canvas.WebGLShader;
+import com.gargoylesoftware.htmlunit.javascript.host.canvas.WebGLShaderPrecisionFormat;
+import com.gargoylesoftware.htmlunit.javascript.host.canvas.WebGLTexture;
+import com.gargoylesoftware.htmlunit.javascript.host.canvas.WebGLUniformLocation;
+import com.gargoylesoftware.htmlunit.javascript.host.crypto.Crypto;
+import com.gargoylesoftware.htmlunit.javascript.host.crypto.CryptoKey;
+import com.gargoylesoftware.htmlunit.javascript.host.crypto.SubtleCrypto;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSS;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSS2Properties;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSCharsetRule;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSConditionRule;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSCounterStyleRule;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSFontFaceRule;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSGroupingRule;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSImportRule;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSKeyframeRule;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSKeyframesRule;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSMediaRule;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSNamespaceRule;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSPageRule;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSPrimitiveValue;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSRule;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSRuleList;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSStyleDeclaration;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSStyleRule;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSStyleSheet;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSSupportsRule;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSUnknownRule;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSValue;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CSSViewportRule;
+import com.gargoylesoftware.htmlunit.javascript.host.css.CaretPosition;
+import com.gargoylesoftware.htmlunit.javascript.host.css.ComputedCSSStyleDeclaration;
+import com.gargoylesoftware.htmlunit.javascript.host.css.MediaQueryList;
+import com.gargoylesoftware.htmlunit.javascript.host.css.StyleMedia;
+import com.gargoylesoftware.htmlunit.javascript.host.css.StyleSheet;
+import com.gargoylesoftware.htmlunit.javascript.host.css.StyleSheetList;
+import com.gargoylesoftware.htmlunit.javascript.host.css.WebKitCSSMatrix;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.AbstractList;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.Attr;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.CDATASection;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.CharacterData;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.Comment;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.DOMCursor;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.DOMError;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.DOMException;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.DOMImplementation;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.DOMMatrix;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.DOMMatrixReadOnly;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.DOMParser;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.DOMPoint;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.DOMPointReadOnly;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.DOMRectReadOnly;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.DOMRequest;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.DOMSettableTokenList;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.DOMStringList;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.DOMStringMap;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.DOMTokenList;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.Document;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.DocumentFragment;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.DocumentType;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.EventNode;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.MediaList;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.MutationObserver;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.MutationRecord;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.Node;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.NodeFilter;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.NodeIterator;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.NodeList;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.ProcessingInstruction;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.RadioNodeList;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.Range;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.Selection;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.ShadowRoot;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.StaticNodeList;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.Text;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.TextRange;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.TreeWalker;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.XPathEvaluator;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.XPathNSResolver;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.XPathResult;
+import com.gargoylesoftware.htmlunit.javascript.host.event.AnimationEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.ApplicationCacheErrorEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.AudioProcessingEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.AutocompleteErrorEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.BeforeUnloadEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.BlobEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.ClipboardEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.CloseEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.CompositionEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.CustomEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.DeviceLightEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.DeviceMotionEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.DeviceOrientationEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.DeviceProximityEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.DeviceStorageChangeEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.DragEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.ErrorEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.EventSource;
+import com.gargoylesoftware.htmlunit.javascript.host.event.EventTarget;
+import com.gargoylesoftware.htmlunit.javascript.host.event.FocusEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.GamepadEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.HashChangeEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.IDBVersionChangeEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.InputEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.MIDIConnectionEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.MIDIMessageEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.MediaEncryptedEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.MediaKeyEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.MediaKeyMessageEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.MediaQueryListEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.MediaStreamEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.MessageEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.MouseScrollEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.MouseWheelEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.MozContactChangeEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.MozMmsEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.MozSettingsEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.MozSmsEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.MutationEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.OfflineAudioCompletionEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.PageTransitionEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.PointerEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.PopStateEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.ProgressEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.RTCDataChannelEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.RTCPeerConnectionIceEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.SVGZoomEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.SecurityPolicyViolationEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.SpeechSynthesisEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.StorageEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.TextEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.TimeEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.TouchEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.TrackEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.TransitionEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.UIEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.UserProximityEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.WebGLContextEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.WebKitTransitionEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.WheelEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.event.XMLHttpRequestProgressEvent;
+import com.gargoylesoftware.htmlunit.javascript.host.fetch.Headers;
+import com.gargoylesoftware.htmlunit.javascript.host.fetch.Request;
+import com.gargoylesoftware.htmlunit.javascript.host.fetch.Response;
+import com.gargoylesoftware.htmlunit.javascript.host.file.Blob;
+import com.gargoylesoftware.htmlunit.javascript.host.file.DataTransferItem;
+import com.gargoylesoftware.htmlunit.javascript.host.file.DataTransferItemList;
+import com.gargoylesoftware.htmlunit.javascript.host.file.File;
+import com.gargoylesoftware.htmlunit.javascript.host.file.FileError;
+import com.gargoylesoftware.htmlunit.javascript.host.file.FileHandle;
+import com.gargoylesoftware.htmlunit.javascript.host.file.FileList;
+import com.gargoylesoftware.htmlunit.javascript.host.file.FileReader;
+import com.gargoylesoftware.htmlunit.javascript.host.file.FileRequest;
+import com.gargoylesoftware.htmlunit.javascript.host.file.LockedFile;
+import com.gargoylesoftware.htmlunit.javascript.host.geo.Coordinates;
+import com.gargoylesoftware.htmlunit.javascript.host.geo.Geolocation;
+import com.gargoylesoftware.htmlunit.javascript.host.geo.Position;
+import com.gargoylesoftware.htmlunit.javascript.host.geo.PositionError;
+import com.gargoylesoftware.htmlunit.javascript.host.html.*;
+import com.gargoylesoftware.htmlunit.javascript.host.idb.IDBCursor;
+import com.gargoylesoftware.htmlunit.javascript.host.idb.IDBCursorWithValue;
+import com.gargoylesoftware.htmlunit.javascript.host.idb.IDBDatabase;
+import com.gargoylesoftware.htmlunit.javascript.host.idb.IDBFactory;
+import com.gargoylesoftware.htmlunit.javascript.host.idb.IDBIndex;
+import com.gargoylesoftware.htmlunit.javascript.host.idb.IDBKeyRange;
+import com.gargoylesoftware.htmlunit.javascript.host.idb.IDBObjectStore;
+import com.gargoylesoftware.htmlunit.javascript.host.idb.IDBOpenDBRequest;
+import com.gargoylesoftware.htmlunit.javascript.host.idb.IDBRequest;
+import com.gargoylesoftware.htmlunit.javascript.host.idb.IDBTransaction;
+import com.gargoylesoftware.htmlunit.javascript.host.media.AnalyserNode;
+import com.gargoylesoftware.htmlunit.javascript.host.media.AudioBuffer;
+import com.gargoylesoftware.htmlunit.javascript.host.media.AudioBufferSourceNode;
+import com.gargoylesoftware.htmlunit.javascript.host.media.AudioContext;
+import com.gargoylesoftware.htmlunit.javascript.host.media.AudioDestinationNode;
+import com.gargoylesoftware.htmlunit.javascript.host.media.AudioListener;
+import com.gargoylesoftware.htmlunit.javascript.host.media.AudioNode;
+import com.gargoylesoftware.htmlunit.javascript.host.media.AudioParam;
+import com.gargoylesoftware.htmlunit.javascript.host.media.BiquadFilterNode;
+import com.gargoylesoftware.htmlunit.javascript.host.media.ChannelMergerNode;
+import com.gargoylesoftware.htmlunit.javascript.host.media.ChannelSplitterNode;
+import com.gargoylesoftware.htmlunit.javascript.host.media.ConvolverNode;
+import com.gargoylesoftware.htmlunit.javascript.host.media.DelayNode;
+import com.gargoylesoftware.htmlunit.javascript.host.media.DynamicsCompressorNode;
+import com.gargoylesoftware.htmlunit.javascript.host.media.GainNode;
+import com.gargoylesoftware.htmlunit.javascript.host.media.LocalMediaStream;
+import com.gargoylesoftware.htmlunit.javascript.host.media.MediaDevices;
+import com.gargoylesoftware.htmlunit.javascript.host.media.MediaElementAudioSourceNode;
+import com.gargoylesoftware.htmlunit.javascript.host.media.MediaError;
+import com.gargoylesoftware.htmlunit.javascript.host.media.MediaKeyError;
+import com.gargoylesoftware.htmlunit.javascript.host.media.MediaKeySession;
+import com.gargoylesoftware.htmlunit.javascript.host.media.MediaKeyStatusMap;
+import com.gargoylesoftware.htmlunit.javascript.host.media.MediaKeySystemAccess;
+import com.gargoylesoftware.htmlunit.javascript.host.media.MediaKeys;
+import com.gargoylesoftware.htmlunit.javascript.host.media.MediaRecorder;
+import com.gargoylesoftware.htmlunit.javascript.host.media.MediaSource;
+import com.gargoylesoftware.htmlunit.javascript.host.media.MediaStream;
+import com.gargoylesoftware.htmlunit.javascript.host.media.MediaStreamAudioDestinationNode;
+import com.gargoylesoftware.htmlunit.javascript.host.media.MediaStreamAudioSourceNode;
+import com.gargoylesoftware.htmlunit.javascript.host.media.MediaStreamTrack;
+import com.gargoylesoftware.htmlunit.javascript.host.media.OfflineAudioContext;
+import com.gargoylesoftware.htmlunit.javascript.host.media.OscillatorNode;
+import com.gargoylesoftware.htmlunit.javascript.host.media.PannerNode;
+import com.gargoylesoftware.htmlunit.javascript.host.media.PeriodicWave;
+import com.gargoylesoftware.htmlunit.javascript.host.media.ScriptProcessorNode;
+import com.gargoylesoftware.htmlunit.javascript.host.media.StereoPannerNode;
+import com.gargoylesoftware.htmlunit.javascript.host.media.TextTrack;
+import com.gargoylesoftware.htmlunit.javascript.host.media.TextTrackCue;
+import com.gargoylesoftware.htmlunit.javascript.host.media.TextTrackCueList;
+import com.gargoylesoftware.htmlunit.javascript.host.media.TextTrackList;
+import com.gargoylesoftware.htmlunit.javascript.host.media.TimeRanges;
+import com.gargoylesoftware.htmlunit.javascript.host.media.VTTCue;
+import com.gargoylesoftware.htmlunit.javascript.host.media.WaveShaperNode;
+import com.gargoylesoftware.htmlunit.javascript.host.media.midi.MIDIAccess;
+import com.gargoylesoftware.htmlunit.javascript.host.media.midi.MIDIInput;
+import com.gargoylesoftware.htmlunit.javascript.host.media.midi.MIDIInputMap;
+import com.gargoylesoftware.htmlunit.javascript.host.media.midi.MIDIOutput;
+import com.gargoylesoftware.htmlunit.javascript.host.media.midi.MIDIOutputMap;
+import com.gargoylesoftware.htmlunit.javascript.host.media.midi.MIDIPort;
+import com.gargoylesoftware.htmlunit.javascript.host.media.rtc.RTCIceCandidate;
+import com.gargoylesoftware.htmlunit.javascript.host.media.rtc.RTCSessionDescription;
+import com.gargoylesoftware.htmlunit.javascript.host.media.rtc.mozRTCIceCandidate;
+import com.gargoylesoftware.htmlunit.javascript.host.media.rtc.mozRTCPeerConnection;
+import com.gargoylesoftware.htmlunit.javascript.host.media.rtc.mozRTCSessionDescription;
+import com.gargoylesoftware.htmlunit.javascript.host.media.rtc.webkitRTCPeerConnection;
+import com.gargoylesoftware.htmlunit.javascript.host.moz.MozMmsMessage;
+import com.gargoylesoftware.htmlunit.javascript.host.moz.MozMobileMessageManager;
+import com.gargoylesoftware.htmlunit.javascript.host.moz.MozMobileMessageThread;
+import com.gargoylesoftware.htmlunit.javascript.host.moz.MozSmsFilter;
+import com.gargoylesoftware.htmlunit.javascript.host.moz.MozSmsMessage;
+import com.gargoylesoftware.htmlunit.javascript.host.moz.MozSmsSegmentInfo;
+import com.gargoylesoftware.htmlunit.javascript.host.performance.Performance;
+import com.gargoylesoftware.htmlunit.javascript.host.performance.PerformanceEntry;
+import com.gargoylesoftware.htmlunit.javascript.host.performance.PerformanceMark;
+import com.gargoylesoftware.htmlunit.javascript.host.performance.PerformanceMeasure;
+import com.gargoylesoftware.htmlunit.javascript.host.performance.PerformanceNavigation;
+import com.gargoylesoftware.htmlunit.javascript.host.performance.PerformanceResourceTiming;
+import com.gargoylesoftware.htmlunit.javascript.host.performance.PerformanceTiming;
+import com.gargoylesoftware.htmlunit.javascript.host.speech.SpeechSynthesis;
+import com.gargoylesoftware.htmlunit.javascript.host.speech.SpeechSynthesisUtterance;
+import com.gargoylesoftware.htmlunit.javascript.host.speech.webkitSpeechRecognition;
+import com.gargoylesoftware.htmlunit.javascript.host.svg.*;
+import com.gargoylesoftware.htmlunit.javascript.host.worker.ServiceWorker;
+import com.gargoylesoftware.htmlunit.javascript.host.worker.ServiceWorkerContainer;
+import com.gargoylesoftware.htmlunit.javascript.host.worker.ServiceWorkerRegistration;
+import com.gargoylesoftware.htmlunit.javascript.host.worker.Worker;
+import com.gargoylesoftware.htmlunit.javascript.host.xml.FormData;
+import com.gargoylesoftware.htmlunit.javascript.host.xml.XDomainRequest;
+import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLDocument;
+import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLHttpRequest;
+import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLHttpRequestEventTarget;
+import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLHttpRequestUpload;
+import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLSerializer;
+import com.gargoylesoftware.htmlunit.javascript.host.xml.XSLTProcessor;
+import com.gargoylesoftware.htmlunit.javascript.host.xml.XSLTemplate;
 
 /**
  * A container for all the JavaScript configuration information.
- * TODO - Need to add the logic to support the browser and JavaScript conditionals in the Class elements.
  *
- * @version $Revision: 4806 $
+ * @version $Revision: 10589 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Chris Erskine
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Frank Danek
  */
-public final class JavaScriptConfiguration {
+public final class JavaScriptConfiguration extends AbstractJavaScriptConfiguration {
 
-    private static final Log LOG = LogFactory.getLog(JavaScriptConfiguration.class);
+    @SuppressWarnings("unchecked")
+    static final Class<? extends SimpleScriptable>[] CLASSES_ = new Class[] {
+        AbstractList.class, ActiveXObject.class, AnalyserNode.class, AnimationEvent.class, ApplicationCache.class,
+        ApplicationCacheErrorEvent.class, ArrayBuffer.class, ArrayBufferView.class, ArrayBufferViewBase.class,
+        Attr.class, AudioBuffer.class,
+        AudioBufferSourceNode.class, AudioContext.class, AudioDestinationNode.class, AudioListener.class,
+        AudioNode.class, AudioParam.class, AudioProcessingEvent.class, AutocompleteErrorEvent.class, BarProp.class,
+        BatteryManager.class, BeforeUnloadEvent.class, BiquadFilterNode.class,
+        Blob.class, BlobEvent.class, BoxObject.class, BroadcastChannel.class, Cache.class, CacheStorage.class,
+        CanvasGradient.class, CanvasPattern.class, CanvasRenderingContext2D.class, CaretPosition.class,
+        CDATASection.class, ChannelMergerNode.class, ChannelSplitterNode.class, CharacterData.class, ClientRect.class,
+        ClientRectList.class, ClipboardData.class, ClipboardEvent.class,
+        CloseEvent.class, Comment.class, CompositionEvent.class, ComputedCSSStyleDeclaration.class, Console.class,
+        ConvolverNode.class, Coordinates.class, Crypto.class, CryptoKey.class, CSS.class, CSS2Properties.class,
+        CSSCharsetRule.class, CSSConditionRule.class, CSSCounterStyleRule.class, CSSFontFaceRule.class,
+        CSSGroupingRule.class, CSSImportRule.class, CSSKeyframeRule.class, CSSKeyframesRule.class,
+        CSSMediaRule.class, CSSNamespaceRule.class, CSSPageRule.class, CSSPrimitiveValue.class, CSSRule.class,
+        CSSRuleList.class, CSSStyleDeclaration.class, CSSStyleRule.class, CSSStyleSheet.class, CSSSupportsRule.class,
+        CSSUnknownRule.class, CSSValue.class, CSSViewportRule.class, CustomEvent.class, DataTransfer.class,
+        DataTransferItem.class,
+        DataTransferItemList.class, DataView.class, DelayNode.class, DeviceLightEvent.class, DeviceMotionEvent.class,
+        DeviceOrientationEvent.class, DeviceProximityEvent.class, DeviceStorage.class, DeviceStorageChangeEvent.class,
+        Document.class, DocumentFragment.class, DocumentType.class, DOMCursor.class, DOMError.class, DOMException.class,
+        DOMImplementation.class, DOMMatrix.class, DOMMatrixReadOnly.class, DOMParser.class, DOMPoint.class,
+        DOMPointReadOnly.class, DOMRectReadOnly.class, DOMRequest.class,
+        DOMSettableTokenList.class, DOMStringList.class, DOMStringMap.class, DOMTokenList.class,
+        DragEvent.class, DynamicsCompressorNode.class,
+        Element.class, Enumerator.class, ErrorEvent.class, Event.class,
+        com.gargoylesoftware.htmlunit.javascript.host.event.Event.class, EventNode.class, EventSource.class,
+        EventTarget.class, External.class, File.class, FileError.class, FileHandle.class, FileList.class,
+        FileReader.class, FileRequest.class, Float32Array.class, Float64Array.class, FocusEvent.class, FontFace.class,
+        FormChild.class, FormData.class, FormField.class, GainNode.class, Gamepad.class, GamepadButton.class,
+        GamepadEvent.class, Geolocation.class, HashChangeEvent.class, Headers.class, History.class,
+        HTMLAllCollection.class,
+        HTMLAnchorElement.class, HTMLAppletElement.class, HTMLAreaElement.class, HTMLAudioElement.class,
+        HTMLBaseElement.class, HTMLBaseFontElement.class, HTMLBGSoundElement.class, HTMLBlockElement.class,
+        HTMLBodyElement.class, HTMLBRElement.class, HTMLButtonElement.class,
+        HTMLCanvasElement.class, HTMLCollection.class, HTMLCommentElement.class, HTMLContentElement.class,
+        HTMLDataElement.class, HTMLDataListElement.class,
+        HTMLDDElement.class, HTMLDetailsElement.class, HTMLDialogElement.class, HTMLDirectoryElement.class,
+        HTMLDivElement.class, HTMLDListElement.class, HTMLDocument.class, HTMLDTElement.class, HTMLElement.class,
+        HTMLEmbedElement.class, HTMLFieldSetElement.class,
+        HTMLFontElement.class, HTMLFormControlsCollection.class, HTMLFormElement.class, HTMLFrameElement.class,
+        HTMLFrameSetElement.class,
+        HTMLHeadElement.class, HTMLHeadingElement.class, HTMLHRElement.class, HTMLHtmlElement.class,
+        HTMLIFrameElement.class, HTMLImageElement.class, HTMLInlineQuotationElement.class, HTMLInputElement.class,
+        HTMLIsIndexElement.class, HTMLKeygenElement.class, HTMLLabelElement.class,
+        HTMLLegendElement.class, HTMLLIElement.class, HTMLLinkElement.class, HTMLListElement.class,
+        HTMLMapElement.class, HTMLMarqueeElement.class,
+        HTMLMediaElement.class, HTMLMenuElement.class, HTMLMenuItemElement.class, HTMLMetaElement.class,
+        HTMLMeterElement.class, HTMLModElement.class, HTMLNextIdElement.class, HTMLNoShowElement.class,
+        HTMLObjectElement.class, HTMLOListElement.class, HTMLOptGroupElement.class,
+        HTMLOptionElement.class, HTMLOptionsCollection.class, HTMLOutputElement.class,
+        HTMLParagraphElement.class, HTMLParamElement.class, HTMLPhraseElement.class, HTMLPictureElement.class,
+        HTMLPreElement.class, HTMLProgressElement.class, HTMLQuoteElement.class, HTMLScriptElement.class,
+        HTMLSelectElement.class, HTMLShadowElement.class, HTMLSourceElement.class, HTMLSpanElement.class,
+        HTMLStyleElement.class, HTMLTableCaptionElement.class, HTMLTableCellElement.class, HTMLTableColElement.class,
+        HTMLTableComponent.class, HTMLTableDataCellElement.class, HTMLTableElement.class,
+        HTMLTableHeaderCellElement.class, HTMLTableRowElement.class, HTMLTableSectionElement.class,
+        HTMLTemplateElement.class, HTMLTextAreaElement.class, HTMLTextElement.class, HTMLTimeElement.class,
+        HTMLTitleElement.class, HTMLTrackElement.class, HTMLUListElement.class, HTMLUnknownElement.class,
+        HTMLVideoElement.class,
+        IDBCursor.class, IDBCursorWithValue.class, IDBDatabase.class, IDBFactory.class, IDBIndex.class,
+        IDBKeyRange.class, IDBObjectStore.class, IDBOpenDBRequest.class, IDBRequest.class, IDBTransaction.class,
+        IDBVersionChangeEvent.class, Image.class, ImageBitmap.class, ImageData.class, InputEvent.class,
+        InputMethodContext.class, Int16Array.class, Int32Array.class, Int8Array.class, KeyboardEvent.class,
+        com.gargoylesoftware.htmlunit.javascript.host.event.KeyboardEvent.class, LocalMediaStream.class,
+        Location.class, LockedFile.class, com.gargoylesoftware.htmlunit.javascript.host.Map.class,
+        MediaDevices.class, MediaElementAudioSourceNode.class, MediaEncryptedEvent.class, MediaError.class,
+        MediaKeyError.class, MediaKeyEvent.class, MediaKeyMessageEvent.class, MediaKeys.class, MediaKeySession.class,
+        MediaKeyStatusMap.class, MediaKeySystemAccess.class, MediaList.class, MediaQueryList.class,
+        MediaQueryListEvent.class, MediaRecorder.class,
+        MediaSource.class, MediaStream.class, MediaStreamAudioDestinationNode.class, MediaStreamAudioSourceNode.class,
+        MediaStreamEvent.class, MediaStreamTrack.class, MessageChannel.class,
+        MessageEvent.class, MessagePort.class, MIDIAccess.class, MIDIConnectionEvent.class, MIDIInput.class,
+        MIDIInputMap.class, MIDIMessageEvent.class, MIDIOutput.class, MIDIOutputMap.class, MIDIPort.class,
+        MimeType.class, MimeTypeArray.class, MouseEvent.class,
+        com.gargoylesoftware.htmlunit.javascript.host.event.MouseEvent.class, MouseScrollEvent.class,
+        MouseWheelEvent.class, MozContactChangeEvent.class, MozMmsEvent.class, MozMmsMessage.class,
+        MozMobileMessageManager.class, MozMobileMessageThread.class, mozRTCIceCandidate.class,
+        mozRTCPeerConnection.class, mozRTCSessionDescription.class, MozSettingsEvent.class,
+        MozSmsEvent.class, MozSmsFilter.class, MozSmsMessage.class, MozSmsSegmentInfo.class,
+        MutationEvent.class, MutationObserver.class, MutationRecord.class, NamedNodeMap.class, Namespace.class,
+        NamespaceCollection.class, Navigator.class,
+        Node.class, NodeFilter.class, NodeIterator.class, NodeList.class, Notification.class,
+        OfflineAudioCompletionEvent.class,
+        OfflineAudioContext.class, Option.class, OscillatorNode.class, PageTransitionEvent.class, PannerNode.class,
+        Path2D.class, Performance.class, PerformanceEntry.class, PerformanceMark.class,
+        PerformanceMeasure.class, PerformanceNavigation.class, PerformanceResourceTiming.class, PerformanceTiming.class,
+        PeriodicWave.class, Permissions.class, PermissionStatus.class, Plugin.class, PluginArray.class,
+        PointerEvent.class, PopStateEvent.class, Popup.class, Position.class, PositionError.class,
+        ProcessingInstruction.class, ProgressEvent.class,
+        Promise.class, Proxy.class, PushManager.class, PushSubscription.class, RadioNodeList.class, Range.class,
+        ReadableByteStream.class, ReadableStream.class, Request.class, Response.class, RowContainer.class,
+        RTCDataChannelEvent.class, RTCIceCandidate.class, RTCPeerConnectionIceEvent.class, RTCSessionDescription.class,
+        Screen.class, ScreenOrientation.class, ScriptProcessorNode.class, SecurityPolicyViolationEvent.class,
+        Selection.class, ServiceWorker.class, ServiceWorkerContainer.class,
+        ServiceWorkerRegistration.class, Set.class, ShadowRoot.class, SharedWorker.class, SimpleArray.class,
+        SpeechSynthesis.class, SpeechSynthesisEvent.class, SpeechSynthesisUtterance.class,
+        StaticNodeList.class, StereoPannerNode.class, Storage.class, StorageEvent.class, StyleMedia.class,
+        StyleSheet.class, StyleSheetList.class, SubtleCrypto.class,
+        SVGAElement.class, SVGAltGlyphElement.class, SVGAngle.class, SVGAnimatedAngle.class,
+        SVGAnimatedBoolean.class, SVGAnimatedEnumeration.class, SVGAnimatedInteger.class,
+        SVGAnimatedLength.class, SVGAnimatedLengthList.class, SVGAnimatedNumber.class, SVGAnimatedNumberList.class,
+        SVGAnimatedPreserveAspectRatio.class, SVGAnimatedRect.class, SVGAnimatedString.class,
+        SVGAnimatedTransformList.class, SVGAnimateElement.class,
+        SVGAnimateMotionElement.class, SVGAnimateTransformElement.class, SVGAnimationElement.class,
+        SVGCircleElement.class,
+        SVGClipPathElement.class, SVGComponentTransferFunctionElement.class, SVGCursorElement.class,
+        SVGDefsElement.class, SVGDescElement.class, SVGDiscardElement.class, SVGDocument.class, SVGElement.class,
+        SVGEllipseElement.class, SVGFEBlendElement.class, SVGFEColorMatrixElement.class,
+        SVGFEComponentTransferElement.class, SVGFECompositeElement.class, SVGFEConvolveMatrixElement.class,
+        SVGFEDiffuseLightingElement.class, SVGFEDisplacementMapElement.class, SVGFEDistantLightElement.class,
+        SVGFEDropShadowElement.class,
+        SVGFEFloodElement.class, SVGFEFuncAElement.class, SVGFEFuncBElement.class, SVGFEFuncGElement.class,
+        SVGFEFuncRElement.class, SVGFEGaussianBlurElement.class, SVGFEImageElement.class, SVGFEMergeElement.class,
+        SVGFEMergeNodeElement.class, SVGFEMorphologyElement.class, SVGFEOffsetElement.class,
+        SVGFEPointLightElement.class, SVGFESpecularLightingElement.class, SVGFESpotLightElement.class,
+        SVGFETileElement.class, SVGFETurbulenceElement.class, SVGFilterElement.class, SVGForeignObjectElement.class,
+        SVGGElement.class, SVGGeometryElement.class, SVGGradientElement.class, SVGGraphicsElement.class,
+        SVGImageElement.class, SVGLength.class, SVGLengthList.class, SVGLinearGradientElement.class,
+        SVGLineElement.class, SVGMarkerElement.class, SVGMaskElement.class, SVGMatrix.class,
+        SVGMetadataElement.class, SVGMPathElement.class, SVGNumber.class, SVGNumberList.class,
+        SVGPathElement.class, SVGPathSeg.class, SVGPathSegArcAbs.class,
+        SVGPathSegArcRel.class, SVGPathSegClosePath.class, SVGPathSegCurvetoCubicAbs.class,
+        SVGPathSegCurvetoCubicRel.class, SVGPathSegCurvetoCubicSmoothAbs.class, SVGPathSegCurvetoCubicSmoothRel.class,
+        SVGPathSegCurvetoQuadraticAbs.class, SVGPathSegCurvetoQuadraticRel.class,
+        SVGPathSegCurvetoQuadraticSmoothAbs.class, SVGPathSegCurvetoQuadraticSmoothRel.class,
+        SVGPathSegLinetoAbs.class, SVGPathSegLinetoHorizontalAbs.class, SVGPathSegLinetoHorizontalRel.class,
+        SVGPathSegLinetoRel.class, SVGPathSegLinetoVerticalAbs.class, SVGPathSegLinetoVerticalRel.class,
+        SVGPathSegList.class, SVGPathSegMovetoAbs.class, SVGPathSegMovetoRel.class, SVGPatternElement.class,
+        SVGPoint.class, SVGPointList.class, SVGPolygonElement.class, SVGPolylineElement.class,
+        SVGPreserveAspectRatio.class, SVGRadialGradientElement.class, SVGRect.class, SVGRectElement.class,
+        SVGRenderingIntent.class, SVGScriptElement.class,
+        SVGSetElement.class, SVGStopElement.class, SVGStringList.class,
+        SVGStyleElement.class, SVGSVGElement.class, SVGSwitchElement.class,
+        SVGSymbolElement.class, SVGTextContentElement.class, SVGTextElement.class,
+        SVGTextPathElement.class, SVGTextPositioningElement.class, SVGTitleElement.class, SVGTransform.class,
+        SVGTransformList.class, SVGTSpanElement.class, SVGUnitTypes.class, SVGUseElement.class, SVGViewElement.class,
+        SVGViewSpec.class, SVGZoomEvent.class, Symbol.class, Text.class, TextDecoder.class, TextEncoder.class,
+        TextEvent.class, TextMetrics.class, TextRange.class, TextTrack.class, TextTrackCue.class,
+        TextTrackCueList.class, TextTrackList.class, TimeEvent.class, TimeRanges.class,
+        Touch.class, TouchEvent.class, TouchList.class, TrackEvent.class, TransitionEvent.class, TreeWalker.class,
+        UIEvent.class, Uint16Array.class, Uint32Array.class, Uint8Array.class, Uint8ClampedArray.class,
+        URL.class,
+        URLSearchParams.class, UserProximityEvent.class, ValidityState.class, VTTCue.class, WaveShaperNode.class,
+        WeakMap.class,
+        WeakSet.class, WebGLActiveInfo.class, WebGLBuffer.class, WebGLContextEvent.class, WebGLFramebuffer.class,
+        WebGLProgram.class, WebGLRenderbuffer.class, WebGLRenderingContext.class, WebGLShader.class,
+        WebGLShaderPrecisionFormat.class, WebGLTexture.class, WebGLUniformLocation.class, WebKitCSSMatrix.class,
+        webkitRTCPeerConnection.class, webkitSpeechRecognition.class, WebKitTransitionEvent.class,
+        WebSocket.class, WheelEvent.class, Window.class, Worker.class, XDomainRequest.class, XMLDocument.class,
+        XMLHttpRequest.class, XMLHttpRequestEventTarget.class, XMLHttpRequestProgressEvent.class,
+        XMLHttpRequestUpload.class, XMLSerializer.class,
+        XPathEvaluator.class, XPathExpression.class,
+        XPathNSResolver.class, XPathResult.class, XSLTemplate.class, XSLTProcessor.class};
 
-    private static Document XmlDocument_;
-
-    /** Constant indicating that this function/property is used by the specified browser version. */
-    public static final int ENABLED   = 1;
-
-    /** Constant indicating that this function/property is not used by the specified browser version. */
-    public static final int DISABLED  = 2;
-
-    /** Constant indicating that this function/property is not defined in the configuration file. */
-    public static final int NOT_FOUND = 3;
-
-    private static Map<BrowserVersion, JavaScriptConfiguration> ConfigurationMap_ =
-        new HashMap<BrowserVersion, JavaScriptConfiguration>(11);
-    private static Map<String, String> ClassnameMap_ = new HashMap<String, String>();
-    private static Map<Class < ? extends HtmlElement>, Class < ? extends SimpleScriptable>> HtmlJavaScriptMap_;
-
-    private final Map<String, ClassConfiguration> configuration_;
-    private final BrowserVersion browser_;
+    /** Cache of browser versions and their corresponding JavaScript configurations. */
+    private static final Map<BrowserVersion, JavaScriptConfiguration> CONFIGURATION_MAP_ =
+        new WeakHashMap<>();
 
     /**
      * Constructor is only called from {@link #getInstance(BrowserVersion)} which is synchronized.
      * @param browser the browser version to use
      */
-    private JavaScriptConfiguration(final BrowserVersion browser) {
-        browser_ = browser;
-        if (XmlDocument_ == null) {
-            loadConfiguration();
-        }
-
-        if (XmlDocument_ == null) {
-            throw new IllegalStateException("Configuration was not initialized - see log for details");
-        }
-        configuration_ = buildUsageMap();
-    }
-
-    /**
-     * Test for a configuration having been loaded for testing.
-     *
-     * @return boolean - true if the XmlDocument has been loaded;
-     */
-    protected static boolean isDocumentLoaded() {
-        return XmlDocument_ != null;
-    }
-
-    /**
-     * Reset the this class to it's initial state. This method is
-     * used for testing only.
-     *
-     */
-    protected static void resetClassForTesting() {
-        XmlDocument_ = null;
-        ConfigurationMap_ = new HashMap<BrowserVersion, JavaScriptConfiguration>(11);
-    }
-
-    /**
-     * Sets the document configuration for testing.
-     * @param document - The configuration document
-     */
-    protected static void setXmlDocument(final Document document) {
-        XmlDocument_ = document;
-    }
-
-    /**
-     * Gets the configuration file and make it an input reader and then pass to the method to read the file.
-     */
-    protected static void loadConfiguration() {
-        try {
-            final Reader reader = getConfigurationFileAsReader();
-            if (reader == null) {
-                LOG.error("Unable to load JavaScriptConfiguration.xml");
-            }
-            else {
-                loadConfiguration(reader);
-                reader.close();
-            }
-        }
-        catch (final Exception e) {
-            LOG.error("Error when loading JavascriptConfiguration.xml", e);
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Loads the configuration from a supplied Reader.
-     *
-     * @param configurationReader - A reader pointing to the configuration
-     */
-    protected static void loadConfiguration(final Reader configurationReader) {
-        final InputSource inputSource = new InputSource(configurationReader);
-
-        try {
-            final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            factory.setNamespaceAware(true);
-            factory.setValidating(false);
-
-            final DocumentBuilder documentBuilder = factory.newDocumentBuilder();
-            documentBuilder.setErrorHandler(new StrictErrorHandler());
-
-            XmlDocument_ = documentBuilder.parse(inputSource);
-        }
-        catch (final SAXParseException parseException) {
-            LOG.error("line=[" + parseException.getLineNumber()
-                    + "] columnNumber=[" + parseException.getColumnNumber()
-                    + "] systemId=[" + parseException.getSystemId()
-                    + "] publicId=[" + parseException.getPublicId() + "]", parseException);
-        }
-        catch (final Exception e) {
-            LOG.error("Error when loading JavascriptConfiguration.xml", e);
-        }
+    protected JavaScriptConfiguration(final BrowserVersion browser) {
+        super(browser);
     }
 
     /**
      * Returns the instance that represents the configuration for the specified {@link BrowserVersion}.
-     * This method is synchronized to allow multithreaded access to the JavaScript configuration.
+     * This method is synchronized to allow multi-threaded access to the JavaScript configuration.
      * @param browserVersion the {@link BrowserVersion}
      * @return the instance for the specified {@link BrowserVersion}
      */
@@ -233,556 +553,17 @@ public final class JavaScriptConfiguration {
         if (browserVersion == null) {
             throw new IllegalStateException("BrowserVersion must be defined");
         }
-        JavaScriptConfiguration configuration = ConfigurationMap_.get(browserVersion);
+        JavaScriptConfiguration configuration = CONFIGURATION_MAP_.get(browserVersion);
 
         if (configuration == null) {
             configuration = new JavaScriptConfiguration(browserVersion);
-            ConfigurationMap_.put(browserVersion, configuration);
+            CONFIGURATION_MAP_.put(browserVersion, configuration);
         }
         return configuration;
     }
 
-    /**
-     * Returns the configuration that has all entries. No constraints are put on the returned entries.
-     *
-     * @return the instance containing all entries from the configuration file
-     */
-    static JavaScriptConfiguration getAllEntries() {
-        final JavaScriptConfiguration configuration = new JavaScriptConfiguration(null);
-        return configuration;
-    }
-
-    private static Reader getConfigurationFileAsReader() {
-        final Class< ? > clazz = JavaScriptConfiguration.class;
-        final String name = clazz.getPackage().getName().replace('.', '/') + '/' + "JavaScriptConfiguration.xml";
-        InputStream inputStream = clazz.getClassLoader().getResourceAsStream(name);
-        if (inputStream == null) {
-            try {
-                final String localizedName = name.replace('/', File.separatorChar);
-                inputStream = new FileInputStream(localizedName);
-            }
-            catch (final IOException e) {
-                // Fall through
-            }
-        }
-
-        // If we are running maven tests then the path will be slightly different
-        if (inputStream == null) {
-            try {
-                final String localizedName = ("./src/java" + name).replace('/', File.separatorChar);
-                inputStream = new FileInputStream(localizedName);
-            }
-            catch (final IOException e) {
-                // Fall through
-            }
-        }
-        return new InputStreamReader(inputStream);
-    }
-
-    /**
-     * Gets the set of keys for the class configurations.
-     * @return the set of keys for the class configurations
-     */
-    public Set<String> keySet() {
-        return configuration_.keySet();
-    }
-
-    private Map<String, ClassConfiguration> buildUsageMap() {
-        final Map<String, ClassConfiguration> classMap = new HashMap<String, ClassConfiguration>(30);
-        Node node = XmlDocument_.getDocumentElement().getFirstChild();
-        while (node != null) {
-            if (node instanceof Element) {
-                final Element element = (Element) node;
-                if (element.getTagName().equals("class")) {
-                    final String className = element.getAttribute("name");
-                    if (!testToExcludeElement(element)) {
-                        try {
-                            final ClassConfiguration classConfiguration = parseClassElement(className, element);
-                            if (classConfiguration != null) {
-                                classMap.put(className, classConfiguration);
-                            }
-                        }
-                        catch (final ClassNotFoundException e) {
-                            throw new IllegalStateException("The class was not found for '" + className + "'");
-                        }
-                    }
-                }
-            }
-            node = node.getNextSibling();
-        }
-        return Collections.unmodifiableMap(classMap);
-    }
-
-    /**
-     * Parses the class element to build the class configuration.
-     * @param className the name of the class element
-     * @param element the element to parse
-     * @return the class element to build the class configuration
-     * @throws ClassNotFoundException if the specified class could not be found
-     */
-    private ClassConfiguration parseClassElement(final String className, final Element element)
-        throws ClassNotFoundException {
-        final String notImplemented = element.getAttribute("notImplemented");
-        if ("true".equalsIgnoreCase(notImplemented)) {
-            return null;
-        }
-        final String linkedClassname = element.getAttribute("classname");
-        final String jsConstructor = element.getAttribute("jsConstructor");
-        final String superclassName = element.getAttribute("extends");
-        final String htmlClassname = element.getAttribute("htmlClass");
-        boolean jsObjectFlag = false;
-        final String jsObjectStr = element.getAttribute("JSObject");
-        if ("true".equalsIgnoreCase(jsObjectStr)) {
-            jsObjectFlag = true;
-        }
-        final ClassConfiguration classConfiguration =
-            new ClassConfiguration(className, linkedClassname, jsConstructor,
-                    superclassName, htmlClassname, jsObjectFlag);
-        ClassnameMap_.put(linkedClassname, className);
-        Node node = element.getFirstChild();
-        while (node != null) {
-            if (node instanceof Element) {
-                final Element childElement = (Element) node;
-                final String tagName = childElement.getTagName();
-                if (tagName.equals("property")) {
-                    parsePropertyElement(classConfiguration, childElement);
-                }
-                else if (tagName.equals("function")) {
-                    parseFunctionElement(classConfiguration, childElement);
-                }
-                else if (tagName.equals("constant")) {
-                    parseConstantElement(classConfiguration, childElement);
-                }
-                else if (tagName.equals("browser")) {
-                    LOG.debug("browser tag not yet handled for class " + linkedClassname);
-                }
-                else if (tagName.equals("doclink")) {
-                    // ignore this link
-                }
-                else {
-                    throw new IllegalStateException("Do not understand element type '"
-                        + tagName + "' in '" + linkedClassname + "'");
-                }
-            }
-            node = node.getNextSibling();
-        }
-        return classConfiguration;
-    }
-
-    /**
-     * Parse out the values for the property.
-     *
-     * @param classConfiguration the configuration that is being built
-     * @param element the property element
-     */
-    private void parsePropertyElement(final ClassConfiguration classConfiguration, final Element element) {
-        final String notImplemented = element.getAttribute("notImplemented");
-        if ("true".equalsIgnoreCase(notImplemented)) {
-            return;
-        }
-        if (testToExcludeElement(element)) {
-            return;
-        }
-        final String propertyName = element.getAttribute("name");
-        boolean readable = false;
-        boolean writeable = false;
-        final String readFlag = element.getAttribute("readable");
-        if ("true".equalsIgnoreCase(readFlag)) {
-            readable = true;
-        }
-        final String writeFlag = element.getAttribute("writable");
-        if ("true".equalsIgnoreCase(writeFlag)) {
-            writeable = true;
-        }
-        classConfiguration.addProperty(propertyName, readable, writeable);
-    }
-
-    /**
-     * Parses out the values from the function element.
-     *
-     * @param classConfiguration the configuration that is being built
-     * @param element the function element
-     */
-    private void parseFunctionElement(final ClassConfiguration classConfiguration, final Element element) {
-        final String notImplemented = element.getAttribute("notImplemented");
-        if ("true".equalsIgnoreCase(notImplemented)) {
-            return;
-        }
-        final String propertyName = element.getAttribute("name");
-        if (testToExcludeElement(element)) {
-            return;
-        }
-        classConfiguration.addFunction(propertyName);
-    }
-
-    /**
-     * Parses out the values for the constant.
-     *
-     * @param classConfiguration the configuration that is being built
-     * @param element the property element
-     */
-    private void parseConstantElement(final ClassConfiguration classConfiguration, final Element element) {
-        if (testToExcludeElement(element)) {
-            return;
-        }
-        final String constantName = element.getAttribute("name");
-        classConfiguration.addConstant(constantName);
-    }
-
-    /**
-     * Test for the browser and JavaScript constraints. Returns true if any constraints are present
-     * and the browser does not meet the constraints.
-     * @param element the element to scan the children of
-     * @return true to exclude this element
-     */
-    private boolean testToExcludeElement(final Element element) {
-        if (browser_ == null) {
-            return false;
-        }
-        Node node = element.getFirstChild();
-        boolean browserConstraint = false;
-        boolean allowBrowser = false;
-        while (node != null) {
-            if (node instanceof Element) {
-                final Element childElement = (Element) node;
-                if (childElement.getTagName().equals("browser")) {
-                    browserConstraint = true;
-                    if (testToIncludeForBrowserConstraint(childElement, browser_)) {
-                        allowBrowser = true;
-                    }
-                }
-            }
-            node = node.getNextSibling();
-        }
-        if (browserConstraint && !allowBrowser) {
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Test to see if the supplied configuration matches for the parsed configuration for the named class
-     * This is a method for testing.
-     *
-     * @param classname - the parsed classname to test
-     * @param config - the expected configuration
-     * @return true if they match
-     */
-    protected boolean classConfigEquals(final String classname, final ClassConfiguration config) {
-        final ClassConfiguration myConfig = configuration_.get(classname);
-        return config.equals(myConfig);
-    }
-
-    /**
-     * @return the browser
-     */
-    public BrowserVersion getBrowser() {
-        return browser_;
-    }
-
-    /**
-     * Gets the class configuration for the supplied JavaScript class name.
-     * @param classname the js class name
-     * @return the class configuration for the supplied JavaScript class name
-     */
-    public ClassConfiguration getClassConfiguration(final String classname) {
-        return configuration_.get(classname);
-    }
-
-    private boolean testToIncludeForBrowserConstraint(final Element element, final BrowserVersion browser) {
-        if ((!browser.isIE() || !"Internet Explorer".equals(element.getAttribute("name")))
-            && (!browser.isFirefox() || !"Firefox".equals(element.getAttribute("name")))) {
-            return false;
-        }
-        final String max = element.getAttribute("max-version");
-        float maxVersion;
-        if (max.length() == 0) {
-            maxVersion = 0;
-        }
-        else {
-            maxVersion = Float.parseFloat(max);
-        }
-        if ((maxVersion > 0) && (browser.getBrowserVersionNumeric() > maxVersion)) {
-            return false;
-        }
-
-        float minVersion;
-        final String min = element.getAttribute("min-version");
-        if (min.length() == 0) {
-            minVersion = 0;
-        }
-        else {
-            minVersion = Float.parseFloat(min);
-        }
-        if ((minVersion > 0) && (browser.getBrowserVersionNumeric() < minVersion)) {
-            return false;
-        }
-        return true;
-    }
-
-    /**
-     * Returns the class for the given class name.
-     * @param classname the classname that you want the implementing class for  (for testing only)
-     * @return the class for the given class name
-     */
-    protected Class< ? > getClassObject(final String classname) {
-        final ClassConfiguration config = configuration_.get(classname);
-        return config.getLinkedClass();
-    }
-
-    /**
-     * Gets the method that implements the getter for the given property based upon the class object.
-     * @param clazz the actual class to use as reference
-     * @param propertyName the property to find the getter for
-     * @return the method that implements the getter for the given property based upon the class object
-     */
-    public Method getPropertyReadMethod(final Class< ? > clazz, final String propertyName) {
-        final String classname = getClassnameForClass(clazz);
-        return getPropertyReadMethod(classname, propertyName);
-    }
-
-    /**
-     * Returns the method that implements the get function for in the class for the given class.
-     *
-     * @param classname the name of the class to work with
-     * @param propertyName the property to find the getter for
-     * @return the method that implements the get function for in the class for the given class
-     */
-    public Method getPropertyReadMethod(String classname, final String propertyName) {
-        ClassConfiguration config;
-        Method theMethod;
-        while (classname.length() > 0) {
-            config = configuration_.get(classname);
-            if (config == null) {
-                return null;
-            }
-            theMethod = config.getPropertyReadMethod(propertyName);
-            if (theMethod != null) {
-                return theMethod;
-            }
-            classname = config.getExtendedClass();
-        }
-        return null;
-    }
-
-    private ClassConfiguration.PropertyInfo findPropertyInChain(final String classname, final String propertyName) {
-        String workname = classname;
-        ClassConfiguration config;
-        while (workname.length() > 0) {
-            config = configuration_.get(workname);
-            final ClassConfiguration.PropertyInfo info = config.getPropertyInfo(propertyName);
-            if (info != null) {
-                return info;
-            }
-            workname = config.getExtendedClass();
-        }
-        return null;
-    }
-
-    /**
-     * Gets the method that implements the setter for the given property based upon the class object.
-     * @param clazz the actual class to use as reference
-     * @param propertyName the property to find the getter for
-     * @return the method that implements the setter for the given property based upon the class object
-     */
-    public Method getPropertyWriteMethod(final Class< ? > clazz, final String propertyName) {
-        final String classname = getClassnameForClass(clazz);
-        return getPropertyWriteMethod(classname, propertyName);
-    }
-
-    /**
-     * Returns the method that implements the set function in the class for the given class.
-     *
-     * @param classname the name of the class to work with
-     * @param propertyName the property to find the setter for
-     * @return the method that implements the set function in the class for the given class
-     */
-    public Method getPropertyWriteMethod(String classname, final String propertyName) {
-        ClassConfiguration config;
-        Method theMethod;
-        while (classname.length() > 0) {
-            config = configuration_.get(classname);
-            theMethod = config.getPropertyWriteMethod(propertyName);
-            if (theMethod != null) {
-                return theMethod;
-            }
-            classname = config.getExtendedClass();
-        }
-        return null;
-    }
-
-    /**
-     * Gets the method that implements the setter for the given property based upon the class object.
-     *
-     * @param clazz the actual class to use as reference
-     * @param functionName the function to find the method for
-     * @return the method that implements the setter for the given property based upon the class object
-     */
-    public Method getFunctionMethod(final Class< ? > clazz, final String functionName) {
-        final String classname = getClassnameForClass(clazz);
-        return getFunctionMethod(classname, functionName);
-    }
-
-    /**
-     * Returns the method that implements the given function in the class for the given class.
-     *
-     * @param classname the name of the class to work with
-     * @param functionName the function to find the method for
-     * @return the method that implements the given function in the class for the given class
-     */
-    public Method getFunctionMethod(String classname, final String functionName) {
-        ClassConfiguration config;
-        Method theMethod;
-        while (classname.length() > 0) {
-            config = configuration_.get(classname);
-            theMethod = config.getFunctionMethod(functionName);
-            if (theMethod != null) {
-                return theMethod;
-            }
-            classname = config.getExtendedClass();
-        }
-        return null;
-    }
-
-    /**
-     * Checks to see if there is an entry for the given property.
-     *
-     * @param clazz the class the property is for
-     * @param propertyName the name of the property
-     * @return boolean <tt>true</tt> if the property exists
-     */
-    public boolean propertyExists(final Class< ? > clazz, final String propertyName) {
-        final String classname = getClassnameForClass(clazz);
-        return propertyExists(classname, propertyName);
-    }
-
-    /**
-     * Checks to see if there is an entry for the given property.
-     *
-     * @param classname the class the property is for
-     * @param propertyName the name of the property
-     * @return boolean <tt>true</tt> if the property exists
-     */
-    public boolean propertyExists(final String classname, final String propertyName) {
-        final ClassConfiguration.PropertyInfo info = findPropertyInChain(classname, propertyName);
-        if (info == null) {
-            return false;
-        }
-        return true;
-    }
-
-    /**
-     * Returns the classname that the given class implements. If the class is
-     * the input class, then the name is extracted from the type that the Input class
-     * is masquerading as.
-     * FIXME - Implement the Input class processing
-     * @param clazz
-     * @return the classname
-     */
-    private String getClassnameForClass(final Class< ? > clazz) {
-        final String name = ClassnameMap_.get(clazz.getName());
-        if (name == null) {
-            throw new IllegalStateException("Did not find the mapping of the class to the classname for "
-                + clazz.getName());
-        }
-        return name;
-    }
-
-    /**
-     * Returns an immutable map containing the HTML to JavaScript mappings. Keys are
-     * java classes for the various HTML classes (ie HtmlInput.class) and the values
-     * are the JavaScript class names (ie "HTMLAnchorElement").
-     * @return the mappings
-     */
-    @SuppressWarnings("unchecked")
-    public static synchronized Map<Class < ? extends HtmlElement>, Class < ? extends SimpleScriptable>>
-    getHtmlJavaScriptMapping() {
-        if (HtmlJavaScriptMap_ != null) {
-            return HtmlJavaScriptMap_;
-        }
-        final JavaScriptConfiguration configuration = JavaScriptConfiguration.getAllEntries();
-
-        final Map<Class < ? extends HtmlElement>, Class < ? extends SimpleScriptable>> map =
-            new HashMap<Class < ? extends HtmlElement>, Class < ? extends SimpleScriptable>>();
-
-        for (String jsClassname : configuration.keySet()) {
-            ClassConfiguration classConfig = configuration.getClassConfiguration(jsClassname);
-            final String htmlClassname = classConfig.getHtmlClassname();
-            if (htmlClassname != null) {
-                try {
-                    final Class< ? extends HtmlElement> htmlClass =
-                        (Class< ? extends HtmlElement>) Class.forName(htmlClassname);
-                    // preload and validate that the class exists
-                    LOG.debug("Mapping " + htmlClass.getName() + " to " + jsClassname);
-                    while (!classConfig.isJsObject()) {
-                        jsClassname = classConfig.getExtendedClass();
-                        classConfig = configuration.getClassConfiguration(jsClassname);
-                    }
-                    map.put(htmlClass, classConfig.getLinkedClass());
-                }
-                catch (final ClassNotFoundException e) {
-                    throw new NoClassDefFoundError(e.getMessage());
-                }
-            }
-        }
-        map.put(HtmlHeading1.class, HTMLHeadingElement.class);
-        map.put(HtmlHeading2.class, HTMLHeadingElement.class);
-        map.put(HtmlHeading3.class, HTMLHeadingElement.class);
-        map.put(HtmlHeading4.class, HTMLHeadingElement.class);
-        map.put(HtmlHeading5.class, HTMLHeadingElement.class);
-        map.put(HtmlHeading6.class, HTMLHeadingElement.class);
-
-        map.put(HtmlInlineQuotation.class, HTMLQuoteElement.class);
-        map.put(HtmlBlockQuote.class, HTMLQuoteElement.class);
-
-        map.put(HtmlAbbreviated.class, HTMLSpanElement.class);
-        map.put(HtmlAcronym.class, HTMLSpanElement.class);
-        map.put(HtmlAddress.class, HTMLSpanElement.class);
-        map.put(HtmlBackgroundSound.class, HTMLSpanElement.class);
-        map.put(HtmlBidirectionalOverride.class, HTMLSpanElement.class);
-        map.put(HtmlBig.class, HTMLSpanElement.class);
-        map.put(HtmlBold.class, HTMLSpanElement.class);
-        map.put(HtmlBlink.class, HTMLSpanElement.class);
-        map.put(HtmlCenter.class, HTMLSpanElement.class);
-        map.put(HtmlCitation.class, HTMLSpanElement.class);
-        map.put(HtmlCode.class, HTMLSpanElement.class);
-        map.put(HtmlDefinition.class, HTMLSpanElement.class);
-        map.put(HtmlDefinitionDescription.class, HTMLSpanElement.class);
-        map.put(HtmlDefinitionTerm.class, HTMLSpanElement.class);
-        map.put(HtmlEmphasis.class, HTMLSpanElement.class);
-        map.put(HtmlItalic.class, HTMLSpanElement.class);
-        map.put(HtmlKeyboard.class, HTMLSpanElement.class);
-        map.put(HtmlListing.class, HTMLSpanElement.class);
-        map.put(HtmlMultiColumn.class, HTMLSpanElement.class);
-        map.put(HtmlNoBreak.class, HTMLSpanElement.class);
-        map.put(HtmlPlainText.class, HTMLSpanElement.class);
-        map.put(HtmlS.class, HTMLSpanElement.class);
-        map.put(HtmlSample.class, HTMLSpanElement.class);
-        map.put(HtmlSmall.class, HTMLSpanElement.class);
-        map.put(HtmlSpan.class, HTMLSpanElement.class);
-        map.put(HtmlStrike.class, HTMLSpanElement.class);
-        map.put(HtmlStrong.class, HTMLSpanElement.class);
-        map.put(HtmlSubscript.class, HTMLSpanElement.class);
-        map.put(HtmlSuperscript.class, HTMLSpanElement.class);
-        map.put(HtmlTeletype.class, HTMLSpanElement.class);
-        map.put(HtmlUnderlined.class, HTMLSpanElement.class);
-        map.put(HtmlVariable.class, HTMLSpanElement.class);
-        map.put(HtmlExample.class, HTMLSpanElement.class);
-
-        map.put(HtmlDivision.class, HTMLDivElement.class);
-        map.put(HtmlMarquee.class, HTMLDivElement.class);
-        map.put(HtmlNoEmbed.class, HTMLDivElement.class);
-        map.put(HtmlNoFrames.class, HTMLDivElement.class);
-        map.put(HtmlNoScript.class, HTMLDivElement.class);
-
-        map.put(HtmlTableBody.class, HTMLTableSectionElement.class);
-        map.put(HtmlTableHeader.class, HTMLTableSectionElement.class);
-        map.put(HtmlTableFooter.class, HTMLTableSectionElement.class);
-
-        map.put(HtmlTableColumn.class, HTMLTableColElement.class);
-        map.put(HtmlTableColumnGroup.class, HTMLTableColElement.class);
-
-        HtmlJavaScriptMap_ = Collections.unmodifiableMap(map);
-        return HtmlJavaScriptMap_;
+    @Override
+    protected Class<? extends SimpleScriptable>[] getClasses() {
+        return CLASSES_;
     }
 }

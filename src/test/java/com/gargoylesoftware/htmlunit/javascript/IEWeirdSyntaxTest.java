@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,31 +14,32 @@
  */
 package com.gargoylesoftware.htmlunit.javascript;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.IE;
 import net.sourceforge.htmlunit.corejs.javascript.EvaluatorException;
 
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.ScriptException;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
 import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
+import com.gargoylesoftware.htmlunit.ScriptException;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 
 /**
  * Test for IE weird JavaScript syntax.
  *
- * @version $Revision: 4402 $
+ * @version $Revision: 9843 $
  * @author Marc Guillemot
  */
 @RunWith(BrowserRunner.class)
-public class IEWeirdSyntaxTest extends WebTestCase {
+public class IEWeirdSyntaxTest extends SimpleWebTestCase {
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @NotYetImplemented(Browser.IE)
+    @NotYetImplemented(IE)
     @Alerts(IE = { "1", "2" })
     public void semicolon_before_finally() throws Exception {
         doTestTryCatchFinally("", ";");
@@ -50,7 +51,7 @@ public class IEWeirdSyntaxTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @NotYetImplemented(Browser.IE)
+    @NotYetImplemented(IE)
     @Alerts(IE = { "1", "2" })
     public void semicolon_before_catch() throws Exception {
         doTestTryCatchFinally(";", "");
@@ -61,7 +62,7 @@ public class IEWeirdSyntaxTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @NotYetImplemented(Browser.IE)
+    @NotYetImplemented(IE)
     @Alerts(IE = { "1", "2" })
     public void semicolonAndComment_before_catchAndFinally() throws Exception {
         doTestTryCatchFinally("// comment\n;\n", "");
@@ -73,14 +74,18 @@ public class IEWeirdSyntaxTest extends WebTestCase {
     private void doTestTryCatchFinally(final String beforeCatch, final String beforeFinally) throws Exception {
         final String html = "<html><script>\n"
             + "try {\n"
-            +  "alert('1');\n"
-            +  "}" + beforeCatch
-            +  "catch(e) {\n"
-            +  "}" + beforeFinally
-            +  "finally {\n"
-            +  "alert('2');\n"
-            +  "}\n"
-            +  "</script></html>";
+            + "  alert('1');\n"
+            + "}" + beforeCatch
+            + "catch(e) {\n"
+            + "}" + beforeFinally
+            + "finally {\n"
+            + "  alert('2');\n"
+            + "}\n"
+            + "</script></html>";
+        doTestWithEvaluatorExceptionExceptForIE(html);
+    }
+
+    private void doTestWithEvaluatorExceptionExceptForIE(final String html) throws Exception {
         try {
             loadPageWithAlerts(html);
         }
@@ -92,5 +97,20 @@ public class IEWeirdSyntaxTest extends WebTestCase {
                 throw e;
             }
         }
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @NotYetImplemented(IE)
+    public void windowDotHandlerFunction() throws Exception {
+        final String html = "<html><head><script>\n"
+            + "function window.onload() {\n"
+            + "  alert(1);\n"
+            + "}\n"
+            + "</script></head>"
+            + "<body></body></html>";
+        doTestWithEvaluatorExceptionExceptForIE(html);
     }
 }

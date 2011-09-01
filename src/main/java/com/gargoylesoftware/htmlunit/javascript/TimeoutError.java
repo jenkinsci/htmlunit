@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,15 +17,34 @@ package com.gargoylesoftware.htmlunit.javascript;
 /**
  * An error that is thrown when a script has been running too long.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 9837 $
  * @author Andre Soereng
+ * @author Ronald Brill
  */
 public class TimeoutError extends Error {
+    private final long allowedTime_;
+    private final long executionTime_;
 
-    private static final long serialVersionUID = 2637882768887747478L;
-
-    TimeoutError(final long allowedTimeout, final long executionTime) {
-        super("Javascript execution takes too long (allowed: " + allowedTimeout
+    TimeoutError(final long allowedTime, final long executionTime) {
+        super("Javascript execution takes too long (allowed: " + allowedTime
                 + ", already elapsed: " + executionTime + ")");
+        allowedTime_ = allowedTime;
+        executionTime_ = executionTime;
+    }
+
+    /**
+     * Returns the allowed time.
+     * @return the allowed time
+     */
+    long getAllowedTime() {
+        return allowedTime_;
+    }
+
+    /**
+     * Returns the execution time.
+     * @return the execution time
+     */
+    long getExecutionTime() {
+        return executionTime_;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,43 +14,57 @@
  */
 package com.gargoylesoftware.htmlunit.javascript;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.HTMLIMAGE_HTMLELEMENT;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.HTMLIMAGE_HTMLUNKNOWNELEMENT;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_OBJECT_IN_QUIRKS_MODE;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.SET_READONLY_PROPERTIES;
+
 import java.lang.reflect.Method;
+import java.util.Stack;
+
+import net.sourceforge.htmlunit.corejs.javascript.Context;
+import net.sourceforge.htmlunit.corejs.javascript.FunctionObject;
+import net.sourceforge.htmlunit.corejs.javascript.ScriptRuntime;
+import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
+import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
 
 import org.apache.commons.collections.Transformer;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import net.sourceforge.htmlunit.corejs.javascript.Context;
-import net.sourceforge.htmlunit.corejs.javascript.FunctionObject;
-import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
-import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.WebAssert;
 import com.gargoylesoftware.htmlunit.WebWindow;
 import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
-import com.gargoylesoftware.htmlunit.javascript.configuration.JavaScriptConfiguration;
+import com.gargoylesoftware.htmlunit.html.HtmlImage;
+import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.javascript.configuration.CanSetReadOnly;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
 import com.gargoylesoftware.htmlunit.javascript.host.Window;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
+import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLUnknownElement;
 
 /**
- * A JavaScript object for a Location.
+ * Base class for Rhino host objects in HtmlUnit.
  *
- * @version $Revision: 4789 $
+ * @version $Revision: 10441 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author Marc Guillemot
  * @author Chris Erskine
  * @author Daniel Gredler
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
 public class SimpleScriptable extends ScriptableObject implements Cloneable {
 
-    private static final long serialVersionUID = 3120000176890886780L;
     private static final Log LOG = LogFactory.getLog(SimpleScriptable.class);
 
     private DomNode domNode_;
     private boolean caseSensitive_ = true;
+    private String className_;
 
     /**
      * Gets a named property from the object.
@@ -62,20 +76,21 @@ public class SimpleScriptable extends ScriptableObject implements Cloneable {
      */
     @Override
     public Object get(String name, final Scriptable start) {
+        // If this object is not case-sensitive about property names, transform the property name accordingly.
         if (!caseSensitive_) {
             for (final Object o : getAllIds()) {
-                if (name.equalsIgnoreCase(Context.toString(o))) {
-                    name = Context.toString(o);
+                final String objectName = Context.toString(o);
+                if (name.equalsIgnoreCase(objectName)) {
+                    name = objectName;
                     break;
                 }
             }
         }
-        // try to get property configured on object itself
+        // Try to get property configured on object itself.
         final Object response = super.get(name, start);
         if (response != NOT_FOUND) {
             return response;
         }
-
         if (this == start) {
             return getWithPreemption(name);
         }
@@ -102,36 +117,55 @@ public class SimpleScriptable extends ScriptableObject implements Cloneable {
      */
     @Override
     public String getClassName() {
-        final String javaClassName = getClass().getName();
-        final int index = javaClassName.lastIndexOf(".");
-        if (index == -1) {
-            throw new IllegalStateException("No dot in classname: " + javaClassName);
+        if (className_ != null) {
+            return className_;
         }
+        if (getPrototype() != null) {
+            return getPrototype().getClassName();
+        }
+        String className = getClass().getSimpleName();
+        if (className.isEmpty()) {
+            // for anonymous class
+            className = getClass().getSuperclass().getSimpleName();
+        }
+        return className;
+    }
 
-        return javaClassName.substring(index + 1);
+    /**
+     * <span style="color:red">INTERNAL API - SUBJECT TO CHANGE AT ANY TIME - USE AT YOUR OWN RISK.</span><br/>
+     *
+     * Sets the class name.
+     * @param className the class name.
+     */
+    public void setClassName(final String className) {
+        this.className_ = className;
     }
 
     /**
      * Returns the DOM node that corresponds to this JavaScript object or throw
      * an exception if one cannot be found.
+     * @param <N> the node type
      * @return the DOM node
      * @exception IllegalStateException If the DOM node could not be found.
      */
-    public DomNode getDomNodeOrDie() throws IllegalStateException {
+    @SuppressWarnings("unchecked")
+    public <N extends DomNode> N getDomNodeOrDie() throws IllegalStateException {
         if (domNode_ == null) {
             final String clazz = getClass().getName();
             throw new IllegalStateException("DomNode has not been set for this SimpleScriptable: " + clazz);
         }
-        return domNode_;
+        return (N) domNode_;
     }
 
     /**
      * Returns the DOM node that corresponds to this JavaScript object
      * or null if a node hasn't been set.
+     * @param <N> the node type
      * @return the DOM node or null
      */
-    public DomNode getDomNodeOrNull() {
-        return domNode_;
+    @SuppressWarnings("unchecked")
+    public <N extends DomNode> N getDomNodeOrNull() {
+        return (N) domNode_;
     }
 
     /**
@@ -193,16 +227,29 @@ public class SimpleScriptable extends ScriptableObject implements Cloneable {
     public SimpleScriptable makeScriptableFor(final DomNode domNode) {
         // Get the JS class name for the specified DOM node.
         // Walk up the inheritance chain if necessary.
-        Class< ? extends SimpleScriptable> javaScriptClass = null;
-        for (Class< ? > c = domNode.getClass(); javaScriptClass == null && c != null; c = c.getSuperclass()) {
-            javaScriptClass = JavaScriptConfiguration.getHtmlJavaScriptMapping().get(c);
+        Class<? extends SimpleScriptable> javaScriptClass = null;
+        if (domNode instanceof HtmlImage && "image".equals(((HtmlImage) domNode).getOriginalQualifiedName())
+                && ((HtmlImage) domNode).wasCreatedByJavascript()) {
+            if (domNode.hasFeature(HTMLIMAGE_HTMLELEMENT)) {
+                javaScriptClass = HTMLElement.class;
+            }
+            else if (domNode.hasFeature(HTMLIMAGE_HTMLUNKNOWNELEMENT)) {
+                javaScriptClass = HTMLUnknownElement.class;
+            }
+        }
+        if (javaScriptClass == null) {
+            for (Class<?> c = domNode.getClass(); javaScriptClass == null && c != null; c = c.getSuperclass()) {
+                javaScriptClass = getWindow().getWebWindow().getWebClient().getJavaScriptEngine().getJavaScriptClass(c);
+            }
         }
 
         final SimpleScriptable scriptable;
         if (javaScriptClass == null) {
             // We don't have a specific subclass for this element so create something generic.
             scriptable = new HTMLElement();
-            LOG.debug("No JavaScript class found for element <" + domNode.getNodeName() + ">. Using HTMLElement");
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("No JavaScript class found for element <" + domNode.getNodeName() + ">. Using HTMLElement");
+            }
         }
         else {
             try {
@@ -241,10 +288,10 @@ public class SimpleScriptable extends ScriptableObject implements Cloneable {
      * @return the prototype
      */
     @SuppressWarnings("unchecked")
-    protected Scriptable getPrototype(final Class< ? extends SimpleScriptable> javaScriptClass) {
+    protected Scriptable getPrototype(final Class<? extends SimpleScriptable> javaScriptClass) {
         final Scriptable prototype = getWindow().getPrototype(javaScriptClass);
         if (prototype == null && javaScriptClass != SimpleScriptable.class) {
-            return getPrototype((Class< ? extends SimpleScriptable>) javaScriptClass.getSuperclass());
+            return getPrototype((Class<? extends SimpleScriptable>) javaScriptClass.getSuperclass());
         }
         return prototype;
     }
@@ -268,23 +315,16 @@ public class SimpleScriptable extends ScriptableObject implements Cloneable {
      * @return the default value
      */
     @Override
-    public Object getDefaultValue(final Class< ? > hint) {
+    public Object getDefaultValue(final Class<?> hint) {
         if (String.class.equals(hint) || hint == null) {
-            // TODO: shouldn't we handle this with BrowserVersion.hasFeature?
-            if (getBrowserVersion().isIE()) {
-                return "[object]"; // the super helpful IE solution
-            }
-            else if (getBrowserVersion().getBrowserVersionNumeric() >= 3) { // Firefox 3
-                return "[object " + getClassName() + "]";
-            }
-            else {
-                // Firefox2 is not fully coherent here (see WindowTest#windowProperties)
-                final Window window = (Window) getTopLevelScope(this);
-                if (ScriptableObject.getProperty(window, getClassName()) == this) {
-                    return "[" + getClassName() + "]";
+            if ((getDomNodeOrNull() != null || getParentScope() != null)
+                    && getBrowserVersion().hasFeature(JS_OBJECT_IN_QUIRKS_MODE)) {
+                final Page page = getWindow().getWebWindow().getEnclosedPage();
+                if (page != null && page.isHtmlPage() && ((HtmlPage) page).isQuirksMode()) {
+                    return "[object]";
                 }
-                return "[object " + getClassName() + "]";
             }
+            return "[object " + getClassName() + "]";
         }
         return super.getDefaultValue(hint);
     }
@@ -318,7 +358,13 @@ public class SimpleScriptable extends ScriptableObject implements Cloneable {
      * or {@link JavaScriptEngine#execute}.
      */
     protected Scriptable getStartingScope() {
-        return (Scriptable) Context.getCurrentContext().getThreadLocal(JavaScriptEngine.KEY_STARTING_SCOPE);
+        @SuppressWarnings("unchecked")
+        final Stack<Scriptable> stack =
+                (Stack<Scriptable>) Context.getCurrentContext().getThreadLocal(JavaScriptEngine.KEY_STARTING_SCOPE);
+        if (null == stack) {
+            return null;
+        }
+        return stack.peek();
     }
 
     /**
@@ -326,7 +372,7 @@ public class SimpleScriptable extends ScriptableObject implements Cloneable {
      * Same as base implementation, but includes all methods inherited from super classes as well.
      */
     @Override
-    public void defineProperty(final String propertyName, final Class< ? > clazz, int attributes) {
+    public void defineProperty(final String propertyName, final Class<?> clazz, int attributes) {
         final int length = propertyName.length();
         if (length == 0) {
             throw new IllegalArgumentException();
@@ -355,7 +401,7 @@ public class SimpleScriptable extends ScriptableObject implements Cloneable {
      * Same as base implementation, but includes all methods inherited from super classes as well.
      */
     @Override
-    public void defineFunctionProperties(final String[] names, final Class< ? > clazz, final int attributes) {
+    public void defineFunctionProperties(final String[] names, final Class<?> clazz, final int attributes) {
         final Method[] methods = clazz.getMethods();
         for (final String name : names) {
             final Method method = findMethod(methods, name);
@@ -383,7 +429,7 @@ public class SimpleScriptable extends ScriptableObject implements Cloneable {
      * Gets the browser version currently used.
      * @return the browser version
      */
-    protected BrowserVersion getBrowserVersion() {
+    public BrowserVersion getBrowserVersion() {
         final DomNode node = getDomNodeOrNull();
         if (node != null) {
             return node.getPage().getWebClient().getBrowserVersion();
@@ -399,8 +445,11 @@ public class SimpleScriptable extends ScriptableObject implements Cloneable {
         if (getPrototype() == null) {
             // to handle cases like "x instanceof HTMLElement",
             // but HTMLElement is not in the prototype chain of any element
-            final ScriptableObject p = (ScriptableObject) get("prototype", this);
-            return p.hasInstance(instance);
+            final Object prototype = get("prototype", this);
+            if (!(prototype instanceof ScriptableObject)) {
+                Context.throwAsScriptRuntimeEx(new Exception("Null prototype"));
+            }
+            return ((ScriptableObject) prototype).hasInstance(instance);
         }
 
         return super.hasInstance(instance);
@@ -411,8 +460,8 @@ public class SimpleScriptable extends ScriptableObject implements Cloneable {
      */
     @Override
     protected Object equivalentValues(Object value) {
-        if (value instanceof SimpleScriptableProxy) {
-            value = ((SimpleScriptableProxy) value).getWrappedScriptable();
+        if (value instanceof SimpleScriptableProxy<?>) {
+            value = ((SimpleScriptableProxy<?>) value).getDelegee();
         }
         return super.equivalentValues(value);
     }
@@ -426,7 +475,7 @@ public class SimpleScriptable extends ScriptableObject implements Cloneable {
             return (SimpleScriptable) super.clone();
         }
         catch (final Exception e) {
-            return null;
+            throw new IllegalStateException("Clone not supported");
         }
     }
 
@@ -441,4 +490,54 @@ public class SimpleScriptable extends ScriptableObject implements Cloneable {
             ((SimpleScriptable) prototype).setCaseSensitive(caseSensitive);
         }
     }
+
+    @Override
+    protected boolean isReadOnlySettable(final String name, final Object value) {
+        if (!getBrowserVersion().hasFeature(SET_READONLY_PROPERTIES)) {
+            throw ScriptRuntime.typeError3("msg.set.prop.no.setter",
+                    name, getClassName(), Context.toString(value));
+        }
+        for (final Method m : getClass().getMethods()) {
+            final JsxGetter jsxGetter = m.getAnnotation(JsxGetter.class);
+            if (jsxGetter != null) {
+                String methodProperty;
+                if (jsxGetter.propertyName().isEmpty()) {
+                    final int prefix = m.getName().startsWith("is") ? 2 : 3;
+                    methodProperty = m.getName().substring(prefix);
+                    methodProperty = Character.toLowerCase(methodProperty.charAt(0)) + methodProperty.substring(1);
+                }
+                else {
+                    methodProperty = jsxGetter.propertyName();
+                }
+                if (methodProperty.equals(name)) {
+                    final CanSetReadOnly canSetReadOnly = m.getAnnotation(CanSetReadOnly.class);
+                    if (canSetReadOnly != null) {
+                        switch (canSetReadOnly.value()) {
+                            case YES:
+                                return true;
+                            case IGNORE:
+                                return false;
+                            case EXCEPTION:
+                                throw ScriptRuntime.typeError3("msg.set.prop.no.setter",
+                                    name, getClassName(), Context.toString(value));
+                            default:
+                        }
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setParentScope(final Scriptable m) {
+        if (m == this) {
+            throw new IllegalArgumentException("Object can't be its own parentScope");
+        }
+        super.setParentScope(m);
+    }
+
 }

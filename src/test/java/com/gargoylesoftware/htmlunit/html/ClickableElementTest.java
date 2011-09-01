@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,27 +14,35 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.CHROME;
+
 import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.BrowserRunner.BuggyWebDriver;
 import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 
 /**
- * Tests for {@link ClickableElement}.
+ * Tests for various clickable elements.
  *
- * @version $Revision: 4064 $
+ * @version $Revision: 9868 $
  * @author David K. Taylor
  * @author Chris Erskine
  * @author Marc Guillemot
  * @author Ahmed Ashour
+ * @author Frank Danek
  */
-public class ClickableElementTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public class ClickableElementTest extends SimpleWebTestCase {
+
     /**
      * Full page driver for onClick tests.
      *
@@ -44,8 +52,8 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     private void onClickPageTest(final String htmlContent) throws Exception {
-        final String[] expectedAlerts = {"foo"};
-        onClickPageTest(htmlContent, 1, expectedAlerts);
+        setExpectedAlerts("foo");
+        onClickPageTest(htmlContent, 1);
     }
 
     /**
@@ -57,43 +65,40 @@ public class ClickableElementTest extends WebTestCase {
      * @param expectedAlerts array of expected popup values
      * @throws Exception if the test fails
      */
-    private void onClickPageTest(final String htmlContent, final int numClicks, final String[] expectedAlerts)
-        throws Exception {
-        onClickPageTest(htmlContent, numClicks, expectedAlerts, false);
+    private void onClickPageTest(final String htmlContent, final int numClicks) throws Exception {
+        onClickPageTest(htmlContent, numClicks, false);
     }
 
-        /**
-        * Full page driver for onClick tests.
-        *
-        * @param htmlContent HTML fragment for body of page with clickable element
-        * identified by clickId ID attribute.
-        * @param numClicks number of times to click element
-        * @param expectedAlerts array of expected popup values
-        * @param exceptionOnError
-        * @throws Exception if the test fails
-        */
+    /**
+     * Full page driver for onClick tests.
+     *
+     * @param htmlContent HTML fragment for body of page with clickable element identified by clickId ID attribute
+     * @param numClicks number of times to click element
+     * @param expectedAlerts array of expected popup values
+     * @param exceptionOnError
+     * @throws Exception if the test fails
+     */
     private void onClickPageTest(final String htmlContent, final int numClicks,
-            final String[] expectedAlerts, final boolean exceptionOnError) throws Exception {
-        final BrowserVersion bv = new BrowserVersion("Netscape", "7", "", 7);
-        final WebClient client = new WebClient(bv);
+            final boolean exceptionOnError) throws Exception {
 
-        final MockWebConnection webConnection = new MockWebConnection();
+        final WebClient client = getWebClientWithMockWebConnection();
+
+        final MockWebConnection webConnection = getMockWebConnection();
         webConnection.setDefaultResponse(htmlContent);
-        client.setWebConnection(webConnection);
-        client.setThrowExceptionOnScriptError(exceptionOnError);
+        client.getOptions().setThrowExceptionOnScriptError(exceptionOnError);
 
-        final List<String> collectedAlerts = new ArrayList<String>();
+        final List<String> collectedAlerts = new ArrayList<>();
         final CollectingAlertHandler alertHandler = new CollectingAlertHandler(collectedAlerts);
         client.setAlertHandler(alertHandler);
 
-        final HtmlPage page = client.getPage(URL_GARGOYLE);
+        final HtmlPage page = client.getPage(getDefaultUrl());
         final HtmlElement clickable = page.getHtmlElementById("clickId");
 
         for (int i = 0; i < numClicks; i++) {
             clickable.click();
         }
 
-        assertEquals(expectedAlerts, collectedAlerts);
+        assertEquals(getExpectedAlerts(), collectedAlerts);
     }
 
     /**
@@ -123,7 +128,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testAnchor_onClick() throws Exception {
+    public void anchor_onClick() throws Exception {
         onClickSimpleTest("a");
     }
 
@@ -133,7 +138,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testAbbreviation_onClick() throws Exception {
+    public void abbreviation_onClick() throws Exception {
         onClickSimpleTest("abbr");
     }
 
@@ -143,7 +148,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testAcronym_onClick() throws Exception {
+    public void acronym_onClick() throws Exception {
         onClickSimpleTest("acronym");
     }
 
@@ -153,7 +158,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testAddress_onClick() throws Exception {
+    public void address_onClick() throws Exception {
         onClickSimpleTest("address");
     }
 
@@ -163,7 +168,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testArea_onClick() throws Exception {
+    public void area_onClick() throws Exception {
         onClickBodyTest("<body><map><area id='clickId' onClick='alert(\"foo\")'/></map></body>\n");
     }
 
@@ -173,7 +178,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testBold_onClick() throws Exception {
+    public void bold_onClick() throws Exception {
         onClickSimpleTest("b");
     }
 
@@ -183,7 +188,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testBig_onClick() throws Exception {
+    public void big_onClick() throws Exception {
         onClickSimpleTest("big");
     }
 
@@ -193,7 +198,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testBlockquote_onClick() throws Exception {
+    public void blockquote_onClick() throws Exception {
         onClickSimpleTest("blockquote");
     }
 
@@ -203,7 +208,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testBody_onClick() throws Exception {
+    public void body_onClick() throws Exception {
         onClickBodyTest("<body id='clickId' onClick='alert(\"foo\")'>Text</body>\n");
     }
 
@@ -213,7 +218,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testButton_onClick() throws Exception {
+    public void button_onClick() throws Exception {
         onClickBodyTest("<body><form><button id='clickId' onClick='alert(\"foo\")'>Item</button></form></body>\n");
     }
 
@@ -223,12 +228,12 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testButton_onClickTwice() throws Exception {
-        final String[] expectedAlerts = {"foo0", "foo1"};
+    @Alerts({ "foo0", "foo1" })
+    public void button_onClickTwice() throws Exception {
         onClickPageTest("<body><form>\n"
                 + "<button id='clickId' onClick='alert(\"foo\" + count++); return false;'>Item</button>\n"
                 + "<script> var count = 0 </script>\n"
-                + "</form></body>\n", 2, expectedAlerts);
+                + "</form></body>\n", 2);
     }
 
     /**
@@ -237,7 +242,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testCite_onClick() throws Exception {
+    public void cite_onClick() throws Exception {
         onClickSimpleTest("cite");
     }
 
@@ -247,7 +252,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testCode_onClick() throws Exception {
+    public void code_onClick() throws Exception {
         onClickSimpleTest("code");
     }
 
@@ -257,7 +262,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testTableColumn_onClick() throws Exception {
+    public void tableColumn_onClick() throws Exception {
         onClickBodyTest("<body><table><caption>Caption</caption><colgroup>\n"
             + "<col id='clickId' onClick='alert(\"foo\")'/></colgroup><thead><tr><th>\n"
             + "Header</th></tr></thead><tbody><tr><td>Data</td></tr></tbody><tfoot><tr>\n"
@@ -270,7 +275,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testTableColumnGroup_onClick() throws Exception {
+    public void tableColumnGroup_onClick() throws Exception {
         onClickBodyTest("<body><table><caption>Caption</caption>\n"
             + "<colgroup id='clickId' onClick='alert(\"foo\")'><col/></colgroup><thead>\n"
             + "<tr><th>Header</th></tr></thead><tbody><tr><td>Data</td></tr></tbody><tfoot>\n"
@@ -283,7 +288,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testCenter_onClick() throws Exception {
+    public void center_onClick() throws Exception {
         onClickSimpleTest("center");
     }
 
@@ -293,7 +298,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testTableCaption_onClick() throws Exception {
+    public void tableCaption_onClick() throws Exception {
         onClickBodyTest("<body><table><caption id='clickId' onClick='alert(\"foo\")'>\n"
             + "Caption</caption><colgroup><col/></colgroup><thead><tr><th>Header</th></tr>\n"
             + "</thead><tbody><tr><td>Data</td></tr></tbody><tfoot><tr><th>Header</th></tr>\n"
@@ -306,7 +311,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testDefinitionDescription_onClick() throws Exception {
+    public void definitionDescription_onClick() throws Exception {
         onClickBodyTest("<body><dl><dt>Term</dt><dd id='clickId' onClick='alert(\"foo\")'>Definition</dd></dl></body>");
     }
 
@@ -317,11 +322,11 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testJavaScriptError_onClick() throws Exception {
+    public void javaScriptError_onClick() throws Exception {
         onClickPageTest("<html><head></head><body>\n"
                 + "<form method='POST'><input type='button' id='clickId' onclick='y()'></form>\n"
                 + "</body></html>",
-                1, new String[0], false);
+                1, false);
     }
 
     /**
@@ -330,7 +335,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testDefinition_onClick() throws Exception {
+    public void definition_onClick() throws Exception {
         onClickSimpleTest("dfn");
     }
 
@@ -340,7 +345,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testDirectory_onClick() throws Exception {
+    public void directory_onClick() throws Exception {
         onClickSimpleTest("dir");
     }
 
@@ -350,7 +355,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testDefinitionList_onClick() throws Exception {
+    public void definitionList_onClick() throws Exception {
         onClickBodyTest("<body><dl id='clickId' onClick='alert(\"foo\")'><dt>Term</dt><dd>Definition</dd></dl></body>");
     }
 
@@ -360,7 +365,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testDefinitionTerm_onClick() throws Exception {
+    public void definitionTerm_onClick() throws Exception {
         onClickBodyTest("<body><dl><dt id='clickId' onClick='alert(\"foo\")'>Term</dt><dd>Definition</dd></dl></body>");
     }
 
@@ -370,7 +375,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testDeletedText_onClick() throws Exception {
+    public void deletedText_onClick() throws Exception {
         onClickSimpleTest("del");
     }
 
@@ -380,7 +385,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testDivision_onClick() throws Exception {
+    public void division_onClick() throws Exception {
         onClickSimpleTest("div");
     }
 
@@ -390,7 +395,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testEmphasis_onClick() throws Exception {
+    public void emphasis_onClick() throws Exception {
         onClickSimpleTest("em");
     }
 
@@ -400,7 +405,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testFieldSet_onClick() throws Exception {
+    public void fieldSet_onClick() throws Exception {
         onClickBodyTest("<body><form><fieldset id='clickId' onClick='alert(\"foo\")'>\n"
             + "<legend>Legend</legend></fieldset></form></body>\n");
     }
@@ -411,7 +416,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testForm_onClick() throws Exception {
+    public void form_onClick() throws Exception {
         onClickSimpleTest("form");
     }
 
@@ -421,7 +426,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testItalics_onClick() throws Exception {
+    public void italics_onClick() throws Exception {
         onClickSimpleTest("i");
     }
 
@@ -431,7 +436,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testImage_onClick() throws Exception {
+    public void image_onClick() throws Exception {
         onClickSimpleTest("img");
     }
 
@@ -441,7 +446,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testHeader1_onClick() throws Exception {
+    public void header1_onClick() throws Exception {
         onClickSimpleTest("h1");
     }
 
@@ -451,7 +456,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testHeader2_onClick() throws Exception {
+    public void header2_onClick() throws Exception {
         onClickSimpleTest("h2");
     }
 
@@ -461,7 +466,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testHeader3_onClick() throws Exception {
+    public void header3_onClick() throws Exception {
         onClickSimpleTest("h3");
     }
 
@@ -471,7 +476,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testHeader4_onClick() throws Exception {
+    public void header4_onClick() throws Exception {
         onClickSimpleTest("h4");
     }
 
@@ -481,7 +486,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testHeader5_onClick() throws Exception {
+    public void header5_onClick() throws Exception {
         onClickSimpleTest("h5");
     }
 
@@ -491,7 +496,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testHeader6_onClick() throws Exception {
+    public void header6_onClick() throws Exception {
         onClickSimpleTest("h6");
     }
 
@@ -501,7 +506,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testHorizontalRule_onClick() throws Exception {
+    public void horizontalRule_onClick() throws Exception {
         onClickSimpleTest("hr");
     }
 
@@ -511,7 +516,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testInput_onClick() throws Exception {
+    public void input_onClick() throws Exception {
         onClickBodyTest("<body><form><input id='clickId' onClick='alert(\"foo\")'>Item</input></form></body>\n");
     }
 
@@ -521,7 +526,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testInsertedText_onClick() throws Exception {
+    public void insertedText_onClick() throws Exception {
         onClickSimpleTest("ins");
     }
 
@@ -531,7 +536,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testKeyboard_onClick() throws Exception {
+    public void keyboard_onClick() throws Exception {
         onClickSimpleTest("kbd");
     }
 
@@ -541,7 +546,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testLabel_onClick() throws Exception {
+    public void label_onClick() throws Exception {
         onClickBodyTest("<body><form><label id='clickId' onClick='alert(\"foo\")'>Item</label></form></body>\n");
     }
 
@@ -551,7 +556,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testLegend_onClick() throws Exception {
+    public void legend_onClick() throws Exception {
         onClickBodyTest("<body><form><fieldset><legend id='clickId' onClick='alert(\"foo\")'>\n"
             + "Legend</legend></fieldset></form></body>\n");
     }
@@ -562,7 +567,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testLink_onClick() throws Exception {
+    public void link_onClick() throws Exception {
         onClickPageTest("<html><head><title>foo</title><link id='clickId' onClick='alert(\"foo\")'/>\n"
             + "</head><body></body></html>");
     }
@@ -573,7 +578,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testListItem_onClick() throws Exception {
+    public void listItem_onClick() throws Exception {
         onClickBodyTest("<body><ol><li id='clickId' onClick='alert(\"foo\")'>Item</li></ol></body>\n");
     }
 
@@ -583,7 +588,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testMap_onClick() throws Exception {
+    public void map_onClick() throws Exception {
         onClickBodyTest("<body><map id='clickId' onClick='alert(\"foo\")'><area/></map></body>\n");
     }
 
@@ -593,7 +598,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testMenu_onClick() throws Exception {
+    public void menu_onClick() throws Exception {
         onClickBodyTest("<body><menu id='clickId' onClick='alert(\"foo\")'><li>Item</li></menu></body>\n");
     }
 
@@ -603,7 +608,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testNoFrames_onClick() throws Exception {
+    public void noFrames_onClick() throws Exception {
         onClickPageTest("<html><head><title>foo</title></head><frameset><frame/>\n"
             + "<noframes id='clickId' onClick='alert(\"foo\")'/></frameset></html>");
     }
@@ -614,7 +619,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testNoScript_onClick() throws Exception {
+    public void noScript_onClick() throws Exception {
         onClickBodyTest("<body><script>var i=0;</script><noscript id='clickId' "
             + "onClick='alert(\"foo\")'>Item</noscript></body>\n");
     }
@@ -625,7 +630,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testObject_onClick() throws Exception {
+    public void object_onClick() throws Exception {
         onClickSimpleTest("object");
     }
 
@@ -635,9 +640,17 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testOption_onClick() throws Exception {
-        onClickBodyTest("<body><form><select><option id='clickId' onClick='alert(\"foo\")'>\n"
-            + "Option</option></select></form></body>\n");
+    @Alerts(DEFAULT = "foo",
+            IE = "")
+    @BuggyWebDriver(CHROME)
+    // ChromeDriver does not generate a "foo" but it occurs manually
+    public void option_onClick() throws Exception {
+        final String htmlContent = "<html><head><title>foo</title></head>\n"
+                + "<body><form><select size='2'><option id='clickId' onClick='alert(\"foo\")'>\n"
+                + "Option</option></select></form></body>\n"
+                + "</html>";
+
+        onClickPageTest(htmlContent, 1);
     }
 
     /**
@@ -646,7 +659,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testOptionGroup_onClick() throws Exception {
+    public void optionGroup_onClick() throws Exception {
         onClickBodyTest("<body><form><select><optgroup id='clickId' onClick='alert(\"foo\")'>\n"
             + "<option>Option</option></optgroup></select></form></body>\n");
     }
@@ -657,7 +670,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testOrderedList_onClick() throws Exception {
+    public void orderedList_onClick() throws Exception {
         onClickBodyTest("<body><ol id='clickId' onClick='alert(\"foo\")'><li>Item</li></ol></body>\n");
     }
 
@@ -667,7 +680,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testParagraph_onClick() throws Exception {
+    public void paragraph_onClick() throws Exception {
         onClickSimpleTest("p");
     }
 
@@ -677,7 +690,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testPre_onClick() throws Exception {
+    public void pre_onClick() throws Exception {
         onClickSimpleTest("pre");
     }
 
@@ -687,7 +700,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testQuotation_onClick() throws Exception {
+    public void quotation_onClick() throws Exception {
         onClickSimpleTest("q");
     }
 
@@ -697,7 +710,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testStrikethrough_onClick() throws Exception {
+    public void strikethrough_onClick() throws Exception {
         onClickSimpleTest("s");
     }
 
@@ -707,7 +720,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testSample_onClick() throws Exception {
+    public void sample_onClick() throws Exception {
         onClickSimpleTest("samp");
     }
 
@@ -717,7 +730,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testSelect_onClick() throws Exception {
+    public void select_onClick() throws Exception {
         onClickBodyTest("<body><form><select id='clickId' onClick='alert(\"foo\")'>\n"
             + "<option>Option</option></select></form></body>\n");
     }
@@ -728,7 +741,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testSmall_onClick() throws Exception {
+    public void small_onClick() throws Exception {
         onClickSimpleTest("small");
     }
 
@@ -738,7 +751,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testSpan_onClick() throws Exception {
+    public void span_onClick() throws Exception {
         onClickSimpleTest("span");
     }
 
@@ -748,7 +761,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testStrike_onClick() throws Exception {
+    public void strike_onClick() throws Exception {
         onClickSimpleTest("strike");
     }
 
@@ -758,7 +771,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testSubscript_onClick() throws Exception {
+    public void subscript_onClick() throws Exception {
         onClickSimpleTest("sub");
     }
 
@@ -768,7 +781,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testSuperscript_onClick() throws Exception {
+    public void superscript_onClick() throws Exception {
         onClickSimpleTest("sup");
     }
 
@@ -778,7 +791,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testTable_onClick() throws Exception {
+    public void table_onClick() throws Exception {
         onClickBodyTest("<body><table id='clickId' onClick='alert(\"foo\")'><caption>\n"
             + "Caption</caption><colgroup><col/></colgroup><thead><tr><th>Header</th></tr>\n"
             + "</thead><tbody><tr><td>Data</td></tr></tbody><tfoot><tr><th>Header</th></tr>\n"
@@ -791,7 +804,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testTableBody_onClick() throws Exception {
+    public void tableBody_onClick() throws Exception {
         onClickBodyTest("<body><table><caption>Caption</caption><colgroup><col/>\n"
             + "</colgroup><thead><tr><th>Header</th></tr></thead>\n"
             + "<tbody id='clickId' onClick='alert(\"foo\")'><tr><td>Data</td></tr>\n"
@@ -804,7 +817,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testTableDataCell_onClick() throws Exception {
+    public void tableDataCell_onClick() throws Exception {
         onClickBodyTest("<body><table><caption>Caption</caption><colgroup><col/>\n"
             + "</colgroup><thead><tr><th>Header</th></tr></thead><tbody><tr>\n"
             + "<td id='clickId' onClick='alert(\"foo\")'>Data</td></tr></tbody>\n"
@@ -817,7 +830,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testTextarea_onClick() throws Exception {
+    public void textarea_onClick() throws Exception {
         onClickBodyTest("<body><form><textarea id='clickId' onClick='alert(\"foo\")'>Item</textarea></form></body>\n");
     }
 
@@ -827,7 +840,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testTableFooter_onClick() throws Exception {
+    public void tableFooter_onClick() throws Exception {
         onClickBodyTest("<body><table><caption>Caption</caption><colgroup><col/>\n"
             + "</colgroup><thead><tr><th>Header</th></tr></thead><tbody><tr><td>Data</td>\n"
             + "</tr></tbody><tfoot id='clickId' onClick='alert(\"foo\")'><tr><th>Header</th>\n"
@@ -840,7 +853,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testTableHeaderCell_onClick() throws Exception {
+    public void tableHeaderCell_onClick() throws Exception {
         onClickBodyTest("<body><table><caption>Caption</caption><colgroup>\n"
             + "<col/></colgroup><thead><tr><th id='clickId' onClick='alert(\"foo\")'>\n"
             + "Header</th></tr></thead><tbody><tr><td>Data</td></tr></tbody><tfoot><tr>\n"
@@ -853,7 +866,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testTableHeader_onClick() throws Exception {
+    public void tableHeader_onClick() throws Exception {
         onClickBodyTest("<body><table><caption>Caption</caption><colgroup><col/>\n"
             + "</colgroup><thead id='clickId' onClick='alert(\"foo\")'><tr><th>Header</th>\n"
             + "</tr></thead><tbody><tr><td>Data</td></tr></tbody><tfoot><tr><th>Header</th>\n"
@@ -866,7 +879,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testTableRow_onClick() throws Exception {
+    public void tableRow_onClick() throws Exception {
         onClickBodyTest("<body><table><caption>Caption</caption><colgroup><col/>\n"
             + "</colgroup><thead><tr><th>Header</th></tr></thead><tbody>\n"
             + "<tr id='clickId' onClick='alert(\"foo\")'><td>Data</td></tr></tbody>\n"
@@ -879,7 +892,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testTableRow_onClickSetOnLoad() throws Exception {
+    public void tableRow_onClickSetOnLoad() throws Exception {
         onClickPageTest("<html><head>\n"
                         + "<script language='JavaScript'>\n"
                         + "function doFoo() { alert('foo');        }\n"
@@ -894,7 +907,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testCheckbox_onClickUpdatesStateFirst() throws Exception {
+    public void checkbox_onClickUpdatesStateFirst() throws Exception {
         onClickPageTest("<html><head>\n"
                         + "<script language='JavaScript'>\n"
                         + "function doFoo(event) { if (this.checked) alert('foo'); else alert('bar'); }\n"
@@ -911,7 +924,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testTableRow_onClickSetByNestedScript() throws Exception {
+    public void tableRow_onClickSetByNestedScript() throws Exception {
         onClickBodyTest("<body><table><tbody><tr id='clickId'><td>cell value</td></tr></tbody></table>\n"
                         + "<script language='JavaScript'>\n"
                                 + "function doFoo(event) { alert('foo'); }\n"
@@ -924,7 +937,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testTeletype_onClick() throws Exception {
+    public void teletype_onClick() throws Exception {
         onClickSimpleTest("tt");
     }
 
@@ -934,7 +947,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testUnderline_onClick() throws Exception {
+    public void underline_onClick() throws Exception {
         onClickSimpleTest("u");
     }
 
@@ -944,7 +957,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testUnorderedList_onClick() throws Exception {
+    public void unorderedList_onClick() throws Exception {
         onClickBodyTest("<body><ul id='clickId' onClick='alert(\"foo\")'><li>Item</li></ul></body>\n");
     }
 
@@ -954,7 +967,7 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testVariable_onClick() throws Exception {
+    public void variable_onClick() throws Exception {
         onClickSimpleTest("var");
     }
 
@@ -964,18 +977,18 @@ public class ClickableElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testSetOnClick() throws Exception {
-        final String[] expectedAlerts = {"foo"};
+    @Alerts("foo")
+    public void setOnClick() throws Exception {
         onClickPageTest("<html><body><form>\n"
                 + "<button type='button' id='clickId' onclick='alert(\"foo\"); onclick=null;'>Item</button>\n"
-                + "</form></body></html>", 2, expectedAlerts);
+                + "</form></body></html>", 2);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    public void testDblClick() throws Exception {
+    public void dblClick() throws Exception {
         final String content = "<html>\n"
             + "<head>\n"
             + "<script>\n"
@@ -993,28 +1006,11 @@ public class ClickableElementTest extends WebTestCase {
 
         final HtmlPage page = loadPage(content);
         final HtmlBody body = page.getHtmlElementById("myBody");
+        // WebDriver has currently no support for double click
+        // (http://code.google.com/p/webdriver/issues/detail?id=161)
         body.dblClick();
         final HtmlTextArea textArea = page.getHtmlElementById("myTextarea");
         assertEquals("click-dblclick-", textArea.getText());
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void clickOnFocus() throws Exception {
-        final String content
-            = "<html><head><title>foo</title></head><body>\n"
-            + "<form>\n"
-            + "    <input type='button' id='textfield1' onfocus='alert(1)'>\n"
-            + "</form>\n"
-            + "</body></html>";
-        final String[] expectedAlerts = {"1"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(content, collectedAlerts);
-
-        page.<HtmlElement>getHtmlElementById("textfield1").click();
-        assertEquals(expectedAlerts, collectedAlerts);
     }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,27 +15,30 @@
 package com.gargoylesoftware.htmlunit.html;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 
 /**
  * Tests for {@link DomComment}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 9842 $
  * @author Karel Kolman
  * @author Ahmed Ashour
+ * @author Philip Graf
  */
-public class DomCommentTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public class DomCommentTest extends SimpleWebTestCase {
 
     /**
      * Test the comment not visible when viewed by user.
      * @throws Exception if the test fails
      */
     @Test
-    public void testAsText() throws Exception {
+    public void asText() throws Exception {
         final String content = "<html><body><!-- a comment --></body></html>";
         final HtmlPage page = loadPage(content);
-
         assertEquals("", page.asText());
     }
 
@@ -44,13 +47,12 @@ public class DomCommentTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testAsXml() throws Exception {
+    public void asXml() throws Exception {
         final String comment = "<!-- a comment -->";
         final String content = "<html><body><span id='foo'>" + comment + "</span></body></html>";
         final HtmlPage page = loadPage(content);
         final HtmlElement elt = page.getHtmlElementById("foo");
         final DomNode node = elt.getFirstChild();
-
         assertEquals(comment, node.asXml());
     }
 
@@ -59,11 +61,61 @@ public class DomCommentTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testTextSibling() throws Exception {
+    public void textSibling() throws Exception {
         final String content = "<html><body id='body'><!-- c1 -->text<!-- c2 --></body></html>";
         final HtmlPage page = loadPage(content);
-        final DomNode node = page.<HtmlElement>getHtmlElementById("body").getFirstChild();
-
+        final DomNode node = page.getHtmlElementById("body").getFirstChild();
         assertEquals(DomText.NODE_NAME, node.getNextSibling().getNodeName());
     }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void setTextContent() throws Exception {
+        final String html = "<html><body><span id='s'><!--abc--></span></body></html>";
+        final HtmlPage page = loadPage(html);
+        final DomComment comment = (DomComment) page.getElementById("s").getFirstChild();
+        assertEquals("abc", comment.getTextContent());
+        comment.setTextContent("xyz");
+        assertEquals("xyz", comment.getTextContent());
+    }
+
+    /**
+     * Tests if {@code getCanonicalXPath()} returns the correct XPath for a
+     * comment node.
+     *
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void getCanonicalXPath_withoutCommentSiblings() throws Exception {
+        final String html = "<html><body><span id='s'><!--abc--></span></body></html>";
+        final HtmlPage page = loadPage(html);
+        final DomComment comment = (DomComment) page.getElementById("s").getFirstChild();
+        assertEquals("/html/body/span/comment()", comment.getCanonicalXPath());
+        assertEquals(comment, page.getFirstByXPath(comment.getCanonicalXPath()));
+    }
+
+    /**
+     * Tests if {@code getCanonicalXPath()} returns the correct XPath for a
+     * comment node with other comment node siblings.
+     *
+     * @throws Exception if an error occurs
+     */
+    @Test
+    public void getCanonicalXPath_withCommentSiblings() throws Exception {
+        final String html = "<html><body><span id='s'><!--abc--><br/><!--def--></span></body></html>";
+        final HtmlPage page = loadPage(html);
+
+        final DomComment comment1 = (DomComment) page.getElementById("s").getFirstChild();
+        assertEquals("abc", comment1.getData());
+        assertEquals("/html/body/span/comment()[1]", comment1.getCanonicalXPath());
+        assertEquals(comment1, page.getFirstByXPath(comment1.getCanonicalXPath()));
+
+        final DomComment comment2 = (DomComment) page.getElementById("s").getChildNodes().get(2);
+        assertEquals("def", comment2.getData());
+        assertEquals("/html/body/span/comment()[2]", comment2.getCanonicalXPath());
+        assertEquals(comment2, page.getFirstByXPath(comment2.getCanonicalXPath()));
+    }
+
 }

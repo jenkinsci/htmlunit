@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,13 +20,11 @@ import java.util.EventObject;
  * This is the event class for notifications about changes to the attributes of the
  * HtmlElement.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 9837 $
  * @author Ahmed Ashour
  * @see HtmlAttributeChangeListener
  */
 public class HtmlAttributeChangeEvent extends EventObject {
-
-    private static final long serialVersionUID = -7432080435641028075L;
 
     private final String name_;
     private final String value_;
@@ -40,8 +38,8 @@ public class HtmlAttributeChangeEvent extends EventObject {
      */
     public HtmlAttributeChangeEvent(final HtmlElement element, final String name, final String value) {
         super(element);
-        this.name_ = name;
-        this.value_ = value;
+        name_ = name;
+        value_ = value;
     }
 
     /**

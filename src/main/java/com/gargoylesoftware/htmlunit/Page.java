@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,16 @@ package com.gargoylesoftware.htmlunit;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.net.URL;
 
 /**
  * An abstract page that represents some content returned from a server.
  *
- * @version $Revision: 4756 $
+ * @version $Revision: 9837 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author Marc Guillemot
+ * @author Ronald Brill
  */
 public interface Page extends Serializable {
 
@@ -39,9 +41,8 @@ public interface Page extends Serializable {
      * Clean up this page.
      * This method gets called by the web client when an other page is loaded in the window
      * and you should probably never need to call it directly
-     * @throws IOException if an IO problem occurs
      */
-    void cleanUp() throws IOException;
+    void cleanUp();
 
     /**
      * Returns the web response that was originally used to create this page.
@@ -54,5 +55,16 @@ public interface Page extends Serializable {
      * @return the enclosing window
      */
     WebWindow getEnclosingWindow();
-}
 
+    /**
+     * Returns the URL of this page.
+     * @return the URL of this page
+     */
+    URL getUrl();
+
+    /**
+     * Returns true if this page is a HtmlPage.
+     * @return true or false
+     */
+    boolean isHtmlPage();
+}

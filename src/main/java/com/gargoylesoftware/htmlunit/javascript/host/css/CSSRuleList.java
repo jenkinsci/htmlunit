@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,31 +14,44 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.css;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_CSSRULELIST_DONT_ENUM_ITEM;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_CSSRULELIST_ENUM_ITEM_LENGTH;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+
 import java.util.ArrayList;
 import java.util.List;
 
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
-import com.gargoylesoftware.htmlunit.javascript.host.Stylesheet;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxFunction;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
 
 /**
  * A JavaScript object for a CSSRuleList.
  *
- * @version $Revision: 4502 $
+ * @version $Revision: 10546 $
  * @author Ahmed Ashour
  */
+@JsxClasses({
+        @JsxClass(browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(isJSObject = false, browsers = @WebBrowser(value = IE, maxVersion = 8))
+    })
 public class CSSRuleList extends SimpleScriptable {
 
-    private static final long serialVersionUID = 6068213884501456020L;
-
-    private final Stylesheet stylesheet_;
+    private final CSSStyleSheet stylesheet_;
     private final org.w3c.dom.css.CSSRuleList rules_;
 
     /**
-     * Creates a new instance. JavaScript objects must have a default constructor.
+     * Creates a new instance.
      */
-    @Deprecated
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(value = FF, minVersion = 38) })
     public CSSRuleList() {
         stylesheet_ = null;
         rules_ = null;
@@ -48,7 +61,7 @@ public class CSSRuleList extends SimpleScriptable {
      * Creates a new instance.
      * @param stylesheet the stylesheet
      */
-    public CSSRuleList(final Stylesheet stylesheet) {
+    public CSSRuleList(final CSSStyleSheet stylesheet) {
         stylesheet_ = stylesheet;
         rules_ = stylesheet.getWrappedSheet().getCssRules();
         setParentScope(stylesheet.getParentScope());
@@ -59,7 +72,8 @@ public class CSSRuleList extends SimpleScriptable {
      * Returns the length of this list.
      * @return the length of this list.
      */
-    public int jsxGet_length() {
+    @JsxGetter
+    public int getLength() {
         if (rules_ != null) {
             return rules_.getLength();
         }
@@ -71,7 +85,8 @@ public class CSSRuleList extends SimpleScriptable {
      * @param index the index
      * @return the item in the given index
      */
-    public Object jsxFunction_item(final int index) {
+    @JsxFunction(@WebBrowser(FF))
+    public Object item(final int index) {
         return null;
     }
 
@@ -80,25 +95,39 @@ public class CSSRuleList extends SimpleScriptable {
      */
     @Override
     public Object[] getIds() {
-        final List<String> idList = new ArrayList<String>();
+        final List<String> idList = new ArrayList<>();
 
-        final int length = jsxGet_length();
-        if (!getBrowserVersion().isIE()) {
+        final int length = getLength();
+        if (getBrowserVersion().hasFeature(JS_CSSRULELIST_DONT_ENUM_ITEM)) {
+            idList.add("length");
+
+            for (int i = 0; i < length; i++) {
+                idList.add(Integer.toString(i));
+            }
+        }
+        else {
             for (int i = 0; i < length; i++) {
                 idList.add(Integer.toString(i));
             }
 
-            idList.add("length");
-            idList.add("item");
-        }
-        else {
-            idList.add("length");
-
-            for (int i = 0; i < length; i++) {
-                idList.add(Integer.toString(i));
+            if (getBrowserVersion().hasFeature(JS_CSSRULELIST_ENUM_ITEM_LENGTH)) {
+                idList.add("item");
+                idList.add("length");
+            }
+            else {
+                idList.add("length");
+                idList.add("item");
             }
         }
         return idList.toArray();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean has(final int index, final Scriptable start) {
+        return index >= 0 && index < getLength();
     }
 
     /**
@@ -106,15 +135,11 @@ public class CSSRuleList extends SimpleScriptable {
      */
     @Override
     public boolean has(final String name, final Scriptable start) {
-        if (name.equals("length") || name.equals("item")) {
+        if ("length".equals(name) || "item".equals(name)) {
             return true;
         }
         try {
-            final int index = Integer.parseInt(name);
-            final int length = jsxGet_length();
-            if (index >= 0 && index < length) {
-                return true;
-            }
+            return has(Integer.parseInt(name), start);
         }
         catch (final Exception e) {
             //ignore
@@ -127,6 +152,9 @@ public class CSSRuleList extends SimpleScriptable {
      */
     @Override
     public Object get(final int index, final Scriptable start) {
+        if (index < 0 || getLength() <= index) {
+            return NOT_FOUND;
+        }
         return CSSRule.create(stylesheet_, rules_.item(index));
     }
 

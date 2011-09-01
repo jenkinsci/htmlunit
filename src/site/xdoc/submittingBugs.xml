@@ -4,7 +4,7 @@
     <properties>
         <title>Submitting Bugs</title>
         <author>Chris Erskine</author>
-        <revision>$Revision: 2511 $</revision>
+        <revision>$Revision: 10542 $</revision>
     </properties>
 
     <body>
@@ -22,7 +22,7 @@
             </p>
             <p>
                 Before reporting an error, make sure that you are up to the latest version of the software.  If
-                you can, get the <a href="http://build.canoo.com/htmlunit">latest snapshot</a>,
+                you can, get the <a href="https://ci.canoo.com/teamcity/viewLog.html?buildTypeId=HtmlUnit_FastBuild&amp;buildId=lastSuccessful&amp;tab=artifacts">latest snapshot</a>,
                 or build it from Subversion to see if the error still occurs.  Check the 
                 <a href="dependencies.html">dependencies</a> to be sure that you have all the required jar files.
                 Also, review the list of bugs and recently closed bugs to see if someone else has already reported

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,12 +18,12 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.lang.ArrayUtils;
-import org.apache.commons.lang.ClassUtils;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.FunctionObject;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
+
+import org.apache.commons.lang3.ArrayUtils;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.NodeList;
 
@@ -34,13 +34,15 @@ import org.w3c.dom.NodeList;
  * properties and functions should occur from the XML configuration according to
  * the browser to simulate.
  *
- * @version $Revision: 4403 $
+ * @version $Revision: 9868 $
  * @author Marc Guillemot
+ * @author Ronald Brill
  */
 public class ScriptableWrapper extends ScriptableObject {
-    private static final long serialVersionUID = 1736378450382368760L;
+    private static final Class<?>[] METHOD_PARAMS_INT = new Class[] {Integer.TYPE};
+    private static final Class<?>[] METHOD_PARAMS_STRING = new Class[] {String.class};
 
-    private final Map<String, Method> properties_ = new HashMap<String, Method>();
+    private final Map<String, Method> properties_ = new HashMap<>();
 
     private Method getByIndexMethod_;
     private final Object javaObject_;
@@ -54,7 +56,7 @@ public class ScriptableWrapper extends ScriptableObject {
      * @param staticType the static type of the object
      */
     public ScriptableWrapper(final Scriptable scope, final Object javaObject,
-            final Class< ? > staticType) {
+            final Class<?> staticType) {
         javaObject_ = javaObject;
         setParentScope(scope);
 
@@ -63,35 +65,28 @@ public class ScriptableWrapper extends ScriptableObject {
         if (NodeList.class.equals(staticType)
                 || NamedNodeMap.class.equals(staticType)) {
             try {
-                jsClassName_ = ClassUtils.getShortClassName(staticType);
+                jsClassName_ = staticType.getSimpleName();
 
                 // is there a better way that would avoid to keep local
                 // information?
                 // it seems that defineProperty with only accepts delegate if
                 // its method takes a ScriptableObject
                 // as parameter.
-                final Method length = javaObject.getClass().getMethod(
-                        "getLength", ArrayUtils.EMPTY_CLASS_ARRAY);
+                final Method length = javaObject.getClass().getMethod("getLength", ArrayUtils.EMPTY_CLASS_ARRAY);
                 properties_.put("length", length);
 
-                final Method item = javaObject.getClass().getMethod("item",
-                        new Class[] {Integer.TYPE});
-                defineProperty("item", new MethodWrapper("item", staticType, new Class[] {Integer.TYPE}),
-                        0);
+                final Method item = javaObject.getClass().getMethod("item", METHOD_PARAMS_INT);
+                defineProperty("item", new MethodWrapper("item", staticType, METHOD_PARAMS_INT), 0);
 
-                final Method toString = getClass().getMethod("jsToString",
-                        ArrayUtils.EMPTY_CLASS_ARRAY);
-                defineProperty("toString", new FunctionObject("toString",
-                        toString, this), 0);
+                final Method toString = getClass().getMethod("jsToString", ArrayUtils.EMPTY_CLASS_ARRAY);
+                defineProperty("toString", new FunctionObject("toString", toString, this), 0);
 
                 getByIndexMethod_ = item;
 
                 if (NamedNodeMap.class.equals(staticType)) {
-                    final Method getNamedItem = javaObject.getClass()
-                            .getMethod("getNamedItem",
-                                    new Class[] {String.class});
+                    final Method getNamedItem = javaObject.getClass().getMethod("getNamedItem", METHOD_PARAMS_STRING);
                     defineProperty("getNamedItem",
-                            new MethodWrapper("getNamedItem", staticType, new Class[] {String.class}), 0);
+                            new MethodWrapper("getNamedItem", staticType, METHOD_PARAMS_STRING), 0);
 
                     getByNameFallback_ = getNamedItem;
                 }
@@ -179,7 +174,7 @@ public class ScriptableWrapper extends ScriptableObject {
     public Object get(final int index, final Scriptable start) {
         if (getByIndexMethod_ != null) {
             final Object byIndex = invoke(getByIndexMethod_,
-                    new Object[] {new Integer(index)});
+                    new Object[] {Integer.valueOf(index)});
             return Context.javaToJS(byIndex, ScriptableObject
                     .getTopLevelScope(start));
         }
@@ -191,7 +186,7 @@ public class ScriptableWrapper extends ScriptableObject {
      * @see ScriptableObject#getDefaultValue(java.lang.Class)
      */
     @Override
-    public Object getDefaultValue(final Class< ? > hint) {
+    public Object getDefaultValue(final Class<?> hint) {
         if (String.class.equals(hint) || hint == null) {
             return jsToString();
         }

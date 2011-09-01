@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,12 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
+
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -32,22 +38,27 @@ import org.junit.Test;
 import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
+import com.gargoylesoftware.htmlunit.ScriptException;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebRequest;
+import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.html.DomAttr;
 import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.html.HtmlDivision;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.javascript.JavaScriptErrorListener;
 
 /**
  * Tests for {@link Window} that use background jobs.
  *
- * @version $Revision: 4789 $
+ * @version $Revision: 10603 $
  * @author Brad Clarke
  * @author Daniel Gredler
+ * @author Frank Danek
  */
-public class WindowConcurrencyTest extends WebTestCase {
+public class WindowConcurrencyTest extends SimpleWebTestCase {
 
     private WebClient client_;
     private long startTime_;
@@ -79,7 +90,7 @@ public class WindowConcurrencyTest extends WebTestCase {
      */
     @After
     public void after() {
-        client_.closeAllWindows();
+        client_.close();
     }
 
     /**
@@ -162,42 +173,6 @@ public class WindowConcurrencyTest extends WebTestCase {
         loadPage(client_, content, collectedAlerts);
         assertEquals(0, client_.waitForBackgroundJavaScript(1000));
         assertEquals(Collections.nCopies(3, "blah"), collectedAlerts);
-    }
-
-    /**
-     * When <tt>setInterval()</tt> is called with a 0 millisecond delay, Internet Explorer turns it
-     * into a <tt>setTimeout()</tt> call, and Firefox imposes a minimum timer restriction.
-     *
-     * @throws Exception if an error occurs
-     */
-    @Test
-    public void setIntervalZeroDelay() throws Exception {
-        final String html
-            = "<html><body><div id='d'></div>\n"
-            + "<script>var id = setInterval('document.getElementById(\"d\").innerHTML += \"x\"', 0);</script>\n"
-            + "</body></html>";
-
-        WebClient client = new WebClient(BrowserVersion.FIREFOX_3);
-        try {
-            final HtmlPage page1 = loadPage(client, html, new ArrayList<String>());
-            Thread.sleep(1000);
-            page1.executeJavaScript("clearInterval(id)");
-            client.waitForBackgroundJavaScript(1000);
-            assertTrue(page1.getElementById("d").asText().length() > 1);
-        }
-        finally {
-            client.closeAllWindows();
-        }
-
-        client = new WebClient(BrowserVersion.INTERNET_EXPLORER_7);
-        try {
-            final HtmlPage page2 = loadPage(client, html, new ArrayList<String>());
-            client.waitForBackgroundJavaScript(1000);
-            assertEquals(1, page2.getElementById("d").asText().length());
-        }
-        finally {
-            client.closeAllWindows();
-        }
     }
 
     /**
@@ -338,8 +313,8 @@ public class WindowConcurrencyTest extends WebTestCase {
     }
 
     /**
-     * Regression test for bug #2093370 with clearInterval.
-     * @see <a href="http://sourceforge.net/tracker/index.php?func=detail&aid=2093370&group_id=47038&atid=448266">
+     * Regression test for bug #693 with clearInterval.
+     * @see <a href="http://sourceforge.net/p/htmlunit/bugs/693/">
      * bug details</a>
      * @throws Exception if the test fails
      */
@@ -350,7 +325,7 @@ public class WindowConcurrencyTest extends WebTestCase {
 
     /**
      * Regression test for bug #2093370 with clearTimeout.
-     * @see <a href="http://sourceforge.net/tracker/index.php?func=detail&aid=2093370&group_id=47038&atid=448266">
+     * @see <a href="http://sourceforge.net/p/htmlunit/bugs/693/">
      * bug details</a>
      * @throws Exception if the test fails
      */
@@ -376,10 +351,9 @@ public class WindowConcurrencyTest extends WebTestCase {
 
         final String[] expectedAlerts = {"started", "finished"};
 
-        final List<String> collectedAlerts = new ArrayList<String>();
+        final List<String> collectedAlerts = new ArrayList<>();
         final HtmlPage page = loadPage(client_, html, collectedAlerts);
         final Function mySpecialFunction = new BaseFunction() {
-            private static final long serialVersionUID = -2445994102698852899L;
             @Override
             public Object call(final Context cx, final Scriptable scope,
                     final Scriptable thisObj, final Object[] args) {
@@ -391,7 +365,7 @@ public class WindowConcurrencyTest extends WebTestCase {
         };
         final Window window = (Window) page.getEnclosingWindow().getScriptObject();
         ScriptableObject.putProperty(window, "mySpecialFunction", mySpecialFunction);
-        page.<HtmlElement>getHtmlElementById("clickMe").click();
+        page.getHtmlElementById("clickMe").click();
         client_.waitForBackgroundJavaScript(5000);
         assertEquals(expectedAlerts, collectedAlerts);
     }
@@ -401,7 +375,7 @@ public class WindowConcurrencyTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void verifyCloseAllWindowsStopsJavaScript() throws Exception {
+    public void verifyCloseStopsJavaScript() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function f() {\n"
             + "    alert('Oh no!');\n"
@@ -412,7 +386,7 @@ public class WindowConcurrencyTest extends WebTestCase {
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
+        final List<String> collectedAlerts = new ArrayList<>();
         client_.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
         final MockWebConnection webConnection = new MockWebConnection();
@@ -420,7 +394,7 @@ public class WindowConcurrencyTest extends WebTestCase {
         client_.setWebConnection(webConnection);
 
         client_.getPage(URL_FIRST);
-        client_.closeAllWindows();
+        client_.close();
         client_.waitForBackgroundJavaScript(5000);
         assertEquals(0, collectedAlerts.size());
     }
@@ -442,7 +416,7 @@ public class WindowConcurrencyTest extends WebTestCase {
             + "</body></html>";
         final String html2 = "<html></html>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
+        final List<String> collectedAlerts = new ArrayList<>();
         client_.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
         final MockWebConnection conn = new MockWebConnection();
@@ -460,14 +434,11 @@ public class WindowConcurrencyTest extends WebTestCase {
     }
 
     /**
-     * Our Window proxy causes troubles.
+     * Our Window proxy caused troubles.
      * @throws Exception if the test fails
      */
     @Test
     public void setTimeoutOnFrameWindow() throws Exception {
-        if (notYetImplemented()) {
-            return;
-        }
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
             + "    frames[0].setTimeout(f, 0);\n"
@@ -479,7 +450,7 @@ public class WindowConcurrencyTest extends WebTestCase {
             + "<iframe src='about:blank'></iframe>\n"
             + "</body></html>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
+        final List<String> collectedAlerts = new ArrayList<>();
         client_.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
         final MockWebConnection conn = new MockWebConnection();
@@ -518,30 +489,99 @@ public class WindowConcurrencyTest extends WebTestCase {
             + "setInterval(forceStyleComputationInParent, 10);\n"
             + "</script></head></body></html>";
 
-        client_ = new WebClient(BrowserVersion.FIREFOX_3);
-        final MockWebConnection webConnection = new MockWebConnection();
-        webConnection.setResponse(URL_FIRST, html);
-        webConnection.setDefaultResponse(html2);
-        client_.setWebConnection(webConnection);
+        try (final WebClient client = new WebClient(BrowserVersion.FIREFOX_38)) {
+            final MockWebConnection webConnection = new MockWebConnection();
+            webConnection.setResponse(URL_FIRST, html);
+            webConnection.setDefaultResponse(html2);
+            client.setWebConnection(webConnection);
 
-        final HtmlPage page1 = client_.getPage(URL_FIRST);
+            final HtmlPage page1 = client.getPage(URL_FIRST);
 
-        // Recreating what can occur with two threads requires
-        // to know a bit about the style invalidation used in Window.DomHtmlAttributeChangeListenerImpl
-        final HtmlElement elt = new HtmlDivision("", "div", page1, new HashMap<String, DomAttr>()) {
-            private static final long serialVersionUID = 7744039421294716167L;
+            // Recreating what can occur with two threads requires
+            // to know a bit about the style invalidation used in Window.DomHtmlAttributeChangeListenerImpl
+            final HtmlElement elt = new HtmlDivision("div", page1, new HashMap<String, DomAttr>()) {
+                @Override
+                public DomNode getParentNode() {
+                    // this gets called by CSS invalidation logic
+                    try {
+                        Thread.sleep(1000); // enough to let setInterval run
+                    }
+                    catch (final InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                    return super.getParentNode();
+                }
+            };
+            page1.getBody().appendChild(elt);
+        }
+    }
+
+    /**
+     * As of HtmlUnit-2,11 snapshot from 20.08.2012, following exception was occurring in background processing:
+     * >net.sourceforge.htmlunit.corejs.javascript.EcmaError: ReferenceError: "foo" is not defined.<.
+     * The cause was that the setTimeout was executed even once the page was unloaded. Strangely, loading
+     * directly the second page didn't allow to reproduce the problem.
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void cleanSetTimeout() throws Exception {
+        final String page1 = "<html><body>"
+            + "<a id=it href='" + URL_SECOND.toString() + "'>link</a>\n"
+            + "</body></html>";
+
+        final String html = "<html><body>\n"
+            + "<form action='foo2' name='waitform'></form>"
+            + "<script>"
+            + "function foo() {\n"
+            + "  setTimeout('foo()', 10);\n"
+            + "}\n"
+            + "function t() {\n"
+            + "  setTimeout('foo()', 10);\n"
+            + "  document.waitform.submit();\n"
+            + "}\n"
+            + "t();\n"
+            + "</script>\n"
+            + "</body></html>";
+
+        final MockWebConnection mockWebConnection = new MockWebConnection() {
             @Override
-            public DomNode getParentNode() {
-                // this gets called by CSS invalidation logic
+            public WebResponse getResponse(final WebRequest request) throws IOException {
                 try {
-                    Thread.sleep(1000); // enough to let setInterval run
+                    Thread.sleep(50); // causes the background job to be scheduled in this time
                 }
                 catch (final InterruptedException e) {
                     throw new RuntimeException(e);
                 }
-                return super.getParentNode();
+                return super.getResponse(request);
             }
         };
-        page1.getBody().appendChild(elt);
+        mockWebConnection.setDefaultResponse("<html></html>");
+
+        mockWebConnection.setResponse(URL_FIRST, page1);
+        mockWebConnection.setResponse(URL_SECOND, html);
+
+        client_.setWebConnection(mockWebConnection);
+        final List<ScriptException> scriptExceptions = new ArrayList<ScriptException>();
+        client_.setJavaScriptErrorListener(new JavaScriptErrorListener() {
+
+            public void loadScriptError(final HtmlPage htmlPage, final URL scriptUrl, final Exception exception) {
+            }
+
+            public void malformedScriptURL(final HtmlPage htmlPage, final String url,
+                    final MalformedURLException malformedURLException) {
+            }
+
+            public void scriptException(final HtmlPage htmlPage, final ScriptException scriptException) {
+                scriptExceptions.add(scriptException);
+            }
+
+            public void timeoutError(final HtmlPage htmlPage, final long allowedTime, final long executionTime) {
+            }
+        });
+
+        final HtmlPage page = client_.getPage(URL_FIRST);
+        ((HtmlElement) page.getElementById("it")).click();
+        Thread.sleep(500);
+        assertThat(scriptExceptions, is(Collections.<ScriptException>emptyList()));
     }
 }

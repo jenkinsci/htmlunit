@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,15 +21,14 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML "th" tag.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 9837 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
+ * @author Frank Danek
  */
 public class HtmlTableHeaderCell extends HtmlTableCell {
-
-    private static final long serialVersionUID = -8210579268968959585L;
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "th";
@@ -37,14 +36,13 @@ public class HtmlTableHeaderCell extends HtmlTableCell {
     /**
      * Creates an instance.
      *
-     * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the page that this element is contained within
      * @param attributes the initial attributes
      */
-    HtmlTableHeaderCell(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    HtmlTableHeaderCell(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
+        super(qualifiedName, page, attributes);
     }
 
     /**

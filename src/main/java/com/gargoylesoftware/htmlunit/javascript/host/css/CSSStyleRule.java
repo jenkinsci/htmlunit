@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,26 +14,42 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.css;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_SELECTOR_TEXT_UPPERCASE;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.gargoylesoftware.htmlunit.javascript.host.Stylesheet;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
+import com.gargoylesoftware.htmlunit.util.StringUtils;
 
 /**
  * A JavaScript object for a CSSStyleRule.
  *
- * @version $Revision: 4502 $
+ * @version $Revision: 10431 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
  */
+@JsxClasses({
+        @JsxClass(browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(isJSObject = false, browsers = @WebBrowser(value = IE, maxVersion = 8))
+    })
 public class CSSStyleRule extends CSSRule {
-
-    private static final long serialVersionUID = 207943879569003822L;
+    private static final Pattern SELECTOR_PARTS_PATTERN = Pattern.compile("[\\.#]?[a-zA-Z]+");
+    private static final Pattern SELECTOR_REPLACE_PATTERN = Pattern.compile("\\*([\\.#])");
 
     /**
-     * Creates a new instance. JavaScript objects must have a default constructor.
+     * Creates a new instance.
      */
-    @Deprecated
+    @JsxConstructor(@WebBrowser(CHROME))
     public CSSStyleRule() {
     }
 
@@ -42,7 +58,7 @@ public class CSSStyleRule extends CSSRule {
      * @param stylesheet the Stylesheet of this rule.
      * @param rule the wrapped rule
      */
-    protected CSSStyleRule(final Stylesheet stylesheet, final org.w3c.dom.css.CSSRule rule) {
+    protected CSSStyleRule(final CSSStyleSheet stylesheet, final org.w3c.dom.css.CSSStyleRule rule) {
         super(stylesheet, rule);
     }
 
@@ -50,28 +66,31 @@ public class CSSStyleRule extends CSSRule {
      * Returns the textual representation of the selector for the rule set.
      * @return the textual representation of the selector for the rule set
      */
-    public String jsxGet_selectorText() {
+    @JsxGetter
+    public String getSelectorText() {
         String selectorText = ((org.w3c.dom.css.CSSStyleRule) getRule()).getSelectorText();
-        final Pattern p = Pattern.compile("[\\.#]?[a-zA-Z]+");
-        final Matcher m = p.matcher(selectorText);
+        final Matcher m = SELECTOR_PARTS_PATTERN.matcher(selectorText);
         final StringBuffer sb = new StringBuffer();
         while (m.find()) {
             String fixedName = m.group();
             // this should be handled with the right regex but...
-            if (fixedName.startsWith(".") || fixedName.startsWith("#")) {
+            if ((fixedName.length() > 0)
+                    && (('.' == fixedName.charAt(0)) || ('#' == fixedName.charAt(0)))) {
                 // nothing
             }
-            else if (getBrowserVersion().isIE()) {
-                fixedName = fixedName.toUpperCase();
+            else if (getBrowserVersion().hasFeature(JS_SELECTOR_TEXT_UPPERCASE)) {
+                fixedName = fixedName.toUpperCase(Locale.ENGLISH);
             }
             else {
-                fixedName = fixedName.toLowerCase();
+                fixedName = fixedName.toLowerCase(Locale.ENGLISH);
             }
+            fixedName = StringUtils.sanitizeForAppendReplacement(fixedName);
             m.appendReplacement(sb, fixedName);
         }
         m.appendTail(sb);
 
-        selectorText = sb.toString().replaceAll("\\*([\\.#])", "$1"); // ".foo" and not "*.foo"
+        // ".foo" and not "*.foo"
+        selectorText = SELECTOR_REPLACE_PATTERN.matcher(sb.toString()).replaceAll("$1");
         return selectorText;
     }
 
@@ -79,7 +98,8 @@ public class CSSStyleRule extends CSSRule {
      * Sets the textual representation of the selector for the rule set.
      * @param selectorText the textual representation of the selector for the rule set
      */
-    public void jsxSet_selectorText(final String selectorText) {
+    @JsxSetter
+    public void setSelectorText(final String selectorText) {
         ((org.w3c.dom.css.CSSStyleRule) getRule()).setSelectorText(selectorText);
     }
 
@@ -87,7 +107,8 @@ public class CSSStyleRule extends CSSRule {
      * Returns the declaration-block of this rule set.
      * @return the declaration-block of this rule set
      */
-    public CSSStyleDeclaration jsxGet_style() {
+    @JsxGetter
+    public CSSStyleDeclaration getStyle() {
         return new CSSStyleDeclaration(getParentScope(), ((org.w3c.dom.css.CSSStyleRule) getRule()).getStyle());
     }
 }

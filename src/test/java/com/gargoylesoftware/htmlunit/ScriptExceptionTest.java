@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,24 +21,22 @@ import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.URL;
-import java.util.Locale;
 
 import org.apache.commons.io.IOUtils;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 
 /**
  * Tests for {@link ScriptException}.
  *
- * @version $Revision: 4731 $
+ * @version $Revision: 9838 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
  */
 @RunWith(BrowserRunner.class)
-public final class ScriptExceptionTest extends WebTestCase {
+public final class ScriptExceptionTest extends SimpleWebTestCase {
 
     /**
      * @throws Exception if the test fails
@@ -65,7 +63,7 @@ public final class ScriptExceptionTest extends WebTestCase {
             loadPage(getBrowserVersion(), html, null);
         }
         catch (final ScriptException e) {
-            assertEquals(getDefaultUrl(), e.getPage().getWebResponse().getRequestSettings().getUrl());
+            assertEquals(getDefaultUrl(), e.getPage().getUrl());
         }
     }
 
@@ -85,13 +83,8 @@ public final class ScriptExceptionTest extends WebTestCase {
 
     private void testScriptStackTrace(final String baseFileName) throws Exception {
         try {
-            final Locale locale = Locale.getDefault();
-            // Set the default locale to US because Rhino messages are localized
-            Locale.setDefault(Locale.US);
-
-            loadPage(getBrowserVersion(), getFileContent(baseFileName + ".html"), null);
-
-            Locale.setDefault(locale);
+            loadPage(getBrowserVersion(), getFileContent(baseFileName + ".html"), null,
+                new URL("http://www.gargoylesoftware.com/"));
         }
         catch (final ScriptException e) {
             final StringWriter stringWriter = new StringWriter();
@@ -128,7 +121,7 @@ public final class ScriptExceptionTest extends WebTestCase {
         assertNotNull(url);
         try {
             final HtmlPage page = webClient.getPage(url);
-            page.<HtmlElement>getHtmlElementById("clickMe").click();
+            page.getHtmlElementById("clickMe").click();
             fail();
         }
         catch (final ScriptException e) {

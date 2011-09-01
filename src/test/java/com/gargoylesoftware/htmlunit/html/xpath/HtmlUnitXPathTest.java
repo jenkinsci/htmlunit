@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,14 +20,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import junit.framework.Assert;
-
+import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.html.DomText;
+import com.gargoylesoftware.htmlunit.html.HtmlAnchor;
 import com.gargoylesoftware.htmlunit.html.HtmlBody;
 import com.gargoylesoftware.htmlunit.html.HtmlDivision;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
@@ -36,11 +37,13 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 /**
  * Tests for XPath evaluation on HtmlUnit DOM.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 9868 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
-public class HtmlUnitXPathTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public class HtmlUnitXPathTest extends SimpleWebTestCase {
 
     /**
      * Test evaluation of some simple paths.
@@ -88,10 +91,10 @@ public class HtmlUnitXPathTest extends WebTestCase {
             + "</body></html>";
 
         final HtmlPage page = loadPage(content);
-        final List< ? > list = page.getByXPath("//*");
+        final List<?> list = page.getByXPath("//*");
 
         final String[] expected = {"html", "head", "title", "script", "body"};
-        final List<String> actualNames = new ArrayList<String>();
+        final List<String> actualNames = new ArrayList<>();
         for (final DomNode node : (List<DomNode>) list) {
             actualNames.add(node.getNodeName());
         }
@@ -149,47 +152,23 @@ public class HtmlUnitXPathTest extends WebTestCase {
 
         final HtmlPage page = loadPage(content);
 
-        final List< ? > nameList = page.getByXPath("//img/@src");
-        final List< ? > valueList = new ArrayList<Object>(nameList);
+        final List<?> nameList = page.getByXPath("//img/@src");
+        final List<?> valueList = new ArrayList<>(nameList);
 
         final String[] expectedNames = {"src", "src", "src"};
 
-        final List<String> collectedNames = new ArrayList<String>();
+        final List<String> collectedNames = new ArrayList<>();
         for (final DomNode node : (List<DomNode>) nameList) {
             collectedNames.add(node.getNodeName());
         }
         assertEquals(expectedNames, collectedNames);
 
         final String[] expectedValues = {"1.png", "2.png", "3.png"};
-        final List<String> collectedValues = new ArrayList<String>();
+        final List<String> collectedValues = new ArrayList<>();
         for (final DomNode node : (List<DomNode>) valueList) {
             collectedValues.add(node.getNodeValue());
         }
         assertEquals(expectedValues, collectedValues);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void optionText() throws Exception {
-        final String content = "<html><head><title>foo</title><script>\n"
-            + "  function test() {\n"
-            + "    var expr = 'string(//option)';\n"
-            + "    var result = document.evaluate(expr, document.documentElement, null, XPathResult.ANY_TYPE, null);\n"
-            + "    var value = result.stringValue;\n"
-            + "    for (i=0; i < value.length; i++) {\n"
-            + "      alert(value.charCodeAt(i));\n"
-            + "    }\n"
-            + "  }\n"
-            + "</script></head><body onload='test()'>\n"
-            + "  <select name='test'><option value='1'>foo&nbsp;and&nbsp;foo</option></select>\n"
-            + "</body></html>";
-
-        final String[] expectedAlerts = {"102", "111", "111", "160", "97", "110", "100", "160", "102", "111", "111"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        loadPage(BrowserVersion.FIREFOX_2, content, collectedAlerts);
-        assertEquals(expectedAlerts, collectedAlerts);
     }
 
     /**
@@ -215,7 +194,7 @@ public class HtmlUnitXPathTest extends WebTestCase {
     }
 
     /**
-     * Regression test for https://sf.net/tracker/index.php?func=detail&aid=1527799&group_id=47038&atid=448266.
+     * Regression test for http://sourceforge.net/p/htmlunit/bugs/365/.
      * @throws Exception if test fails
      */
     @Test
@@ -257,13 +236,18 @@ public class HtmlUnitXPathTest extends WebTestCase {
     public void id() throws Exception {
         final String content = "<html><head><title>foo</title></head>\n"
             + "<body>\n"
-            + "<div><a href='link.html' id='test'></div>\n"
+            + "<div>\n"
+            + "  <a href='link.html' id='test'>\n"
+            + "</div>\n"
             + "</body></html>";
 
         final HtmlPage page = loadPage(content);
 
-        assertNull(page.getFirstByXPath("//div[@id='doesNotExist']"));
+        final HtmlAnchor anchor = page.getHtmlElementById("test");
+        Assert.assertSame(anchor, page.getFirstByXPath("//a[@id='test']"));
+        Assert.assertSame(anchor, page.getFirstByXPath("//*[@id='test']"));
 
+        assertNull(page.getFirstByXPath("//div[@id='doesNotExist']"));
         assertNull(page.getFirstByXPath("id('doesNotExist')"));
     }
 

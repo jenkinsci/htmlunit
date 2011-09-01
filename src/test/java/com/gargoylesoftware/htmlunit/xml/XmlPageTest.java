@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.httpclient.HttpStatus;
+import org.apache.http.HttpStatus;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -32,15 +32,17 @@ import org.w3c.dom.Node;
 import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
 import com.gargoylesoftware.htmlunit.Page;
+import com.gargoylesoftware.htmlunit.TextUtil;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebServerTestCase;
 
 /**
  * Tests for {@link XmlPage}.
  *
- * @version $Revision: 4815 $
+ * @version $Revision: 9868 $
  * @author Marc Guillemot
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
 @RunWith(BrowserRunner.class)
 public class XmlPageTest extends WebServerTestCase {
@@ -85,6 +87,36 @@ public class XmlPageTest extends WebServerTestCase {
     }
 
     /**
+     * Test that UTF-8 is used as default encoding for xml responses
+     * (issue 3385410).
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void defaultEncoding() throws Exception {
+        final String content
+            = "<?xml version=\"1.0\"?>\n"
+             + "<foo>\n"
+             + "\u0434\n"
+             + "</foo>";
+
+        final byte[] bytes = TextUtil.stringToByteArray(content, "UTF8");
+
+        final WebClient client = getWebClient();
+        final MockWebConnection webConnection = new MockWebConnection();
+        webConnection.setDefaultResponse(bytes, 200, "OK", "text/xml");
+        client.setWebConnection(webConnection);
+
+        final Page page = client.getPage(URL_FIRST);
+        assertTrue(XmlPage.class.isInstance(page));
+
+        final XmlPage xmlPage = (XmlPage) page;
+        assertEquals(content, xmlPage.getContent());
+        Assert.assertNotNull(xmlPage.getXmlDocument());
+
+        assertEquals("foo", xmlPage.getXmlDocument().getFirstChild().getNodeName());
+    }
+
+    /**
      * Utility method to test XML page of different MIME types.
      * @param content the XML content
      * @param mimeType the MIME type
@@ -97,13 +129,13 @@ public class XmlPageTest extends WebServerTestCase {
         webConnection.setDefaultResponse(content, 200, "OK", mimeType);
         client.setWebConnection(webConnection);
         final Page page = client.getPage(URL_FIRST);
-        assertEquals(URL_FIRST, page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(URL_FIRST, page.getUrl());
         assertEquals("OK", page.getWebResponse().getStatusMessage());
         assertEquals(HttpStatus.SC_OK, page.getWebResponse().getStatusCode());
         assertEquals(mimeType, page.getWebResponse().getContentType());
         assertTrue(XmlPage.class.isInstance(page));
         final XmlPage xmlPage = (XmlPage) page;
-        assertEquals(content, xmlPage.getContent());
+        Assert.assertEquals(content, xmlPage.getContent());
         Assert.assertNotNull(xmlPage.getXmlDocument());
         return xmlPage;
     }
@@ -129,7 +161,59 @@ public class XmlPageTest extends WebServerTestCase {
         client.setWebConnection(webConnection);
 
         final Page page = client.getPage(URL_FIRST);
-        assertEquals(URL_FIRST, page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(URL_FIRST, page.getUrl());
+        assertEquals("OK", page.getWebResponse().getStatusMessage());
+        assertEquals(HttpStatus.SC_OK, page.getWebResponse().getStatusCode());
+        assertEquals("text/xml", page.getWebResponse().getContentType());
+
+        assertTrue(Page.class.isInstance(page));
+        final XmlPage xmlPage = (XmlPage) page;
+        assertEquals(content, xmlPage.getContent());
+        assertNull(xmlPage.getXmlDocument());
+    }
+
+    /**
+     * Tests a simple empty XML document.
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void emptyDocument() throws Exception {
+        final WebClient client = getWebClient();
+        final MockWebConnection webConnection = new MockWebConnection();
+
+        final String content = "";
+
+        webConnection.setDefaultResponse(content, 200, "OK", "text/xml");
+        client.setWebConnection(webConnection);
+
+        final Page page = client.getPage(URL_FIRST);
+        assertEquals(URL_FIRST, page.getUrl());
+        assertEquals("OK", page.getWebResponse().getStatusMessage());
+        assertEquals(HttpStatus.SC_OK, page.getWebResponse().getStatusCode());
+        assertEquals("text/xml", page.getWebResponse().getContentType());
+
+        assertTrue(Page.class.isInstance(page));
+        final XmlPage xmlPage = (XmlPage) page;
+        assertEquals(content, xmlPage.getContent());
+        assertNull(xmlPage.getXmlDocument());
+    }
+
+    /**
+     * Tests a simple empty XML document.
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void blankDocument() throws Exception {
+        final WebClient client = getWebClient();
+        final MockWebConnection webConnection = new MockWebConnection();
+
+        final String content = "\t  \n\r\n";
+
+        webConnection.setDefaultResponse(content, 200, "OK", "text/xml");
+        client.setWebConnection(webConnection);
+
+        final Page page = client.getPage(URL_FIRST);
+        assertEquals(URL_FIRST, page.getUrl());
         assertEquals("OK", page.getWebResponse().getStatusMessage());
         assertEquals(HttpStatus.SC_OK, page.getWebResponse().getStatusCode());
         assertEquals("text/xml", page.getWebResponse().getContentType());
@@ -181,7 +265,7 @@ public class XmlPageTest extends WebServerTestCase {
      */
     @Test
     public void noResponse() throws Exception {
-        final Map<String, Class< ? extends Servlet>> servlets = new HashMap<String, Class< ? extends Servlet>>();
+        final Map<String, Class<? extends Servlet>> servlets = new HashMap<>();
         servlets.put("/test", NoResponseServlet.class);
         startWebServer("./", null, servlets);
 
@@ -193,8 +277,6 @@ public class XmlPageTest extends WebServerTestCase {
      * Servlet for {@link #noResponse()}.
      */
     public static class NoResponseServlet extends HttpServlet {
-
-        private static final long serialVersionUID = 714328190645334742L;
 
         /**
          * {@inheritDoc}

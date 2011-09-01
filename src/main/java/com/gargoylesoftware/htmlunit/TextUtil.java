@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import java.io.UnsupportedEncodingException;
 /**
  * Utility methods relating to text.
  *
- * @version $Revision: 4676 $
+ * @version $Revision: 9837 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Brad Clarke
  * @author Ahmed Ashour
@@ -38,27 +38,6 @@ public final class TextUtil {
 
     /** Private constructor to prevent instantiation. */
     private TextUtil() { }
-
-    /**
-     * Returns true if the string starts with the specified prefix, irrespective of case.
-     * @param stringToCheck the string to check
-     * @param prefix the prefix
-     * @return true if the string starts with the prefix
-     */
-    public static boolean startsWithIgnoreCase(final String stringToCheck, final String prefix) {
-        WebAssert.notNull("stringToCheck", stringToCheck);
-        WebAssert.notNull("prefix", prefix);
-
-        if (prefix.length() == 0) {
-            throw new IllegalArgumentException("Prefix may not be empty");
-        }
-
-        final int prefixLength = prefix.length();
-        if (stringToCheck.length() < prefixLength) {
-            return false;
-        }
-        return stringToCheck.substring(0, prefixLength).toLowerCase().equals(prefix.toLowerCase());
-    }
 
     /**
      * Convert a string into an input stream.
@@ -103,19 +82,8 @@ public final class TextUtil {
         catch (final IOException e) {
             // Theoretically impossible since all the "IO" is in memory but it's a
             // checked exception so we have to catch it.
-            e.printStackTrace();
-            throw new IllegalStateException("Exception when converting a string to an input stream: " + e);
+            throw new IllegalStateException("Exception when converting a string to an input stream: '" + e + "'", e);
         }
-    }
-
-    /**
-     * Converts a string into a byte array using a default encoding {@link #DEFAULT_CHARSET}.
-     *
-     * @param content the string to convert, assumed to be {@link #DEFAULT_CHARSET} encoded
-     * @return the String as a byte[]; if the default encoding is not supported an empty byte[] will be returned
-     */
-    public static byte[] stringToByteArray(final String content) {
-        return content != null ? stringToByteArray(content, DEFAULT_CHARSET) : null;
     }
 
     /**
@@ -126,13 +94,15 @@ public final class TextUtil {
      * @return the String as a byte[]; if the specified encoding is not supported an empty byte[] will be returned
      */
     public static byte[] stringToByteArray(final String content, final String charset) {
-        byte[] contentBytes;
+        if (content ==  null || content.isEmpty()) {
+            return new byte[0];
+        }
+
         try {
-            contentBytes = content.getBytes(charset);
+            return content.getBytes(charset);
         }
         catch (final UnsupportedEncodingException e) {
-            contentBytes = new byte[0];
+            return new byte[0];
         }
-        return contentBytes;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,26 +14,33 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.CHROME;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.FF;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
 
+import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
 
 /**
  * Tests for {@link HtmlTableRow}.
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 10426 $
  * @author <a href="mailto:gallaherm@pragmatics.com">Mike Gallaher</a>
  * @author Mike Bowler
  * @author Ahmed Ashour
  * @author Marc Guillemot
  */
-public class HtmlTableRowTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public class HtmlTableRowTest extends SimpleWebTestCase {
 
     private static final String htmlContent = "<html><head><title>foo</title></head><body>\n"
             + "<table id='table'><tr id='row'>\n"
@@ -52,7 +59,8 @@ public class HtmlTableRowTest extends WebTestCase {
      * Constructor.
      * @throws Exception if an exception occurs
      */
-    public HtmlTableRowTest() throws Exception {
+    @Before
+    public void init() throws Exception {
         page_ = loadPage(htmlContent);
 
         table_ = page_.getHtmlElementById("table");
@@ -217,7 +225,7 @@ public class HtmlTableRowTest extends WebTestCase {
         final String cmd = "document.getElementById('cell').a='original';document.getElementById('cell')";
         final Object object = page_.executeJavaScript(cmd).getJavaScriptResult();
 
-        final HTMLElement jselement = ((HTMLElement) object);
+        final HTMLElement jselement = (HTMLElement) object;
         assertEquals("original", ScriptableObject.getProperty(jselement, "a"));
 
         assertSame(jselement, cell_.getScriptObject());
@@ -227,6 +235,7 @@ public class HtmlTableRowTest extends WebTestCase {
      * Ensure that a script can set the disabled property on a DOM node.
      */
     @Test
+    @NotYetImplemented({ FF, CHROME })
     public void testCloneScriptCanSetDisabledOnCell() {
         final String cmd = "document.getElementById('cell').disabled='true'";
         page_.executeJavaScript(cmd);
@@ -263,6 +272,7 @@ public class HtmlTableRowTest extends WebTestCase {
      * that same attribute on the clone.
      */
     @Test
+    @NotYetImplemented({ FF, CHROME })
     public void testCloneScriptSetDisabledIndependentOfOriginal() {
         final String cmd = "document.getElementById('cell').disabled = 'true'";
         page_.executeJavaScript(cmd);

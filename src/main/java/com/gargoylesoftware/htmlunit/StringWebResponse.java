@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,21 +18,44 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.httpclient.HttpStatus;
-import org.apache.commons.httpclient.NameValuePair;
+import org.apache.http.HttpStatus;
+
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * A simple WebResponse created from a string. Content is assumed to be of type <tt>text/html</tt>.
  *
- * @version $Revision: 4460 $
+ * @version $Revision: 9868 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Marc Guillemot
  * @author Brad Clarke
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Carsten Steul
  */
-public class StringWebResponse extends WebResponseImpl {
+public class StringWebResponse extends WebResponse {
 
-    private static final long serialVersionUID = 8001886227379566491L;
+    private boolean fromJavascript_;
+
+    /**
+     * Creates an instance associated with the specified originating URL.
+     * @param content the content to return
+     * @param originatingURL the URL that this should be associated with
+     */
+    public StringWebResponse(final String content, final URL originatingURL) {
+        // use UTF-8 here to be sure, all chars in the string are part of the charset
+        this(content, "UTF-8", originatingURL);
+    }
+
+    /**
+     * Creates an instance associated with the specified originating URL.
+     * @param content the content to return
+     * @param charset the charset used to convert the content
+     * @param originatingURL the URL that this should be associated with
+     */
+    public StringWebResponse(final String content, final String charset, final URL originatingURL) {
+        super(getWebResponseData(content, charset), buildWebRequest(originatingURL, charset), 0);
+    }
 
     /**
      * Helper method for constructors. Converts the specified string into {@link WebResponseData}
@@ -43,27 +66,32 @@ public class StringWebResponse extends WebResponseImpl {
      */
     private static WebResponseData getWebResponseData(final String contentString, final String charset) {
         final byte[] content = TextUtil.stringToByteArray(contentString, charset);
-        final List<NameValuePair> compiledHeaders = new ArrayList<NameValuePair>();
-        compiledHeaders.add(new NameValuePair("Content-Type", "text/html"));
+        final List<NameValuePair> compiledHeaders = new ArrayList<>();
+        compiledHeaders.add(new NameValuePair("Content-Type", "text/html; charset=" + charset));
         return new WebResponseData(content, HttpStatus.SC_OK, "OK", compiledHeaders);
     }
 
-    /**
-     * Creates an instance associated with the specified originating URL.
-     * @param content the content to return
-     * @param originatingURL the URL that this should be associated with
-     */
-    public StringWebResponse(final String content, final URL originatingURL) {
-        super(getWebResponseData(content, TextUtil.DEFAULT_CHARSET), originatingURL, HttpMethod.GET, 0);
+    private static WebRequest buildWebRequest(final URL originatingURL, final String charset) {
+        final WebRequest webRequest = new WebRequest(originatingURL, HttpMethod.GET);
+        webRequest.setCharset(charset);
+        return webRequest;
     }
 
     /**
-     * Creates an instance associated with the specified originating URL.
-     * @param content the content to return
-     * @param charset the charset used to convert the content
-     * @param originatingURL the URL that this should be associated with
+     * Returns the fromJavascript property. This is true, if the response was created
+     * from javascript (usually document.write).
+     * @return the from fromJavascript_
      */
-    public StringWebResponse(final String content, final String charset, final URL originatingURL) {
-        super(getWebResponseData(content, charset), new WebRequestSettings(originatingURL, HttpMethod.GET), 0);
+    public boolean isFromJavascript() {
+        return fromJavascript_;
+    }
+
+    /**
+     * Sets the fromJavascript_ property. Set this to true, if the response was created
+     * from javascript (usually document.write).
+     * @param fromJavascript the new fromJavascript
+     */
+    public void setFromJavascript(final boolean fromJavascript) {
+        fromJavascript_ = fromJavascript;
     }
 }

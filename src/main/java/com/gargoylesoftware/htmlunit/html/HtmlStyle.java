@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.CSS_FRAMESET_INLINE;
+
 import java.util.Map;
 
 import com.gargoylesoftware.htmlunit.SgmlPage;
@@ -21,15 +23,14 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "style".
  *
- * @version $Revision: 4794 $
+ * @version $Revision: 10206 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Marc Guillemot
  * @author Ahmed Ashour
+ * @author Frank Danek
  */
 public class HtmlStyle extends HtmlElement {
-
-    private static final long serialVersionUID = 8908548603811742885L;
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "style";
@@ -37,14 +38,13 @@ public class HtmlStyle extends HtmlElement {
     /**
      * Creates an instance of HtmlStyle
      *
-     * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the HtmlPage that contains this element
      * @param attributes the initial attributes
      */
-    HtmlStyle(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    HtmlStyle(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
+        super(qualifiedName, page, attributes);
     }
 
     /**
@@ -56,6 +56,15 @@ public class HtmlStyle extends HtmlElement {
      */
     public final String getTypeAttribute() {
         return getAttribute("type");
+    }
+
+    /**
+     * Sets the value of the attribute "type".
+     *
+     * @param type the new type
+     */
+    public final void setTypeAttribute(final String type) {
+        setAttribute("type", type);
     }
 
     /**
@@ -97,5 +106,16 @@ public class HtmlStyle extends HtmlElement {
     @Override
     protected boolean isEmptyXmlTagExpanded() {
         return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public DisplayStyle getDefaultStyleDisplay() {
+        if (hasFeature(CSS_FRAMESET_INLINE)) {
+            return DisplayStyle.INLINE;
+        }
+        return DisplayStyle.NONE;
     }
 }

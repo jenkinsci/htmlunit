@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,21 +28,24 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.httpclient.HttpStatus;
-import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.http.HttpStatus;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Tests for {@link WebResponseData}.
  *
- * @version $Revision: 4523 $
+ * @version $Revision: 9868 $
  * @author Daniel Gredler
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
+@RunWith(BrowserRunner.class)
 public class WebResponseDataTest extends WebServerTestCase {
 
     private static final String GZIPPED_FILE = "testfiles/test.html.gz";
@@ -56,12 +59,74 @@ public class WebResponseDataTest extends WebServerTestCase {
         final InputStream stream = getClass().getClassLoader().getResourceAsStream(GZIPPED_FILE);
         final byte[] zippedContent = IOUtils.toByteArray(stream);
 
-        final List<NameValuePair> headers = new ArrayList<NameValuePair>();
+        final List<NameValuePair> headers = new ArrayList<>();
         headers.add(new NameValuePair("Content-Encoding", "gzip"));
 
         final WebResponseData data = new WebResponseData(zippedContent, HttpStatus.SC_OK, "OK", headers);
         final String body = new String(data.getBody(), "UTF-8");
         assertTrue(StringUtils.contains(body, "Test"));
+    }
+
+    /**
+     * Tests that empty gzipped content is handled correctly (bug 3566999).
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void testEmptyGZippedContent() throws Exception {
+        testEmptyGZippedContent(HttpStatus.SC_OK, 0, null);
+    }
+
+    /**
+     * Tests that empty gzipped content is handled correctly (bug #1510).
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void contentLengthIsZero() throws Exception {
+        testEmptyGZippedContent(HttpStatus.SC_OK, 0, "text/html");
+    }
+
+    /**
+     * Tests that empty gzipped content is handled correctly (bug #1510).
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void contentLengthIsMissing() throws Exception {
+        testEmptyGZippedContent(HttpStatus.SC_NO_CONTENT, -1, null);
+    }
+
+    private void testEmptyGZippedContent(final int statusCode, final int contentLength,
+                final String contentType) throws Exception {
+        final List<NameValuePair> headers = new ArrayList<>();
+        headers.add(new NameValuePair("Content-Encoding", "gzip"));
+
+        if (contentLength != -1) {
+            headers.add(new NameValuePair("Content-Length", String.valueOf(contentLength)));
+        }
+
+        if (contentType != null) {
+            headers.add(new NameValuePair("Content-Type", contentType));
+        }
+
+        final WebResponseData data = new WebResponseData("".getBytes(), statusCode, "OK", headers);
+        data.getBody();
+    }
+
+    /**
+     * Tests that broken gzipped content is handled correctly.
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void testBrokenGZippedContent() throws Exception {
+        final List<NameValuePair> headers = new ArrayList<>();
+        headers.add(new NameValuePair("Content-Encoding", "gzip"));
+
+        final WebResponseData data = new WebResponseData("Plain Content".getBytes(), HttpStatus.SC_OK, "OK", headers);
+        try {
+            data.getBody();
+        }
+        catch (final RuntimeException e) {
+            assertTrue(StringUtils.contains(e.getMessage(), "Not in GZIP format"));
+        }
     }
 
     /**
@@ -71,10 +136,10 @@ public class WebResponseDataTest extends WebServerTestCase {
      */
     @Test
     public void testNullBody() throws Exception {
-        final InputStream body = null;
-        final List<NameValuePair> headers = new ArrayList<NameValuePair>();
-        final WebResponseData data = new WebResponseData(body, 304, "NOT_MODIFIED", headers);
-        assertNull(data.getBody());
+        final DownloadedContent downloadedContent = new DownloadedContent.InMemory(new byte[] {});
+        final List<NameValuePair> headers = new ArrayList<>();
+        final WebResponseData data = new WebResponseData(downloadedContent, 304, "NOT_MODIFIED", headers);
+        assertEquals(0, data.getBody().length);
     }
 
     /**
@@ -83,11 +148,11 @@ public class WebResponseDataTest extends WebServerTestCase {
     @Test
     public void deflateCompression() throws Exception {
         startWebServer("src/test/resources/pjl-comp-filter", null);
-        final  WebRequestSettings settings = new WebRequestSettings(new URL("http://localhost:"
+        final WebRequest request = new WebRequest(new URL("http://localhost:"
             + PORT + "/index.html"));
-        settings.setAdditionalHeader("Accept-Encoding", "deflate");
-        final WebClient webClient = new WebClient();
-        final HtmlPage page = webClient.getPage(settings);
+        request.setAdditionalHeader("Accept-Encoding", "deflate");
+        final WebClient webClient = getWebClient();
+        final HtmlPage page = webClient.getPage(request);
         assertEquals("Hello Compressed World!", page.asText());
     }
 
@@ -96,12 +161,12 @@ public class WebResponseDataTest extends WebServerTestCase {
      */
     @Test
     public void redirection() throws Exception {
-        final Map<String, Class< ? extends Servlet>> servlets = new HashMap<String, Class< ? extends Servlet>>();
+        final Map<String, Class<? extends Servlet>> servlets = new HashMap<>();
         servlets.put("/folder1/page1", RedirectionServlet.class);
         servlets.put("/folder2/page2", RedirectionServlet.class);
         startWebServer("./", null, servlets);
 
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
 
         final HtmlPage page = client.getPage("http://localhost:" + PORT + "/folder1/page1");
         assertEquals("Hello Redirected!", page.asText());
@@ -111,15 +176,12 @@ public class WebResponseDataTest extends WebServerTestCase {
      * Servlet for {@link #redirection()}.
      */
     public static class RedirectionServlet extends HttpServlet {
-
-        private static final long serialVersionUID = 2865392611660286450L;
-
         /**
          * {@inheritDoc}
          */
         @Override
         protected void doGet(final HttpServletRequest request, final HttpServletResponse response) throws IOException {
-            if (request.getRequestURI().equals("/folder1/page1")) {
+            if ("/folder1/page1".equals(request.getRequestURI())) {
                 response.setStatus(HttpServletResponse.SC_MOVED_TEMPORARILY);
                 final String location = request.getRequestURL().toString().replace("page1", "../folder2/page2");
                 response.setHeader("Location", location);
@@ -131,4 +193,5 @@ public class WebResponseDataTest extends WebServerTestCase {
             writer.close();
         }
     }
+
 }

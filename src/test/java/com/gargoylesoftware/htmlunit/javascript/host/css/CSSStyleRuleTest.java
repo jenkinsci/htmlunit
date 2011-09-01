@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,30 +14,38 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.css;
 
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.CHROME;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.FF;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.IE8;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
 import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Tests for {@link CSSStyleRule}.
  *
- * @version $Revision: 4772 $
+ * @version $Revision: 10573 $
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Frank Danek
  */
 @RunWith(BrowserRunner.class)
-public class CSSStyleRuleTest extends WebTestCase {
+public class CSSStyleRuleTest extends WebDriverTestCase {
 
     /**
      * @throws Exception on test failure
      */
     @Test
-    @Alerts(FF = { "[object CSSStyleRule]", "1", "[object CSSStyleSheet]", "null", "h1", "", "red" },
-            IE = { "[object]", "H1", "", "red" })
+    @Alerts(FF = { "[object CSSStyleRule]", "1", "[object CSSStyleSheet]", "null", "H1", "", "10px, ", "red" },
+            CHROME = { "[object CSSStyleRule]", "1", "[object CSSStyleSheet]", "null", "h1", "", "10px", "", "red" },
+            IE8 = { "[object]", "H1", "", "10px, ", "red" },
+            IE11 = { "[object CSSStyleRule]", "1", "[object CSSStyleSheet]", "null", "h1", "", "10px, ", "red" })
+    @NotYetImplemented({ FF, CHROME })
     public void test() throws Exception {
         final String html = "<html><head><title>First</title>\n"
                 + "<style>\n"
@@ -63,6 +71,9 @@ public class CSSStyleRuleTest extends WebTestCase {
                 + "    } else {\n"
                 + "      alert(r.selectorText);\n"
                 + "    }\n"
+                + "    alert(r.style.marginTop);\n"
+                + "    r.style.marginTop = '10px';\n"
+                + "    alert(r.style.marginTop);\n"
                 + "    alert(r.style.backgroundColor);\n"
                 + "    r.style.backgroundColor = 'red';\n"
                 + "    alert(r.style.backgroundColor);\n"
@@ -70,15 +81,45 @@ public class CSSStyleRuleTest extends WebTestCase {
                 + "</script>\n"
                 + "</head><body onload='test()'>\n"
                 + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception on test failure
      */
     @Test
-    @Alerts(IE = "false")
-    @NotYetImplemented(Browser.IE)
+    @Alerts({ "4px", "4px", "4px", "4px" })
+    public void testStyleSheet() throws Exception {
+        final String html = "<html><head><title>First</title>\n"
+                + "<style>\n"
+                + "  BODY { margin: 4px; }\n"
+                + "</style>\n"
+                + "<script>\n"
+                + "  function test(){\n"
+                + "    var rules;\n"
+                + "    if (document.styleSheets[0].cssRules)\n"
+                + "      rules = document.styleSheets[0].cssRules;\n"
+                + "    else\n"
+                + "      rules = document.styleSheets[0].rules;\n"
+                + "    var r = rules[0];\n"
+                + "    alert(r.style.marginTop);\n"
+                + "    alert(r.style.marginRight);\n"
+                + "    alert(r.style.marginBottom);\n"
+                + "    alert(r.style.marginLeft);\n"
+                + "  }\n"
+                + "</script>\n"
+                + "</head><body onload='test()'>\n"
+                + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception on test failure
+     */
+    @Test
+    @Alerts(IE = "false",
+            IE11 = "")
+    @NotYetImplemented({ IE8, CHROME })
     public void testReadOnly() throws Exception {
         final String html = "<html><head><title>First</title>\n"
                 + "<style>\n"
@@ -102,15 +143,18 @@ public class CSSStyleRuleTest extends WebTestCase {
                 + "</script>\n"
                 + "</head><body onload='test()'>\n"
                 + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception on test failure
      */
     @Test
-    @Alerts(FF = { "body", "h1", "a.foo", ".foo", ".foo .foo2", "#byId" },
-            IE = { "BODY", "H1", "A.foo", ".foo", ".foo .foo2", "#byId" })
+    @Alerts(DEFAULT = { "body", "h1", "a.foo", ".foo", ".foo .foo2", "#byId" },
+            CHROME = { "body", "h1", "a.foo", ".foo", ".foo .foo2", "#byid" },
+            FF = { "BoDY", "H1", "A.foo", ".foo", ".foo .foo2", "#byId" },
+            IE8 = { "BODY", "H1", "A.foo", ".foo", ".foo .foo2", "#byId" })
+    @NotYetImplemented({ FF, CHROME })
     public void selectorText() throws Exception {
         final String html = "<html><head><title>First</title>\n"
                 + "<style>\n"
@@ -131,16 +175,16 @@ public class CSSStyleRuleTest extends WebTestCase {
                 + "</script>\n"
                 + "</head><body onload='test()'>\n"
                 + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception on test failure
      */
     @Test
-    @Alerts(IE = { "progid:DXImageTransform.Microsoft.AlphaImageLoader(src='rightCorner.gif',sizingMethod='crop')" },
-            FF = { "undefined" })
-    @NotYetImplemented(Browser.IE)
+    @Alerts(DEFAULT = { "" },
+            IE8 = { "progid:DXImageTransform.Microsoft.AlphaImageLoader(src='rightCorner.gif',sizingMethod='crop')" })
+    @NotYetImplemented(IE8)
     public void colon() throws Exception {
         final String html = "<html><head><title>First</title>\n"
                 + "<style>\n"
@@ -148,14 +192,16 @@ public class CSSStyleRuleTest extends WebTestCase {
                 + "(src='rightCorner.gif',sizingMethod='crop'); }\n"
                 + "</style>\n"
                 + "<script>\n"
-                + "  function test(){\n"
+                + "function test(){\n"
+                + "  try {\n"
                 + "    var sheet = document.styleSheets[0];\n"
                 + "    var rules = sheet.cssRules || sheet.rules;\n"
                 + "    alert(rules[0].style.filter);\n"
-                + "  }\n"
+                + "  } catch(e) { alert('exception'); }\n"
+                + "}\n"
                 + "</script>\n"
                 + "</head><body onload='test()'>\n"
                 + "</body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 }

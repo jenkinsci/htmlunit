@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,21 +14,33 @@
  */
 package com.gargoylesoftware.htmlunit;
 
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Test;
+
+import com.gargoylesoftware.htmlunit.javascript.configuration.BrowserFeature;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
 
 /**
  * Tests for {@link BrowserVersionFeatures}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 10457 $
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Frank Danek
  */
-public class BrowserVersionFeaturesTest extends WebTestCase {
+public class BrowserVersionFeaturesTest  {
 
     /**
      * Test of alphabetical order.
@@ -36,45 +48,111 @@ public class BrowserVersionFeaturesTest extends WebTestCase {
     @Test
     public void lexicographicOrder() {
         String lastFeatureName = null;
-        for (BrowserVersionFeatures feature : BrowserVersionFeatures.values()) {
+        for (final BrowserVersionFeatures feature : BrowserVersionFeatures.values()) {
             final String featureName = feature.name();
             if (lastFeatureName != null && featureName.compareTo(lastFeatureName) < 1) {
-                fail("BrowserVersionFeatures.java: \""
-                    + featureName + "\" should be before \"" + lastFeatureName + '"');
+                fail("BrowserVersionFeatures.java: '"
+                    + featureName + "' should be before '" + lastFeatureName + "'");
             }
             lastFeatureName = featureName;
         }
     }
 
     /**
-     * @throws Exception if the test fails
+     * Test of usage.
+     * @throws Exception in case of problems
      */
     @Test
-    public void lexicographicOrder_properties() throws Exception {
-        lexicographicOrder_properties(BrowserVersion.INTERNET_EXPLORER_6);
-        lexicographicOrder_properties(BrowserVersion.INTERNET_EXPLORER_7);
-        lexicographicOrder_properties(BrowserVersion.FIREFOX_2);
-        lexicographicOrder_properties(BrowserVersion.FIREFOX_3);
-    }
+    public void unusedFeatures() throws Exception {
+        final List<BrowserVersion> browsers = new LinkedList<>();
+        browsers.add(BrowserVersion.FIREFOX_24);
+        browsers.add(BrowserVersion.FIREFOX_31);
+        browsers.add(BrowserVersion.FIREFOX_38);
+        browsers.add(BrowserVersion.INTERNET_EXPLORER_8);
+        browsers.add(BrowserVersion.INTERNET_EXPLORER_11);
+        browsers.add(BrowserVersion.CHROME);
 
-    private void lexicographicOrder_properties(final BrowserVersion browserVersion) throws Exception {
-        final String path = "com/gargoylesoftware/htmlunit/javascript/configuration/" + browserVersion.getNickname()
-            + ".properties";
-        final InputStream is = getClass().getClassLoader().getResourceAsStream(path);
-        final BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-        try {
-            String lastFeatureName = null;
-            String line;
-            while ((line = reader.readLine()) != null) {
-                final String featureName = line.trim();
-                if (lastFeatureName != null && featureName.compareTo(lastFeatureName) < 1) {
-                    fail(path + ": \"" + featureName + "\" should be before \"" + lastFeatureName + '"');
+        for (final BrowserVersionFeatures feature : BrowserVersionFeatures.values()) {
+            int useCount = 0;
+            for (BrowserVersion browserVersion : browsers) {
+                if (browserVersion.hasFeature(feature)) {
+                    useCount++;
                 }
-                lastFeatureName = featureName;
+            }
+            assertTrue("BrowserVersionFeatures.java: '" + feature.name() + "' in no longer in use.", useCount > 0);
+            assertTrue("BrowserVersionFeatures.java: '" + feature.name() + "' is enabled for all supported browsers.",
+                    useCount < browsers.size());
+        }
+
+        for (final BrowserVersionFeatures feature : BrowserVersionFeatures.values()) {
+            final Field field = BrowserVersionFeatures.class.getField(feature.name());
+            final BrowserFeature browserFeature = field.getAnnotation(BrowserFeature.class);
+
+            if (browserFeature != null) {
+                for (final WebBrowser annotatedBrowser : browserFeature.value()) {
+                    boolean inUse = false;
+                    for (BrowserVersion supportedBrowser : browsers) {
+                        if (expectedBrowserName(supportedBrowser).equals(annotatedBrowser.value().name())
+                                && annotatedBrowser.minVersion() <= supportedBrowser.getBrowserVersionNumeric()
+                                && annotatedBrowser.maxVersion() >= supportedBrowser.getBrowserVersionNumeric()) {
+                            inUse = true;
+                            continue;
+                        }
+                    }
+                    assertTrue("BrowserVersionFeatures.java: Annotation '"
+                            + annotatedBrowser.toString() + "' of feature '"
+                            + feature.name() + "' in no longer in use.", inUse);
+                }
             }
         }
-        finally {
-            reader.close();
+    }
+
+    private String expectedBrowserName(final BrowserVersion browser) {
+        if (browser.isIE()) {
+            return "IE";
+        }
+        if (browser.isFirefox()) {
+            return "FF";
+        }
+
+        return "CHROME";
+    }
+
+    /**
+     * Test of usage in the Java files.
+     *
+     * @throws Exception in case of problems
+     */
+    @Test
+    public void unusedFeaturesInCode() throws Exception {
+        final List<String> unusedFeatures = new ArrayList<>(BrowserVersionFeatures.values().length);
+        for (final BrowserVersionFeatures feature : BrowserVersionFeatures.values()) {
+            unusedFeatures.add(feature.name());
+        }
+        unusedCheck(new File("src/main/java"), unusedFeatures);
+        if (!unusedFeatures.isEmpty()) {
+            fail("The following " + BrowserVersionFeatures.class.getSimpleName() + " "
+                    + (unusedFeatures.size() == 1 ? "is" : "are") + " not used: "
+                    + StringUtils.join(unusedFeatures, ", "));
+        }
+    }
+
+    private void unusedCheck(final File dir, final List<String> unusedFeatures) throws IOException {
+        for (final File file : dir.listFiles()) {
+            if (file.isDirectory() && !".svn".equals(file.getName())) {
+                unusedCheck(file, unusedFeatures);
+            }
+            else if (file.getName().endsWith(".java")) {
+                final List<String> lines = FileUtils.readLines(file);
+                final String browserVersionFeatures = BrowserVersionFeatures.class.getSimpleName();
+                for (final String line : lines) {
+                    for (final Iterator<String> it = unusedFeatures.iterator(); it.hasNext();) {
+                        if (line.contains(browserVersionFeatures + '.' + it.next())) {
+                            it.remove();
+                        }
+                    }
+                }
+            }
         }
     }
 }

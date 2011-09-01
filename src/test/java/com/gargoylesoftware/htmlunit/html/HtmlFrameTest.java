@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,21 +22,24 @@ import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import com.gargoylesoftware.htmlunit.BrowserRunner;
 import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
 import com.gargoylesoftware.htmlunit.FailingHttpStatusCodeException;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 
 /**
  * Tests for {@link HtmlFrame}.
  *
- * @version $Revision: 4820 $
+ * @version $Revision: 9868 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Ahmed Ashour
  */
-public class HtmlFrameTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public class HtmlFrameTest extends SimpleWebTestCase {
 
     /**
      * @throws Exception if the test fails
@@ -63,9 +66,9 @@ public class HtmlFrameTest extends WebTestCase {
      */
     @Test
     public void onLoadHandler() throws Exception {
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
         final MockWebConnection webConnection = new MockWebConnection();
-        final List<String> collectedAlerts = new ArrayList<String>();
+        final List<String> collectedAlerts = new ArrayList<>();
         webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
         final String html
@@ -121,7 +124,7 @@ public class HtmlFrameTest extends WebTestCase {
      */
     @Test
     public void deregisterNonHtmlFrame() throws Exception {
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
         final MockWebConnection webConnection = new MockWebConnection();
 
         final String html
@@ -161,10 +164,10 @@ public class HtmlFrameTest extends WebTestCase {
         final String secondHtml = "<html><head><title>Second</title></head><body></body></html>";
         final String thirdHtml  = "<html><head><title>Third</title></head><body></body></html>";
 
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
-        webConnection.setDefaultResponse(failingHtml, 404, "No Found", "text/html");
+        webConnection.setDefaultResponse(failingHtml, 404, "Not Found", "text/html");
         webConnection.setResponse(URL_FIRST, firstHtml);
         webConnection.setResponse(URL_SECOND, secondHtml);
         webConnection.setResponse(URL_THIRD, thirdHtml);
@@ -181,8 +184,8 @@ public class HtmlFrameTest extends WebTestCase {
     }
 
     /**
-     * Regression test for bug 1518195.
-     * See http://sourceforge.net/tracker/index.php?func=detail&aid=1518195&group_id=47038&atid=448266.
+     * Regression test for bug 363.
+     * See http://sourceforge.net/p/htmlunit/bugs/363/.
      * @throws Exception if the test fails
      */
     @Test
@@ -204,7 +207,7 @@ public class HtmlFrameTest extends WebTestCase {
 
         final String frame3 = "<html><head><title>page 3</title></head><body></body></html>";
 
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
         final MockWebConnection conn = new MockWebConnection();
         webClient.setWebConnection(conn);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,16 +25,15 @@ import com.gargoylesoftware.htmlunit.util.StringUtils;
 /**
  * Representation of a text node in the HTML DOM.
  *
- * @version $Revision: 4794 $
+ * @version $Revision: 9837 $
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Rodney Gitzel
  * @author Ahmed Ashour
  * @author Sudhan Moghe
+ * @author Philip Graf
  */
 public class DomText extends DomCharacterData implements Text {
-
-    private static final long serialVersionUID = 6589779086230288951L;
 
     /** The symbolic node name. */
     public static final String NODE_NAME = "#text";
@@ -80,17 +79,6 @@ public class DomText extends DomCharacterData implements Text {
     }
 
     /**
-     * Splits a DomText node in two.
-     * @param offset the character position at which to split the DomText node
-     * @return the DomText node that was split from this node
-     * @deprecated as of 2.6, please use {@link #splitText(int)} instead
-     */
-    @Deprecated
-    public DomText splitDomText(final int offset) {
-        return splitText(offset);
-    }
-
-    /**
      * {@inheritDoc}
      * Not yet implemented.
      */
@@ -100,10 +88,11 @@ public class DomText extends DomCharacterData implements Text {
 
     /**
      * {@inheritDoc}
-     * Not yet implemented.
      */
     public String getWholeText() {
-        throw new UnsupportedOperationException("DomText.getWholeText is not yet implemented.");
+        // I couldn't find a way to have a nearby EntityReference node (either sibling or parent)
+        // if this is found, have a look at xerces TextImpl.
+        return getNodeValue();
     }
 
     /**
@@ -138,13 +127,14 @@ public class DomText extends DomCharacterData implements Text {
      */
     @Override
     protected void printXml(final String indent, final PrintWriter printWriter) {
-        if (getData().trim().length() != 0) {
+        String data = getData();
+        if (org.apache.commons.lang3.StringUtils.isNotBlank(data)) {
             printWriter.print(indent);
-            String data = getData();
             if (!(getParentNode() instanceof HtmlStyle) || !data.startsWith("<!--") || !data.endsWith("-->")) {
                 data = StringUtils.escapeXmlChars(data);
             }
-            printWriter.println(data);
+            printWriter.print(data);
+            printWriter.print("\r\n");
         }
         printChildrenAsXml(indent, printWriter);
     }
@@ -165,4 +155,5 @@ public class DomText extends DomCharacterData implements Text {
     protected boolean isTrimmedText() {
         return false;
     }
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,18 +16,35 @@ package com.gargoylesoftware.htmlunit.source;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 
 /**
  * Subversion utilities.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 10261 $
  * @author Ahmed Ashour
  */
 public final class SVN {
 
+    /**
+     * List of extensions for files which should have SVN eol-style property with {@code native} value.
+     */
+    private static List<String> EOL_EXTENSIONS_
+        = Arrays.asList(".html", ".htm", ".js", ".css", ".xml", ".txt", ".properties", "*.php",
+                "*.ini", "*.sh", "*.bat", "*.log");
+
     private SVN() { }
+
+    /**
+     * List of extensions for files which should have SVN eol-style property with {@code native} value.
+     * @return the extensions list
+     */
+    public static List<String> getEolExtenstions() {
+        return EOL_EXTENSIONS_;
+    }
 
     /**
      * Recursively deletes any '.svn' folder which contains Subversion information.
@@ -37,7 +54,7 @@ public final class SVN {
     public static void deleteSVN(final File dir) throws IOException {
         for (final File f : dir.listFiles()) {
             if (f.isDirectory()) {
-                if (f.getName().equals(".svn")) {
+                if (".svn".equals(f.getName())) {
                     FileUtils.deleteDirectory(f);
                 }
                 else {
@@ -55,12 +72,18 @@ public final class SVN {
     public static void consistentNewlines(final File dir) throws IOException {
         for (final File f : dir.listFiles()) {
             if (f.isDirectory()) {
-                if (!f.getName().equals(".svn")) {
+                if (!".svn".equals(f.getName())) {
                     consistentNewlines(f);
                 }
             }
             else {
-                FileUtils.writeLines(f, FileUtils.readLines(f));
+                final String fileName = f.getName().toLowerCase();
+                for (final String extension : EOL_EXTENSIONS_) {
+                    if (fileName.endsWith(extension)) {
+                        FileUtils.writeLines(f, FileUtils.readLines(f));
+                        break;
+                    }
+                }
             }
         }
     }

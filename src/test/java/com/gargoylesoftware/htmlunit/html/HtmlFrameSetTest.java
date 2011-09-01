@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,23 +22,27 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
 import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
+import com.gargoylesoftware.htmlunit.SimpleWebTestCase;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.WebWindow;
 
 /**
  * Tests for {@link HtmlFrameSet}.
  *
- * @version $Revision: 4282 $
+ * @version $Revision: 10077 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Marc Guillemot
  * @author Hans Donner
  * @author Ahmed Ashour
  */
-public class HtmlFrameSetTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public class HtmlFrameSetTest extends SimpleWebTestCase {
 
     /**
      * @throws Exception if the test fails
@@ -58,7 +62,7 @@ public class HtmlFrameSetTest extends WebTestCase {
         final String secondContent = "<html><head><title>Second</title></head><body></body></html>";
         final String thirdContent  = "<html><head><title>Third</title></head><body></body></html>";
 
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
@@ -93,7 +97,7 @@ public class HtmlFrameSetTest extends WebTestCase {
             + "</html>";
         final String secondContent = "<html><head><title>Second</title></head><body></body></html>";
 
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
@@ -111,7 +115,7 @@ public class HtmlFrameSetTest extends WebTestCase {
     }
 
     /**
-     * Regression test for http://sourceforge.net/tracker/index.php?func=detail&aid=1101525&group_id=47038&atid=448266.
+     * Regression test for http://sourceforge.net/p/htmlunit/bugs/203/.
      * @throws Exception if the test fails
      */
     @Test
@@ -150,7 +154,7 @@ public class HtmlFrameSetTest extends WebTestCase {
         final URL firstURL = new URL(baseUrl + "/subdir2/first.html");
         final URL secondURL = new URL(baseUrl + "/second.html");
 
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(framesURL, framesContent);
@@ -177,8 +181,8 @@ public class HtmlFrameSetTest extends WebTestCase {
 
     /**
      * Forward referencing issue in FrameSet.
-     * Test for bug 1239285
-     * https://sourceforge.net/tracker/index.php?func=detail&aid=1239285&group_id=47038&atid=448266
+     * Test for bug 291
+     * http://sourceforge.net/p/htmlunit/bugs/291/
      * @throws Exception if the test fails
      */
     @Test
@@ -203,11 +207,11 @@ public class HtmlFrameSetTest extends WebTestCase {
             + "</head>\n"
             + "<body onload='init()'></body></html>";
 
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
 
-        final List<String> collectedAlerts = new ArrayList<String>();
+        final List<String> collectedAlerts = new ArrayList<>();
         final String[] expectedAlerts = {"Success"};
         webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
@@ -238,7 +242,7 @@ public class HtmlFrameSetTest extends WebTestCase {
             + "</html>";
         final String secondContent = "<html><head><title>Second</title></head><body></body></html>";
 
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
@@ -271,7 +275,7 @@ public class HtmlFrameSetTest extends WebTestCase {
             = "<html><body><script>alert(2);</script></body></html>";
         final String thirdContent
             = "alert('3');\n";
-        final WebClient client = new WebClient();
+        final WebClient client = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
@@ -281,7 +285,7 @@ public class HtmlFrameSetTest extends WebTestCase {
         client.setWebConnection(webConnection);
 
         final String[] expectedAlerts = {"2"};
-        final ArrayList<String> collectedAlerts = new ArrayList<String>();
+        final ArrayList<String> collectedAlerts = new ArrayList<>();
         client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
         client.getPage(URL_FIRST);
@@ -289,7 +293,7 @@ public class HtmlFrameSetTest extends WebTestCase {
     }
 
     /**
-     * Regression test for https://sf.net/tracker/index.php?func=detail&aid=1794764&group_id=47038&atid=448266.
+     * Regression test for http://sourceforge.net/p/htmlunit/bugs/521/.
      * @throws Exception if the test fails
      */
     @Test
@@ -338,8 +342,8 @@ public class HtmlFrameSetTest extends WebTestCase {
             + "  This is the right frame, version 2.\n"
             + "</body></html>";
 
-        final WebClient client = new WebClient();
-        final List<String> collectedAlerts = new ArrayList<String>();
+        final WebClient client = getWebClient();
+        final List<String> collectedAlerts = new ArrayList<>();
         client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
 
         final MockWebConnection webConnection = new MockWebConnection();
@@ -361,10 +365,8 @@ public class HtmlFrameSetTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
+    @NotYetImplemented
     public void onunload() throws Exception {
-        if (notYetImplemented()) {
-            return;
-        }
         final String mainHtml =
             "<frameset onunload=\"document.location.href='3.html'\">\n"
             + "<frame name='f1' src='1.html'/>\n"
@@ -382,8 +384,8 @@ public class HtmlFrameSetTest extends WebTestCase {
             + "<body>hello</body>\n"
             + "</html>";
 
-        final WebClient webClient = new WebClient();
-        final List<String> collectedAlerts = new ArrayList<String>();
+        final WebClient webClient = getWebClient();
+        final List<String> collectedAlerts = new ArrayList<>();
         webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
         final MockWebConnection conn = new MockWebConnection();
         webClient.setWebConnection(conn);
@@ -395,7 +397,7 @@ public class HtmlFrameSetTest extends WebTestCase {
 
         final HtmlPage mainPage = webClient.getPage(URL_FIRST);
         final HtmlPage framePage = (HtmlPage) mainPage.getFrameByName("f1").getEnclosedPage();
-        final HtmlPage page = framePage.<HtmlButton>getHtmlElementById("myButton").click();
+        final HtmlPage page = framePage.getHtmlElementById("myButton").click();
         assertEquals("3", page.getTitleText());
     }
 
@@ -417,7 +419,7 @@ public class HtmlFrameSetTest extends WebTestCase {
         final String secondContent = "<html><head><title>Second</title></head><body></body></html>";
         final String thirdContent  = "<html><head><title>Third</title></head><body></body></html>";
 
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);
@@ -431,7 +433,7 @@ public class HtmlFrameSetTest extends WebTestCase {
 
         assertEquals(3, webClient.getWebWindows().size());
 
-        webClient.closeAllWindows();
+        webClient.close();
 
         // 1 top level window always exists
         assertEquals(1, webClient.getWebWindows().size());
@@ -455,7 +457,7 @@ public class HtmlFrameSetTest extends WebTestCase {
         final String secondContent = "<html><head><title>Second</title></head><body></body></html>";
         final String thirdContent  = "<html><head><title>Third</title></head><body></body></html>";
 
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = getWebClient();
 
         final MockWebConnection webConnection = new MockWebConnection();
         webConnection.setResponse(URL_FIRST, firstContent);

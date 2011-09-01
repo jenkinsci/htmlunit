@@ -3,7 +3,7 @@
 
     <properties>
         <title>Welcome to HtmlUnit</title>
-        <revision>$Revision: 4904 $</revision>
+        <revision>$Revision: 10627 $</revision>
         <author email="mbowler@GargoyleSoftware.com">Mike Bowler</author>
         <author email="mguillem@users.sourceforge.net">Marc Guillemot</author>
         <author email="asashour@users.sourceforge.net">Ahmed Ashour</author>
@@ -18,7 +18,7 @@
             </p>
             <p>
                 It has fairly good JavaScript support (which is constantly improving) and is able to work even with quite complex AJAX libraries,
-                simulating either Firefox or Internet Explorer depending on the configuration you want to use.
+                simulating Chrome, Firefox or Internet Explorer depending on the configuration used.
             </p> 
             <p>
                 It is typically used for testing purposes or to retrieve information from web sites.
@@ -31,9 +31,14 @@
                 for an introduction.
             </p>
             <p>
-                HtmlUnit is used as the underlying "browser" by different Open Source tools like <a href="http://webtest.canoo.com/">Canoo WebTest</a>,
-                <a href="http://jwebunit.sourceforge.net/">JWebUnit</a>, <a href="http://webdriver.googlecode.com/">WebDriver</a>, <a href="http://www.jboss.org/jsfunit/">JSFUnit</a>,
-                <a href="http://celerity.rubyforge.org/">Celerity</a>, ...
+                HtmlUnit is used as the underlying "browser" by different Open Source tools like
+                <a href="http://webtest.canoo.com/">Canoo WebTest</a>,
+                <a href="http://jwebunit.sourceforge.net/">JWebUnit</a>,
+                <a href="http://webdriver.googlecode.com/">WebDriver</a>,
+                <a href="http://www.jboss.org/jsfunit/">JSFUnit</a>,
+                <a href="http://www.wetator.org/">WETATOR</a>,
+                <a href="http://celerity.rubyforge.org/">Celerity</a>,
+                <a href="https://github.com/spring-projects/spring-test-htmlunit">Spring MVC Test HtmlUnit</a>, ...
             </p>
             <p>
                 HtmlUnit was originally written by
@@ -51,13 +56,13 @@
                 <dl>
                     <dt>Latest build</dt>
                     <dd>
-                        <a href="http://build.canoo.com/htmlunit">Cruise Control server</a> 
+                        <a href="https://ci.canoo.com/teamcity/viewLog.html?buildTypeId=HtmlUnit_FastBuild&amp;buildId=lastSuccessful&amp;tab=artifacts">Build server (Log in as 'guest')</a> 
                     </dd>
                     
-                    <dt>Latest stable release <date>Sep 2, 2009</date></dt>
+                    <dt>Latest release <date>Jun 3, 2015</date></dt>
                     <dd>
-                        <a href="http://sourceforge.net/project/showfiles.php?group_id=47038">
-                            version 2.6
+                        <a href="http://sourceforge.net/projects/htmlunit/files/htmlunit/2.17/">
+                            version 2.17
                         </a>
                     </dd>
                 </dl>
@@ -160,20 +165,20 @@
                 The unit tests of some well-known JavaScript libraries are included in HtmlUnit's own unit tests; based on these unit
                 tests, the following libraries are known to work well with HtmlUnit:
                 <ul>
-                    <li>jQuery 1.2.6: Full support (see unit test <a href="https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/JQuery126Test.java">here</a>)</li>
-                    <li>MochiKit 1.4.1: Full support (see unit tests <a href="https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/MochiKitTest.java">here</a>)</li>
-                    <li>GWT 1.7.0: Full support (see unit test <a href="https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/GWT17Test.java">here</a>)</li>
-                    <li>Sarissa 0.9.9.3: Full support (see unit test <a href="https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/Sarissa0993Test.java">here</a>)</li>
-                    <li>MooTools 1.2.1: Full support (see unit test <a href="https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/MooTools121Test.java">here</a>)</li>
-                    <li>Prototype 1.6.0: Very good support (see unit test <a href="https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/Prototype160Test.java">here</a>)</li>
-                    <li>Ext JS 2.2: Very good support (see unit test <a href="https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/ExtJS22Test.java">here</a>)</li>
-                    <li>Dojo 1.0.2: Good support (see unit test <a href="https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/Dojo102Test.java">here</a>)</li>
-                    <li>YUI 2.3.0: Good support (see unit test <a href="https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/YuiTest.java">here</a>)</li>
+                    <li>jQuery 1.8.2: Full support (see unit test <a href="https://sourceforge.net/p/htmlunit/code/7717/tree/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/JQuery182Test.java">here</a>)</li>
+                    <li>MochiKit 1.4.1: Full support (see unit tests <a href="https://sourceforge.net/p/htmlunit/code/7717/tree/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/MochiKitTest.java">here</a>)</li>
+                    <li>GWT 2.5.0: Full support (see unit test <a href="https://sourceforge.net/p/htmlunit/code/7717/tree/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/GWT250Test.java">here</a>)</li>
+                    <li>Sarissa 0.9.9.3: Full support (see unit test <a href="https://sourceforge.net/p/htmlunit/code/7717/tree/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/Sarissa0993Test.java">here</a>)</li>
+                    <li>MooTools 1.2.1: Full support (see unit test <a href="https://sourceforge.net/p/htmlunit/code/7717/tree/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/MooTools121Test.java">here</a>)</li>
+                    <li>Prototype 1.7.1 (1.6.0, 1.6.1): Very good support (see unit test <a href="https://sourceforge.net/p/htmlunit/code/7717/tree/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/Prototype171Test.java">here</a>)</li>
+                    <li>Ext JS 2.2: Very good support (see unit test <a href="https://sourceforge.net/p/htmlunit/code/7717/tree/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/ExtJS22Test.java">here</a>)</li>
+                    <li>Dojo 1.0.2: Good support (see unit test <a href="https://sourceforge.net/p/htmlunit/code/7717/tree/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/Dojo102Test.java">here</a>)</li>
+                    <li>YUI 2.3.0: Good support (see unit test <a href="https://sourceforge.net/p/htmlunit/code/7717/tree/trunk/htmlunit/src/test/java/com/gargoylesoftware/htmlunit/libraries/YuiTest.java">here</a>)</li>
                 </ul>
             </p>
             <note title="Disabling JavaScript support">
                 <p>
-                    To disable JavaScript processing for one WebClient, call WebClient.setJavaScriptEnabled(false).
+                    To disable JavaScript processing for one WebClient, call webClient.getOptions().setJavaScriptEnabled(false).
                 </p>
             </note>
             <p>

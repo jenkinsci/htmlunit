@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,82 +14,74 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.xml;
 
-import static org.junit.Assert.assertSame;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.CHROME;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.IE11;
+import static org.junit.Assert.assertNotNull;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.Locale;
 
-import javax.servlet.Servlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.httpclient.NameValuePair;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.openqa.selenium.WebDriver;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
-import com.gargoylesoftware.htmlunit.HttpMethod;
-import com.gargoylesoftware.htmlunit.MockWebConnection;
-import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebRequestSettings;
-import com.gargoylesoftware.htmlunit.WebResponse;
-import com.gargoylesoftware.htmlunit.WebServerTestCase;
-import com.gargoylesoftware.htmlunit.WebWindow;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
 import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
-import com.gargoylesoftware.htmlunit.html.DomChangeEvent;
-import com.gargoylesoftware.htmlunit.html.DomChangeListener;
-import com.gargoylesoftware.htmlunit.html.HtmlElement;
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Tries;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
+import com.gargoylesoftware.htmlunit.WebRequest;
+import com.gargoylesoftware.htmlunit.html.HtmlPageTest;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 
 /**
  * Tests for {@link XMLHttpRequest}.
  *
- * @version $Revision: 4900 $
+ * @version $Revision: 10483 $
  * @author Daniel Gredler
  * @author Marc Guillemot
  * @author Ahmed Ashour
  * @author Stuart Begg
  * @author Sudhan Moghe
+ * @author Sebastian Cato
+ * @author Ronald Brill
+ * @author Frank Danek
+ * @author Jake Cobb
  */
 @RunWith(BrowserRunner.class)
-public class XMLHttpRequestTest extends WebServerTestCase {
+public class XMLHttpRequestTest extends WebDriverTestCase {
 
-    private static final String MSG_NO_CONTENT = "no Content";
-    private static final String MSG_PROCESSING_ERROR = "error processing";
+    private static final String XHR_INSTANTIATION = "(window.XMLHttpRequest ? "
+        + "new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP'))";
 
-    private static final String UNINITIALIZED = String.valueOf(XMLHttpRequest.STATE_UNINITIALIZED);
-    private static final String LOADING = String.valueOf(XMLHttpRequest.STATE_LOADING);
-    private static final String LOADED = String.valueOf(XMLHttpRequest.STATE_LOADED);
-    private static final String INTERACTIVE = String.valueOf(XMLHttpRequest.STATE_INTERACTIVE);
-    private static final String COMPLETED = String.valueOf(XMLHttpRequest.STATE_COMPLETED);
+    private static final String UNINITIALIZED = String.valueOf(XMLHttpRequest.STATE_UNSENT);
+    private static final String LOADING = String.valueOf(XMLHttpRequest.STATE_OPENED);
+    private static final String COMPLETED = String.valueOf(XMLHttpRequest.STATE_DONE);
 
     /**
      * Tests synchronous use of XMLHttpRequest.
      * @throws Exception if the test fails
      */
     @Test
-    public void testSyncUse() throws Exception {
+    @Tries(3)
+    // TODO [IE11]SINGLE-VS-BULK test runs when executed as single but breaks as bulk
+    public void syncUse() throws Exception {
         final String html =
               "<html>\n"
             + "  <head>\n"
             + "    <title>XMLHttpRequest Test</title>\n"
             + "    <script>\n"
             + "      function testSync() {\n"
-            + "        var request;\n"
-            + "        if (window.XMLHttpRequest)\n"
-            + "          request = new XMLHttpRequest();\n"
-            + "        else if (window.ActiveXObject)\n"
-            + "          request = new ActiveXObject('Microsoft.XMLHTTP');\n"
+            + "        var request = " + XHR_INSTANTIATION + ";\n"
             + "        alert(request.readyState);\n"
             + "        request.open('GET', '" + URL_SECOND + "', false);\n"
             + "        alert(request.readyState);\n"
@@ -109,17 +101,10 @@ public class XMLHttpRequestTest extends WebServerTestCase {
             + "<content>blah2</content>\n"
             + "</xml>";
 
-        final WebClient client = getWebClient();
-        final List<String> collectedAlerts = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, xml, "text/xml");
-        client.setWebConnection(conn);
-        client.getPage(URL_FIRST);
+        setExpectedAlerts(UNINITIALIZED, LOADING, COMPLETED, xml);
+        getMockWebConnection().setDefaultResponse(xml, "text/xml");
 
-        final String[] alerts = {UNINITIALIZED, LOADING, COMPLETED, xml};
-        assertEquals(alerts, collectedAlerts);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -127,7 +112,8 @@ public class XMLHttpRequestTest extends WebServerTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE6 = "activeX created", IE7 = "[object]",  FF = "[object XMLHttpRequest]")
+    @Alerts(DEFAULT = "[object XMLHttpRequest]",
+            IE8 = "[object]")
     public void creation() throws Exception {
         final String html =
             "<html>\n"
@@ -145,134 +131,214 @@ public class XMLHttpRequestTest extends WebServerTestCase {
             + "  </head>\n"
             + "  <body></body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
-     * Tests asynchronous use of XMLHttpRequest, using Mozilla style object creation.
      * @throws Exception if the test fails
      */
     @Test
-    public void testAsyncUse() throws Exception {
+    @Alerts(DEFAULT = { "1: 0-", "2: ", "3: 200-OK" },
+            IE8 = {"1: ex: status-ex: statusText, 2: , 3: 200-OK" })
+    public void statusSync() throws Exception {
+        final String html =
+            "<html>\n"
+            + "  <head>\n"
+            + "    <title>XMLHttpRequest Test</title>\n"
+            + "<script>\n"
+            + "  var xhr = " + XHR_INSTANTIATION + ";\n"
+
+            + "  alertStatus('1: ');\n"
+            + "  xhr.open('GET', '/foo.xml', false);\n"
+            + "  alert('2: ');\n"
+
+            + "  xhr.send();\n"
+            + "  alertStatus('3: ');\n"
+
+            + "  function alertStatus(prefix) {\n"
+            + "    var msg = prefix;"
+            + "    try {\n"
+            + "      msg = msg + xhr.status + '-';\n"
+            + "    } catch(e) { msg = msg + 'ex: status' + '-' }\n"
+            + "    try {\n"
+            + "      msg = msg + xhr.statusText;;\n"
+            + "    } catch(e) { msg = msg + 'ex: statusText' }\n"
+            + "    alert(msg);\n"
+            + "  }\n"
+            + "</script>\n"
+            + "  </head>\n"
+            + "  <body></body>\n"
+            + "</html>";
+
+        getMockWebConnection().setDefaultResponse("<res></res>", "text/xml");
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "1: 0-", "2: 0-", "#1: 0-", "3: 0-", "#1: 0-", "4: 0-",
+                            "#2: 200-OK", "#3: 200-OK", "#4: 200-OK" },
+            FF = { "1: 0-", "2: 0-", "#1: 0-", "3: 0-", "4: 0-", "#2: 200-OK", "#3: 200-OK", "#4: 200-OK" },
+            IE8 = { "1: ex: status-ex: statusText", "2: ex: status-ex: statusText", "#1: ex: status-ex: statusText",
+                    "3: ex: status-ex: statusText", "#1: ex: status-ex: statusText", "4: ex: status-ex: statusText",
+                    "#2: 200-OK", "#3: 200-OK", "#4: 200-OK" },
+            CHROME = { "1: 0-", "2: 0-", "#1: 0-", "3: 0-", "4: 0-",
+                    "#2: 200-OK", "#3: 200-OK", "#4: 200-OK" })
+    public void statusAsync() throws Exception {
+        final String html =
+            "<html>\n"
+            + "  <head>\n"
+            + "    <title>XMLHttpRequest Test</title>\n"
+            + "<script>\n"
+            + "  var xhr = " + XHR_INSTANTIATION + ";\n"
+
+            + "  function test() {\n"
+            + "    try {\n"
+            + "      alertStatus('1: ');\n"
+
+            + "      xhr.onreadystatechange = onReadyStateChange;\n"
+            + "      alertStatus('2: ');\n"
+
+            + "      xhr.open('GET',  '/foo.xml', true);\n"
+            + "      alertStatus('3: ');\n"
+
+            + "      xhr.send();\n"
+            + "      alertStatus('4: ');\n"
+            + "    } catch(e) { alert(e) }\n"
+            + "  }\n"
+
+            + "  function onReadyStateChange() {\n"
+            + "    alertStatus('#' + xhr.readyState + ': ');"
+            + "  }\n"
+
+            + "  function alertStatus(prefix) {\n"
+            + "    var msg = prefix;"
+            + "    try {\n"
+            + "      msg = msg + xhr.status + '-';\n"
+            + "    } catch(e) { msg = msg + 'ex: status' + '-' }\n"
+            + "    try {\n"
+            + "      msg = msg + xhr.statusText;;\n"
+            + "    } catch(e) { msg = msg + 'ex: statusText' }\n"
+            + "    alert(msg);\n"
+            + "  }\n"
+            + "</script>\n"
+            + "  </head>\n"
+            + "  <body onload='test()'></body>\n"
+            + "</html>";
+
+        getMockWebConnection().setDefaultResponse("<res></res>", "text/xml");
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Checks that not passing the async flag to <code>open()</code>
+     * results in async execution.  If this gets interpreted as <code>false</code>
+     * then you will see the alert order 1-2-4-3 instead of 1-2-3-4.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "#1", "#2", "#3", "#4" })
+    public void asyncIsDefault() throws Exception {
+        final String html = "<html><body><script>\n"
+            + "var xhr = " + XHR_INSTANTIATION + ";\n"
+
+            + "function onReadyStateChange() {\n"
+            + "  if( xhr.readyState == 4 ) {\n"
+            + "    alert('#4');\n"
+            + "  }\n"
+            + "}\n"
+
+            + "try {\n"
+            + "  alert('#1');\n"
+            + "  xhr.onreadystatechange = onReadyStateChange;\n"
+            + "  xhr.open('GET',  '/foo.xml');\n"
+            + "  alert('#2');\n"
+            + "  xhr.send();\n"
+            + "  alert('#3');\n"
+            + "} catch(e) { alert(e); }\n"
+            + "</script></body></html>";
+
+        getMockWebConnection().setDefaultResponse("<res></res>", "text/xml");
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "orsc1", "open-done", "orsc1", "send-done",
+                "orsc2", "orsc3", "orsc4", "4", "<a>b</a>", "[object XMLHttpRequest]" },
+            FF = { "orsc1", "open-done", "send-done",
+                "orsc2", "orsc3", "orsc4", "4", "<a>b</a>", "[object XMLHttpRequest]" },
+            IE8 = { "orsc1", "open-done", "orsc1", "send-done", "orsc2", "orsc3", "orsc4" },
+            CHROME = {"orsc1", "open-done", "send-done",
+                "orsc2", "orsc3", "orsc4", "4", "<a>b</a>", "[object XMLHttpRequest]" })
+    public void onload() throws Exception {
         final String html =
               "<html>\n"
             + "  <head>\n"
-            + "    <title>XMLHttpRequest Test</title>\n"
             + "    <script>\n"
-            + "      var request;\n"
-            + "      function testAsync() {\n"
-            + "        if (window.XMLHttpRequest)\n"
-            + "          request = new XMLHttpRequest();\n"
-            + "        else if (window.ActiveXObject)\n"
-            + "          request = new ActiveXObject('Microsoft.XMLHTTP');\n"
-            + "        request.onreadystatechange = onReadyStateChange;\n"
-            + "        alert(request.readyState);\n"
-            + "        request.open('GET', '" + URL_SECOND + "', true);\n"
-            + "        request.send('');\n"
-            + "      }\n"
-            + "      function onReadyStateChange() {\n"
-            + "        alert(request.readyState);\n"
-            + "        if (request.readyState == 4)\n"
-            + "          alert(request.responseText);\n"
+            + "      function test() {\n"
+            + "        var xhr = " + XHR_INSTANTIATION + ";\n"
+
+            + "        xhr.onreadystatechange = function() { alert('orsc' + xhr.readyState); };\n"
+            + "        xhr.onload = function() { alert(xhr.readyState); alert(xhr.responseText); alert(this); }\n"
+
+            + "        xhr.open('GET', '/foo.xml', true);\n"
+            + "        alert('open-done');\n"
+
+            + "        xhr.send('');\n"
+            + "        alert('send-done');\n"
             + "      }\n"
             + "    </script>\n"
             + "  </head>\n"
-            + "  <body onload='testAsync()'>\n"
-            + "  </body>\n"
+            + "  <body onload='test()'></body>\n"
             + "</html>";
 
-        final String xml =
-              "<xml2>\n"
-            + "<content2>sdgxsdgx</content2>\n"
-            + "<content2>sdgxsdgx2</content2>\n"
-            + "</xml2>";
+        final String xml = "<a>b</a>";
 
-        final WebClient client = getWebClient();
-        final List<String> collectedAlerts = Collections.synchronizedList(new ArrayList<String>());
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, xml, "text/xml");
-        client.setWebConnection(conn);
-        client.getPage(URL_FIRST);
-
-        assertEquals(0, client.waitForBackgroundJavaScriptStartingBefore(1000));
-        final String[] alerts = {UNINITIALIZED, LOADING, LOADING, LOADED, INTERACTIVE, COMPLETED, xml};
-        assertEquals(alerts, collectedAlerts);
+        getMockWebConnection().setDefaultResponse(xml, "text/xml");
+        loadPageWithAlerts2(html);
     }
 
     /**
-     * Tests asynchronous use of XMLHttpRequest, where the XHR request fails due to IOException (Connection refused).
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = { "0", "1", "1", "2", "4", MSG_NO_CONTENT },
-            FF = { "0", "1", "1", "2", "4", MSG_NO_CONTENT, MSG_PROCESSING_ERROR })
-    public void testAsyncUseWithNetworkConnectionFailure() throws Exception {
+    @Alerts({"null", "null" })
+    public void responseHeaderBeforeSend() throws Exception {
         final String html =
-              "<html>\n"
-            + "<head>\n"
-            + "<title>XMLHttpRequest Test</title>\n"
-            + "<script>\n"
-            + "var request;\n"
-            + "function testAsync() {\n"
-            + "  if (window.XMLHttpRequest)\n"
-            + "    request = new XMLHttpRequest();\n"
-            + "  else if (window.ActiveXObject)\n"
-            + "    request = new ActiveXObject('Microsoft.XMLHTTP');\n"
-            + "  request.onreadystatechange = onReadyStateChange;\n"
-            + "  request.onerror = onError;\n"
-            + "  alert(request.readyState);\n"
-            + "  request.open('GET', '" + URL_SECOND + "', true);\n"
-            + "  request.send('');\n"
-            + "}\n"
-            + "function onError() {\n"
-            + "  alert('" + MSG_PROCESSING_ERROR + "');\n"
-            + "}\n"
-            + "function onReadyStateChange() {\n"
-            + "  alert(request.readyState);\n"
-            + "  if (request.readyState == 4) {\n"
-            + "    if (request.responseText.length == 0)\n"
-            + "      alert('" + MSG_NO_CONTENT + "');"
-            + "    else\n"
-            + "      throw 'Unexpected content, should be zero length but is: \"' + request.responseText + '\"';\n"
-            + "  }\n"
-            + "}\n"
-            + "</script>\n"
-            + "</head>\n"
-            + "<body onload='testAsync()'>\n"
-            + "</body>\n"
+            "<html>\n"
+            + "  <head>\n"
+            + "    <title>XMLHttpRequest Test</title>\n"
+            + "    <script>\n"
+            + "        var request = " + XHR_INSTANTIATION + ";\n"
+
+            + "        alert(request.getResponseHeader('content-length'));\n"
+            + "        request.open('GET', '/foo.xml', false);\n"
+            + "        alert(request.getResponseHeader('content-length'));\n"
+            + "    </script>\n"
+            + "  </head>\n"
+            + "  <body></body>\n"
             + "</html>";
-
-        final WebClient client = getWebClient();
-        final List<String> collectedAlerts = Collections.synchronizedList(new ArrayList<String>());
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new DisconnectedMockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        client.setWebConnection(conn);
-        client.getPage(URL_FIRST);
-
-        assertEquals(0, client.waitForBackgroundJavaScriptStartingBefore(1000));
-        assertEquals(getExpectedAlerts(), collectedAlerts);
+        loadPageWithAlerts2(html);
     }
 
     /**
-     * Regression test for http://sourceforge.net/tracker/index.php?func=detail&aid=1209692&group_id=47038&atid=448266.
+     * Regression test for http://sourceforge.net/p/htmlunit/bugs/269/.
      * @throws Exception if the test fails
      */
     @Test
-    public void testRelativeUrl() throws Exception {
+    public void relativeUrl() throws Exception {
         final String html =
               "<html>\n"
             + "  <head>\n"
             + "    <title>XMLHttpRequest Test</title>\n"
             + "    <script>\n"
             + "      function testSync() {\n"
-            + "        var request;\n"
-            + "        if (window.XMLHttpRequest)\n"
-            + "          request = new XMLHttpRequest();\n"
-            + "        else if (window.ActiveXObject)\n"
-            + "          request = new ActiveXObject('Microsoft.XMLHTTP');\n"
+            + "        var request = " + XHR_INSTANTIATION + ";\n"
             + "        request.open('GET', '/foo.xml', false);\n"
             + "        request.send('');\n"
             + "        alert(request.readyState);\n"
@@ -290,33 +356,22 @@ public class XMLHttpRequestTest extends WebServerTestCase {
             + "<content>blah2</content>\n"
             + "</xml>";
 
-        final WebClient client = getWebClient();
-        final List<String> collectedAlerts = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        final URL urlPage2 = new URL(URL_FIRST + "foo.xml");
-        conn.setResponse(urlPage2, xml, "text/xml");
-        client.setWebConnection(conn);
-        client.getPage(URL_FIRST);
-
-        final String[] alerts = {COMPLETED, xml};
-        assertEquals(alerts, collectedAlerts);
+        setExpectedAlerts(COMPLETED, xml);
+        getMockWebConnection().setDefaultResponse(xml, "text/xml");
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    public void testResponseText_NotXml() throws Exception {
+    @Alerts("bla bla")
+    // TODO [IE11]SINGLE-VS-BULK test runs when executed as single but breaks as bulk
+    public void responseText_NotXml() throws Exception {
         final String html = "<html><head>\n"
             + "<script>\n"
             + "function test() {\n"
-            + "  var request;\n"
-            + "  if (window.XMLHttpRequest)\n"
-            + "    request = new XMLHttpRequest();\n"
-            + "  else if (window.ActiveXObject)\n"
-            + "    request = new ActiveXObject('Microsoft.XMLHTTP');\n"
+            + "  var request = " + XHR_INSTANTIATION + ";\n"
             + "  request.open('GET', 'foo.txt', false);\n"
             + "  request.send('');\n"
             + "  alert(request.responseText);\n"
@@ -325,64 +380,132 @@ public class XMLHttpRequestTest extends WebServerTestCase {
             + "</head>\n"
             + "<body onload='test()'></body></html>";
 
-        final WebClient client = getWebClient();
-        final List<String> collectedAlerts = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        final URL urlPage2 = new URL(URL_FIRST + "foo.txt");
-        conn.setResponse(urlPage2, "bla bla", "text/plain");
-        client.setWebConnection(conn);
-        client.getPage(URL_FIRST);
-
-        final String[] alerts = {"bla bla"};
-        assertEquals(alerts, collectedAlerts);
+        getMockWebConnection().setDefaultResponse("bla bla", "text/plain");
+        loadPageWithAlerts2(html);
     }
 
     /**
-     * Test access to the XML DOM.
      * @throws Exception if the test fails
      */
     @Test
-    public void testResponseXML() throws Exception {
-        final String html = "<html><head>\n"
-            + "<script>\n"
-            + "function test() {\n"
-            + "  var request;\n"
-            + "  if (window.XMLHttpRequest)\n"
-            + "    request = new XMLHttpRequest();\n"
-            + "  else if (window.ActiveXObject)\n"
-            + "    request = new ActiveXObject('Microsoft.XMLHTTP');\n"
-            + "  request.open('GET', 'foo.xml', false);\n"
-            + "  request.send('');\n"
-            + "  var childNodes = request.responseXML.childNodes;\n"
-            + "  alert(childNodes.length);\n"
-            + "  var rootNode = childNodes[0];\n"
-            + "  alert(rootNode.nodeName);\n"
-            + "  alert(rootNode.attributes[0].nodeName);\n"
-            + "  alert(rootNode.attributes[0].nodeValue);\n"
-            + "  alert(rootNode.attributes['someAttr'] == rootNode.attributes[0]);\n"
-            + "  alert(rootNode.firstChild.nodeName);\n"
-            + "  alert(rootNode.firstChild.childNodes.length);\n"
-            + "  alert(request.responseXML.getElementsByTagName('fi').item(0).attributes[0].nodeValue);\n"
-            + "}\n"
-            + "</script>\n"
-            + "</head>\n"
-            + "<body onload='test()'></body></html>";
+    @Alerts("null")
+    // TODO [IE11]SINGLE-VS-BULK test runs when executed as single but breaks as bulk
+    public void responseXML_text_html() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_
+            + "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            + "    var xhr = new XMLHttpRequest();\n"
+            + "    xhr.open('GET', 'foo.xml', false);\n"
+            + "    xhr.send('');\n"
+            + "    try {\n"
+            + "      alert(xhr.responseXML);\n"
+            + "    } catch(e) { alert('exception'); }\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'>\n"
+            + "</body></html>";
 
-        final WebClient client = getWebClient();
-        final List<String> collectedAlerts = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        final URL urlPage2 = new URL(URL_FIRST + "foo.xml");
-        conn.setResponse(urlPage2, "<bla someAttr='someValue'><foo><fi id='fi1'/><fi/></foo></bla>\n",
-                "text/xml");
-        client.setWebConnection(conn);
-        client.getPage(URL_FIRST);
+        getMockWebConnection().setDefaultResponse("<html></html>", "text/html");
+        loadPageWithAlerts2(html);
+    }
 
-        final String[] alerts = {"1", "bla", "someAttr", "someValue", "true", "foo", "2", "fi1" };
-        assertEquals(alerts, collectedAlerts);
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "[object XMLDocument]",
+            IE8 = "[object Object]")
+    // TODO [IE11]SINGLE-VS-BULK test runs when executed as single but breaks as bulk
+    public void responseXML_text_xml() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_
+            + "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            + "    var xhr = new XMLHttpRequest();\n"
+            + "    xhr.open('GET', 'foo.xml', false);\n"
+            + "    xhr.send('');\n"
+            + "    try {\n"
+            + "      alert(xhr.responseXML);\n"
+            + "    } catch(e) { alert('exception'); }\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'>\n"
+            + "</body></html>";
+
+        getMockWebConnection().setDefaultResponse("<note/>", "text/xml");
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "[object XMLDocument]",
+            IE8 = "[object Object]")
+    // TODO [IE11]SINGLE-VS-BULK test runs when executed as single but breaks as bulk
+    public void responseXML_application_xml() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_
+            + "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            + "    var xhr = new XMLHttpRequest();\n"
+            + "    xhr.open('GET', 'foo.xml', false);\n"
+            + "    xhr.send('');\n"
+            + "    try {\n"
+            + "      alert(xhr.responseXML);\n"
+            + "    } catch(e) { alert('exception'); }\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'>\n"
+            + "</body></html>";
+
+        getMockWebConnection().setDefaultResponse("<note/>", "application/xml");
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "[object XMLDocument]",
+            IE8 = "[object Object]")
+    // TODO [IE11]SINGLE-VS-BULK test runs when executed as single but breaks as bulk
+    public void responseXML_application_xhtmlXml() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_
+            + "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            + "    var xhr = new XMLHttpRequest();\n"
+            + "    xhr.open('GET', 'foo.xml', false);\n"
+            + "    xhr.send('');\n"
+            + "    try {\n"
+            + "      alert(xhr.responseXML);\n"
+            + "    } catch(e) { alert('exception'); }\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'>\n"
+            + "</body></html>";
+
+        getMockWebConnection().setDefaultResponse("<html/>", "application/xhtml+xml");
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "[object XMLDocument]",
+            IE8 = "[object Object]")
+    // TODO [IE11]SINGLE-VS-BULK test runs when executed as single but breaks as bulk
+    public void responseXML_application_svgXml() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_
+            + "<html><head><title>foo</title><script>\n"
+            + "  function test() {\n"
+            + "    var xhr = new XMLHttpRequest();\n"
+            + "    xhr.open('GET', 'foo.xml', false);\n"
+            + "    xhr.send('');\n"
+            + "    try {\n"
+            + "      alert(xhr.responseXML);\n"
+            + "    } catch(e) { alert('exception'); }\n"
+            + "  }\n"
+            + "</script></head><body onload='test()'>\n"
+            + "</body></html>";
+
+        getMockWebConnection().setDefaultResponse("<svg xmlns=\"http://www.w3.org/2000/svg\"/>", "image/svg+xml");
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -390,16 +513,14 @@ public class XMLHttpRequestTest extends WebServerTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.IE)
-    public void testResponseXML2() throws Exception {
+    @Alerts(DEFAULT = { "1", "someAttr", "undefined", "undefined" },
+            IE8 = { "1", "someAttr", "someValue", "someAttr=\"someValue\"" })
+    // TODO [IE11]SINGLE-VS-BULK test runs when executed as single but breaks as bulk
+    public void responseXML2() throws Exception {
         final String html = "<html><head>\n"
             + "<script>\n"
             + "function test() {\n"
-            + "  var request;\n"
-            + "  if (window.XMLHttpRequest)\n"
-            + "    request = new XMLHttpRequest();\n"
-            + "  else if (window.ActiveXObject)\n"
-            + "    request = new ActiveXObject('Microsoft.XMLHTTP');\n"
+            + "  var request = " + XHR_INSTANTIATION + ";\n"
             + "  request.open('GET', 'foo.xml', false);\n"
             + "  request.send('');\n"
             + "  var childNodes = request.responseXML.childNodes;\n"
@@ -413,34 +534,46 @@ public class XMLHttpRequestTest extends WebServerTestCase {
             + "</head>\n"
             + "<body onload='test()'></body></html>";
 
-        final WebClient client = getWebClient();
-        final List<String> collectedAlerts = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
         final URL urlPage2 = new URL(URL_FIRST + "foo.xml");
-        conn.setResponse(urlPage2, "<bla someAttr='someValue'><foo><fi id='fi1'/><fi/></foo></bla>\n",
-                "text/xml");
-        client.setWebConnection(conn);
-        client.getPage(URL_FIRST);
-
-        final String[] alerts = {"1", "someAttr", "someValue", "someAttr=\"someValue\""};
-        assertEquals(alerts, collectedAlerts);
+        getMockWebConnection().setResponse(urlPage2,
+            "<bla someAttr='someValue'><foo><fi id='fi1'/><fi/></foo></bla>\n",
+            "text/xml");
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    public void testSendNull() throws Exception {
+    @Alerts("received: null")
+    public void responseXML_siteNotExisting() throws Exception {
         final String html = "<html><head>\n"
             + "<script>\n"
             + "function test() {\n"
-            + "  var request;\n"
-            + "  if (window.XMLHttpRequest)\n"
-            + "    request = new XMLHttpRequest();\n"
-            + "  else if (window.ActiveXObject)\n"
-            + "    request = new ActiveXObject('Microsoft.XMLHTTP');\n"
+            + "  var request = " + XHR_INSTANTIATION + ";\n"
+            + "try {\n"
+            + "  request.open('GET', 'http://this.doesnt.exist/foo.xml', false);\n"
+            + "  request.send('');\n"
+            + "} catch(e) {\n"
+            + "  alert('received: ' + request.responseXML);\n"
+            + "}\n"
+            + "}\n"
+            + "</script>\n"
+            + "</head>\n"
+            + "<body onload='test()'></body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void sendNull() throws Exception {
+        final String html = "<html><head>\n"
+            + "<script>\n"
+            + "function test() {\n"
+            + "  var request = " + XHR_INSTANTIATION + ";\n"
             + "  request.open('GET', 'foo.txt', false);\n"
             + "  request.send(null);\n"
             + "}\n"
@@ -448,12 +581,8 @@ public class XMLHttpRequestTest extends WebServerTestCase {
             + "</head>\n"
             + "<body onload='test()'></body></html>";
 
-        final WebClient client = getWebClient();
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setDefaultResponse("");
-        client.setWebConnection(conn);
-        client.getPage(URL_FIRST);
+        getMockWebConnection().setDefaultResponse("");
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -461,8 +590,8 @@ public class XMLHttpRequestTest extends WebServerTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testSendGETWithContent() throws Exception {
-        testSend("'foo'");
+    public void sendGETWithContent() throws Exception {
+        send("'foo'");
     }
 
     /**
@@ -470,22 +599,18 @@ public class XMLHttpRequestTest extends WebServerTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testSendNoArg() throws Exception {
-        testSend("");
+    public void sendNoArg() throws Exception {
+        send("");
     }
 
     /**
      * @throws Exception if the test fails
      */
-    private void testSend(final String sendArg) throws Exception {
+    private void send(final String sendArg) throws Exception {
         final String html = "<html><head>\n"
             + "<script>\n"
             + "function test() {\n"
-            + "  var request;\n"
-            + "  if (window.XMLHttpRequest)\n"
-            + "    request = new XMLHttpRequest();\n"
-            + "  else if (window.ActiveXObject)\n"
-            + "    request = new ActiveXObject('Microsoft.XMLHTTP');\n"
+            + "  var request = " + XHR_INSTANTIATION + ";\n"
             + "  request.open('GET', 'foo.txt', false);\n"
             + "  request.send(" + sendArg + ");\n"
             + "}\n"
@@ -493,12 +618,8 @@ public class XMLHttpRequestTest extends WebServerTestCase {
             + "</head>\n"
             + "<body onload='test()'></body></html>";
 
-        final WebClient client = getWebClient();
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setDefaultResponse("");
-        client.setWebConnection(conn);
-        client.getPage(URL_FIRST);
+        getMockWebConnection().setDefaultResponse("");
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -507,15 +628,11 @@ public class XMLHttpRequestTest extends WebServerTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testResponseNotInWindow() throws Exception {
+    public void responseNotInWindow() throws Exception {
         final String html = "<html><head><title>foo</title>\n"
             + "<script>\n"
             + "function test() {\n"
-            + "  var request;\n"
-            + "  if (window.XMLHttpRequest)\n"
-            + "    request = new XMLHttpRequest();\n"
-            + "  else if (window.ActiveXObject)\n"
-            + "    request = new ActiveXObject('Microsoft.XMLHTTP');\n"
+            + "  var request = " + XHR_INSTANTIATION + ";\n"
             + "  request.open('GET', 'foo.txt', false);\n"
             + "  request.send();\n"
             + "}\n"
@@ -523,26 +640,23 @@ public class XMLHttpRequestTest extends WebServerTestCase {
             + "</head>\n"
             + "<body onload='test()'></body></html>";
 
-        final WebClient client = getWebClient();
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setDefaultResponse("");
-        client.setWebConnection(conn);
-        final HtmlPage page = client.getPage(URL_FIRST);
-        assertEquals(URL_FIRST, page.getWebResponse().getRequestSettings().getUrl());
-        assertEquals("foo", page.getTitleText());
+        getMockWebConnection().setDefaultResponse("");
+        final WebDriver webdriver = loadPageWithAlerts2(html);
+        assertEquals(getDefaultUrl().toString(), webdriver.getCurrentUrl());
+        assertEquals("foo", webdriver.getTitle());
     }
 
     /**
-     * Test Mozilla's overrideMimeType method.
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.FF)
-    public void testOverrideMimeType() throws Exception {
+    @Alerts(DEFAULT = { "true", "false" },
+            IE = { "true", "exception" })
+    public void overrideMimeType() throws Exception {
         final String html = "<html><head>\n"
             + "<script>\n"
             + "function test() {\n"
+            + "try {\n"
             + "  var request = new XMLHttpRequest();\n"
             + "  request.open('GET', 'foo.xml.txt', false);\n"
             + "  request.send('');\n"
@@ -551,47 +665,151 @@ public class XMLHttpRequestTest extends WebServerTestCase {
             + "  request.open('GET', 'foo.xml.txt', false);\n"
             + "  request.send('');\n"
             + "  alert(request.responseXML == null);\n"
+            + "} catch (e) { alert('exception'); }\n"
             + "}\n"
             + "</script>\n"
             + "</head>\n"
             + "<body onload='test()'></body></html>";
 
-        final WebClient client = getWebClient();
-        final List<String> collectedAlerts = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        final URL urlPage2 = new URL(URL_FIRST + "foo.xml.txt");
-        conn.setResponse(urlPage2, "<bla someAttr='someValue'><foo><fi id='fi1'/><fi/></foo></bla>\n",
-                "text/plain");
-        client.setWebConnection(conn);
-        client.getPage(URL_FIRST);
-
-        final String[] alerts = {"true", "false"};
-        assertEquals(alerts, collectedAlerts);
+        final URL urlPage2 = new URL(getDefaultUrl() + "foo.xml.txt");
+        getMockWebConnection().setResponse(urlPage2,
+            "<bla someAttr='someValue'><foo><fi id='fi1'/><fi/></foo></bla>\n",
+            "text/plain");
+        loadPageWithAlerts2(html);
     }
 
     /**
-     * Regression test for bug 1611097.
-     * https://sourceforge.net/tracker/index.php?func=detail&aid=1611097&group_id=47038&atid=448266
-     * Caution: the problem appeared with jdk 1.4 but not with jdk 1.5 as String contains a
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "27035",
+            IE8 = "exception",
+            IE11 = "111")
+    @NotYetImplemented(IE11)
+    public void overrideMimeType_charset() throws Exception {
+        final String html = "<html><head>\n"
+            + "<script>\n"
+            + "function test() {\n"
+            + "try {\n"
+            + "  var request = new XMLHttpRequest();\n"
+            + "  request.open('GET', '" + URL_SECOND + "', false);\n"
+            + "  request.overrideMimeType('text/plain; charset=GBK');\n"
+            + "  request.send('');\n"
+            + "  alert(request.responseText.charCodeAt(0));\n"
+            + "} catch (e) { alert('exception'); }\n"
+            + "}\n"
+            + "</script>\n"
+            + "</head>\n"
+            + "<body onload='test()'></body></html>";
+
+        getMockWebConnection().setResponse(URL_SECOND, "\u9ec4", "text/plain", "UTF-8");
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "27035",
+            IE8 = "exception",
+            IE11 = "111")
+    @NotYetImplemented(IE11)
+    public void overrideMimeType_charset_upper_case() throws Exception {
+        final String html = "<html><head>\n"
+            + "<script>\n"
+            + "function test() {\n"
+            + "try {\n"
+            + "  var request = new XMLHttpRequest();\n"
+            + "  request.open('GET', '" + URL_SECOND + "', false);\n"
+            + "  request.overrideMimeType('text/plain; chaRSet=GBK');\n"
+            + "  request.send('');\n"
+            + "  alert(request.responseText.charCodeAt(0));\n"
+            + "} catch (e) { alert('exception'); }\n"
+            + "}\n"
+            + "</script>\n"
+            + "</head>\n"
+            + "<body onload='test()'></body></html>";
+
+        getMockWebConnection().setResponse(URL_SECOND, "\u9ec4", "text/plain", "UTF-8");
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "40644",
+            IE8 = "exception",
+            IE11 = "111")
+    @NotYetImplemented(IE11)
+    public void overrideMimeType_charset_empty() throws Exception {
+        final String html = "<html><head>\n"
+            + "<script>\n"
+            + "function test() {\n"
+            + "try {\n"
+            + "  var request = new XMLHttpRequest();\n"
+            + "  request.open('GET', '" + URL_SECOND + "', false);\n"
+            + "  request.overrideMimeType('text/plain; charset=');\n"
+            + "  request.send('');\n"
+            + "  alert(request.responseText.charCodeAt(0));\n"
+            + "} catch (e) { alert('exception'); }\n"
+            + "}\n"
+            + "</script>\n"
+            + "</head>\n"
+            + "<body onload='test()'></body></html>";
+
+        getMockWebConnection().setResponse(URL_SECOND, "\u9ec4", "text/plain", "UTF-8");
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "40644",
+            CHROME = "233",
+            IE8 = "exception",
+            IE11 = "NaN")
+    @NotYetImplemented({ IE11, CHROME })
+    public void overrideMimeType_charset_wrong() throws Exception {
+        final String html = "<html><head>\n"
+            + "<script>\n"
+            + "function test() {\n"
+            + "try {\n"
+            + "  var request = new XMLHttpRequest();\n"
+            + "  request.open('GET', '" + URL_SECOND + "', false);\n"
+            + "  request.overrideMimeType('text/plain; charset=abcdefg');\n"
+            + "  request.send('');\n"
+            + "  alert(request.responseText.charCodeAt(0));\n"
+            + "} catch (e) { alert('exception'); }\n"
+            + "}\n"
+            + "</script>\n"
+            + "</head>\n"
+            + "<body onload='test()'></body></html>";
+
+        getMockWebConnection().setResponse(URL_SECOND, "\u9ec4", "text/plain", "UTF-8");
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Regression test for bug 410.
+     * http://sourceforge.net/p/htmlunit/bugs/410/
+     * Caution: the problem appeared with JDK 1.4 but not with JDK 1.5 as String contains a
      * replace(CharSequence, CharSequence) method in this version
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = { "ibcdefg", "xxxxxfg" }, FF = { })
-    public void testReplaceOnTextData() throws Exception {
+    @Alerts({ "ibcdefg", "xxxxxfg" })
+    // TODO [IE11]SINGLE-VS-BULK test runs when executed as single but breaks as bulk
+    public void replaceOnTextData() throws Exception {
         final String html =
               "<html>\n"
             + "  <head>\n"
             + "    <title>XMLHttpRequest Test</title>\n"
             + "    <script>\n"
             + "      var request;\n"
-            + "      function testAsync() {\n"
-            + "        if (window.XMLHttpRequest)\n"
-            + "          request = new XMLHttpRequest();\n"
-            + "        else if (window.ActiveXObject)\n"
-            + "          request = new ActiveXObject('Microsoft.XMLHTTP');\n"
+            + "      function testReplace() {\n"
+            + "        request = " + XHR_INSTANTIATION + ";\n"
             + "        request.onreadystatechange = onReadyStateChange;\n"
             + "        request.open('GET', '" + URL_SECOND + "', false);\n"
             + "        request.send('');\n"
@@ -611,7 +829,7 @@ public class XMLHttpRequestTest extends WebServerTestCase {
             + "      }\n"
             + "    </script>\n"
             + "  </head>\n"
-            + "  <body onload='testAsync()'>\n"
+            + "  <body onload='testReplace()'>\n"
             + "  </body>\n"
             + "</html>";
 
@@ -621,108 +839,8 @@ public class XMLHttpRequestTest extends WebServerTestCase {
             + "<update>hijklmn</update>\n"
             + "</updates>";
 
-        final WebClient client = getWebClient();
-        final List<String> collectedAlerts = Collections.synchronizedList(new ArrayList<String>());
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, xml, "text/xml");
-        client.setWebConnection(conn);
-        client.getPage(URL_FIRST);
-
-        assertEquals(getExpectedAlerts(), collectedAlerts);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testSetLocation() throws Exception {
-        final String content =
-              "<html>\n"
-            + "  <head>\n"
-            + "    <title>Page1</title>\n"
-            + "    <script>\n"
-            + "      var request;\n"
-            + "      function testAsync() {\n"
-            + "        if (window.XMLHttpRequest)\n"
-            + "          request = new XMLHttpRequest();\n"
-            + "        else if (window.ActiveXObject)\n"
-            + "          request = new ActiveXObject('Microsoft.XMLHTTP');\n"
-            + "        request.onreadystatechange = onReadyStateChange;\n"
-            + "        request.open('GET', 'about:blank', true);\n"
-            + "        request.send('');\n"
-            + "      }\n"
-            + "      function onReadyStateChange() {\n"
-            + "        if (request.readyState == 4) {\n"
-            + "          window.location.href = 'about:blank';\n"
-            + "        }\n"
-            + "      }\n"
-            + "    </script>\n"
-            + "  </head>\n"
-            + "  <body onload='testAsync()'>\n"
-            + "  </body>\n"
-            + "</html>";
-
-        final WebWindow window = loadPage(getBrowserVersion(), content, null).getEnclosingWindow();
-        assertEquals(0, window.getWebClient().waitForBackgroundJavaScriptStartingBefore(1000));
-        assertEquals("about:blank", window.getEnclosedPage().getWebResponse().getRequestSettings().getUrl());
-    }
-
-    /**
-     * Asynchronous callback should be called in "main" js thread and not parallel to other js execution.
-     * See https://sourceforge.net/tracker/index.php?func=detail&aid=1508377&group_id=47038&atid=448266.
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testNoParallelJSExecutionInPage() throws Exception {
-        final String content = "<html><head><script>\n"
-            + "function getXMLHttpRequest() {\n"
-            + " if (window.XMLHttpRequest)\n"
-            + "        return new XMLHttpRequest();\n"
-            + " else if (window.ActiveXObject)\n"
-            + "        return new ActiveXObject('Microsoft.XMLHTTP');\n"
-            + "}\n"
-            + "var j = 0;\n"
-            + "function test() {\n"
-            + " req = getXMLHttpRequest();\n"
-            + " req.onreadystatechange = handler;\n"
-            + " req.open('post', 'foo.xml', true);\n"
-            + " req.send('');\n"
-            + " alert('before long loop');\n"
-            + " for (var i = 0; i < 5000; i++) {\n"
-            + "     j = j + 1;\n"
-            + " }\n"
-            + " alert('after long loop');\n"
-            + "}\n"
-            + "function handler() {\n"
-            + " if (req.readyState == 4)\n"
-            + "     alert('ready state handler, content loaded: j=' + j);\n"
-            + "}\n"
-            + "</script></head>\n"
-            + "<body onload='test()'></body></html>";
-
-        final WebClient client = getWebClient();
-        final List<String> collectedAlerts = Collections.synchronizedList(new ArrayList<String>());
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection() {
-            @Override
-            public WebResponse getResponse(final WebRequestSettings webRequestSettings) throws IOException {
-                collectedAlerts.add(webRequestSettings.getUrl().toExternalForm());
-                return super.getResponse(webRequestSettings);
-            }
-        };
-        conn.setResponse(URL_FIRST, content);
-        final URL urlPage2 = new URL(URL_FIRST + "foo.xml");
-        conn.setResponse(urlPage2, "<foo/>\n", "text/xml");
-        client.setWebConnection(conn);
-        client.getPage(URL_FIRST);
-
-        assertEquals(0, client.waitForBackgroundJavaScriptStartingBefore(1000));
-
-        final String[] alerts = {URL_FIRST.toExternalForm(), "before long loop", "after long loop",
-            urlPage2.toExternalForm(), "ready state handler, content loaded: j=5000" };
-        assertEquals(alerts, collectedAlerts);
+        getMockWebConnection().setDefaultResponse(xml, "text/xml");
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -730,33 +848,23 @@ public class XMLHttpRequestTest extends WebServerTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    public void testRefererHeader() throws Exception {
-        final String content = "<html><head><script>\n"
-            + "function getXMLHttpRequest() {\n"
-            + " if (window.XMLHttpRequest)\n"
-            + "        return new XMLHttpRequest();\n"
-            + " else if (window.ActiveXObject)\n"
-            + "        return new ActiveXObject('Microsoft.XMLHTTP');\n"
-            + "}\n"
+    public void refererHeader() throws Exception {
+        final String html = "<html><head><script>\n"
             + "function test() {\n"
-            + " req = getXMLHttpRequest();\n"
+            + " req = " + XHR_INSTANTIATION + ";\n"
             + " req.open('post', 'foo.xml', false);\n"
             + " req.send('');\n"
             + "}\n"
             + "</script></head>\n"
             + "<body onload='test()'></body></html>";
 
-        final WebClient client = getWebClient();
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, content);
         final URL urlPage2 = new URL(URL_FIRST + "foo.xml");
-        conn.setResponse(urlPage2, "<foo/>\n", "text/xml");
-        client.setWebConnection(conn);
-        client.getPage(URL_FIRST);
+        getMockWebConnection().setResponse(urlPage2, "<foo/>\n", "text/xml");
+        loadPage2(html);
 
-        final WebRequestSettings settings = conn.getLastWebRequestSettings();
-        assertEquals(urlPage2, settings.getUrl());
-        assertEquals(URL_FIRST.toExternalForm(), settings.getAdditionalHeaders().get("Referer"));
+        final WebRequest request = getMockWebConnection().getLastWebRequest();
+        assertEquals(urlPage2, request.getUrl());
+        assertEquals(URL_FIRST.toExternalForm(), request.getAdditionalHeaders().get("Referer"));
     }
 
     /**
@@ -764,87 +872,42 @@ public class XMLHttpRequestTest extends WebServerTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    @Browsers(Browser.IE)
-    @Alerts("0")
-    public void testCaseSensitivity() throws Exception {
+    @Alerts(DEFAULT = "ActiveXObject not available",
+            IE = { "0", "0" })
+    public void caseInsensitivityActiveXConstructor() throws Exception {
         final String html = "<html><head><script>\n"
             + "function test() {\n"
-            + "  var req = new ActiveXObject('MSXML2.XmlHttp');\n"
-            + "  alert(req.readyState);\n"
+            + "  try {\n"
+            + "    var req = new ActiveXObject('MSXML2.XmlHttp');\n"
+            + "    alert(req.readyState);\n"
+
+            + "    var req = new ActiveXObject('msxml2.xMLhTTp');\n"
+            + "    alert(req.readyState);\n"
+            + "  } catch (e) { alert('ActiveXObject not available'); }\n"
             + "}\n"
             + "</script></head>\n"
             + "<body onload='test()'></body></html>";
 
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * Tests that the different HTTP methods are supported.
-     * @throws Exception if an error occurs
-     */
-    @Test
-    public void testMethods() throws Exception {
-        testMethod(HttpMethod.GET);
-        testMethod(HttpMethod.HEAD);
-        testMethod(HttpMethod.DELETE);
-        testMethod(HttpMethod.POST);
-        testMethod(HttpMethod.PUT);
-        testMethod(HttpMethod.OPTIONS);
-        testMethod(HttpMethod.TRACE);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    private void testMethod(final HttpMethod method) throws Exception {
-        final String content = "<html><head><script>\n"
-            + "function getXMLHttpRequest() {\n"
-            + " if (window.XMLHttpRequest)\n"
-            + "        return new XMLHttpRequest();\n"
-            + " else if (window.ActiveXObject)\n"
-            + "        return new ActiveXObject('Microsoft.XMLHTTP');\n"
-            + "}\n"
-            + "function test() {\n"
-            + " req = getXMLHttpRequest();\n"
-            + " req.open('" + method.name().toLowerCase() + "', 'foo.xml', false);\n"
-            + " req.send('');\n"
-            + "}\n"
-            + "</script></head>\n"
-            + "<body onload='test()'></body></html>";
-
-        final WebClient client = getWebClient();
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, content);
-        final URL urlPage2 = new URL(URL_FIRST + "foo.xml");
-        conn.setResponse(urlPage2, "<foo/>\n", "text/xml");
-        client.setWebConnection(conn);
-        client.getPage(URL_FIRST);
-
-        final WebRequestSettings settings = conn.getLastWebRequestSettings();
-        assertEquals(urlPage2, settings.getUrl());
-        assertSame(method, settings.getHttpMethod());
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.IE)
-    @Alerts("2")
-    public void testResponseXML_selectNodesIE() throws Exception {
+    @Alerts(DEFAULT = "selectNodes not available",
+            IE8 = "2")
+    public void responseXML_selectNodesIE() throws Exception {
         final String html =
               "<html>\n"
             + "  <head>\n"
             + "    <title>XMLHttpRequest Test</title>\n"
             + "    <script>\n"
             + "      function test() {\n"
-            + "        var request;\n"
-            + "        if (window.XMLHttpRequest)\n"
-            + "          request = new XMLHttpRequest();\n"
-            + "        else if (window.ActiveXObject)\n"
-            + "          request = new ActiveXObject('Microsoft.XMLHTTP');\n"
+            + "        var request = " + XHR_INSTANTIATION + ";\n"
             + "        request.open('GET', '" + URL_SECOND + "', false);\n"
             + "        request.send('');\n"
+            + "        if (!request.responseXML.selectNodes) { alert('selectNodes not available'); return }\n"
             + "        alert(request.responseXML.selectNodes('//content').length);\n"
             + "      }\n"
             + "    </script>\n"
@@ -859,130 +922,37 @@ public class XMLHttpRequestTest extends WebServerTestCase {
             + "<content>blah2</content>\n"
             + "</xml>";
 
-        final WebClient client = getWebClient();
-        final List<String> collectedAlerts = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, xml, "text/xml");
-        client.setWebConnection(conn);
-        client.getPage(URL_FIRST);
-
-        assertEquals(getExpectedAlerts(), collectedAlerts);
-    }
-
-    /**
-     * Was causing a deadlock on 03.11.2007 (and probably with release 1.13 too).
-     * @throws Exception if the test fails
-     */
-    @Test
-    public void testXMLHttpRequestWithDomChangeListenerDeadlock() throws Exception {
-        final String content
-            = "<html><head><title>foo</title>\n"
-            + "<script>\n"
-            + "  function test() {\n"
-            + "    frames[0].test('foo1.txt', true);\n"
-            + "    frames[0].test('foo2.txt', false);\n"
-            + "  }\n"
-            + "</script>\n"
-            + "</head>\n"
-            + "<body>\n"
-            + "<p id='p1' title='myTitle' onclick='test()'></p>\n"
-            + "<iframe src='page2.html'></iframe>\n"
-            + "</body></html>";
-
-        final String content2
-            = "<html><head><title>foo</title>\n"
-            + "<script>\n"
-            + "function test(_src, _async)\n"
-            + "{\n"
-            + "  var request;\n"
-            + "  if (window.XMLHttpRequest)\n"
-            + "    request = new XMLHttpRequest();\n"
-            + "  else if (window.ActiveXObject)\n"
-            + "    request = new ActiveXObject('Microsoft.XMLHTTP');\n"
-            + "  request.onreadystatechange = onReadyStateChange;\n"
-            + "  request.open('GET', _src, _async);\n"
-            + "  request.send('');\n"
-            + "}\n"
-            + "function onReadyStateChange() {\n"
-            + "  parent.document.getElementById('p1').title = 'new title';\n"
-            + "}\n"
-            + "</script>\n"
-            + "</head>\n"
-            + "<body>\n"
-            + "<p id='p1' title='myTitle'></p>\n"
-            + "</body></html>";
-
-        final MockWebConnection connection = new MockWebConnection() {
-            private boolean gotFoo1_ = false;
-
-            @Override
-            public WebResponse getResponse(final WebRequestSettings webRequestSettings) throws IOException {
-                final String url = webRequestSettings.getUrl().toExternalForm();
-
-                synchronized (this) {
-                    while (!gotFoo1_ && url.endsWith("foo2.txt")) {
-                        try {
-                            wait(100);
-                        }
-                        catch (final InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
-                if (url.endsWith("foo1.txt")) {
-                    gotFoo1_ = true;
-                }
-                return super.getResponse(webRequestSettings);
-            }
-        };
-        connection.setDefaultResponse("");
-        connection.setResponse(URL_FIRST, content);
-        connection.setResponse(new URL(URL_FIRST, "page2.html"), content2);
-
-        final WebClient webClient = getWebClient();
-        webClient.setWebConnection(connection);
-
-        final HtmlPage page = webClient.getPage(URL_FIRST);
-        final DomChangeListener listener = new DomChangeListener() {
-            private static final long serialVersionUID = 1978591653173770574L;
-            public void nodeAdded(final DomChangeEvent event) {
-                // Empty.
-            }
-            public void nodeDeleted(final DomChangeEvent event) {
-                // Empty.
-            }
-        };
-        page.addDomChangeListener(listener);
-        page.<HtmlElement>getHtmlElementById("p1").click();
+        getMockWebConnection().setResponse(URL_SECOND, xml, "text/xml");
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.FF)
-    @Alerts({ "null", "myID", "blah", "span", "[object XMLDocument]" })
-    public void testResponseXML_getElementById_FF() throws Exception {
+    @Alerts(DEFAULT = { "null", "myID", "blah", "span", "[object XMLDocument]" },
+            CHROME = { "[object Element]", "myID", "blah", "span", "[object XMLDocument]" },
+            FF38 = { "[object Element]", "myID", "blah", "span", "[object XMLDocument]" },
+            IE8 = "responseXML.getElementById not available")
+    public void responseXML_getElementById_FF() throws Exception {
         final String html =
               "<html>\n"
             + "  <head>\n"
             + "    <title>XMLHttpRequest Test</title>\n"
             + "    <script>\n"
             + "      function test() {\n"
-            + "        var request;\n"
-            + "        if (window.XMLHttpRequest)\n"
-            + "          request = new XMLHttpRequest();\n"
-            + "        else if (window.ActiveXObject)\n"
-            + "          request = new ActiveXObject('Microsoft.XMLHTTP');\n"
+            + "        var request = " + XHR_INSTANTIATION + ";\n"
             + "        request.open('GET', '" + URL_SECOND + "', false);\n"
             + "        request.send('');\n"
-            + "        alert(request.responseXML.getElementById('id1'));\n"
-            + "        alert(request.responseXML.getElementById('myID').id);\n"
-            + "        alert(request.responseXML.getElementById('myID').innerHTML);\n"
-            + "        alert(request.responseXML.getElementById('myID').tagName);\n"
-            + "        alert(request.responseXML.getElementById('myID').ownerDocument);\n"
+            + "        if (request.responseXML.getElementById) {\n"
+            + "          alert(request.responseXML.getElementById('id1'));\n"
+            + "          alert(request.responseXML.getElementById('myID').id);\n"
+            + "          alert(request.responseXML.getElementById('myID').innerHTML);\n"
+            + "          alert(request.responseXML.getElementById('myID').tagName);\n"
+            + "          alert(request.responseXML.getElementById('myID').ownerDocument);\n"
+            + "        } else  {\n"
+            + "          alert('responseXML.getElementById not available');\n"
+            + "        }\n"
             + "      }\n"
             + "    </script>\n"
             + "  </head>\n"
@@ -1000,87 +970,27 @@ public class XMLHttpRequestTest extends WebServerTestCase {
             + "</html>\n"
             + "</xml>";
 
-        final WebClient client = getWebClient();
-        final List<String> collectedAlerts = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, xml, "text/xml");
-        client.setWebConnection(conn);
-        client.getPage(URL_FIRST);
-
-        assertEquals(getExpectedAlerts(), collectedAlerts);
-    }
-
-    /**
-     * Firefox does not call onreadystatechange handler if sync.
-     * @throws Exception if the test fails
-     */
-    @Test
-    @Alerts(IE = { "1", "2", "3", "4" })
-    public void testOnreadystatechange_sync() throws Exception {
-        final String html =
-              "<html>\n"
-            + "  <head>\n"
-            + "    <title>XMLHttpRequest Test</title>\n"
-            + "    <script>\n"
-            + "      var request;\n"
-            + "      function test() {\n"
-            + "        if (window.XMLHttpRequest)\n"
-            + "          request = new XMLHttpRequest();\n"
-            + "        else if (window.ActiveXObject)\n"
-            + "          request = new ActiveXObject('Microsoft.XMLHTTP');\n"
-            + "        request.open('GET', '" + URL_SECOND + "', false);\n"
-            + "        request.onreadystatechange = onStateChange;\n"
-            + "        request.send('');\n"
-            + "      }\n"
-            + "      function onStateChange() {\n"
-            + "        alert(request.readyState);\n"
-            + "      }\n"
-            + "    </script>\n"
-            + "  </head>\n"
-            + "  <body onload='test()'>\n"
-            + "  </body>\n"
-            + "</html>";
-
-        final String xml =
-              "<xml>\n"
-            + "<content>blah</content>\n"
-            + "<content>blah2</content>\n"
-            + "</xml>";
-
-        final WebClient client = getWebClient();
-        final List<String> collectedAlerts = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, xml, "text/xml");
-        client.setWebConnection(conn);
-        client.getPage(URL_FIRST);
-
-        assertEquals(getExpectedAlerts(), collectedAlerts);
+        getMockWebConnection().setResponse(URL_SECOND, xml, "text/xml");
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(FF = { "[object Element]", "[object Element]", "[object HTMLBodyElement]",
-            "[object HTMLSpanElement]", "[object XMLDocument]", "undefined" },
-            IE = { "[object]", "[object]", "[object]",
-            "<body xmlns=\"http://www.w3.org/1999/xhtml\"><span id=\"out\">Hello Bob Dole!</span></body>" })
-    public void testResponseXML_getElementById() throws Exception {
+    @Alerts(DEFAULT = { "[object Element]", "[object Element]", "[object HTMLBodyElement]",
+                "[object HTMLSpanElement]", "[object XMLDocument]", "undefined" },
+            IE8 = { "[object]", "[object]", "[object]",
+                "<body xmlns=\"http://www.w3.org/1999/xhtml\"><span id=\"out\">Hello Bob Dole!</span></body>" })
+    // TODO [IE11]SINGLE-VS-BULK test runs when executed as single but breaks as bulk
+    public void responseXML_getElementById() throws Exception {
         final String html =
               "<html>\n"
             + "  <head>\n"
             + "    <title>XMLHttpRequest Test</title>\n"
             + "    <script>\n"
             + "      function test() {\n"
-            + "        var request;\n"
-            + "        if (window.XMLHttpRequest)\n"
-            + "          request = new XMLHttpRequest();\n"
-            + "        else if (window.ActiveXObject)\n"
-            + "          request = new ActiveXObject('Microsoft.XMLHTTP');\n"
+            + "        var request = " + XHR_INSTANTIATION + ";\n"
             + "        request.open('GET', '" + URL_SECOND + "', false);\n"
             + "        request.send('');\n"
             + "        var doc = request.responseXML;\n"
@@ -1108,16 +1018,8 @@ public class XMLHttpRequestTest extends WebServerTestCase {
             + "</body>"
             + "</html>";
 
-        final WebClient client = getWebClient();
-        final List<String> collectedAlerts = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, xml, "text/xml");
-        client.setWebConnection(conn);
-        client.getPage(URL_FIRST);
-
-        assertEquals(getExpectedAlerts(), collectedAlerts);
+        getMockWebConnection().setResponse(URL_SECOND, xml, "text/xml");
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -1125,17 +1027,14 @@ public class XMLHttpRequestTest extends WebServerTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    public void testDefaultEncodingIsUTF8() throws Exception {
+    @Alerts("ol\u00E9")
+    public void defaultEncodingIsUTF8() throws Exception {
         final String html =
               "<html>\n"
             + "  <head>\n"
             + "    <script>\n"
             + "      function test() {\n"
-            + "        var request;\n"
-            + "        if (window.XMLHttpRequest)\n"
-            + "          request = new XMLHttpRequest();\n"
-            + "        else if (window.ActiveXObject)\n"
-            + "          request = new ActiveXObject('Microsoft.XMLHTTP');\n"
+            + "        var request = " + XHR_INSTANTIATION + ";\n"
             + "        request.open('GET', '" + URL_SECOND + "', false);\n"
             + "        request.send('');\n"
             + "        alert(request.responseText);\n"
@@ -1149,58 +1048,15 @@ public class XMLHttpRequestTest extends WebServerTestCase {
         final String response = "ol\u00E9";
         final byte[] responseBytes = response.getBytes("UTF-8");
 
-        final WebClient client = getWebClient();
-        final List<String> collectedAlerts = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, responseBytes, 200, "OK", "text/html", new ArrayList<NameValuePair>());
-        client.setWebConnection(conn);
-        client.getPage(URL_FIRST);
-
-        final String[] alerts = {response};
-        assertEquals(alerts, collectedAlerts);
-    }
-
-    /**
-     * Regression test for bug 1209686 (onreadystatechange not called with partial data when emulating FF).
-     * @throws Exception if an error occurs
-     */
-    @Browsers(Browser.FF)
-    @Test
-    @NotYetImplemented
-    public void testStreaming() throws Exception {
-        final Map<String, Class< ? extends Servlet>> servlets = new HashMap<String, Class< ? extends Servlet>>();
-        servlets.put("/test", StreamingServlet.class);
-
-        final String resourceBase = "./src/test/resources/com/gargoylesoftware/htmlunit/javascript/host";
-        startWebServer(resourceBase, null, servlets);
-        final WebClient client = getWebClient();
-        final HtmlPage page = client.getPage("http://localhost:" + PORT + "/XMLHttpRequestTest_streaming.html");
-        assertEquals(0, client.waitForBackgroundJavaScriptStartingBefore(1000));
-        final HtmlElement body = page.getBody();
-        assertEquals(10, body.asText().split("\n").length);
-    }
-
-    /**
-     * Connection refused WebConnection for URL_SECOND.
-     */
-    private static final class DisconnectedMockWebConnection extends MockWebConnection {
-        /** {@inheritDoc} */
-        @Override
-        public WebResponse getResponse(final WebRequestSettings settings) throws IOException {
-            if (settings.getUrl().equals(URL_SECOND)) {
-                throw new IOException("Connection refused");
-            }
-            return super.getResponse(settings);
-        }
+        getMockWebConnection().setResponse(URL_SECOND, responseBytes, 200, "OK", "text/html",
+            new ArrayList<NameValuePair>());
+        loadPageWithAlerts2(html);
     }
 
     /**
      * Custom servlet which streams content to the client little by little.
      */
     public static final class StreamingServlet extends HttpServlet {
-        private static final long serialVersionUID = -5892710154241871545L;
         /** {@inheritDoc} */
         @Override
         protected void doGet(final HttpServletRequest req, final HttpServletResponse resp) throws IOException {
@@ -1220,10 +1076,53 @@ public class XMLHttpRequestTest extends WebServerTestCase {
     }
 
     /**
+     * Servlet for testing XMLHttpRequest basic authentication.
+     */
+    public static final class BasicAuthenticationServlet extends HttpServlet {
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        protected void doPost(final HttpServletRequest req, final HttpServletResponse resp) throws IOException {
+            handleRequest(req, resp);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        protected void doGet(final HttpServletRequest req, final HttpServletResponse resp) throws IOException {
+            handleRequest(req, resp);
+        }
+
+        private void handleRequest(final HttpServletRequest req, final HttpServletResponse resp) throws IOException {
+            final String authHdr = req.getHeader("Authorization");
+            if (null == authHdr) {
+                resp.setStatus(401);
+                resp.setHeader("WWW-Authenticate", "Basic realm=\"someRealm\"");
+            }
+            else {
+                final String[] authHdrTokens = authHdr.split("\\s+");
+                String authToken = "";
+                if (authHdrTokens.length == 2) {
+                    authToken += authHdrTokens[0] + ':' + authHdrTokens[1];
+                }
+
+                resp.setStatus(200);
+                resp.addHeader("Content-Type", "text/plain");
+                resp.getOutputStream().print(authToken);
+                resp.flushBuffer();
+            }
+        }
+    }
+
+    /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.FF)
+    @Alerts(DEFAULT = "myID",
+            IE8 = "exception")
     public void responseXML_html_select() throws Exception {
         final String html =
               "<html>\n"
@@ -1231,14 +1130,12 @@ public class XMLHttpRequestTest extends WebServerTestCase {
             + "    <title>XMLHttpRequest Test</title>\n"
             + "    <script>\n"
             + "      function test() {\n"
-            + "        var request;\n"
-            + "        if (window.XMLHttpRequest)\n"
-            + "          request = new XMLHttpRequest();\n"
-            + "        else if (window.ActiveXObject)\n"
-            + "          request = new ActiveXObject('Microsoft.XMLHTTP');\n"
+            + "        try {\n"
+            + "        var request = " + XHR_INSTANTIATION + ";\n"
             + "        request.open('GET', '" + URL_SECOND + "', false);\n"
             + "        request.send('');\n"
             + "        alert(request.responseXML.getElementById('myID').id);\n"
+            + "        } catch (e) { alert('exception'); }\n"
             + "      }\n"
             + "    </script>\n"
             + "  </head>\n"
@@ -1254,24 +1151,17 @@ public class XMLHttpRequestTest extends WebServerTestCase {
             + "<select id='myID'><option>One</option></select>\n"
             + "</html>\n"
             + "</xml>";
-        final WebClient client = getWebClient();
-        final List<String> collectedAlerts = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, xml, "text/xml");
-        client.setWebConnection(conn);
-        client.getPage(URL_FIRST);
 
-        final String[] expectedAlerts = {"myID"};
-        assertEquals(expectedAlerts, collectedAlerts);
+        getMockWebConnection().setResponse(URL_SECOND, xml, "text/xml");
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.FF)
+    @Alerts(DEFAULT = "myInput",
+            IE8 = "exception")
     public void responseXML_html_form() throws Exception {
         final String html =
               "<html>\n"
@@ -1279,14 +1169,12 @@ public class XMLHttpRequestTest extends WebServerTestCase {
             + "    <title>XMLHttpRequest Test</title>\n"
             + "    <script>\n"
             + "      function test() {\n"
-            + "        var request;\n"
-            + "        if (window.XMLHttpRequest)\n"
-            + "          request = new XMLHttpRequest();\n"
-            + "        else if (window.ActiveXObject)\n"
-            + "          request = new ActiveXObject('Microsoft.XMLHTTP');\n"
+            + "        try {\n"
+            + "        var request = " + XHR_INSTANTIATION + ";\n"
             + "        request.open('GET', '" + URL_SECOND + "', false);\n"
             + "        request.send('');\n"
             + "        alert(request.responseXML.getElementById('myID').myInput.name);\n"
+            + "        } catch (e) { alert('exception'); }\n"
             + "      }\n"
             + "    </script>\n"
             + "  </head>\n"
@@ -1302,100 +1190,125 @@ public class XMLHttpRequestTest extends WebServerTestCase {
             + "<form id='myID'><input name='myInput'/></form>\n"
             + "</html>\n"
             + "</xml>";
-        final WebClient client = getWebClient();
-        final List<String> collectedAlerts = new ArrayList<String>();
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setResponse(URL_SECOND, xml, "text/xml");
-        client.setWebConnection(conn);
-        client.getPage(URL_FIRST);
 
-        final String[] expectedAlerts = {"myInput"};
-        assertEquals(expectedAlerts, collectedAlerts);
+        getMockWebConnection().setResponse(URL_SECOND, xml, "text/xml");
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Browsers(Browser.IE)
-    @Alerts("0")
+    @Alerts(DEFAULT = "ActiveXObject not available",
+            IE = { "0", "0" })
     public void caseSensitivity_activeX() throws Exception {
         final String html = "<html><head><script>\n"
             + "function test() {\n"
-            + "  var req = new ActiveXObject('MSXML2.XmlHttp');\n"
-            + "  alert(req.reAdYsTaTe);\n"
+            + "  try {\n"
+            + "    var req = new ActiveXObject('MSXML2.XmlHttp');\n"
+            + "    alert(req.readyState);\n"
+            + "    alert(req.reAdYsTaTe);\n"
+            + "  } catch (e) { alert('ActiveXObject not available'); }\n"
             + "}\n"
             + "</script></head>\n"
             + "<body onload='test()'></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Browsers({ Browser.IE7, Browser.FF })
-    @Alerts("undefined")
+    @Alerts({ "0", "undefined" })
     public void caseSensitivity_XMLHttpRequest() throws Exception {
         final String html = "<html><head><script>\n"
             + "function test() {\n"
-            + "  var req = new XMLHttpRequest();\n"
-            + "  alert(req.reAdYsTaTe);\n"
+            + "  try {\n"
+            + "    var req = new XMLHttpRequest();\n"
+            + "    alert(req.readyState);\n"
+            + "    alert(req.reAdYsTaTe);\n"
+            + "  } catch (e) { alert('exception'); }\n"
             + "}\n"
             + "</script></head>\n"
             + "<body onload='test()'></body></html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
-     * Tests the value of "this" in handler.
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(FF2 = "this == handler", FF3 = "this == request", IE = "this == request")
-    public void thisValueInHandler() throws Exception {
-        final String html =
-              "<html>\n"
-            + "  <head>\n"
-            + "    <title>XMLHttpRequest Test</title>\n"
-            + "    <script>\n"
-            + "      var request;\n"
-            + "      function testAsync() {\n"
-            + "        if (window.XMLHttpRequest)\n"
-            + "          request = new XMLHttpRequest();\n"
-            + "        else if (window.ActiveXObject)\n"
-            + "          request = new ActiveXObject('Microsoft.XMLHTTP');\n"
-            + "        request.onreadystatechange = onReadyStateChange;\n"
-            + "        request.open('GET', 'foo.xml', true);\n"
-            + "        request.send('');\n"
-            + "      }\n"
-            + "      function onReadyStateChange() {\n"
-            + "        if (request.readyState == 4) {\n"
-            + "          if (this == request)\n"
-            + "            alert('this == request');\n"
-            + "          else if (this == onReadyStateChange)\n"
-            + "            alert('this == handler');\n"
-            + "          else alert('not expected: ' + this)\n"
-            + "        }\n"
-            + "      }\n"
-            + "    </script>\n"
-            + "  </head>\n"
-            + "  <body onload='testAsync()'>\n"
-            + "  </body>\n"
-            + "</html>";
+    public void isAuthorizedHeader() throws Exception {
+        assertTrue(XMLHttpRequest.isAuthorizedHeader("Foo"));
+        assertTrue(XMLHttpRequest.isAuthorizedHeader("Content-Type"));
 
-        final WebClient client = getWebClient();
-        final List<String> collectedAlerts = Collections.synchronizedList(new ArrayList<String>());
-        client.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, html);
-        conn.setDefaultResponse("");
-        client.setWebConnection(conn);
-        client.getPage(URL_FIRST);
+        final String[] headers = {"accept-charset", "accept-encoding",
+            "connection", "content-length", "cookie", "cookie2", "content-transfer-encoding", "date",
+            "expect", "host", "keep-alive", "referer", "te", "trailer", "transfer-encoding", "upgrade",
+            "user-agent", "via" };
+        for (final String header : headers) {
+            assertFalse(XMLHttpRequest.isAuthorizedHeader(header));
+            assertFalse(XMLHttpRequest.isAuthorizedHeader(header.toUpperCase(Locale.ENGLISH)));
+        }
+        assertFalse(XMLHttpRequest.isAuthorizedHeader("Proxy-"));
+        assertFalse(XMLHttpRequest.isAuthorizedHeader("Proxy-Control"));
+        assertFalse(XMLHttpRequest.isAuthorizedHeader("Proxy-Hack"));
+        assertFalse(XMLHttpRequest.isAuthorizedHeader("Sec-"));
+        assertFalse(XMLHttpRequest.isAuthorizedHeader("Sec-Hack"));
+    }
 
-        assertEquals(0, client.waitForBackgroundJavaScriptStartingBefore(1000));
-        assertEquals(getExpectedAlerts(), collectedAlerts);
+    /**
+     * Test case for Bug #1623.
+     *
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "39", "27035", "65533", "39" },
+            IE8 = "exception",
+            IE11 = { "39", "27035", "63" })
+    @NotYetImplemented(IE11)
+    public void overrideMimeType_charset_all() throws Exception {
+        final String html = "<html><head>\n"
+            + "<script>\n"
+            + "function test() {\n"
+            + "try {\n"
+            + "  var request = new XMLHttpRequest();\n"
+            + "  request.open('GET', '" + URL_SECOND + "', false);\n"
+            + "  request.overrideMimeType('text/plain; charset=GBK');\n"
+            + "  request.send('');\n"
+            + "  for (var i = 0; i < request.responseText.length; i++) {\n"
+            + "    alert(request.responseText.charCodeAt(i));\n"
+            + "  }\n"
+            + "} catch (e) { alert('exception'); }\n"
+            + "}\n"
+            + "</script>\n"
+            + "</head>\n"
+            + "<body onload='test()'></body></html>";
+
+        getMockWebConnection().setResponse(URL_SECOND, "'\u9ec4'", "text/plain", "UTF-8");
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Helper method Bug #1623.
+     *
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void java_encoding() throws Exception {
+        // Chrome and FF return the last apostrophe, see overrideMimeType_charset_all()
+        // but Java and other tools (e.g. Notpad++) return only 3 characters, not 4
+        // this method is not a test case, but rather to show the behavior of java
+
+        final String string = "'\u9ec4'";
+        final ByteArrayInputStream bais = new ByteArrayInputStream(string.getBytes("UTF-8"));
+        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(bais, "GBK"))) {
+            final String output = reader.readLine();
+            assertNotNull(output);
+            assertEquals(39, output.codePointAt(0));
+            assertEquals(27035, output.codePointAt(1));
+            assertEquals(65533, output.codePointAt(2));
+            assertEquals(39, output.codePointAt(3));
+        }
     }
 }

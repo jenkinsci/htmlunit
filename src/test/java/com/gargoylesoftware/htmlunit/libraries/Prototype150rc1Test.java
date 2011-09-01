@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,24 +14,67 @@
  */
 package com.gargoylesoftware.htmlunit.libraries;
 
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.IE8;
+
+import java.util.List;
+
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
 import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
+import com.gargoylesoftware.htmlunit.WebServerTestCase;
 
 /**
  * Tests for compatibility with version 1.5.0-rc1 of
- * <a href="http://prototype.conio.net/">Prototype JavaScript library</a>.
+ * <a href="http://www.prototypejs.org/">Prototype JavaScript library</a>.
  *
- * @version $Revision: 4338 $
+ * @version $Revision: 9880 $
  * @author Daniel Gredler
  * @author Ahmed Ashour
  * @author Marc Guillemot
+ * @author Ronald Brill
  */
 @RunWith(BrowserRunner.class)
 public class Prototype150rc1Test extends PrototypeTestBase {
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @BeforeClass
+    public static void aaa_startSesrver() throws Exception {
+        SERVER_ = WebServerTestCase.createWebServer("src/test/resources/libraries/prototype/1.5.0-rc1/", null);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected String getVersion() {
+        return "1.5.0-rc1";
+    }
+
+    /**
+     * @return the resource base url
+     */
+    protected String getBaseUrl() {
+        return "http://localhost:" + PORT + "/test/unit/";
+    }
+
+    @Override
+    protected boolean testFinished(final WebDriver driver) {
+        final List<WebElement> status = driver.findElements(By.cssSelector("div#logsummary"));
+        for (WebElement webElement : status) {
+            if (!webElement.getText().contains("errors")) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     /**
      * @throws Exception if test fails
@@ -61,6 +104,7 @@ public class Prototype150rc1Test extends PrototypeTestBase {
      * @throws Exception if test fails
      */
     @Test
+    @NotYetImplemented(IE8)
     public void dom() throws Exception {
         test("dom.html");
     }
@@ -118,25 +162,15 @@ public class Prototype150rc1Test extends PrototypeTestBase {
      * @throws Exception if test fails
      */
     @Test
-    @NotYetImplemented(Browser.IE)
     public void selector() throws Exception {
         test("selector.html");
     }
 
     /**
-     * Blocked by Rhino bug 369860 (https://bugzilla.mozilla.org/show_bug.cgi?id=369860).
      * @throws Exception if test fails
      */
     @Test
     public void string() throws Exception {
         test("string.html");
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected String getVersion() {
-        return "1.5.0-rc1";
     }
 }

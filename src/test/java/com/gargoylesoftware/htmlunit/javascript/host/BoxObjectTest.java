@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,14 +18,15 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Unit tests for {@link BoxObject}.
  *
- * @version $Revision: 4741 $
+ * @version $Revision: 10000 $
  * @author Daniel Gredler
+ * @author Ahmed Ashour
  */
 @RunWith(BrowserRunner.class)
 public class BoxObjectTest extends WebDriverTestCase {
@@ -35,7 +36,7 @@ public class BoxObjectTest extends WebDriverTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = { "true", "true", "true", "true", "true" }, IE = "exception")
+    @Alerts("exception")
     public void testElementAttributes() throws Exception {
         final String html =
               "<html>\n"
@@ -69,7 +70,7 @@ public class BoxObjectTest extends WebDriverTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = { "73-123", "73-244", "510-410" }, IE = "exception")
+    @Alerts("exception")
     public void testPositionAndSizeAttributes() throws Exception {
         final String html =
               "<html>\n"

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,17 +19,19 @@ import java.lang.ref.WeakReference;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.WebWindow;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 
 /**
  * A JavaScript-triggered background job representing the execution of some JavaScript code.
  *
- * @version $Revision: 4320 $
+ * @version $Revision: 9871 $
  * @author Daniel Gredler
+ * @author Ronald Brill
  * @see MemoryLeakTest
  */
-public abstract class JavaScriptExecutionJob extends JavaScriptJob {
+abstract class JavaScriptExecutionJob extends BasicJavaScriptJob {
 
     /** Logging support. */
     private static final Log LOG = LogFactory.getLog(JavaScriptExecutionJob.class);
@@ -38,7 +40,7 @@ public abstract class JavaScriptExecutionJob extends JavaScriptJob {
     private final String label_;
 
     /** The window to which this job belongs (weakly referenced, so as not to leak memory). */
-    private final WeakReference<WebWindow> window_;
+    private final transient WeakReference<WebWindow> window_;
 
     /**
      * Creates a new JavaScript execution job, where the JavaScript code to execute is a string.
@@ -51,7 +53,7 @@ public abstract class JavaScriptExecutionJob extends JavaScriptJob {
         final WebWindow window) {
         super(initialDelay, period);
         label_ = label;
-        window_ = new WeakReference<WebWindow>(window);
+        window_ = new WeakReference<>(window);
     }
 
     /** {@inheritDoc} */
@@ -67,13 +69,37 @@ public abstract class JavaScriptExecutionJob extends JavaScriptJob {
         }
 
         try {
-            // Verify that the window is still open and the current page is the same.
-            final HtmlPage page = (HtmlPage) w.getEnclosedPage();
-            if (w.getEnclosedPage() != page || !w.getWebClient().getWebWindows().contains(w)) {
-                LOG.debug("The page that originated this job doesn't exist anymore. Execution cancelled.");
+            // Verify that the window is still open
+            if (w.isClosed()) {
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Enclosing window is now closed. Execution cancelled.");
+                }
                 return;
             }
-            runJavaScript(page);
+            if (!w.getWebClient().containsWebWindow(w)) {
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Enclosing window is now closed. Execution cancelled.");
+                }
+                return;
+            }
+
+            // Verify that the current page is still available and a html page
+            final Page enclosedPage = w.getEnclosedPage();
+            if (enclosedPage == null || !enclosedPage.isHtmlPage()) {
+                if (enclosedPage == null) {
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("The page that originated this job doesn't exist anymore. Execution cancelled.");
+                    }
+                    return;
+                }
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("The page that originated this job is no html page ("
+                                + enclosedPage.getClass().getName() + "). Execution cancelled.");
+                }
+                return;
+            }
+
+            runJavaScript((HtmlPage) enclosedPage);
         }
         finally {
             if (LOG.isDebugEnabled()) {
@@ -93,5 +119,4 @@ public abstract class JavaScriptExecutionJob extends JavaScriptJob {
      * @param page the {@link HtmlPage} that owns the script
      */
     protected abstract void runJavaScript(final HtmlPage page);
-
 }

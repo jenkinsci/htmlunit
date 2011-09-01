@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,98 +14,131 @@
  */
 package com.gargoylesoftware.htmlunit.javascript;
 
+import java.net.URL;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
-import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebTestCase;
-import com.gargoylesoftware.htmlunit.html.HtmlDivision;
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Tests for the {@link PostponedAction}.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 10534 $
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Marc Guillemot
+ * @author Matthias Brandt
  */
 @RunWith(BrowserRunner.class)
-public class PostponedActionTest extends WebTestCase {
+public class PostponedActionTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts({ "before", "after", "second.html", "third.html" })
     public void loadingJavaScript() throws Exception {
-        final String firstContent = "<html>\n"
+        final String html = "<html>\n"
             + "<head><title>First Page</title>\n"
             + "<script>\n"
             + "  function test() {\n"
-            + "    document.getElementById('debugDiv').innerHTML += 'before, ';\n"
+            + "    alert('before');\n"
             + "    var iframe2 = document.createElement('iframe');\n"
-            + "    iframe2.src = '" + URL_SECOND + "';\n"
+            + "    iframe2.src = 'frame2.html';\n"
             + "    document.body.appendChild(iframe2);\n"
             + "    var iframe3 = document.createElement('iframe');\n"
             + "    document.body.appendChild(iframe3);\n"
-            + "    iframe3.src = '" + URL_THIRD + "';\n"
-            + "    document.getElementById('debugDiv').innerHTML += 'after, ';\n"
+            + "    iframe3.src = 'frame3.html';\n"
+            + "    alert('after');\n"
             + "}\n"
             + "</script>\n"
             + "</head>\n"
             + "<body onload='test()'>\n"
-            + "<div id='debugDiv'></div>\n"
             + "</body>\n"
             + "</html>";
         final String secondContent
-            = "<script>parent.document.getElementById('debugDiv').innerHTML += 'second.html, ';</script>";
+            = "<script>alert('second.html');</script>";
         final String thirdContent
-            = "<script>parent.document.getElementById('debugDiv').innerHTML += 'third.html, ';</script>";
+            = "<script>alert('third.html');</script>";
 
-        final WebClient client = getWebClient();
-        final MockWebConnection conn = new MockWebConnection();
-        conn.setResponse(URL_FIRST, firstContent);
-        conn.setResponse(URL_SECOND, secondContent);
-        conn.setResponse(URL_THIRD, thirdContent);
-        client.setWebConnection(conn);
+        final MockWebConnection conn = getMockWebConnection();
+        conn.setResponse(new URL(getDefaultUrl(), "frame2.html"), secondContent);
+        conn.setResponse(new URL(getDefaultUrl(), "frame3.html"), thirdContent);
 
-        final HtmlPage page = client.getPage(URL_FIRST);
-        final HtmlDivision div = page.getHtmlElementById("debugDiv");
-        assertEquals("before, after, second.html, third.html, ", div.getFirstChild().getNodeValue());
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
+    @Alerts({ "before", "after", "second.html" })
     public void loadingJavaScript2() throws Exception {
         final String firstContent = "<html>\n"
             + "<head><title>First Page</title>\n"
             + "<script>\n"
             + "  function test() {\n"
-            + "    document.getElementById('debugDiv').innerHTML += 'before, ';\n"
+            + "    alert('before');\n"
             + "    var iframe = document.createElement('iframe');\n"
             + "    document.body.appendChild(iframe);\n"
             + "    iframe.contentWindow.location.replace('" + URL_SECOND + "');\n"
-            + "    document.getElementById('debugDiv').innerHTML += 'after, ';\n"
+            + "    alert('after');\n"
             + "}\n"
             + "</script>\n"
             + "</head>\n"
             + "<body onload='test()'>\n"
-            + "<div id='debugDiv'></div>\n"
             + "</body>\n"
             + "</html>";
         final String secondContent
-            = "<script>parent.document.getElementById('debugDiv').innerHTML += 'second.html, ';</script>";
+            = "<script>alert('second.html');</script>";
 
-        final WebClient client = getWebClient();
-        final MockWebConnection conn = new MockWebConnection();
+        final MockWebConnection conn = getMockWebConnection();
         conn.setResponse(URL_FIRST, firstContent);
         conn.setResponse(URL_SECOND, secondContent);
-        client.setWebConnection(conn);
 
-        final HtmlPage page = client.getPage(URL_FIRST);
-        final HtmlDivision div = page.getHtmlElementById("debugDiv");
-        assertEquals("before, after, second.html, ", div.getFirstChild().getNodeValue());
+        loadPageWithAlerts2(URL_FIRST);
+    }
+
+    /**
+     * Test case for bug #1686.
+     *
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "setting timeout", "before", "after", "iframe.html", "simpleAlert"})
+    @NotYetImplemented
+    public void loadingJavaScriptWithTimeout() throws Exception {
+        final String html = "<html>\n"
+                + "<head><title>First Page</title>\n"
+                + "<script>\n"
+                + "  function test() {\n"
+                + "    alert('before');\n"
+                + "    var iframe = document.createElement('iframe');\n"
+                + "    iframe.src = 'iframe.html';\n"
+                + "    document.body.appendChild(iframe);\n"
+                + "    alert('after');\n"
+                + "}\n"
+                + "  function timeout() {\n"
+                + "    alert('setting timeout');\n"
+                + "    window.setTimeout(function(){test()}, 1000);\n"
+                + "    window.setTimeout(function(){alert('simpleAlert')}, 1100);\n"
+                + "}\n"
+                + "</script>\n"
+                + "</head>\n"
+                + "<body onload='timeout()'>\n"
+                + "</body>\n"
+                + "</html>";
+        final String secondContent
+                = "<script>alert('iframe.html')</script>";
+
+        final MockWebConnection conn = getMockWebConnection();
+        conn.setResponse(new URL(getDefaultUrl(), "iframe.html"), secondContent);
+
+        loadPageWithAlerts2(html);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,30 +16,31 @@ package com.gargoylesoftware.htmlunit.libraries;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.apache.commons.io.IOUtils;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
-import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
+import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.MockWebConnection;
-import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebTestCase;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Tests that depend on one of JavaScript libraries.
  *
- * @version $Revision: 4343 $
+ * @version $Revision: 10150 $
  * @author Ahmed Ashour
+ * @author Ronald Brill
  */
-public class LibraryDependencyTest extends WebTestCase {
+@RunWith(BrowserRunner.class)
+public class LibraryDependencyTest extends WebDriverTestCase {
 
     /**
-     * Test for http://sourceforge.net/tracker/index.php?func=detail&aid=1997280&group_id=47038&atid=448266.
+     * Test for http://sourceforge.net/p/htmlunit/bugs/637/.
      * @throws Exception if the test fails
      */
+    @Alerts("2")
     @Test
     public void contextFactory_Browser() throws Exception {
         final String firstHtml =
@@ -68,28 +69,19 @@ public class LibraryDependencyTest extends WebTestCase {
             + "<div id='id2'>Page2</div>\n"
             + "</body>\n"
             + "</html>";
+        final String prototype = getContent("libraries/prototype/1.6.0/dist/prototype.js");
 
-        final String[] expectedAlerts = {"2"};
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final WebClient webClient =  new WebClient(BrowserVersion.FIREFOX_2);
-        webClient.setAlertHandler(new CollectingAlertHandler(collectedAlerts));
-
-        final MockWebConnection webConnection = new MockWebConnection();
-        webClient.setWebConnection(webConnection);
-
+        final MockWebConnection webConnection = getMockWebConnection();
         webConnection.setResponse(URL_FIRST, firstHtml);
         webConnection.setResponse(URL_SECOND, secondHtml);
-        webConnection.setResponse(URL_THIRD, getContent("prototype/1.6.0/dist/prototype.js"), "text/javascript");
+        webConnection.setResponse(URL_THIRD, prototype, "application/javascript");
 
-        webClient.getPage(URL_FIRST);
-        webClient.waitForBackgroundJavaScript(10000);
-        assertEquals(expectedAlerts, collectedAlerts);
+        loadPageWithAlerts2(URL_FIRST, 10_000);
     }
 
     private String getContent(final String resourceName) throws IOException {
-        InputStream in = null;
+        final InputStream in = getClass().getClassLoader().getResourceAsStream(resourceName);
         try {
-            in = getClass().getClassLoader().getResourceAsStream(resourceName);
             return IOUtils.toString(in);
         }
         finally {

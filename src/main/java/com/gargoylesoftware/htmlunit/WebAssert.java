@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 /**
  * Utility class which contains standard assertions for HTML pages.
  *
- * @version $Revision: 4002 $
+ * @version $Revision: 9868 $
  * @author Daniel Gredler
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author Ahmed Ashour
@@ -105,7 +105,7 @@ public final class WebAssert {
      * @param xpath the XPath expression which is expected to match an element in the page
      */
     public static void assertElementPresentByXPath(final HtmlPage page, final String xpath) {
-        final List< ? > elements = page.getByXPath(xpath);
+        final List<?> elements = page.getByXPath(xpath);
         if (elements.isEmpty()) {
             final String msg = "The page does not contain any elements matching the XPath expression '" + xpath
                             + "'.";
@@ -138,7 +138,7 @@ public final class WebAssert {
      * @param xpath the XPath expression which is expected to not match an element in the page
      */
     public static void assertElementNotPresentByXPath(final HtmlPage page, final String xpath) {
-        final List< ? > elements = page.getByXPath(xpath);
+        final List<?> elements = page.getByXPath(xpath);
         if (!elements.isEmpty()) {
             final String msg = "The page does not contain any elements matching the XPath expression '" + xpath
                             + "'.";
@@ -335,7 +335,7 @@ public final class WebAssert {
      */
     public static void assertInputPresent(final HtmlPage page, final String name) {
         final String xpath = "//input[@name='" + name + "']";
-        final List< ? > list = page.getByXPath(xpath);
+        final List<?> list = page.getByXPath(xpath);
         if (list.isEmpty()) {
             throw new AssertionError("Unable to find an input element named '" + name + "'.");
         }
@@ -349,7 +349,7 @@ public final class WebAssert {
      */
     public static void assertInputNotPresent(final HtmlPage page, final String name) {
         final String xpath = "//input[@name='" + name + "']";
-        final List< ? > list = page.getByXPath(xpath);
+        final List<?> list = page.getByXPath(xpath);
         if (!list.isEmpty()) {
             throw new AssertionError("Unable to find an input element named '" + name + "'.");
         }
@@ -365,7 +365,7 @@ public final class WebAssert {
      */
     public static void assertInputContainsValue(final HtmlPage page, final String name, final String value) {
         final String xpath = "//input[@name='" + name + "']";
-        final List< ? > list = page.getByXPath(xpath);
+        final List<?> list = page.getByXPath(xpath);
         if (list.isEmpty()) {
             throw new AssertionError("Unable to find an input element named '" + name + "'.");
         }
@@ -387,7 +387,7 @@ public final class WebAssert {
      */
     public static void assertInputDoesNotContainValue(final HtmlPage page, final String name, final String value) {
         final String xpath = "//input[@name='" + name + "']";
-        final List< ? > list = page.getByXPath(xpath);
+        final List<?> list = page.getByXPath(xpath);
         if (list.isEmpty()) {
             throw new AssertionError("Unable to find an input element named '" + name + "'.");
         }
@@ -430,10 +430,10 @@ public final class WebAssert {
      * @param page the page to check
      */
     public static void assertAllAccessKeyAttributesUnique(final HtmlPage page) {
-        final List<String> list = new ArrayList<String>();
-        for (final HtmlElement element : page.getAllHtmlChildElements()) {
+        final List<String> list = new ArrayList<>();
+        for (final HtmlElement element : page.getHtmlElementDescendants()) {
             final String key = element.getAttribute("accesskey");
-            if (key != null && key.length() != 0) {
+            if (key != null && !key.isEmpty()) {
                 if (list.contains(key)) {
                     throw new AssertionError("The access key '" + key + "' is not unique.");
                 }
@@ -448,10 +448,10 @@ public final class WebAssert {
      * @param page the page to check
      */
     public static void assertAllIdAttributesUnique(final HtmlPage page) {
-        final List<String> list = new ArrayList<String>();
-        for (final HtmlElement element : page.getAllHtmlChildElements()) {
+        final List<String> list = new ArrayList<>();
+        for (final HtmlElement element : page.getHtmlElementDescendants()) {
             final String id = element.getAttribute("id");
-            if (id != null && id.length() != 0) {
+            if (id != null && !id.isEmpty()) {
                 if (list.contains(id)) {
                     throw new AssertionError("The element ID '" + id + "' is not unique.");
                 }

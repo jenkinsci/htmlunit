@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,28 +14,33 @@
  */
 package com.gargoylesoftware.htmlunit.javascript;
 
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.IE8;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.BrowserRunner.BuggyWebDriver;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Test for {@link IEConditionalCompilationScriptPreProcessor}.
  *
- * @version $Revision: 4694 $
+ * @version $Revision: 9843 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
+ * @author Adam Doupe
+ * @author Frank Danek
  */
 @RunWith(BrowserRunner.class)
-public class IEConditionalCompilationTest extends WebTestCase {
+public class IEConditionalCompilationTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = "testing @cc_on", IE7 = "testing @cc_on")
+    @Alerts(IE8 = "testing @cc_on")
     public void simple() throws Exception {
         final String script = "/*@cc_on alert('testing @cc_on'); @*/";
         testScript(script);
@@ -57,7 +62,7 @@ public class IEConditionalCompilationTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = "testing @cc_on")
+    @Alerts(IE8 = "testing @cc_on")
     public void simple3() throws Exception {
         final String script = "/*@cc_on @*/\n"
             + "/*@if (@_win32)\n"
@@ -70,7 +75,9 @@ public class IEConditionalCompilationTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = { "1", "testing @cc_on" })
+    @Alerts(IE8 = { "1", "testing @cc_on" })
+    //TODO: fails with IE8 with WebDriver, but succeeds manually
+    @BuggyWebDriver(IE8)
     public void simple4() throws Exception {
         final String script = "/*@cc_on alert(1) @*/\n"
             + "/*@if (@_win32)\n"
@@ -83,7 +90,7 @@ public class IEConditionalCompilationTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE6 = "5.6", IE7 = "5.7")
+    @Alerts(IE8 = "5.8")
     public void ifTest() throws Exception {
         final String script = "/*@cc_on@if(@_jscript_version>=5){alert(@_jscript_version)}@end@*/";
         testScript(script);
@@ -93,7 +100,7 @@ public class IEConditionalCompilationTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE6 = "5.6", IE7 = "5.7")
+    @Alerts(IE8 = "5.8")
     public void variables_jscript_version() throws Exception {
         final String script = "/*@cc_on alert(@_jscript_version) @*/";
         testScript(script);
@@ -103,7 +110,7 @@ public class IEConditionalCompilationTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE6 = "6626", IE7 = "5730")
+    @Alerts(IE8 = "18702")
     public void variables_jscript_build() throws Exception {
         final String script = "/*@cc_on alert(@_jscript_build) @*/";
         testScript(script);
@@ -113,7 +120,7 @@ public class IEConditionalCompilationTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = "testing /*@cc_on")
+    @Alerts(IE8 = "testing /*@cc_on")
     public void reservedString() throws Exception {
         final String script = "/*@cc_on alert('testing /*@cc_on'); @*/";
         testScript(script);
@@ -123,7 +130,7 @@ public class IEConditionalCompilationTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = "12")
+    @Alerts(IE8 = "12")
     public void set() throws Exception {
         final String script = "/*@cc_on @set @mine = 12 alert(@mine); @*/";
         testScript(script);
@@ -133,22 +140,119 @@ public class IEConditionalCompilationTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = "win")
+    @Alerts(IE8 = "win")
     public void elif() throws Exception {
         final String script = "/*@cc_on @if(@_win32)type='win';@elif(@_mac)type='mac';@end alert(type); @*/";
         testScript(script);
     }
 
-    private void testScript(final String script)
-        throws Exception {
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(IE8 = "$2")
+    public void dollar_single_quote_in_string() throws Exception {
+        final String script = "/*@cc_on var test='$2'; alert(test);@*/";
+        testScript(script);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(IE8 = "$2")
+    public void dollar_double_quote_in_string() throws Exception {
+        final String script = "/*@cc_on var test=\"$2\"; alert(test);@*/";
+        testScript(script);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(IE8 = "\\")
+    public void slashes_in_single_quotes() throws Exception {
+        final String script = "/*@cc_on var test='\\\\\'; alert(test);@*/";
+        testScript(script);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(IE8 = "$")
+    public void slash_dollar_in_single_quotes() throws Exception {
+        final String script = "/*@cc_on var test='\\$\'; alert(test);@*/";
+        testScript(script);
+    }
+
+    private void testScript(final String script) throws Exception {
         final String html
             = "<html><head><title>foo</title>\n"
             + "<script>\n"
-            + script
+            + script + "\n"
             + "</script>\n"
             + "</head><body>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "false",
+            IE8 = "true")
+    public void escaping() throws Exception {
+        final String script = "var isMSIE=eval('false;/*@cc_on@if(@\\x5fwin32)isMSIE=true@end@*/');\n"
+            + "alert(isMSIE);";
+        testScript(script);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "false",
+            IE8 = "true")
+    public void eval() throws Exception {
+        final String script =
+            "var isMSIE;\n"
+            + "eval('function f() { isMSIE=eval(\"false;/*@cc_on@if(@' + '_win32)isMSIE=true@end@*/\") }');\n"
+            + "f();\n"
+            + "alert(isMSIE);";
+        testScript(script);
+    }
+
+    /**
+     * Regression test for bug 3076667.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(IE8 = "Alert")
+    public void bug3076667() throws Exception {
+        final String script =
+            "/*@cc_on @*/\n"
+            + "/*@if (true) alert('Alert');\n"
+            + "@end @*/ ";
+        testScript(script);
+    }
+
+    /**
+    * As of HtmlUnit-2.9, escaped double quote \" was altered.
+    * @throws Exception if the test fails
+    */
+    @Test
+    @Alerts(IE8 = "1")
+    public void escapedDoubleQuote() throws Exception {
+        final String script =
+            "/*@cc_on\n"
+            + "document.write(\"\\\"\\\"\");\n"
+            + "alert(1)\n"
+            + "@*/\n"
+            + "</script></html>";
+
+        testScript(script);
     }
 }

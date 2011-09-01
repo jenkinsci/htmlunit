@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,38 +14,46 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.HTMLBASEFONT_END_TAG_FORBIDDEN;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
+
+import com.gargoylesoftware.htmlunit.html.HtmlBaseFont;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
 
 /**
  * The JavaScript object "HTMLBaseFontElement".
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 10429 $
  * @author Ahmed Ashour
  */
+@JsxClasses({
+        @JsxClass(domClass = HtmlBaseFont.class, browsers = @WebBrowser(value = IE, minVersion = 11)),
+        @JsxClass(isJSObject = false, domClass = HtmlBaseFont.class,
+            browsers = { @WebBrowser(value = IE, maxVersion = 8) })
+    })
 public class HTMLBaseFontElement extends HTMLElement {
-
-    private static final long serialVersionUID = 2694990716654235565L;
-
-    /**
-     * Creates an instance.
-     */
-    public HTMLBaseFontElement() {
-        // Empty.
-    }
 
     /**
      * Gets the "color" attribute.
      * @return the "color" attribute
      */
-    public String jsxGet_color() {
-        return getDomNodeOrDie().getAttribute("color");
+    @JsxGetter
+    public String getColor() {
+        final HtmlBaseFont base = (HtmlBaseFont) getDomNodeOrDie();
+        return base.getColorAttribute();
     }
 
     /**
      * Sets the "color" attribute.
      * @param color the "color" attribute
      */
-    public void jsxSet_color(final String color) {
+    @JsxSetter
+    public void setColor(final String color) {
         getDomNodeOrDie().setAttribute("color", color);
     }
 
@@ -53,15 +61,18 @@ public class HTMLBaseFontElement extends HTMLElement {
      * Gets the typeface family.
      * @return the typeface family
      */
-    public String jsxGet_face() {
-        return getDomNodeOrDie().getAttribute("face");
+    @JsxGetter
+    public String getFace() {
+        final HtmlBaseFont base = (HtmlBaseFont) getDomNodeOrDie();
+        return base.getFaceAttribute();
     }
 
     /**
      * Sets the typeface family.
      * @param face the typeface family
      */
-    public void jsxSet_face(final String face) {
+    @JsxSetter
+    public void setFace(final String face) {
         getDomNodeOrDie().setAttribute("face", face);
     }
 
@@ -69,15 +80,26 @@ public class HTMLBaseFontElement extends HTMLElement {
      * Gets the "size" attribute.
      * @return the "size" attribute
      */
-    public int jsxGet_size() {
-        return (int) Context.toNumber(getDomNodeOrDie().getAttribute("size"));
+    @JsxGetter
+    public int getSize() {
+        final HtmlBaseFont base = (HtmlBaseFont) getDomNodeOrDie();
+        return (int) Context.toNumber(base.getSizeAttribute());
     }
 
     /**
      * Sets the "size" attribute.
      * @param size the "size" attribute
      */
-    public void jsxSet_size(final int size) {
-        getDomNodeOrDie().setAttribute("size", Context.toString(size));
+    @JsxSetter
+    public void setSize(final int size) {
+        getDomNodeOrDie().setAttribute("size", Context.toString(Integer.valueOf(size)));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected boolean isEndTagForbidden() {
+        return getBrowserVersion().hasFeature(HTMLBASEFONT_END_TAG_FORBIDDEN);
     }
 }

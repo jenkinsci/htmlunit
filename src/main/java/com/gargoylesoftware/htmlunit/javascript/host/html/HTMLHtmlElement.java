@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,39 +14,114 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_BOUNDING_CLIENT_RECT_OFFSET_TWO;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_INNER_HTML_READONLY_FOR_SOME_TAGS;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+import net.sourceforge.htmlunit.corejs.javascript.Context;
+
+import com.gargoylesoftware.htmlunit.html.HtmlHtml;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
+
 /**
  * The JavaScript object "HTMLHtmlElement".
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 10429 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
+ * @author Ronald Brill
  */
+@JsxClasses({
+        @JsxClass(domClass = HtmlHtml.class,
+            browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(domClass = HtmlHtml.class, isJSObject = false,
+            browsers = { @WebBrowser(value = IE, maxVersion = 8) })
+    })
 public class HTMLHtmlElement extends HTMLElement {
-
-    private static final long serialVersionUID = 4942983761903195465L;
 
     /**
      * Creates an instance.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
     public HTMLHtmlElement() {
-        // Empty.
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Object getParentNode() {
+        return getWindow().getDocument_js();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public int getClientWidth() {
+        return getWindow().getInnerWidth();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public int getClientHeight() {
+        return getWindow().getInnerHeight();
     }
 
     /**
-     * Returns "clientWidth" attribute.
-     * @return the clientWidth attribute
+     * IE has some special idea here.
+     * {@inheritDoc}
      */
     @Override
-    public int jsxGet_clientWidth() {
-        return getWindow().jsxGet_innerWidth();
+    public int getClientLeft() {
+        if (getBrowserVersion().hasFeature(JS_BOUNDING_CLIENT_RECT_OFFSET_TWO)) {
+            return 2;
+        }
+        return super.getClientLeft();
     }
 
     /**
-     * Returns "clientWidth" attribute.
-     * @return the clientWidth attribute
+     * IE has some special idea here.
+     * {@inheritDoc}
      */
     @Override
-    public int jsxGet_clientHeight() {
-        return getWindow().jsxGet_innerHeight();
+    public int getClientTop() {
+        if (getBrowserVersion().hasFeature(JS_BOUNDING_CLIENT_RECT_OFFSET_TWO)) {
+            return 2;
+        }
+        return super.getClientTop();
+    }
+
+    /**
+     * Overwritten to throw an exception in IE8/9.
+     * @param value the new value for replacing this node
+     */
+    @JsxSetter
+    @Override
+    public void setOuterHTML(final Object value) {
+        throw Context.reportRuntimeError("outerHTML is read-only for tag 'html'");
+    }
+
+    /**
+     * Overwritten to throw an exception in IE8/9.
+     * @param value the new value for the contents of this node
+     */
+    @JsxSetter
+    @Override
+    public void setInnerHTML(final Object value) {
+        if (getBrowserVersion().hasFeature(JS_INNER_HTML_READONLY_FOR_SOME_TAGS)) {
+            throw Context.reportRuntimeError("innerHTML is read-only for tag 'html'");
+        }
+        super.setInnerHTML(value);
+    }
+
+    /**
+     * Overwritten to throw an exception because this is readonly.
+     * @param value the new value for the contents of this node
+     */
+    @Override
+    protected void setInnerTextImpl(final String value) {
+        throw Context.reportRuntimeError("innerText is read-only for tag 'html'");
     }
 }

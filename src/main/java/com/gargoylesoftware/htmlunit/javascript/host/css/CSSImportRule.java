@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,31 +14,35 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.css;
 
-import org.w3c.dom.css.CSSStyleSheet;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
 
-import com.gargoylesoftware.htmlunit.javascript.host.MediaList;
-import com.gargoylesoftware.htmlunit.javascript.host.Stylesheet;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.MediaList;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLElement;
 
 /**
  * A JavaScript object for a CSSImportRule.
  *
- * @version $Revision: 4859 $
+ * @version $Revision: 10304 $
  * @author Daniel Gredler
+ * @author Ahmed Ashour
  */
+@JsxClass(browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) })
 public class CSSImportRule extends CSSRule {
 
-    private static final long serialVersionUID = -3352769444872087531L;
-
     private MediaList media_;
-    private Stylesheet importedStylesheet_;
+    private CSSStyleSheet importedStylesheet_;
 
     /**
-     * Creates a new instance. JavaScript objects must have a default constructor.
+     * Creates a new instance.
      */
-    @Deprecated
+    @JsxConstructor(@WebBrowser(CHROME))
     public CSSImportRule() {
-        // Empty.
     }
 
     /**
@@ -46,7 +50,7 @@ public class CSSImportRule extends CSSRule {
      * @param stylesheet the Stylesheet of this rule.
      * @param rule the wrapped rule
      */
-    protected CSSImportRule(final Stylesheet stylesheet, final org.w3c.dom.css.CSSRule rule) {
+    protected CSSImportRule(final CSSStyleSheet stylesheet, final org.w3c.dom.css.CSSImportRule rule) {
         super(stylesheet, rule);
     }
 
@@ -54,7 +58,8 @@ public class CSSImportRule extends CSSRule {
      * Returns the URL of the imported style sheet.
      * @return the URL of the imported style sheet
      */
-    public String jsxGet_href() {
+    @JsxGetter
+    public String getHref() {
         return getImportRule().getHref();
     }
 
@@ -62,9 +67,10 @@ public class CSSImportRule extends CSSRule {
      * Returns the media types that the imported CSS style sheet applies to.
      * @return the media types that the imported CSS style sheet applies to
      */
-    public MediaList jsxGet_media() {
+    @JsxGetter
+    public MediaList getMedia() {
         if (media_ == null) {
-            final Stylesheet parent = this.jsxGet_parentStyleSheet();
+            final CSSStyleSheet parent = getParentStyleSheet();
             final org.w3c.dom.stylesheets.MediaList ml = getImportRule().getMedia();
             media_ = new MediaList(parent, ml);
         }
@@ -75,12 +81,13 @@ public class CSSImportRule extends CSSRule {
      * Returns the style sheet referred to by this rule.
      * @return the style sheet referred to by this rule
      */
-    public Stylesheet jsxGet_styleSheet() {
+    @JsxGetter
+    public CSSStyleSheet getStyleSheet() {
         if (importedStylesheet_ == null) {
-            final Stylesheet owningSheet = this.jsxGet_parentStyleSheet();
-            final HTMLElement ownerNode = owningSheet.jsxGet_ownerNode();
-            final CSSStyleSheet importedStylesheet = getImportRule().getStyleSheet();
-            importedStylesheet_ = new Stylesheet(ownerNode, importedStylesheet, owningSheet.getUri());
+            final CSSStyleSheet owningSheet = getParentStyleSheet();
+            final HTMLElement ownerNode = owningSheet.getOwnerNode();
+            final org.w3c.dom.css.CSSStyleSheet importedStylesheet = getImportRule().getStyleSheet();
+            importedStylesheet_ = new CSSStyleSheet(ownerNode, importedStylesheet, owningSheet.getUri());
         }
         return importedStylesheet_;
     }

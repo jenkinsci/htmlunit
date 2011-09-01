@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.CHROME;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,18 +24,19 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
+import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
 import com.gargoylesoftware.htmlunit.CollectingAlertHandler;
 import com.gargoylesoftware.htmlunit.History;
 import com.gargoylesoftware.htmlunit.TopLevelWindow;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebServerTestCase;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 
 /**
  * Tests for {@link History}.
  *
- * @version $Revision: 4772 $
+ * @version $Revision: 10157 $
  * @author Daniel Gredler
  */
 @RunWith(BrowserRunner.class)
@@ -65,47 +68,47 @@ public class HistoryTest extends WebServerTestCase {
         HtmlPage page = client.getPage(urlA);
         assertEquals(1, history.getLength());
         assertEquals(0, history.getIndex());
-        assertEquals(urlA, page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(urlA, page.getUrl());
 
         page = page.getAnchorByName("b").click();
         assertEquals(2, history.getLength());
         assertEquals(1, history.getIndex());
-        assertEquals(urlB, page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(urlB, page.getUrl());
 
         page = page.getAnchorByName("x").click();
         assertEquals(3, history.getLength());
         assertEquals(2, history.getIndex());
-        assertEquals(urlBX, page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(urlBX, page.getUrl());
 
         page = page.getAnchorByName("back").click();
         assertEquals(3, history.getLength());
         assertEquals(1, history.getIndex());
-        assertEquals(urlB, page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(urlB, page.getUrl());
 
         page = page.getAnchorByName("back").click();
         assertEquals(3, history.getLength());
         assertEquals(0, history.getIndex());
-        assertEquals(urlA, page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(urlA, page.getUrl());
 
         page = page.getAnchorByName("forward").click();
         assertEquals(3, history.getLength());
         assertEquals(1, history.getIndex());
-        assertEquals(urlB, page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(urlB, page.getUrl());
 
         page = page.getAnchorByName("c").click();
         assertEquals(3, history.getLength());
         assertEquals(2, history.getIndex());
-        assertEquals(urlC, page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(urlC, page.getUrl());
 
         page = page.getAnchorByName("back").click();
         assertEquals(3, history.getLength());
         assertEquals(1, history.getIndex());
-        assertEquals(urlB, page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(urlB, page.getUrl());
 
         page = page.getAnchorByName("forward").click();
         assertEquals(3, history.getLength());
         assertEquals(2, history.getIndex());
-        assertEquals(urlC, page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(urlC, page.getUrl());
     }
 
     /**
@@ -125,42 +128,42 @@ public class HistoryTest extends WebServerTestCase {
         HtmlPage page = client.getPage(urlA);
         assertEquals(1, history.getLength());
         assertEquals(0, history.getIndex());
-        assertEquals(urlA, page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(urlA, page.getUrl());
 
         page = page.getAnchorByName("b").click();
         assertEquals(2, history.getLength());
         assertEquals(1, history.getIndex());
-        assertEquals(urlB, page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(urlB, page.getUrl());
 
         page = page.getAnchorByName("x").click();
         assertEquals(3, history.getLength());
         assertEquals(2, history.getIndex());
-        assertEquals(urlBX, page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(urlBX, page.getUrl());
 
         page = page.getAnchorByName("minusTwo").click();
         assertEquals(3, history.getLength());
         assertEquals(0, history.getIndex());
-        assertEquals(urlA, page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(urlA, page.getUrl());
 
         page = page.getAnchorByName("plusOne").click();
         assertEquals(3, history.getLength());
         assertEquals(1, history.getIndex());
-        assertEquals(urlB, page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(urlB, page.getUrl());
 
         page = page.getAnchorByName("c").click();
         assertEquals(3, history.getLength());
         assertEquals(2, history.getIndex());
-        assertEquals(urlC, page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(urlC, page.getUrl());
 
         page = page.getAnchorByName("minusOne").click();
         assertEquals(3, history.getLength());
         assertEquals(1, history.getIndex());
-        assertEquals(urlB, page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(urlB, page.getUrl());
 
         page = page.getAnchorByName("plusTwo").click();
         assertEquals(3, history.getLength());
         assertEquals(1, history.getIndex());
-        assertEquals(urlB, page.getWebResponse().getRequestSettings().getUrl());
+        assertEquals(urlB, page.getUrl());
     }
 
     /**
@@ -170,7 +173,7 @@ public class HistoryTest extends WebServerTestCase {
     @Alerts({ "1", "2", "3" })
     public void length() throws Exception {
         final WebClient client = getWebClient();
-        final List<String> alerts = new ArrayList<String>();
+        final List<String> alerts = new ArrayList<>();
         client.setAlertHandler(new CollectingAlertHandler(alerts));
 
         HtmlPage page = client.getPage("http://localhost:" + PORT + "/HistoryTest_a.html");
@@ -189,10 +192,12 @@ public class HistoryTest extends WebServerTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = "error", IE = "undefined")
+    @Alerts(FF = "error",
+            IE = "undefined")
+    @NotYetImplemented(CHROME)
     public void previous() throws Exception {
         final WebClient client = getWebClient();
-        final List<String> alerts = new ArrayList<String>();
+        final List<String> alerts = new ArrayList<>();
         client.setAlertHandler(new CollectingAlertHandler(alerts));
         final HtmlPage page = client.getPage("http://localhost:" + PORT + "/HistoryTest_a.html");
         page.getAnchorByName("previous").click();
@@ -203,10 +208,12 @@ public class HistoryTest extends WebServerTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = "error", IE = "undefined")
+    @Alerts(FF = "error",
+            IE = "undefined")
+    @NotYetImplemented(CHROME)
     public void current() throws Exception {
         final WebClient client = getWebClient();
-        final List<String> alerts = new ArrayList<String>();
+        final List<String> alerts = new ArrayList<>();
         client.setAlertHandler(new CollectingAlertHandler(alerts));
         final HtmlPage page = client.getPage("http://localhost:" + PORT + "/HistoryTest_a.html");
         page.getAnchorByName("current").click();
@@ -217,10 +224,12 @@ public class HistoryTest extends WebServerTestCase {
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = "error", IE = "undefined")
+    @Alerts(FF = "error",
+            IE = "undefined")
+    @NotYetImplemented(CHROME)
     public void next() throws Exception {
         final WebClient client = getWebClient();
-        final List<String> alerts = new ArrayList<String>();
+        final List<String> alerts = new ArrayList<>();
         client.setAlertHandler(new CollectingAlertHandler(alerts));
         final HtmlPage page = client.getPage("http://localhost:" + PORT + "/HistoryTest_a.html");
         page.getAnchorByName("next").click();
@@ -234,7 +243,7 @@ public class HistoryTest extends WebServerTestCase {
     @Alerts(FF = "error")
     public void item() throws Exception {
         final WebClient client = getWebClient();
-        final List<String> alerts = new ArrayList<String>();
+        final List<String> alerts = new ArrayList<>();
         client.setAlertHandler(new CollectingAlertHandler(alerts));
         final HtmlPage page = client.getPage("http://localhost:" + PORT + "/HistoryTest_a.html");
         page.getAnchorByName("itemZero").click();
@@ -247,9 +256,10 @@ public class HistoryTest extends WebServerTestCase {
     @Test
     @Alerts(FF = { "false", "false", "true", "true", "false", "false" },
             IE = { "false", "false", "false", "false", "false", "false" })
+    @NotYetImplemented(CHROME)
     public void byIndex() throws Exception {
         final WebClient client = getWebClient();
-        final List<String> alerts = new ArrayList<String>();
+        final List<String> alerts = new ArrayList<>();
         client.setAlertHandler(new CollectingAlertHandler(alerts));
         final HtmlPage page = client.getPage("http://localhost:" + PORT + "/HistoryTest_a.html");
         page.getAnchorByName("hasNegativeOne").click();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,38 +14,44 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.CHROME;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.FF;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.IE;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.IE11;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
 import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
+import com.gargoylesoftware.htmlunit.html.HtmlPageTest;
+import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLDocumentTest;
 
 /**
  * Tests for {@link Element}.
  *
- * @version $Revision: 4731 $
+ * @version $Revision: 10549 $
  * @author Ahmed Ashour
  * @author Marc Guillemot
+ * @author Ronald Brill
+ * @author Frank Danek
  */
 @RunWith(BrowserRunner.class)
-public class ElementTest extends WebTestCase {
+public class ElementTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts({ "true", "1", "attrName attrValue", "attrValue", "null", "anotherValue",
-            "1", "4", "<span id='label'>changed</span>" })
+    @Alerts({ "1", "attrName attrValue", "attrValue", "null", "anotherValue",
+                    "1", "4", "<span id='label'>changed</span>" })
     public void attributes() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
-            + "    var doc = createXmlDocument();\n"
-            + "    doc.async = false;\n"
-            + "    alert(doc.load('foo.xml'));\n"
+            + "    var doc = " + XMLDocumentTest.callLoadXMLDocumentFromFile("'foo.xml'") + ";\n"
             + "    var attributes = doc.documentElement.attributes;\n"
             + "    alert(attributes.length);\n"
             + "    alert(attributes[0].name + ' ' + attributes[0].value);\n"
@@ -59,12 +65,7 @@ public class ElementTest extends WebTestCase {
             + "    alert(description.firstChild.nodeType);\n"
             + "    alert(description.firstChild.nodeValue);\n"
             + "  }\n"
-            + "  function createXmlDocument() {\n"
-            + "    if (document.implementation && document.implementation.createDocument)\n"
-            + "      return document.implementation.createDocument('', '', null);\n"
-            + "    else if (window.ActiveXObject)\n"
-            + "      return new ActiveXObject('Microsoft.XMLDOM');\n"
-            + "  }\n"
+            + XMLDocumentTest.LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
@@ -78,31 +79,26 @@ public class ElementTest extends WebTestCase {
             + "</books>";
 
         getMockWebConnection().setDefaultResponse(xml, "text/xml");
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.IE)
-    @Alerts({ "true", "1", "title" })
+    @Alerts(DEFAULT = "exception",
+            IE8 = { "1", "title" })
     public void selectNodes() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
-            + "    var doc = createXmlDocument();\n"
-            + "    doc.async = false;\n"
-            + "    alert(doc.load('" + URL_SECOND + "'));\n"
-            + "    var nodes = doc.documentElement.selectNodes('//title');\n"
-            + "    alert(nodes.length);\n"
-            + "    alert(nodes[0].tagName);\n"
+            + "    var doc = " + XMLDocumentTest.callLoadXMLDocumentFromFile("'" + URL_SECOND + "'") + ";\n"
+            + "    try {\n"
+            + "      var nodes = doc.documentElement.selectNodes('//title');\n"
+            + "      alert(nodes.length);\n"
+            + "      alert(nodes[0].tagName);\n"
+            + "    } catch (e) { alert('exception'); }\n"
             + "  }\n"
-            + "  function createXmlDocument() {\n"
-            + "    if (document.implementation && document.implementation.createDocument)\n"
-            + "      return document.implementation.createDocument('', '', null);\n"
-            + "    else if (window.ActiveXObject)\n"
-            + "      return new ActiveXObject('Microsoft.XMLDOM');\n"
-            + "  }\n"
+            + XMLDocumentTest.LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
@@ -115,59 +111,45 @@ public class ElementTest extends WebTestCase {
             + "</books>";
 
         getMockWebConnection().setDefaultResponse(xml, "text/xml");
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts({ "true", "2", "1" })
+    @Alerts({ "2", "1" })
+    // TODO [IE11]SINGLE-VS-BULK test runs when executed as single but breaks as bulk
     public void removeChild() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
-            + "    var doc = createXmlDocument();\n"
-            + "    doc.async = false;\n"
-            + "    alert(doc.load('" + URL_SECOND + "'));\n"
+            + "    var doc = " + XMLDocumentTest.callLoadXMLDocumentFromFile("'" + URL_SECOND + "'") + ";\n"
             + "    var parent = doc.documentElement.firstChild;\n"
             + "    alert(parent.childNodes.length);\n"
             + "    parent.removeChild(parent.firstChild);\n"
             + "    alert(parent.childNodes.length);\n"
             + "  }\n"
-            + "  function createXmlDocument() {\n"
-            + "    if (document.implementation && document.implementation.createDocument)\n"
-            + "      return document.implementation.createDocument('', '', null);\n"
-            + "    else if (window.ActiveXObject)\n"
-            + "      return new ActiveXObject('Microsoft.XMLDOM');\n"
-            + "  }\n"
+            + XMLDocumentTest.LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
         final String xml = "<books><book><title>Immortality</title><author>John Smith</author></book></books>";
 
         getMockWebConnection().setDefaultResponse(xml, "text/xml");
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = { "lbl_SettingName", "outerHTML", "Item" },
-            FF = { "lbl_SettingName", "outerHTML", "undefined" })
+    @Alerts(DEFAULT = { "lbl_SettingName", "outerHTML", "undefined" },
+            IE8 = { "lbl_SettingName", "outerHTML", "Item" })
     public void getAttributeNode() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
-            + "    var doc = createXmlDocument();\n"
-            + "    doc.async = false;\n"
-            + "    doc.load('" + URL_SECOND + "');\n"
+            + "    var doc = " + XMLDocumentTest.callLoadXMLDocumentFromFile("'" + URL_SECOND + "'") + ";\n"
             + "    parseXML(doc);\n"
-            + "  }\n"
-            + "  function createXmlDocument() {\n"
-            + "    if (document.implementation && document.implementation.createDocument)\n"
-            + "      return document.implementation.createDocument('', '', null);\n"
-            + "    else if (window.ActiveXObject)\n"
-            + "      return new ActiveXObject('Microsoft.XMLDOM');\n"
             + "  }\n"
             + "  function parseXML(xml) {\n"
             + "    if (xml.documentElement.hasChildNodes()) {\n"
@@ -191,6 +173,7 @@ public class ElementTest extends WebTestCase {
             + "      }\n"
             + "    }\n"
             + "  }\n"
+            + XMLDocumentTest.LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "  <div id='lbl_SettingName'/>\n"
             + "</body></html>";
@@ -203,47 +186,43 @@ public class ElementTest extends WebTestCase {
             + "</responsexml>";
 
         getMockWebConnection().setDefaultResponse(xml, "text/xml");
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.IE)
-    @Alerts({ "book", "0", "1" })
+    @Alerts(DEFAULT = { "book", "exception" },
+            IE8 = { "book", "0", "1" })
+    // TODO [IE11]SINGLE-VS-BULK test runs when executed as single but breaks as bulk
     public void selectNode_root() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
-            + "    var doc = createXmlDocument();\n"
-            + "    doc.async = false;\n"
-            + "    doc.load('" + URL_SECOND + "');\n"
+            + "    var doc = " + XMLDocumentTest.callLoadXMLDocumentFromFile("'" + URL_SECOND + "'") + ";\n"
             + "    var child = doc.documentElement.firstChild;\n"
             + "    alert(child.tagName);\n"
-            + "    alert(child.selectNodes('/title').length);\n"
-            + "    alert(child.selectNodes('title').length);\n"
+            + "    try {\n"
+            + "      alert(child.selectNodes('/title').length);\n"
+            + "      alert(child.selectNodes('title').length);\n"
+            + "    } catch (e) { alert('exception'); }\n"
             + "  }\n"
-            + "  function createXmlDocument() {\n"
-            + "    if (document.implementation && document.implementation.createDocument)\n"
-            + "      return document.implementation.createDocument('', '', null);\n"
-            + "    else if (window.ActiveXObject)\n"
-            + "      return new ActiveXObject('Microsoft.XMLDOM');\n"
-            + "  }\n"
+            + XMLDocumentTest.LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
         final String xml = "<books><book><title>Immortality</title><author>John Smith</author></book></books>";
 
         getMockWebConnection().setDefaultResponse(xml, "text/xml");
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.FF)
-    @Alerts({ "1", "1" })
+    @Alerts(DEFAULT = { "1", "1" },
+            IE8 = "exception")
     public void getElementsByTagNameNS() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
@@ -256,43 +235,33 @@ public class ElementTest extends WebTestCase {
             + "    text += '  </html>\\n';\n"
             + "    text += '  </xsl:template>\\n';\n"
             + "    text += '</xsl:stylesheet>';\n"
-            + "    if (window.ActiveXObject) {\n"
-            + "      var doc=new ActiveXObject('Microsoft.XMLDOM');\n"
-            + "      doc.async=false;\n"
-            + "      doc.loadXML(text);\n"
-            + "    } else {\n"
-            + "      var parser=new DOMParser();\n"
-            + "      var doc=parser.parseFromString(text,'text/xml');\n"
-            + "    }\n"
-            + "    alert(doc.documentElement.getElementsByTagNameNS('http://myNS', 'template').length);\n"
-            + "    alert(doc.documentElement.getElementsByTagNameNS(null, 'html').length);\n"
+            + "    var doc = " + XMLDocumentTest.callLoadXMLDocumentFromString("text") + ";\n"
+            + "    try {\n"
+            + "      alert(doc.documentElement.getElementsByTagNameNS('http://myNS', 'template').length);\n"
+            + "      alert(doc.documentElement.getElementsByTagNameNS(null, 'html').length);\n"
+            + "    } catch (e) { alert('exception'); }\n"
             + "  }\n"
+            + XMLDocumentTest.LOAD_XML_DOCUMENT_FROM_STRING_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Browsers(Browser.FF)
-    @Alerts("false")
+    @Alerts(DEFAULT = "false",
+            IE8 = "hasAttribute not available")
     public void hasAttribute() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
-            + "    var doc = createXmlDocument();\n"
-            + "    doc.async = false;\n"
-            + "    doc.load('foo.xml');\n"
+            + "    var doc = " + XMLDocumentTest.callLoadXMLDocumentFromFile("'foo.xml'") + ";\n"
+            + "    if (!doc.documentElement.hasAttribute) { alert('hasAttribute not available'); return }\n"
             + "    alert(doc.documentElement.hasAttribute('something'));\n"
             + "  }\n"
-            + "  function createXmlDocument() {\n"
-            + "    if (document.implementation && document.implementation.createDocument)\n"
-            + "      return document.implementation.createDocument('', '', null);\n"
-            + "    else if (window.ActiveXObject)\n"
-            + "      return new ActiveXObject('Microsoft.XMLDOM');\n"
-            + "  }\n"
+            + XMLDocumentTest.LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
@@ -305,7 +274,7 @@ public class ElementTest extends WebTestCase {
             + "</books>";
 
         getMockWebConnection().setDefaultResponse(xml, "text/xml");
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -313,20 +282,14 @@ public class ElementTest extends WebTestCase {
      */
     @Test
     @Alerts("true")
+    // TODO [IE11]SINGLE-VS-BULK test runs when executed as single but breaks as bulk
     public void attributes2() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "  function test() {\n"
-            + "    var doc = createXmlDocument();\n"
-            + "    doc.async = false;\n"
-            + "    doc.load('foo.xml');\n"
+            + "    var doc = " + XMLDocumentTest.callLoadXMLDocumentFromFile("'foo.xml'") + ";\n"
             + "    alert(doc.documentElement.attributes.getNamedItem('library') != undefined);\n"
             + "  }\n"
-            + "  function createXmlDocument() {\n"
-            + "    if (document.implementation && document.implementation.createDocument)\n"
-            + "      return document.implementation.createDocument('', '', null);\n"
-            + "    else if (window.ActiveXObject)\n"
-            + "      return new ActiveXObject('Microsoft.XMLDOM');\n"
-            + "  }\n"
+            + XMLDocumentTest.LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
@@ -339,52 +302,44 @@ public class ElementTest extends WebTestCase {
             + "</books>";
 
         getMockWebConnection().setDefaultResponse(xml, "text/xml");
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = { "<a><b c=\"d\">e</b></a>\r\n", "<a><b c=\"d\">e</b></a>" },
-            FF = { "undefined", "undefined" })
+    @Alerts(DEFAULT = { "undefined", "undefined" },
+            IE8 = { "<a><b c=\"d\">e</b></a>\r\n", "<a><b c=\"d\">e</b></a>" })
     public void xml() throws Exception {
         final String html = "<html><head><title>foo</title><script>\n"
             + "function test() {\n"
             + "  var text = '<a><b c=\"d\">e</b></a>';\n"
-            + "  if (window.ActiveXObject) {\n"
-            + "    var doc = new ActiveXObject('Microsoft.XMLDOM');\n"
-            + "    doc.async = false;\n"
-            + "    doc.loadXML(text);\n"
-            + "  } else {\n"
-            + "    var parser = new DOMParser();\n"
-            + "    var doc = parser.parseFromString(text, 'text/xml');\n"
-            + "  }\n"
+            + "  var doc = " + XMLDocumentTest.callLoadXMLDocumentFromString("text") + ";\n"
             + "  alert(doc.xml);\n"
             + "  alert(doc.documentElement.xml);\n"
             + "}\n"
+            + XMLDocumentTest.LOAD_XML_DOCUMENT_FROM_STRING_FUNCTION
             + "</script></head><body onload='test()'>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = {"[object],DIV",
-                "[object],APP:DIV",
-                "createElementNS() is not defined",
-                "[object],DIV",
-                "[object],APP:DIV"
-                },
-            FF = {"[object HTMLDivElement],DIV",
+    @Alerts(DEFAULT = { "[object HTMLDivElement],DIV",
                 "[object HTMLUnknownElement],APP:DIV",
                 "[object Element],app:dIv",
                 "[object HTMLDivElement],DIV",
-                "[object HTMLUnknownElement],APP:DIV"
-                })
+                "[object HTMLUnknownElement],APP:DIV" },
+            IE8 = { "[object],DIV",
+                "[object],APP:DIV",
+                "createElementNS() is not defined",
+                "[object],DIV",
+                "[object],APP:DIV" })
     public void html_nodeName() throws Exception {
         html("nodeName");
     }
@@ -393,18 +348,16 @@ public class ElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = {"[object],DIV",
-                "[object],APP:DIV",
-                "createElementNS() is not defined",
-                "[object],DIV",
-                "[object],APP:DIV"
-                },
-            FF = {"[object HTMLDivElement],DIV",
+    @Alerts(DEFAULT = { "[object HTMLDivElement],DIV",
                 "[object HTMLUnknownElement],APP:DIV",
                 "[object Element],app:dIv",
                 "[object HTMLDivElement],DIV",
-                "[object HTMLUnknownElement],APP:DIV"
-                })
+                "[object HTMLUnknownElement],APP:DIV" },
+            IE8 = { "[object],DIV",
+                "[object],APP:DIV",
+                "createElementNS() is not defined",
+                "[object],DIV",
+                "[object],APP:DIV" })
     public void html_tagName() throws Exception {
         html("tagName");
     }
@@ -413,18 +366,16 @@ public class ElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = {"[object],undefined",
-                "[object],undefined",
-                "createElementNS() is not defined",
-                "[object],undefined",
-                "[object],undefined"
-                },
-            FF = {"[object HTMLDivElement],null",
+    @Alerts(DEFAULT = { "[object HTMLDivElement],null",
                 "[object HTMLUnknownElement],null",
                 "[object Element],app",
                 "[object HTMLDivElement],null",
-                "[object HTMLUnknownElement],null"
-                })
+                "[object HTMLUnknownElement],null" },
+            IE8 = { "[object],undefined",
+                "[object],undefined",
+                "createElementNS() is not defined",
+                "[object],undefined",
+                "[object],undefined" })
     public void html_prefix() throws Exception {
         html("prefix");
     }
@@ -433,18 +384,16 @@ public class ElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = {"[object],undefined",
+    @Alerts(DEFAULT = { "[object HTMLDivElement],div",
+                "[object HTMLUnknownElement],app:div",
+                "[object Element],dIv",
+                "[object HTMLDivElement],div",
+                "[object HTMLUnknownElement],app:div" },
+            IE8 = { "[object],undefined",
                 "[object],undefined",
                 "createElementNS() is not defined",
                 "[object],undefined",
-                "[object],undefined"
-                },
-            FF = {"[object HTMLDivElement],DIV",
-                "[object HTMLUnknownElement],APP:DIV",
-                "[object Element],dIv",
-                "[object HTMLDivElement],DIV",
-                "[object HTMLUnknownElement],APP:DIV"
-                })
+                "[object],undefined" })
     public void html_localName() throws Exception {
         html("localName");
     }
@@ -453,18 +402,34 @@ public class ElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = {"[object],undefined",
+    @Alerts(DEFAULT = { "[object HTMLDivElement],undefined",
+                "[object HTMLUnknownElement],undefined",
+                "[object Element],undefined",
+                "[object HTMLDivElement],undefined",
+                "[object HTMLUnknownElement],undefined" },
+            IE8 = { "[object],undefined",
                 "[object],undefined",
                 "createElementNS() is not defined",
                 "[object],undefined",
-                "[object],undefined"
-                },
-            FF = {"[object HTMLDivElement],null",
-                "[object HTMLUnknownElement],null",
+                "[object],undefined" })
+    public void html_baseName() throws Exception {
+        html("baseName");
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "[object HTMLDivElement],http://www.w3.org/1999/xhtml",
+                "[object HTMLUnknownElement],http://www.w3.org/1999/xhtml",
                 "[object Element],http://www.appcelerator.org",
-                "[object HTMLDivElement],null",
-                "[object HTMLUnknownElement],null"
-                })
+                "[object HTMLDivElement],http://www.w3.org/1999/xhtml",
+                "[object HTMLUnknownElement],http://www.w3.org/1999/xhtml" },
+            IE8 = { "[object],undefined",
+                "[object],undefined",
+                "createElementNS() is not defined",
+                "[object],undefined",
+                "[object],undefined" })
     public void html_namespaceURI() throws Exception {
         html("namespaceURI");
     }
@@ -492,28 +457,28 @@ public class ElementTest extends WebTestCase {
             + "<app:dIv id='dIv2'>alert(2)</app:dIv>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = {"[object],DIV",
-                "[object],dIv",
-                "[object],ANOTHER:DIV",
-                "createElementNS() is not defined",
-                "[object],DIV",
-                "[object],dIv",
-                "[object],ANOTHER:DIV"
-                },
-            FF = {"[object HTMLDivElement],DIV",
+    @Alerts(DEFAULT = {"[object HTMLDivElement],DIV",
                 "[object HTMLUnknownElement],APP:DIV",
                 "[object HTMLUnknownElement],ANOTHER:DIV",
                 "[object Element],app:dIv",
                 "[object HTMLDivElement],DIV",
                 "[object HTMLUnknownElement],APP:DIV",
                 "[object HTMLUnknownElement],ANOTHER:DIV"
+                },
+            IE8 = {"[object],DIV",
+                "[object],dIv",
+                "[object],ANOTHER:DIV",
+                "createElementNS() is not defined",
+                "[object],DIV",
+                "[object],dIv",
+                "[object],ANOTHER:DIV"
                 })
     public void namespace_nodeName() throws Exception {
         namespace("nodeName");
@@ -523,21 +488,21 @@ public class ElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = {"[object],DIV",
-                "[object],dIv",
-                "[object],ANOTHER:DIV",
-                "createElementNS() is not defined",
-                "[object],DIV",
-                "[object],dIv",
-                "[object],ANOTHER:DIV"
-                },
-            FF = {"[object HTMLDivElement],DIV",
+    @Alerts(DEFAULT = {"[object HTMLDivElement],DIV",
                 "[object HTMLUnknownElement],APP:DIV",
                 "[object HTMLUnknownElement],ANOTHER:DIV",
                 "[object Element],app:dIv",
                 "[object HTMLDivElement],DIV",
                 "[object HTMLUnknownElement],APP:DIV",
                 "[object HTMLUnknownElement],ANOTHER:DIV"
+                },
+            IE8 = {"[object],DIV",
+                "[object],dIv",
+                "[object],ANOTHER:DIV",
+                "createElementNS() is not defined",
+                "[object],DIV",
+                "[object],dIv",
+                "[object],ANOTHER:DIV"
                 })
     public void namespace_tagName() throws Exception {
         namespace("tagName");
@@ -547,21 +512,21 @@ public class ElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = {"[object],undefined",
-                "[object],undefined",
-                "[object],undefined",
-                "createElementNS() is not defined",
-                "[object],undefined",
-                "[object],undefined",
-                "[object],undefined"
-                },
-            FF = {"[object HTMLDivElement],null",
+    @Alerts(DEFAULT = {"[object HTMLDivElement],null",
                 "[object HTMLUnknownElement],null",
                 "[object HTMLUnknownElement],null",
                 "[object Element],app",
                 "[object HTMLDivElement],null",
                 "[object HTMLUnknownElement],null",
                 "[object HTMLUnknownElement],null"
+                },
+            IE8 = {"[object],undefined",
+                "[object],undefined",
+                "[object],undefined",
+                "createElementNS() is not defined",
+                "[object],undefined",
+                "[object],undefined",
+                "[object],undefined"
                 })
     public void namespace_prefix() throws Exception {
         namespace("prefix");
@@ -571,21 +536,21 @@ public class ElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = {"[object],undefined",
+    @Alerts(DEFAULT = {"[object HTMLDivElement],div",
+                "[object HTMLUnknownElement],app:div",
+                "[object HTMLUnknownElement],another:div",
+                "[object Element],dIv",
+                "[object HTMLDivElement],div",
+                "[object HTMLUnknownElement],app:div",
+                "[object HTMLUnknownElement],another:div"
+                },
+            IE8 = {"[object],undefined",
                 "[object],undefined",
                 "[object],undefined",
                 "createElementNS() is not defined",
                 "[object],undefined",
                 "[object],undefined",
                 "[object],undefined"
-                },
-            FF = {"[object HTMLDivElement],DIV",
-                "[object HTMLUnknownElement],APP:DIV",
-                "[object HTMLUnknownElement],ANOTHER:DIV",
-                "[object Element],dIv",
-                "[object HTMLDivElement],DIV",
-                "[object HTMLUnknownElement],APP:DIV",
-                "[object HTMLUnknownElement],ANOTHER:DIV"
                 })
     public void namespace_localName() throws Exception {
         namespace("localName");
@@ -595,21 +560,21 @@ public class ElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = {"[object],undefined",
+    @Alerts(DEFAULT = {"[object HTMLDivElement],http://www.w3.org/1999/xhtml",
+                "[object HTMLUnknownElement],http://www.w3.org/1999/xhtml",
+                "[object HTMLUnknownElement],http://www.w3.org/1999/xhtml",
+                "[object Element],http://www.appcelerator.org",
+                "[object HTMLDivElement],http://www.w3.org/1999/xhtml",
+                "[object HTMLUnknownElement],http://www.w3.org/1999/xhtml",
+                "[object HTMLUnknownElement],http://www.w3.org/1999/xhtml"
+                },
+            IE8 = {"[object],undefined",
                 "[object],undefined",
                 "[object],undefined",
                 "createElementNS() is not defined",
                 "[object],undefined",
                 "[object],undefined",
                 "[object],undefined"
-                },
-            FF = {"[object HTMLDivElement],null",
-                "[object HTMLUnknownElement],null",
-                "[object HTMLUnknownElement],null",
-                "[object Element],http://www.appcelerator.org",
-                "[object HTMLDivElement],null",
-                "[object HTMLUnknownElement],null",
-                "[object HTMLUnknownElement],null"
                 })
     public void namespace_namespaceURI() throws Exception {
         namespace("namespaceURI");
@@ -641,23 +606,25 @@ public class ElementTest extends WebTestCase {
             + "<another:dIv id='dIv3'></another:dIv>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = {"[object]", "dIv",
-            "[object]", "html",
-            "[object]", "div",
-            "[object]", "dIv"
-            },
-        FF = {"[object Element]", "dIv",
-            "[object HTMLHtmlElement]", "html",
-            "[object HTMLDivElement]", "div",
-            "[object HTMLUnknownElement]", "dIv"
-            })
+    @Alerts(DEFAULT = {"[object Element]", "dIv",
+                "[object HTMLHtmlElement]", "html",
+                "[object HTMLDivElement]", "div",
+                "[object HTMLUnknownElement]", "dIv"
+                },
+            IE8 = {"[object Error]", "dIv",
+                "[object Error]", "html",
+                "[object Error]", "div",
+                "[object Error]", "dIv"
+                })
+    // TODO [IE11]SINGLE-VS-BULK test runs when executed as single but breaks as bulk
+    @NotYetImplemented(Browser.IE8)
     public void xml_nodeName() throws Exception {
         xml("nodeName");
     }
@@ -666,16 +633,18 @@ public class ElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = {"[object]", "dIv",
-            "[object]", "html",
-            "[object]", "div",
-            "[object]", "dIv"
-            },
-        FF = {"[object Element]", "dIv",
-            "[object HTMLHtmlElement]", "html",
-            "[object HTMLDivElement]", "div",
-            "[object HTMLUnknownElement]", "dIv"
-            })
+    @Alerts(DEFAULT = {"[object Element]", "dIv",
+                "[object HTMLHtmlElement]", "html",
+                "[object HTMLDivElement]", "div",
+                "[object HTMLUnknownElement]", "dIv"
+                },
+            IE8 = {"[object Error]", "dIv",
+                "[object Error]", "html",
+                "[object Error]", "div",
+                "[object Error]", "dIv"
+                })
+    // TODO [IE11]SINGLE-VS-BULK test runs when executed as single but breaks as bulk
+    @NotYetImplemented(Browser.IE8)
     public void xml_tagName() throws Exception {
         xml("tagName");
     }
@@ -684,16 +653,18 @@ public class ElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = {"[object]", "",
-            "[object]", "",
-            "[object]", "",
-            "[object]", ""
-            },
-        FF = {"[object Element]", "null",
-            "[object HTMLHtmlElement]", "null",
-            "[object HTMLDivElement]", "null",
-            "[object HTMLUnknownElement]", "null"
-            })
+    @Alerts(DEFAULT = {"[object Element]", "null",
+                "[object HTMLHtmlElement]", "null",
+                "[object HTMLDivElement]", "null",
+                "[object HTMLUnknownElement]", "null"
+                },
+            IE8 = {"[object Error]", "",
+                "[object Error]", "",
+                "[object Error]", "",
+                "[object Error]", ""
+                })
+    // TODO [IE11]SINGLE-VS-BULK test runs when executed as single but breaks as bulk
+    @NotYetImplemented(Browser.IE8)
     public void xml_prefix() throws Exception {
         xml("prefix");
     }
@@ -702,16 +673,18 @@ public class ElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = {"[object]", "undefined",
-            "[object]", "undefined",
-            "[object]", "undefined",
-            "[object]", "undefined"
-            },
-        FF = {"[object Element]", "dIv",
-            "[object HTMLHtmlElement]", "html",
-            "[object HTMLDivElement]", "div",
-            "[object HTMLUnknownElement]", "dIv"
-            })
+    @Alerts(DEFAULT = {"[object Element]", "dIv",
+                "[object HTMLHtmlElement]", "html",
+                "[object HTMLDivElement]", "div",
+                "[object HTMLUnknownElement]", "dIv"
+                },
+            IE8 = {"[object Error]", "undefined",
+                "[object Error]", "undefined",
+                "[object Error]", "undefined",
+                "[object Error]", "undefined"
+                })
+    // TODO [IE11]SINGLE-VS-BULK test runs when executed as single but breaks as bulk
+    @NotYetImplemented(Browser.IE8)
     public void xml_localName() throws Exception {
         xml("localName");
     }
@@ -720,16 +693,38 @@ public class ElementTest extends WebTestCase {
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = {"[object]", "",
-            "[object]", "http://www.w3.org/1999/xhtml",
-            "[object]", "http://www.w3.org/1999/xhtml",
-            "[object]", "http://www.w3.org/1999/xhtml"
-            },
-        FF = {"[object Element]", "null",
-            "[object HTMLHtmlElement]", "http://www.w3.org/1999/xhtml",
-            "[object HTMLDivElement]", "http://www.w3.org/1999/xhtml",
-            "[object HTMLUnknownElement]", "http://www.w3.org/1999/xhtml"
-            })
+    @Alerts(DEFAULT = {"[object Element]", "undefined",
+                "[object HTMLHtmlElement]", "undefined",
+                "[object HTMLDivElement]", "undefined",
+                "[object HTMLUnknownElement]", "undefined"
+                },
+            IE8 = {"[object Error]", "dIv",
+                "[object Error]", "html",
+                "[object Error]", "div",
+                "[object Error]", "dIv"
+                })
+    // TODO [IE11]SINGLE-VS-BULK test runs when executed as single but breaks as bulk
+    @NotYetImplemented(Browser.IE8)
+    public void xml_baseName() throws Exception {
+        xml("baseName");
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = {"[object Element]", "null",
+                "[object HTMLHtmlElement]", "http://www.w3.org/1999/xhtml",
+                "[object HTMLDivElement]", "http://www.w3.org/1999/xhtml",
+                "[object HTMLUnknownElement]", "http://www.w3.org/1999/xhtml"
+                },
+            IE8 = {"[object Error]", "",
+                "[object Error]", "http://www.w3.org/1999/xhtml",
+                "[object Error]", "http://www.w3.org/1999/xhtml",
+                "[object Error]", "http://www.w3.org/1999/xhtml"
+                })
+    // TODO [IE11]SINGLE-VS-BULK test runs when executed as single but breaks as bulk
+    @NotYetImplemented(Browser.IE8)
     public void xml_namespaceURI() throws Exception {
         xml("namespaceURI");
     }
@@ -740,23 +735,19 @@ public class ElementTest extends WebTestCase {
             + "  <head>\n"
             + "    <script>\n"
             + "      function test() {\n"
-            + "        var request;\n"
-            + "        if (window.XMLHttpRequest)\n"
-            + "          request = new XMLHttpRequest();\n"
-            + "        else if (window.ActiveXObject)\n"
-            + "          request = new ActiveXObject('Microsoft.XMLHTTP');\n"
-            + "        request.open('GET', 'foo.xml', false);\n"
-            + "        request.send('');\n"
-            + "        var doc = request.responseXML;\n"
+            + "        var doc = " + XMLDocumentTest.callLoadXMLDocumentFromFile("'foo.xml'") + ";\n"
             + "        debug(doc.documentElement.childNodes[0]);\n"
             + "        debug(doc.documentElement.childNodes[1]);\n"
             + "        debug(doc.documentElement.childNodes[1].childNodes[0]);\n"
             + "        debug(doc.documentElement.childNodes[1].childNodes[1]);\n"
             + "      }\n"
             + "      function debug(e) {\n"
-            + "        alert(e);\n"
+            + "        try {\n"
+            + "          alert(e);\n"
+            + "        } catch(ex) {alert(ex)};\n"
             + "        alert(e." + methodName + ");\n"
             + "      }\n"
+            + XMLDocumentTest.LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION
             + "    </script>\n"
             + "  </head>\n"
             + "  <body onload='test()'>\n"
@@ -773,45 +764,29 @@ public class ElementTest extends WebTestCase {
             + "</xml>";
 
         getMockWebConnection().setDefaultResponse(xml, "text/xml");
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if the test fails
      */
     @Test
-    @Alerts(IE = { "button", "getAttributeNS() not supported" }, FF = { "button", "", "false", "true" })
-    public void attributeNS() throws Exception {
-        final String html
-            = "<html><head>\n"
-            + "<script>\n"
-            + "  function test() {\n"
-            + "    var e = document.getElementById('foo');\n"
-            + "    alert(e.getAttribute('type'));\n"
-            + "    try {\n"
-            + "      alert(e.getAttributeNS('bar', 'type'));\n"
-            + "      alert(e.hasAttributeNS('bar', 'type'));\n"
-            + "      e.removeAttributeNS('bar', 'type');\n"
-            + "      alert(e.hasAttribute('type'));\n"
-            + "    } catch (e) {alert('getAttributeNS() not supported')}\n"
-            + "  }\n"
-            + "</script>\n"
-            + "</head>\n"
-            + "<body onload='test()'>\n"
-            + "  <input id='foo' type='button' value='someValue'>\n"
-            + "</body></html>";
-
-        loadPageWithAlerts(html);
-    }
-
-    /**
-     * @throws Exception if the test fails
-     */
-    @Test
-    @NotYetImplemented(Browser.FF2)
-    @Alerts(IE = "exception occured",
-            FF2 = { "prototype found", "QueryInterface" },
-            FF3 = { "prototype found", "" })
+    @Alerts(DEFAULT = { "prototype found", "" },
+            CHROME = { "prototype found", "toString, "
+                    + "ELEMENT_NODE, ATTRIBUTE_NODE, TEXT_NODE, CDATA_SECTION_NODE, ENTITY_REFERENCE_NODE, "
+                    + "ENTITY_NODE, PROCESSING_INSTRUCTION_NODE, COMMENT_NODE, DOCUMENT_NODE, DOCUMENT_TYPE_NODE, "
+                    + "DOCUMENT_FRAGMENT_NODE, NOTATION_NODE, DOCUMENT_POSITION_DISCONNECTED, "
+                    + "DOCUMENT_POSITION_PRECEDING, "
+                    + "DOCUMENT_POSITION_FOLLOWING, DOCUMENT_POSITION_CONTAINS, DOCUMENT_POSITION_CONTAINED_BY, "
+                    + "DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC, " },
+            FF = { "prototype found", ""
+                    + "ELEMENT_NODE, ATTRIBUTE_NODE, TEXT_NODE, CDATA_SECTION_NODE, ENTITY_REFERENCE_NODE, "
+                    + "ENTITY_NODE, PROCESSING_INSTRUCTION_NODE, COMMENT_NODE, DOCUMENT_NODE, DOCUMENT_TYPE_NODE, "
+                    + "DOCUMENT_FRAGMENT_NODE, NOTATION_NODE, DOCUMENT_POSITION_DISCONNECTED, "
+                    + "DOCUMENT_POSITION_PRECEDING, "
+                    + "DOCUMENT_POSITION_FOLLOWING, DOCUMENT_POSITION_CONTAINS, DOCUMENT_POSITION_CONTAINED_BY, "
+                    + "DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC, " },
+            IE8 = "exception occured")
     public void enumeratedProperties() throws Exception {
         final String html
             = "<html><head>\n"
@@ -822,17 +797,16 @@ public class ElementTest extends WebTestCase {
             + "      alert(Element.prototype ? 'prototype found' : 'prototype not found');\n"
             + "      var str = '';\n"
             + "      for (var i in Element)\n"
-            + "        str += i;\n"
+            + "        str += i + ', ';\n"
             + "      alert(str);\n"
             + "    } catch (e) { alert('exception occured')}\n"
             + "  }\n"
             + "</script>\n"
             + "</head>\n"
             + "<body onload='test()'>\n"
-            + "  <input id='foo' type='button' value='someValue'>\n"
             + "</body></html>";
 
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
@@ -845,18 +819,12 @@ public class ElementTest extends WebTestCase {
             + "  <head>\n"
             + "    <script>\n"
             + "      function test() {\n"
-            + "        var request;\n"
-            + "        if (window.XMLHttpRequest)\n"
-            + "          request = new XMLHttpRequest();\n"
-            + "        else if (window.ActiveXObject)\n"
-            + "          request = new ActiveXObject('Microsoft.XMLHTTP');\n"
-            + "        request.open('GET', 'foo.xml', false);\n"
-            + "        request.send('');\n"
-            + "        var doc = request.responseXML;\n"
+            + "        var doc = " + XMLDocumentTest.callLoadXMLDocumentFromFile("'foo.xml'") + ";\n"
             + "        var e = doc.getElementsByTagName('title');\n"
             + "        e[0].removeAttribute('hello');\n"
             + "        alert('finished');\n"
             + "      }\n"
+            + XMLDocumentTest.LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION
             + "    </script>\n"
             + "  </head>\n"
             + "  <body onload='test()'>\n"
@@ -872,6 +840,437 @@ public class ElementTest extends WebTestCase {
             + "</books>";
 
         getMockWebConnection().setDefaultResponse(xml, "text/xml");
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "function",
+            IE8 = "exception")
+    public void getBoundingClientRect() throws Exception {
+        final String html = "<html><body><script>\n"
+            + "try {\n"
+            + "  alert(typeof Element.prototype.getBoundingClientRect);\n"
+            + "} catch (e) { alert('exception');}\n"
+            + "</script></body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = "0",
+            IE8 = "1")
+    public void commentIsElement() throws Exception {
+        final String html = "<html><body>\n"
+            + "<div id='myId'><!-- --></div>\n"
+            + "<script>\n"
+            + "  alert(myId.getElementsByTagName('*').length);\n"
+            + "</script></body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Node should not have 'innerText', however HTMLElement should have.
+     * The below case checks if Element (which is Node) doesn't define it.
+     *
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("undefined")
+    public void nodeHasUndefinedInnerText() throws Exception {
+        final String html = "<html><head><script>\n"
+            + "  function test() {\n"
+            + "    var data = \"<?xml version='1.0' encoding='UTF-8'?>\\\n"
+            + "        <dashboard> \\\n"
+            + "          <locations class='foo'> \\\n"
+            + "            <location for='bar' checked='different'> \\\n"
+            + "              <infowindowtab normal='ab' mixedCase='yes'> \\\n"
+            + "                <tab title='Location'><![CDATA[blabla]]></tab> \\\n"
+            + "                <tab title='Users'><![CDATA[blublu]]></tab> \\\n"
+            + "              </infowindowtab> \\\n"
+            + "            </location> \\\n"
+            + "          </locations> \\\n"
+            + "        </dashboard>\";\n"
+            + "    var xml, tmp;\n"
+            + "    try {\n"
+            + "      if ( window.DOMParser ) {\n"
+            + "        tmp = new DOMParser();\n"
+            + "        xml = tmp.parseFromString( data , 'text/xml' );\n"
+            + "      } else { // IE\n"
+            + "        xml = new ActiveXObject( 'Microsoft.XMLDOM' );\n"
+            + "        xml.async = 'false';\n"
+            + "        xml.loadXML( data );\n"
+            + "      }\n"
+            + "    } catch( e ) {\n"
+            + "      xml = undefined;\n"
+            + "    }\n"
+            + "\n"
+            + "    alert(xml.getElementsByTagName('tab')[0].innerText);\n"
+            + "  }\n"
+            + "</script>\n"
+            + "</head>\n"
+            + "<body onload='test()'/></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "first", "third", "3", "second", "second" },
+            IE8 = "")
+    public void firstElementChild() throws Exception {
+        final String html
+            = "<html><head>\n"
+            + "<script>\n"
+            + "  function test() {\n"
+            + "    var e = document.getElementById('myDiv');\n"
+            + "    if (e.firstElementChild) {\n"
+            + "      alert(e.firstElementChild.id);\n"
+            + "      alert(e.lastElementChild.id);\n"
+            + "      alert(e.childElementCount);\n"
+            + "      alert(e.firstElementChild.nextElementSibling.id);\n"
+            + "      alert(e.lastElementChild.previousElementSibling.id);\n"
+            + "    }\n"
+            + "  }\n"
+            + "</script>\n"
+            + "</head>\n"
+            + "<body onload='test()'>\n"
+            + "  <div id='myDiv'>\n"
+            + "    <input id='first' type='button' value='someValue'>\n"
+            + "    <br id='second'/>\n"
+            + "    <input id='third' type=button' value='something'>\n"
+            + "  </div>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "§§URL§§", "§§URL§§" },
+            CHROME = { "", "§§URL§§" },
+            IE = { "undefined", "undefined" })
+    @NotYetImplemented(CHROME)
+    public void baseURI() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_ + "<html><head><title>foo</title><script>\n"
+            + "function test() {\n"
+            + "  var text = '<hello><child></child></hello>';\n"
+            + "  var doc = " + XMLDocumentTest.callLoadXMLDocumentFromString("text") + ";\n"
+            + "  var e = doc.documentElement.firstChild;\n"
+            + "  alert(e.baseURI);\n"
+            + "\n"
+            + "  e = document.getElementById('myId');\n"
+            + "  alert(e.baseURI);\n"
+            + "}\n"
+            + XMLDocumentTest.LOAD_XML_DOCUMENT_FROM_STRING_FUNCTION
+            + "</script></head><body onload='test()'>\n"
+            + "  <div id='myId'>abcd</div>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "[object HTMLCollection] 1", "[object HTMLCollection] 2", "[object HTMLCollection] 0" },
+            IE = { "exception", "[object HTMLCollection] 2", "[object HTMLCollection] 0" })
+    public void children() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_ + "<html><head><title>foo</title><script>\n"
+            + "function test() {\n"
+            + "  var text = '<hello><child></child></hello>';\n"
+            + "  var doc = " + XMLDocumentTest.callLoadXMLDocumentFromString("text") + ";\n"
+
+            + "  try {\n"
+            + "    var children = doc.documentElement.children;\n"
+            + "    alert(children + ' ' + children.length);\n"
+            + "  } catch (e) { alert('exception'); }\n"
+
+            + "  try {\n"
+            + "    children = document.documentElement.children;\n"
+            + "    alert(children + ' ' + children.length);\n"
+            + "  } catch (e) { alert('exception'); }\n"
+
+            + "  try {\n"
+            + "    children = document.getElementById('myId').children;\n"
+            + "    alert(children + ' ' + children.length);\n"
+            + "  } catch (e) { alert('exception'); }\n"
+            + "}\n"
+            + XMLDocumentTest.LOAD_XML_DOCUMENT_FROM_STRING_FUNCTION
+            + "</script></head><body onload='test()'>\n"
+            + "  <div id='myId'>abcd</div>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(CHROME = { "", "a b c" },
+            FF24 = { "null", "a b c" },
+            FF31 = { "null", "a b c" },
+            FF38 = { "", "a b c" },
+            IE = { "undefined", "undefined" },
+            IE11 = { "undefined", "a b c" })
+    public void classList() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_ + "<html><head><title>foo</title><script>\n"
+            + "function test() {\n"
+            + "  var text = '<hello><child></child></hello>';\n"
+            + "  var doc = " + XMLDocumentTest.callLoadXMLDocumentFromString("text") + ";\n"
+            + "  alert(doc.documentElement.classList);\n"
+            + "  alert(document.body.classList);\n"
+            + "}\n"
+            + XMLDocumentTest.LOAD_XML_DOCUMENT_FROM_STRING_FUNCTION
+            + "</script></head><body onload='test()' class='a b c'>\n"
+            + "  <div id='myId'>abcd</div>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * Tests the usage of getAttributeNS, setAttributeNS, removeAttributeNS
+     * and hasAttributeNS methods on elements under Firefox.
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts(DEFAULT = { "test value", "true", "false", "finished" },
+            IE8 = "createDocument not available")
+    public void attributeNS() throws Exception {
+        final String html = "<html>\n"
+            + "  <head>\n"
+            + "    <script>\n"
+            + "      function test() {\n"
+            + "        if (!document.implementation.createDocument) { alert('createDocument not available'); return }\n"
+            + "        var doc = document.implementation.createDocument(\"\", \"\", null);\n"
+            + "        var element = doc.createElementNS(\'uri:test\', \'test:element\');\n"
+            + "        element.setAttributeNS(\'uri:test\', \'test:attribute\', 'test value');\n"
+            + "        alert(element.getAttributeNS(\'uri:test\', \'attribute\'));\n"
+            + "        alert(element.hasAttributeNS(\'uri:test\', \'attribute\'));\n"
+            + "        element.removeAttributeNS(\'uri:test\', \'attribute\');\n"
+            + "        alert(element.hasAttributeNS(\'uri:test\', \'attribute\'));\n"
+            + "        alert('finished');\n"
+            + "      }\n"
+            + "    </script>\n"
+            + "  </head>\n"
+            + "  <body onload='test()'>\n"
+            + "  </body>\n"
+            + "</html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts({ "ab", "ab" })
+    // TODO [IE11]SINGLE-VS-BULK test runs when executed as single but breaks as bulk
+    public void removeAttribute_case_sensitive() throws Exception {
+        final String html = "<html>\n"
+            + "  <head>\n"
+            + "    <script>\n"
+            + "      function test() {\n"
+            + "        var doc = " + XMLDocumentTest.callLoadXMLDocumentFromFile("'foo.xml'") + ";\n"
+            + "        var e = doc.getElementsByTagName('title')[0];\n"
+            + "        alert(e.getAttribute('normal'));\n"
+            + "        e.removeAttribute('Normal');\n"
+            + "        alert(e.getAttribute('normal'));\n"
+            + "      }\n"
+            + XMLDocumentTest.LOAD_XML_DOCUMENT_FROM_FILE_FUNCTION
+            + "    </script>\n"
+            + "  </head>\n"
+            + "  <body onload='test()'>\n"
+            + "  </body>\n"
+            + "</html>";
+
+        final String xml
+            = "<books>\n"
+            + "  <book>\n"
+            + "    <title normal=\"ab\">Immortality</title>\n"
+            + "    <author>John Smith</author>\n"
+            + "  </book>\n"
+            + "</books>";
+
+        getMockWebConnection().setDefaultResponse(xml, "text/xml");
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if the test fails
+     */
+    @Test
+    @Alerts("test")
+    public void setAttributeNode() throws Exception {
+        final String html = "<html>\n"
+            + "  <head>\n"
+            + "    <script>\n"
+            + "      function test() {\n"
+            + "        var doc = " + XMLDocumentTest.callCreateXMLDocument() + ";\n"
+            + "        var element = doc.createElement('something');\n"
+            + "        var attr = doc.createAttribute('name');\n"
+            + "        attr.value = 'test';\n"
+            + "        element.setAttributeNode(attr);\n"
+            + "        alert(element.getAttributeNode('name').value)\n"
+            + "      }\n"
+            + XMLDocumentTest.CREATE_XML_DOCUMENT_FUNCTION
+            + "    </script>\n"
+            + "  </head>\n"
+            + "  <body onload='test()'>\n"
+            + "  </body>\n"
+            + "</html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(DEFAULT = { "undefined", "undefined" },
+            IE = { "available", "null" })
+    public void currentStyle() throws Exception {
+        final String html = "<html>\n"
+            + "<head>\n"
+            + "  <script>\n"
+            + "    function test() {\n"
+            + "      var e = document.getElementById('tester');\n"
+            + "      alert(e.currentStyle ? 'available' : e.currentStyle);\n"
+            + "      e = document.createElement('div');\n"
+            + "      alert(e.currentStyle ? 'available' : e.currentStyle);\n"
+            + "    }\n"
+            + "  </script>\n"
+            + "</head>\n"
+            + "<body onload='test()'>\n"
+            + "  <div id='tester'></div>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(DEFAULT = { "undefined", "undefined" },
+            IE8 = "exception")
+    public void allowKeyboardInput() throws Exception {
+        final String html = "<html>\n"
+            + "<head>\n"
+            + "  <script>\n"
+            + "    function test() {\n"
+            + "      try {\n"
+            + "        alert(Element.ALLOW_KEYBOARD_INPUT);\n"
+            + "        alert(typeof Element.ALLOW_KEYBOARD_INPUT);\n"
+            + "      } catch (e) {alert('exception')}\n"
+            + "    }\n"
+            + "  </script>\n"
+            + "</head>\n"
+            + "<body onload='test()'>\n"
+            + "</body></html>";
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts("")
+    public void enumeratedPropertiesForNativeFunction() throws Exception {
+        final String html
+            = "<html><head>\n"
+            + "<script>\n"
+            + "  function test() {\n"
+            + "    var str = '';\n"
+            + "    for (var i in test)\n"
+            + "      str += i + ', ';\n"
+            + "    alert(str);\n"
+            + "  }\n"
+            + "</script>\n"
+            + "</head>\n"
+            + "<body onload='test()'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(FF = { "function Element() {\n    [native code]\n}",
+            "[object ElementPrototype]", "function Element() {\n    [native code]\n}" },
+            CHROME = { "function Element() { [native code] }", "[object Object]",
+            "function Element() { [native code] }" },
+            IE8 = "exception",
+            IE11 = { "[object Element]", "[object ElementPrototype]", "[object Element]" })
+    @NotYetImplemented({ FF, CHROME, IE11 })
+    public void prototypConstructor() throws Exception {
+        final String html
+            = "<html><head>\n"
+            + "<script>\n"
+            + "  function test() {\n"
+            + "    try {\n"
+            + "      process(Element);\n"
+            + "      process(Element.prototype);\n"
+            + "      process(Element.prototype.constructor);\n"
+            + "    } catch (e) {alert('exception')}\n"
+            + "  }\n"
+            + "  function process(obj) {\n"
+            + "    try {\n"
+            + "      alert(obj);\n"
+            + "    } catch (e) {alert('exception')}\n"
+            + "   }\n"
+            + "</script>\n"
+            + "</head>\n"
+            + "<body onload='test()'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(FF = { "function Element() {\n    [native code]\n}",
+            "[object ElementPrototype]", "function Element() {\n    [native code]\n}" },
+            CHROME = { "function Element() { [native code] }", "[object Object]",
+            "function Element() { [native code] }" },
+            IE8 = { "[object Element]", "[Interface prototype object]", "null" },
+            IE11 = { "[object Element]", "[object ElementPrototype]", "[object Element]" })
+    @NotYetImplemented({ FF, CHROME, IE })
+    public void prototypConstructorStandards() throws Exception {
+        final String html = HtmlPageTest.STANDARDS_MODE_PREFIX_
+            + "<html><head>\n"
+            + "<script>\n"
+            + "  function test() {\n"
+            + "    try {\n"
+            + "      process(Element);\n"
+            + "      process(Element.prototype);\n"
+            + "      process(Element.prototype.constructor);\n"
+            + "    } catch (e) {alert('exception')}\n"
+            + "  }\n"
+            + "  function process(obj) {\n"
+            + "    try {\n"
+            + "      alert(obj);\n"
+            + "    } catch (e) {alert('exception')}\n"
+            + "   }\n"
+            + "</script>\n"
+            + "</head>\n"
+            + "<body onload='test()'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
+
 }

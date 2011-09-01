@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,15 +26,15 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "tr".
  *
- * @version $Revision: 4794 $
+ * @version $Revision: 10214 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Frank Danek
  */
-public class HtmlTableRow extends ClickableElement {
-
-    private static final long serialVersionUID = 1296770669696592851L;
+public class HtmlTableRow extends HtmlElement {
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "tr";
@@ -42,14 +42,13 @@ public class HtmlTableRow extends ClickableElement {
     /**
      * Creates an instance.
      *
-     * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the page that this element is contained within
      * @param attributes the initial attributes
      */
-    HtmlTableRow(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    HtmlTableRow(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
+        super(qualifiedName, page, attributes);
     }
 
     /**
@@ -64,9 +63,9 @@ public class HtmlTableRow extends ClickableElement {
      * @see #getCellIterator
      */
     public List<HtmlTableCell> getCells() {
-        final List<HtmlTableCell> result = new ArrayList<HtmlTableCell>();
-        for (final CellIterator iterator = getCellIterator(); iterator.hasNext();) {
-            result.add(iterator.next());
+        final List<HtmlTableCell> result = new ArrayList<>();
+        for (final HtmlTableCell cell : getCellIterator()) {
+            result.add(cell);
         }
         return Collections.unmodifiableList(result);
     }
@@ -78,11 +77,11 @@ public class HtmlTableRow extends ClickableElement {
      */
     public HtmlTableCell getCell(final int index) throws IndexOutOfBoundsException {
         int count = 0;
-        for (final CellIterator iterator = getCellIterator(); iterator.hasNext(); count++) {
-            final HtmlTableCell next = iterator.nextCell();
+        for (final HtmlTableCell cell : getCellIterator()) {
             if (count == index) {
-                return next;
+                return cell;
             }
+            count++;
         }
         throw new IndexOutOfBoundsException();
     }
@@ -159,7 +158,7 @@ public class HtmlTableRow extends ClickableElement {
      * An Iterator over the HtmlTableCells contained in this row. It will also dive
      * into nested forms, even though that is illegal HTML.
      */
-    public class CellIterator implements Iterator<HtmlTableCell> {
+    public class CellIterator implements Iterator<HtmlTableCell>, Iterable<HtmlTableCell> {
         private HtmlTableCell nextCell_;
         private HtmlForm currentForm_;
 
@@ -233,5 +232,22 @@ public class HtmlTableRow extends ClickableElement {
                 setNextCell(form.getNextSibling());
             }
         }
+
+        /**
+         * Returns an HtmlTableCell iterator.
+         *
+         * @return an HtmlTableCell Iterator.
+         */
+        public Iterator<HtmlTableCell> iterator() {
+            return this;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public DisplayStyle getDefaultStyleDisplay() {
+        return DisplayStyle.TABLE_ROW;
     }
 }

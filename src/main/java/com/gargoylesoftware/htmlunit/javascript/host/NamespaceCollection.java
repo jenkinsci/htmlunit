@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,29 +14,33 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host;
 
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import org.apache.commons.lang.StringUtils;
 
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.Function;
 import net.sourceforge.htmlunit.corejs.javascript.Scriptable;
 
+import org.apache.commons.lang3.StringUtils;
+
 import com.gargoylesoftware.htmlunit.javascript.SimpleScriptable;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxFunction;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLDocument;
 
 /**
  * A collection of {@link Namespace}s.
  *
- * @version $Revision: 4678 $
+ * @version $Revision: 10000 $
  * @author Daniel Gredler
  */
+@JsxClass(isJSObject = false, isDefinedInStandardsMode = false, browsers = @WebBrowser(IE))
 public class NamespaceCollection extends SimpleScriptable implements Function {
-
-    /** Serial version UID. */
-    private static final long serialVersionUID = 3414897723813218653L;
 
     /** The HTML document to which this namespace collection belongs. */
     private final HTMLDocument doc_;
@@ -47,7 +51,7 @@ public class NamespaceCollection extends SimpleScriptable implements Function {
     /** Default constructor required by Rhino. */
     public NamespaceCollection() {
         doc_ = null;
-        namespaces_ = new ArrayList<Namespace>();
+        namespaces_ = new ArrayList<>();
     }
 
     /**
@@ -56,15 +60,16 @@ public class NamespaceCollection extends SimpleScriptable implements Function {
      */
     public NamespaceCollection(final HTMLDocument doc) {
         doc_ = doc;
-        namespaces_ = new ArrayList<Namespace>();
+        namespaces_ = new ArrayList<>();
 
         setParentScope(doc);
         setPrototype(getPrototype(getClass()));
 
         final Map<String, String> namespacesMap = doc_.getHtmlPage().getNamespaces();
-        for (final String key : namespacesMap.keySet()) {
-            if (key.length() != 0) {
-                namespaces_.add(new Namespace(doc_, key, namespacesMap.get(key)));
+        for (final Map.Entry<String, String> entry : namespacesMap.entrySet()) {
+            final String key = entry.getKey();
+            if (!key.isEmpty()) {
+                namespaces_.add(new Namespace(doc_, key, entry.getValue()));
             }
         }
     }
@@ -76,7 +81,8 @@ public class NamespaceCollection extends SimpleScriptable implements Function {
      * @param url the URL of the namespace to add (optional)
      * @return the newly created namespace
      */
-    public final Namespace jsxFunction_add(final String namespace, final String urn, final String url) {
+    @JsxFunction
+    public final Namespace add(final String namespace, final String urn, final String url) {
         // TODO: should we add the namespace to the HtmlUnit DOM?
         final Namespace n = new Namespace(doc_, namespace, urn);
         namespaces_.add(n);
@@ -87,7 +93,8 @@ public class NamespaceCollection extends SimpleScriptable implements Function {
      * Returns the length of this namespace collection.
      * @return the length of this namespace collection
      */
-    public final int jsxGet_length() {
+    @JsxGetter
+    public final int getLength() {
         return namespaces_.size();
     }
 
@@ -96,7 +103,8 @@ public class NamespaceCollection extends SimpleScriptable implements Function {
      * @param index the index of the namespace (either the numeric index, or the name of the namespace)
      * @return the namespace at the specified index
      */
-    public final Object jsxFunction_item(final Object index) {
+    @JsxFunction
+    public final Object item(final Object index) {
         if (index instanceof Number) {
             final Number n = (Number) index;
             final int i = n.intValue();
@@ -119,7 +127,7 @@ public class NamespaceCollection extends SimpleScriptable implements Function {
     @Override
     public Object get(final String name, final Scriptable start) {
         for (final Namespace n : namespaces_) {
-            if (StringUtils.equals(n.jsxGet_name(), name)) {
+            if (StringUtils.equals(n.getName(), name)) {
                 return n;
             }
         }
@@ -131,7 +139,7 @@ public class NamespaceCollection extends SimpleScriptable implements Function {
         if (args.length != 1) {
             return NOT_FOUND;
         }
-        return jsxFunction_item(args[0]);
+        return item(args[0]);
     }
 
     /** {@inheritDoc} */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,45 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_ANCHOR_PATHNAME_DETECT_WIN_DRIVES_URL;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_ANCHOR_PATHNAME_NONE_FOR_BROKEN_URL;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_ANCHOR_PATHNAME_NONE_FOR_NONE_HTTP_URL;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_ANCHOR_PATHNAME_PREFIX_WIN_DRIVES_URL;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_ANCHOR_PROTOCOL_COLON_FOR_BROKEN_URL;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_ANCHOR_PROTOCOL_COLON_UPPER_CASE_DRIVE_LETTERS;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.JS_ANCHOR_TYPE_HTMLANCHORELEMENT;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Locale;
 
-import org.apache.commons.lang.StringUtils;
+import net.sourceforge.htmlunit.corejs.javascript.Context;
 
+import org.apache.commons.lang3.StringUtils;
+
+import com.gargoylesoftware.htmlunit.SgmlPage;
+import com.gargoylesoftware.htmlunit.html.DomElement;
+import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.html.HtmlAnchor;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
+import com.gargoylesoftware.htmlunit.javascript.host.URLSearchParams;
+import com.gargoylesoftware.htmlunit.javascript.host.dom.DOMTokenList;
 import com.gargoylesoftware.htmlunit.util.UrlUtils;
 
 /**
  * The JavaScript object that represents an anchor.
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 10429 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author <a href="mailto:gousseff@netscape.net">Alexei Goussev</a>
  * @author David D. Kilzer
@@ -36,31 +61,29 @@ import com.gargoylesoftware.htmlunit.util.UrlUtils;
  * @author Ahmed Ashour
  * @author Sudhan Moghe
  * @author Daniel Gredler
+ * @author Ronald Brill
  */
+@JsxClasses({
+        @JsxClass(domClass = HtmlAnchor.class, browsers = { @WebBrowser(CHROME), @WebBrowser(FF),
+            @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(isJSObject = false, domClass = HtmlAnchor.class,
+            browsers = { @WebBrowser(value = IE, maxVersion = 8) })
+    })
 public class HTMLAnchorElement extends HTMLElement {
 
-    private static final long serialVersionUID = -816365374422492967L;
-
     /**
-     * Creates an instance.
+     * The constructor.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
     public HTMLAnchorElement() {
-        // Empty.
-    }
-
-    /**
-     * JavaScript constructor. This must be declared in every JavaScript file because
-     * the rhino engine won't walk up the hierarchy looking for constructors.
-     */
-    public void jsConstructor() {
-        // Empty.
     }
 
     /**
      * Sets the <tt>href</tt> property.
      * @param href the <tt>href</tt> property value
      */
-    public void jsxSet_href(final String href) {
+    @JsxSetter
+    public void setHref(final String href) {
         getDomNodeOrDie().setAttribute("href", href);
     }
 
@@ -68,11 +91,12 @@ public class HTMLAnchorElement extends HTMLElement {
      * Returns the value of this link's <tt>href</tt> property.
      * @return the value of this link's <tt>href</tt> property
      */
-    public String jsxGet_href() {
+    @JsxGetter
+    public String getHref() {
         final HtmlAnchor anchor = (HtmlAnchor) getDomNodeOrDie();
         final String hrefAttr = anchor.getHrefAttribute();
 
-        if (hrefAttr == HtmlAnchor.ATTRIBUTE_NOT_DEFINED) {
+        if (hrefAttr == DomElement.ATTRIBUTE_NOT_DEFINED) {
             return "";
         }
 
@@ -88,7 +112,8 @@ public class HTMLAnchorElement extends HTMLElement {
      * Sets the name property.
      * @param name name attribute value
      */
-    public void jsxSet_name(final String name) {
+    @JsxSetter
+    public void setName(final String name) {
         getDomNodeOrDie().setAttribute("name", name);
     }
 
@@ -96,7 +121,8 @@ public class HTMLAnchorElement extends HTMLElement {
      * Returns the value of the name property of this link.
      * @return the name property
      */
-    public String jsxGet_name() {
+    @JsxGetter
+    public String getName() {
         return getDomNodeOrDie().getAttribute("name");
     }
 
@@ -104,7 +130,8 @@ public class HTMLAnchorElement extends HTMLElement {
      * Sets the target property of this link.
      * @param target target attribute value
      */
-    public void jsxSet_target(final String target) {
+    @JsxSetter
+    public void setTarget(final String target) {
         getDomNodeOrDie().setAttribute("target", target);
     }
 
@@ -112,7 +139,8 @@ public class HTMLAnchorElement extends HTMLElement {
      * Returns the value of the target property of this link.
      * @return the href property
      */
-    public String jsxGet_target() {
+    @JsxGetter
+    public String getTarget() {
         return getDomNodeOrDie().getAttribute("target");
     }
 
@@ -135,18 +163,60 @@ public class HTMLAnchorElement extends HTMLElement {
     }
 
     /**
+     * Sets the rel property.
+     * @param rel rel attribute value
+     */
+    @JsxSetter
+    public void setRel(final String rel) {
+        getDomNodeOrDie().setAttribute("rel", rel);
+    }
+
+    /**
+     * Returns the value of the rel property.
+     * @return the rel property
+     */
+    @JsxGetter
+    public String getRel() {
+        return ((HtmlAnchor) getDomNodeOrDie()).getRelAttribute();
+    }
+
+    /**
+     * Sets the rev property.
+     * @param rel rev attribute value
+     */
+    @JsxSetter
+    public void setRev(final String rel) {
+        getDomNodeOrDie().setAttribute("rev", rel);
+    }
+
+    /**
+     * Returns the value of the rev property.
+     * @return the rev property
+     */
+    @JsxGetter
+    public String getRev() {
+        return ((HtmlAnchor) getDomNodeOrDie()).getRevAttribute();
+    }
+
+    /**
      * Returns the search portion of the link's URL (the portion starting with
      * '?' and up to but not including any '#').
      * @return the search portion of the link's URL
      * @throws Exception if an error occurs
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms534620.aspx">MSDN Documentation</a>
      */
-    public String jsxGet_search() throws Exception {
-        final String query = getUrl().getQuery();
-        if (query == null) {
+    @JsxGetter
+    public String getSearch() throws Exception {
+        try {
+            final String query = getUrl().getQuery();
+            if (query == null) {
+                return "";
+            }
+            return "?" + query;
+        }
+        catch (final MalformedURLException e) {
             return "";
         }
-        return "?" + query;
     }
 
     /**
@@ -156,7 +226,8 @@ public class HTMLAnchorElement extends HTMLElement {
      * @throws Exception if an error occurs
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms534620.aspx">MSDN Documentation</a>
      */
-    public void jsxSet_search(final String search) throws Exception {
+    @JsxSetter
+    public void setSearch(final String search) throws Exception {
         final String query;
         if (search == null || "?".equals(search) || "".equals(search)) {
             query = null;
@@ -177,12 +248,18 @@ public class HTMLAnchorElement extends HTMLElement {
      * @throws Exception if an error occurs
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms533775.aspx">MSDN Documentation</a>
      */
-    public String jsxGet_hash() throws Exception {
-        final String hash = getUrl().getRef();
-        if (hash == null) {
+    @JsxGetter
+    public String getHash() throws Exception {
+        try {
+            final String hash = getUrl().getRef();
+            if (hash == null) {
+                return "";
+            }
+            return "#" + hash;
+        }
+        catch (final MalformedURLException e) {
             return "";
         }
-        return "#" + hash;
     }
 
     /**
@@ -191,7 +268,8 @@ public class HTMLAnchorElement extends HTMLElement {
      * @throws Exception if an error occurs
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms533775.aspx">MSDN Documentation</a>
      */
-    public void jsxSet_hash(final String hash) throws Exception {
+    @JsxSetter
+    public void setHash(final String hash) throws Exception {
         setUrl(UrlUtils.getUrlWithNewRef(getUrl(), hash));
     }
 
@@ -201,15 +279,21 @@ public class HTMLAnchorElement extends HTMLElement {
      * @throws Exception if an error occurs
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms533784.aspx">MSDN Documentation</a>
      */
-    public String jsxGet_host() throws Exception {
-        final URL url = getUrl();
-        final int port = url.getPort();
-        final String host = url.getHost();
+    @JsxGetter
+    public String getHost() throws Exception {
+        try {
+            final URL url = getUrl();
+            final int port = url.getPort();
+            final String host = url.getHost();
 
-        if (port == -1) {
-            return host;
+            if (port == -1) {
+                return host;
+            }
+            return host + ":" + port;
         }
-        return host + ":" + port;
+        catch (final MalformedURLException e) {
+            return "";
+        }
     }
 
     /**
@@ -218,7 +302,8 @@ public class HTMLAnchorElement extends HTMLElement {
      * @throws Exception if an error occurs
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms533784.aspx">MSDN Documentation</a>
      */
-    public void jsxSet_host(final String host) throws Exception {
+    @JsxSetter
+    public void setHost(final String host) throws Exception {
         final String hostname;
         final int port;
         final int index = host.indexOf(':');
@@ -230,9 +315,8 @@ public class HTMLAnchorElement extends HTMLElement {
             hostname = host;
             port = -1;
         }
-        final URL url1 = UrlUtils.getUrlWithNewHost(getUrl(), hostname);
-        final URL url2 = UrlUtils.getUrlWithNewPort(url1, port);
-        setUrl(url2);
+        final URL url = UrlUtils.getUrlWithNewHostAndPort(getUrl(), hostname, port);
+        setUrl(url);
     }
 
     /**
@@ -241,8 +325,14 @@ public class HTMLAnchorElement extends HTMLElement {
      * @throws Exception if an error occurs
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms533785.aspx">MSDN Documentation</a>
      */
-    public String jsxGet_hostname() throws Exception {
-        return getUrl().getHost();
+    @JsxGetter
+    public String getHostname() throws Exception {
+        try {
+            return getUrl().getHost();
+        }
+        catch (final MalformedURLException e) {
+            return "";
+        }
     }
 
     /**
@@ -251,7 +341,8 @@ public class HTMLAnchorElement extends HTMLElement {
      * @throws Exception if an error occurs
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms533785.aspx">MSDN Documentation</a>
      */
-    public void jsxSet_hostname(final String hostname) throws Exception {
+    @JsxSetter
+    public void setHostname(final String hostname) throws Exception {
         setUrl(UrlUtils.getUrlWithNewHost(getUrl(), hostname));
     }
 
@@ -261,8 +352,37 @@ public class HTMLAnchorElement extends HTMLElement {
      * @throws Exception if an error occurs
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms534332.aspx">MSDN Documentation</a>
      */
-    public String jsxGet_pathname() throws Exception {
-        return getUrl().getPath();
+    @JsxGetter
+    public String getPathname() throws Exception {
+        try {
+            final URL url = getUrl();
+            if (!url.getProtocol().startsWith("http")
+                    && getBrowserVersion().hasFeature(JS_ANCHOR_PATHNAME_NONE_FOR_NONE_HTTP_URL)) {
+                return "";
+            }
+            if (getBrowserVersion().hasFeature(JS_ANCHOR_PATHNAME_DETECT_WIN_DRIVES_URL)) {
+                final HtmlAnchor anchor = (HtmlAnchor) getDomNodeOrDie();
+                String href = anchor.getHrefAttribute();
+                if (href.length() > 1 && Character.isLetter(href.charAt(0)) && ':' == href.charAt(1)) {
+                    if (getBrowserVersion().hasFeature(JS_ANCHOR_PROTOCOL_COLON_UPPER_CASE_DRIVE_LETTERS)) {
+                        href = StringUtils.capitalize(href);
+                    }
+                    if (getBrowserVersion().hasFeature(JS_ANCHOR_PATHNAME_PREFIX_WIN_DRIVES_URL)) {
+                        href = "/" + href;
+                    }
+                    return href;
+                }
+            }
+            return url.getPath();
+        }
+        catch (final MalformedURLException e) {
+            final HtmlAnchor anchor = (HtmlAnchor) getDomNodeOrDie();
+            if (anchor.getHrefAttribute().startsWith("http")
+                    && getBrowserVersion().hasFeature(JS_ANCHOR_PATHNAME_NONE_FOR_BROKEN_URL)) {
+                return "";
+            }
+            return "/";
+        }
     }
 
     /**
@@ -271,7 +391,8 @@ public class HTMLAnchorElement extends HTMLElement {
      * @throws Exception if an error occurs
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms534332.aspx">MSDN Documentation</a>
      */
-    public void jsxSet_pathname(final String pathname) throws Exception {
+    @JsxSetter
+    public void setPathname(final String pathname) throws Exception {
         setUrl(UrlUtils.getUrlWithNewPath(getUrl(), pathname));
     }
 
@@ -281,12 +402,18 @@ public class HTMLAnchorElement extends HTMLElement {
      * @throws Exception if an error occurs
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms534342.aspx">MSDN Documentation</a>
      */
-    public String jsxGet_port() throws Exception {
-        final int port = getUrl().getPort();
-        if (port == -1) {
+    @JsxGetter
+    public String getPort() throws Exception {
+        try {
+            final int port = getUrl().getPort();
+            if (port == -1) {
+                return "";
+            }
+            return Integer.toString(port);
+        }
+        catch (final MalformedURLException e) {
             return "";
         }
-        return String.valueOf(port);
     }
 
     /**
@@ -295,7 +422,8 @@ public class HTMLAnchorElement extends HTMLElement {
      * @throws Exception if an error occurs
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms534342.aspx">MSDN Documentation</a>
      */
-    public void jsxSet_port(final String port) throws Exception {
+    @JsxSetter
+    public void setPort(final String port) throws Exception {
         setUrl(UrlUtils.getUrlWithNewPort(getUrl(), Integer.parseInt(port)));
     }
 
@@ -305,8 +433,27 @@ public class HTMLAnchorElement extends HTMLElement {
      * @throws Exception if an error occurs
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms534353.aspx">MSDN Documentation</a>
      */
-    public String jsxGet_protocol() throws Exception {
-        return getUrl().getProtocol() + ":";
+    @JsxGetter
+    public String getProtocol() throws Exception {
+        try {
+            if (getBrowserVersion().hasFeature(JS_ANCHOR_PATHNAME_DETECT_WIN_DRIVES_URL)) {
+                final HtmlAnchor anchor = (HtmlAnchor) getDomNodeOrDie();
+                final String href = anchor.getHrefAttribute().toLowerCase(Locale.ROOT);
+                if (href.length() > 1 && Character.isLetter(href.charAt(0)) && ':' == href.charAt(1)) {
+                    return "file:";
+                }
+            }
+
+            return getUrl().getProtocol() + ":";
+        }
+        catch (final MalformedURLException e) {
+            final HtmlAnchor anchor = (HtmlAnchor) getDomNodeOrDie();
+            if (anchor.getHrefAttribute().startsWith("http")
+                    && getBrowserVersion().hasFeature(JS_ANCHOR_PROTOCOL_COLON_FOR_BROKEN_URL)) {
+                return ":";
+            }
+            return StringUtils.substringBefore(anchor.getHrefAttribute(), "/");
+        }
     }
 
     /**
@@ -315,7 +462,8 @@ public class HTMLAnchorElement extends HTMLElement {
      * @throws Exception if an error occurs
      * @see <a href="http://msdn.microsoft.com/en-us/library/ms534353.aspx">MSDN Documentation</a>
      */
-    public void jsxSet_protocol(final String protocol) throws Exception {
+    @JsxSetter
+    public void setProtocol(final String protocol) throws Exception {
         final String bareProtocol = StringUtils.substringBefore(protocol, ":");
         setUrl(UrlUtils.getUrlWithNewProtocol(getUrl(), bareProtocol));
     }
@@ -327,7 +475,7 @@ public class HTMLAnchorElement extends HTMLElement {
      * @return the default value
      */
     @Override
-    public Object getDefaultValue(final Class< ? > hint) {
+    public Object getDefaultValue(final Class<?> hint) {
         final HtmlElement element = getDomNodeOrNull();
         if (element == null) {
             return super.getDefaultValue(null);
@@ -336,34 +484,380 @@ public class HTMLAnchorElement extends HTMLElement {
     }
 
     static String getDefaultValue(final HtmlElement element) {
-        final String href = element.getAttribute("href").trim();
+        String href = element.getAttribute("href");
 
-        final String response;
-        if (href == HtmlElement.ATTRIBUTE_NOT_DEFINED) {
-            response = ""; // for example for named anchors
-        }
-        else {
-            final int indexAnchor = href.indexOf('#');
-            final String beforeAnchor;
-            final String anchorPart;
-            if (indexAnchor == -1) {
-                beforeAnchor = href;
-                anchorPart = "";
-            }
-            else {
-                beforeAnchor = href.substring(0, indexAnchor);
-                anchorPart = href.substring(indexAnchor);
-            }
-
-            try {
-                response =
-                    ((HtmlPage) element.getPage()).getFullyQualifiedUrl(beforeAnchor).toExternalForm() + anchorPart;
-            }
-            catch (final MalformedURLException e) {
-                return href;
-            }
+        if (DomElement.ATTRIBUTE_NOT_DEFINED == href) {
+            return ""; // for example for named anchors
         }
 
-        return response;
+        href = href.trim();
+
+        final SgmlPage page = element.getPage();
+        if (page == null || !page.isHtmlPage()) {
+            return href;
+        }
+
+        try {
+            return HtmlAnchor.getTargetUrl(href, (HtmlPage) page).toExternalForm();
+        }
+        catch (final MalformedURLException e) {
+            return href;
+        }
+    }
+
+    /**
+     * Returns the <tt>text</tt> attribute.
+     * @return the <tt>text</tt> attribute
+     */
+    @Override
+    @JsxGetter
+    public String getText() {
+        final DomNode htmlElement = getDomNodeOrDie();
+        return htmlElement.asText();
+    }
+
+    /**
+     * Sets the <tt>text</tt> attribute.
+     * @param text the <tt>text</tt> attribute
+     */
+    @JsxSetter
+    public void setText(final String text) {
+        final DomNode htmlElement = getDomNodeOrDie();
+        htmlElement.setTextContent(text);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getTypeOf() {
+        if (getPrototype() != null && getBrowserVersion().hasFeature(JS_ANCHOR_TYPE_HTMLANCHORELEMENT)) {
+            return "HTMLAnchorElement";
+        }
+        return super.getTypeOf();
+    }
+
+    /**
+     * Returns the {@code charset} attribute.
+     * @return the {@code charset} attribute
+     */
+    @JsxGetter
+    public String getCharset() {
+        return getDomNodeOrDie().getAttribute("charset");
+    }
+
+    /**
+     * Sets the {@code charset} attribute.
+     * @param charset the {@code charset} attribute
+     */
+    @JsxSetter
+    public void setCharset(final String charset) {
+        getDomNodeOrDie().setAttribute("charset", charset);
+    }
+
+    /**
+     * Returns the {@code coords} attribute.
+     * @return the {@code coords} attribute
+     */
+    @JsxGetter
+    public String getCoords() {
+        return getDomNodeOrDie().getAttribute("coords");
+    }
+
+    /**
+     * Sets the {@code coords} attribute.
+     * @param coords {@code coords} attribute
+     */
+    @JsxSetter
+    public void setCoords(final String coords) {
+        getDomNodeOrDie().setAttribute("coords", coords);
+    }
+
+    /**
+     * Returns the {@code hreflang} attribute.
+     * @return the {@code hreflang} attribute
+     */
+    @JsxGetter
+    public String getHreflang() {
+        return getDomNodeOrDie().getAttribute("hreflang");
+    }
+
+    /**
+     * Sets the {@code hreflang} attribute.
+     * @param hreflang {@code hreflang} attribute
+     */
+    @JsxSetter
+    public void setHreflang(final String hreflang) {
+        getDomNodeOrDie().setAttribute("hreflang", hreflang);
+    }
+
+    /**
+     * Returns the {@code origin} attribute.
+     * @return the {@code origin} attribute
+     */
+    @JsxGetter({ @WebBrowser(CHROME), @WebBrowser(FF) })
+    public String getOrigin() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code username} attribute.
+     * @return the {@code username} attribute
+     */
+    @JsxGetter({ @WebBrowser(CHROME), @WebBrowser(FF) })
+    public String getUsername() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code username} attribute.
+     * @param username {@code username} attribute
+     */
+    @JsxSetter({ @WebBrowser(CHROME), @WebBrowser(FF) })
+    public void setUsername(final String username) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code password} attribute.
+     * @return the {@code password} attribute
+     */
+    @JsxGetter({ @WebBrowser(CHROME), @WebBrowser(FF) })
+    public String getPassword() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code password} attribute.
+     * @param password {@code password} attribute
+     */
+    @JsxSetter({ @WebBrowser(CHROME), @WebBrowser(FF) })
+    public void setPassword(final String password) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code download} attribute.
+     * @return the {@code download} attribute
+     */
+    @JsxGetter({ @WebBrowser(CHROME), @WebBrowser(FF) })
+    public String getDownload() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code download} attribute.
+     * @param download {@code download} attribute
+     */
+    @JsxSetter({ @WebBrowser(CHROME), @WebBrowser(FF) })
+    public void setDownload(final String download) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code ping} attribute.
+     * @return the {@code ping} attribute
+     */
+    @JsxGetter({ @WebBrowser(CHROME), @WebBrowser(FF) })
+    public String getPing() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code ping} attribute.
+     * @param ping {@code ping} attribute
+     */
+    @JsxSetter({ @WebBrowser(CHROME), @WebBrowser(FF) })
+    public void setPing(final String ping) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code shape} attribute.
+     * @return the {@code shape} attribute
+     */
+    @JsxGetter
+    public String getShape() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code shape} attribute.
+     * @param shape {@code shape} attribute
+     */
+    @JsxSetter
+    public void setShape(final String shape) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code type} attribute.
+     * @return the {@code type} attribute
+     */
+    @JsxGetter
+    public String getType() {
+        return getDomNodeOrDie().getAttribute("type");
+    }
+
+    /**
+     * Sets the {@code type} attribute.
+     * @param type {@code type} attribute
+     */
+    @JsxSetter
+    public void setType(final String type) {
+        getDomNodeOrDie().setAttribute("type", type);
+    }
+
+    /**
+     * Returns the {@code relList} attribute.
+     * @return the {@code relList} attribute
+     */
+    @JsxGetter(@WebBrowser(FF))
+    public DOMTokenList getRelList() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code searchParams} attribute.
+     * @return the {@code searchParams} attribute
+     */
+    @JsxGetter(@WebBrowser(FF))
+    public String getSearchParams() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code searchParams} attribute.
+     * @param searchParams {@code searchParams} attribute
+     */
+    @JsxSetter(@WebBrowser(FF))
+    public void setSearchParams(final URLSearchParams searchParams) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code protocolLong} attribute.
+     * @return the {@code protocolLong} attribute
+     */
+    @JsxGetter(@WebBrowser(IE))
+    public String getProtocolLong() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code Methods} attribute.
+     * @return the {@code Methods} attribute
+     */
+    @JsxGetter(propertyName = "Methods", value = @WebBrowser(IE))
+    public String getMethods() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code Methods} attribute.
+     * @param methods {@code Methods} attribute
+     */
+    @JsxSetter(propertyName = "Methods", value = @WebBrowser(IE))
+    public void setMethods(final String methods) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code mimeType} attribute.
+     * @return the {@code mimeType} attribute
+     */
+    @JsxGetter(@WebBrowser(IE))
+    public String getMimeType() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code mimeType} attribute.
+     * @param mimeType {@code mimeType} attribute
+     */
+    @JsxSetter(@WebBrowser(IE))
+    public void setMimeType(final String mimeType) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code nameProp} attribute.
+     * @return the {@code nameProp} attribute
+     */
+    @JsxGetter(@WebBrowser(IE))
+    public String getNameProp() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code urn} attribute.
+     * @return the {@code urn} attribute
+     */
+    @JsxGetter(@WebBrowser(IE))
+    public String getUrn() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code urn} attribute.
+     * @param urn {@code urn} attribute
+     */
+    @JsxSetter(@WebBrowser(IE))
+    public void setUrn(final String urn) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code dataFld} attribute.
+     * @return the {@code dataFld} attribute
+     */
+    @JsxGetter(@WebBrowser(value = IE, maxVersion = 8))
+    public String getDataFld() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code dataFld} attribute.
+     * @param dataFld {@code dataFld} attribute
+     */
+    @JsxSetter(@WebBrowser(value = IE, maxVersion = 8))
+    public void setDataFld(final String dataFld) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code dataFormatAs} attribute.
+     * @return the {@code dataFormatAs} attribute
+     */
+    @JsxGetter(@WebBrowser(value = IE, maxVersion = 8))
+    public String getDataFormatAs() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code dataFormatAs} attribute.
+     * @param dataFormatAs {@code dataFormatAs} attribute
+     */
+    @JsxSetter(@WebBrowser(value = IE, maxVersion = 8))
+    public void setDataFormatAs(final String dataFormatAs) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Returns the {@code dataSrc} attribute.
+     * @return the {@code dataSrc} attribute
+     */
+    @JsxGetter(@WebBrowser(value = IE, maxVersion = 8))
+    public String getDataSrc() {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
+    }
+
+    /**
+     * Sets the {@code dataSrc} attribute.
+     * @param dataSrc {@code dataSrc} attribute
+     */
+    @JsxSetter(@WebBrowser(value = IE, maxVersion = 8))
+    public void setDataSrc(final String dataSrc) {
+        throw Context.throwAsScriptRuntimeEx(new UnsupportedOperationException());
     }
 }

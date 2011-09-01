@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,38 +14,40 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
-import java.util.ArrayList;
-import java.util.List;
+import static com.gargoylesoftware.htmlunit.BrowserRunner.Browser.CHROME;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Browser;
-import com.gargoylesoftware.htmlunit.BrowserRunner.Browsers;
-import com.gargoylesoftware.htmlunit.html.HtmlButtonInput;
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.BrowserRunner.NotYetImplemented;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Unit tests for {@link HTMLBodyElement}.
  *
- * @version $Revision: 4559 $
+ * @version $Revision: 10090 $
  * @author Daniel Gredler
  * @author Ahmed Ashour
  * @author Marc Guillemot
+ * @author Ronald Brill
+ * @author Frank Danek
  */
 @RunWith(BrowserRunner.class)
-public class HTMLBodyElementTest extends WebTestCase {
+public class HTMLBodyElementTest extends WebDriverTestCase {
 
     /**
      * Tests the default body padding and margins.
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = {",0px,0px,0px,0px", ",,,,", ",8px,8px,8px,8px", ",,,," },
-            IE = {"0px,0px,0px,0px,0px", ",,,,", "15px 10px,10px,10px,15px,15px", ",,,," })
+    @Alerts(DEFAULT = {"0px,0px,0px,0px,0px", ",,,,", "8px,8px,8px,8px,8px", ",,,," },
+            FF = {",0px,0px,0px,0px", ",,,,", ",8px,8px,8px,8px", ",,,," },
+            IE8 = {"0px,0px,0px,0px,0px", ",,,,", "15px 10px,10px,10px,15px,15px", ",,,," })
+    @NotYetImplemented(CHROME)
     public void testDefaultPaddingAndMargins() throws Exception {
         final String html =
             "<html>\n"
@@ -63,15 +65,15 @@ public class HTMLBodyElementTest extends WebTestCase {
             + "  </head>\n"
             + "  <body id='body' onload='test()'>blah</body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts("[object]")
-    @Browsers(Browser.IE)
+    @Alerts(DEFAULT = "exception",
+            IE8 = "[object]")
     public void attachEvent() throws Exception {
         final String html =
             "<html>\n"
@@ -81,7 +83,9 @@ public class HTMLBodyElementTest extends WebTestCase {
             + "        alert(event);\n"
             + "      }\n"
             + "      function test() {\n"
-            + "        document.body.attachEvent('onclick', handler);\n"
+            + "        try {\n"
+            + "          document.body.attachEvent('onclick', handler);\n"
+            + "        } catch(e) { alert('exception'); }\n"
             + "      }\n"
             + "    </script>\n"
             + "  </head>\n"
@@ -90,18 +94,17 @@ public class HTMLBodyElementTest extends WebTestCase {
             + "  </body>\n"
             + "</html>";
 
-        final List<String> collectedAlerts = new ArrayList<String>();
-        final HtmlPage page = loadPage(getBrowserVersion(), html, collectedAlerts);
-        page.<HtmlButtonInput>getHtmlElementById("myInput").click();
-        assertEquals(getExpectedAlerts(), collectedAlerts);
+        final WebDriver driver = loadPage2(html);
+        driver.findElement(By.id("myInput")).click();
+        assertEquals(getExpectedAlerts(), getCollectedAlerts(driver));
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = "no",
-            IE = "yes")
+    @Alerts(DEFAULT = "no",
+            IE8 = "yes")
     public void doScroll() throws Exception {
         final String html =
             "<html>\n"
@@ -121,15 +124,16 @@ public class HTMLBodyElementTest extends WebTestCase {
             + "  <body onload='test()'>\n"
             + "  </body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = {"#ee0000", "#0000aa", "#000000" },
-            IE = {"", "#0000aa", "#000000" })
+    @Alerts(DEFAULT = {"", "#0000aa", "x" },
+            IE = {"", "#0000aa", "#000000" },
+            IE11 = {"", "#0000aa", "#0" })
     public void aLink() throws Exception {
         final String html =
             "<html>\n"
@@ -147,15 +151,14 @@ public class HTMLBodyElementTest extends WebTestCase {
             + "  </head>\n"
             + "  <body id='body' onload='test()'>blah</body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = {"", "http://www.foo.com/blah.gif", "http://www.gargoylesoftware.com/blah.gif" },
-            IE = {"", "http://www.foo.com/blah.gif", "blah.gif" })
+    @Alerts({"", "http://www.foo.com/blah.gif", "blah.gif" })
     public void background() throws Exception {
         final String html =
             "<html>\n"
@@ -173,15 +176,16 @@ public class HTMLBodyElementTest extends WebTestCase {
             + "  </head>\n"
             + "  <body id='body' onload='test()'>blah</body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = {"#ffffff", "#0000aa", "#000000" },
-            IE = {"", "#0000aa", "#000000" })
+    @Alerts(DEFAULT = {"", "#0000aa", "x" },
+            IE = {"", "#0000aa", "#000000" },
+            IE11 = {"", "#0000aa", "#0" })
     public void bgColor() throws Exception {
         final String html =
             "<html>\n"
@@ -199,15 +203,16 @@ public class HTMLBodyElementTest extends WebTestCase {
             + "  </head>\n"
             + "  <body id='body' onload='test()'>blah</body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = {"#0000ee", "#0000aa", "#000000" },
-            IE = {"", "#0000aa", "#000000" })
+    @Alerts(DEFAULT = {"", "#0000aa", "x" },
+            IE = {"", "#0000aa", "#000000" },
+            IE11 = {"", "#0000aa", "#0" })
     public void link() throws Exception {
         final String html =
             "<html>\n"
@@ -225,15 +230,16 @@ public class HTMLBodyElementTest extends WebTestCase {
             + "  </head>\n"
             + "  <body id='body' onload='test()'>blah</body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = {"#000000", "#0000aa", "#000000" },
-            IE = {"", "#0000aa", "#000000" })
+    @Alerts(DEFAULT = {"", "#0000aa", "x" },
+            IE = {"", "#0000aa", "#000000" },
+            IE11 = {"", "#0000aa", "#0" })
     public void text() throws Exception {
         final String html =
             "<html>\n"
@@ -251,15 +257,16 @@ public class HTMLBodyElementTest extends WebTestCase {
             + "  </head>\n"
             + "  <body id='body' onload='test()'>blah</body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(FF = {"#000000", "#0000aa", "#000000" },
-            IE = {"", "#0000aa", "#000000" })
+    @Alerts(DEFAULT = {"", "#0000aa", "x" },
+            IE = {"", "#0000aa", "#000000" },
+            IE11 = {"", "#0000aa", "#0" })
     public void vLink() throws Exception {
         final String html =
             "<html>\n"
@@ -277,7 +284,48 @@ public class HTMLBodyElementTest extends WebTestCase {
             + "  </head>\n"
             + "  <body id='body' onload='test()'>blah</body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
+    /**
+     * @throws Exception if an error occurs
+     */
+    @Test
+    @Alerts(DEFAULT = { "[object HTMLBodyElement]", "" },
+        CHROME = { "function HTMLBodyElement() { [native code] }", "toString, "
+            + "ELEMENT_NODE, ATTRIBUTE_NODE, TEXT_NODE, CDATA_SECTION_NODE, ENTITY_REFERENCE_NODE, "
+            + "ENTITY_NODE, PROCESSING_INSTRUCTION_NODE, COMMENT_NODE, DOCUMENT_NODE, DOCUMENT_TYPE_NODE, "
+            + "DOCUMENT_FRAGMENT_NODE, NOTATION_NODE, DOCUMENT_POSITION_DISCONNECTED, "
+            + "DOCUMENT_POSITION_PRECEDING, "
+            + "DOCUMENT_POSITION_FOLLOWING, DOCUMENT_POSITION_CONTAINS, DOCUMENT_POSITION_CONTAINED_BY, "
+            + "DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC, " },
+            FF = { "function HTMLBodyElement() {\n    [native code]\n}", ""
+            + "ELEMENT_NODE, ATTRIBUTE_NODE, TEXT_NODE, CDATA_SECTION_NODE, ENTITY_REFERENCE_NODE, "
+            + "ENTITY_NODE, PROCESSING_INSTRUCTION_NODE, COMMENT_NODE, DOCUMENT_NODE, DOCUMENT_TYPE_NODE, "
+            + "DOCUMENT_FRAGMENT_NODE, NOTATION_NODE, DOCUMENT_POSITION_DISCONNECTED, "
+            + "DOCUMENT_POSITION_PRECEDING, "
+            + "DOCUMENT_POSITION_FOLLOWING, DOCUMENT_POSITION_CONTAINS, DOCUMENT_POSITION_CONTAINED_BY, "
+            + "DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC, " },
+            IE8 = "exception")
+    public void enumeratedProperties() throws Exception {
+        final String html
+            = "<html><head>\n"
+            + "<script>\n"
+            + "  function test() {\n"
+            + "    var str = '';\n"
+            + "    try {\n"
+            + "      alert(HTMLBodyElement);\n"
+            + "      var str = '';\n"
+            + "      for (var i in HTMLBodyElement)\n"
+            + "        str += i + ', ';\n"
+            + "      alert(str);\n"
+            + "    } catch (e) { alert('exception')}\n"
+            + "  }\n"
+            + "</script>\n"
+            + "</head>\n"
+            + "<body onload='test()'>\n"
+            + "</body></html>";
+
+        loadPageWithAlerts2(html);
+    }
 }

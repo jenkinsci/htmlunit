@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ package com.gargoylesoftware.htmlunit.xml;
 import java.io.IOException;
 import java.util.HashMap;
 
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.apache.commons.logging.Log;
@@ -47,14 +46,14 @@ import com.gargoylesoftware.htmlunit.html.DomProcessingInstruction;
 /**
  * A page that will be returned for response with content type "text/xml".
  *
- * @version $Revision: 4794 $
+ * @version $Revision: 9837 $
  * @author Marc Guillemot
  * @author David K. Taylor
  * @author Ahmed Ashour
+ * @author Frank Danek
  */
 public class XmlPage extends SgmlPage {
 
-    private static final long serialVersionUID = -1430136241030261308L;
     private static final Log LOG = LogFactory.getLog(XmlPage.class);
 
     private Node node_;
@@ -84,7 +83,7 @@ public class XmlPage extends SgmlPage {
         super(null, enclosingWindow);
         node_ = node;
         if (node_ != null) {
-            XmlUtil.appendChild(this, this, node_);
+            XmlUtil.appendChild(this, this, node_, true);
         }
     }
 
@@ -100,34 +99,52 @@ public class XmlPage extends SgmlPage {
      */
     public XmlPage(final WebResponse webResponse, final WebWindow enclosingWindow, final boolean ignoreSAXException)
         throws IOException {
+        this(webResponse, enclosingWindow, ignoreSAXException, true);
+    }
+
+    /**
+     * Creates an instance.
+     * A warning is logged if an exception is thrown while parsing the XML content
+     * (for instance when the content is not a valid XML and can't be parsed).
+     *
+     * @param webResponse the response from the server
+     * @param enclosingWindow the window that holds the page
+     * @param ignoreSAXException Whether to ignore {@link SAXException} or throw it as {@link IOException}
+     * @param handleXHTMLAsHTML if true elements from the XHTML namespace are handled as HTML elements instead of
+     *     DOM elements
+     * @throws IOException if the page could not be created
+     */
+    public XmlPage(final WebResponse webResponse, final WebWindow enclosingWindow, final boolean ignoreSAXException,
+        final boolean handleXHTMLAsHTML) throws IOException {
         super(webResponse, enclosingWindow);
 
         try {
-            if (webResponse == null || webResponse.getContentAsString() == null
-                    || webResponse.getContentAsString().trim().length() == 0) {
-                node_ = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument().getDocumentElement();
+            try {
+                final Document document = XmlUtil.buildDocument(webResponse);
+                node_ = document.getFirstChild();
             }
-            else {
-                node_ = XmlUtil.buildDocument(webResponse).getDocumentElement();
-            }
-            if (node_ != null) {
-                XmlUtil.appendChild(this, this, node_);
-            }
-        }
-        catch (final SAXException e) {
-            if (LOG.isWarnEnabled()) {
-                LOG.warn("Failed parsing XML document " + webResponse.getRequestSettings().getUrl()
+            catch (final SAXException e) {
+                LOG.warn("Failed parsing XML document " + webResponse.getWebRequest().getUrl()
                         + ": " + e.getMessage());
-            }
-            if (!ignoreSAXException) {
-                throw new IOException(e.getMessage());
+                if (!ignoreSAXException) {
+                    throw new IOException(e.getMessage());
+                }
             }
         }
         catch (final ParserConfigurationException e) {
-            if (LOG.isWarnEnabled()) {
-                LOG.warn("Failed parsing XML document " + webResponse.getRequestSettings().getUrl()
-                        + ": " + e.getMessage());
+            if (null == webResponse) {
+                LOG.warn("Failed parsing XML empty document: " + e.getMessage());
             }
+            else {
+                LOG.warn("Failed parsing XML empty document " + webResponse.getWebRequest().getUrl()
+                    + ": " + e.getMessage());
+            }
+        }
+
+        Node node = node_;
+        while (node != null) {
+            XmlUtil.appendChild(this, this, node, handleXHTMLAsHTML);
+            node = node.getNextSibling();
         }
     }
 
@@ -185,14 +202,6 @@ public class XmlPage extends SgmlPage {
      */
     public Node adoptNode(final Node source) {
         throw new UnsupportedOperationException("XmlPage.adoptNode is not yet implemented.");
-    }
-
-    /**
-     * {@inheritDoc}
-     * Not yet implemented.
-     */
-    public Attr createAttribute(final String name) {
-        throw new UnsupportedOperationException("XmlPage.createAttribute is not yet implemented.");
     }
 
     /**

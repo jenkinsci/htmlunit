@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,9 @@
  */
 package com.gargoylesoftware.htmlunit.html;
 
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.CSS_DISPLAY_BLOCK2;
+import static com.gargoylesoftware.htmlunit.BrowserVersionFeatures.HTMLOPTIONGROUP_NO_DISABLED;
+
 import java.util.Map;
 
 import com.gargoylesoftware.htmlunit.SgmlPage;
@@ -21,17 +24,17 @@ import com.gargoylesoftware.htmlunit.SgmlPage;
 /**
  * Wrapper for the HTML element "optgroup".
  *
- * @version $Revision: 4097 $
+ * @version $Revision: 10214 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
  * @author <a href="mailto:cse@dynabean.de">Christian Sell</a>
  * @author David D. Kilzer
  * @author Ahmed Ashour
  * @author Daniel Gredler
+ * @author Ronald Brill
+ * @author Frank Danek
  */
-public class HtmlOptionGroup extends ClickableElement implements DisabledElement {
-
-    private static final long serialVersionUID = 7854731553754432321L;
+public class HtmlOptionGroup extends HtmlElement implements DisabledElement {
 
     /** The HTML tag represented by this element. */
     public static final String TAG_NAME = "optgroup";
@@ -39,14 +42,13 @@ public class HtmlOptionGroup extends ClickableElement implements DisabledElement
     /**
      * Creates an instance of HtmlOptionGroup
      *
-     * @param namespaceURI the URI that identifies an XML namespace
      * @param qualifiedName the qualified name of the element type to instantiate
      * @param page the HtmlPage that contains this element
      * @param attributes the initial attributes
      */
-    HtmlOptionGroup(final String namespaceURI, final String qualifiedName, final SgmlPage page,
+    HtmlOptionGroup(final String qualifiedName, final SgmlPage page,
             final Map<String, DomAttr> attributes) {
-        super(namespaceURI, qualifiedName, page, attributes);
+        super(qualifiedName, page, attributes);
     }
 
     /**
@@ -58,7 +60,7 @@ public class HtmlOptionGroup extends ClickableElement implements DisabledElement
      *         when emulating IE)
      */
     public final boolean isDisabled() {
-        if (getPage().getWebClient().getBrowserVersion().isIE()) {
+        if (hasFeature(HTMLOPTIONGROUP_NO_DISABLED)) {
             return false;
         }
         return hasAttribute("disabled");
@@ -80,5 +82,35 @@ public class HtmlOptionGroup extends ClickableElement implements DisabledElement
      */
     public final String getLabelAttribute() {
         return getAttribute("label");
+    }
+
+    /**
+     * Sets the value of the attribute "label". Refer to the
+     * <a href='http://www.w3.org/TR/html401/'>HTML 4.01</a>
+     * documentation for details on the use of this attribute.
+     *
+     * @param newLabel the value of the attribute "label"
+     */
+    public final void setLabelAttribute(final String newLabel) {
+        setAttribute("label", newLabel);
+    }
+
+    /**
+     * Gets the enclosing select of this HtmlOptionGroup.
+     * @return <code>null</code> if no select is found (for instance malformed html)
+     */
+    public HtmlSelect getEnclosingSelect() {
+        return (HtmlSelect) getEnclosingElement("select");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public DisplayStyle getDefaultStyleDisplay() {
+        if (hasFeature(CSS_DISPLAY_BLOCK2)) {
+            return DisplayStyle.BLOCK;
+        }
+        return DisplayStyle.INLINE;
     }
 }

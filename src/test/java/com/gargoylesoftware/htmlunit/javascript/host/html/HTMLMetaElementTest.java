@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,24 +18,26 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.gargoylesoftware.htmlunit.BrowserRunner;
-import com.gargoylesoftware.htmlunit.WebTestCase;
 import com.gargoylesoftware.htmlunit.BrowserRunner.Alerts;
+import com.gargoylesoftware.htmlunit.WebDriverTestCase;
 
 /**
  * Unit tests for {@link HTMLMetaElement}.
  *
- * @version $Revision: 4503 $
+ * @version $Revision: 9843 $
  * @author Ahmed Ashour
+ * @author Ronald Brill
+ * @author Frank Danek
  */
 @RunWith(BrowserRunner.class)
-public class HTMLMetaElementTest extends WebTestCase {
+public class HTMLMetaElementTest extends WebDriverTestCase {
 
     /**
      * @throws Exception if an error occurs
      */
     @Test
-    @Alerts(IE = { "", "text/html; charset=utf-8", "Content-Type", "", "", "" },
-            FF = { "undefined", "text/html; charset=utf-8", "Content-Type", "", "", "undefined" })
+    @Alerts(DEFAULT = { "undefined", "text/html; charset=utf-8", "Content-Type", "", "", "undefined" },
+            IE = { "", "text/html; charset=utf-8", "Content-Type", "", "", "" })
     public void name() throws Exception {
         final String html =
             "<html>\n"
@@ -55,7 +57,7 @@ public class HTMLMetaElementTest extends WebTestCase {
             + "  </head>\n"
             + "  <body onload='test()'></body>\n"
             + "</html>";
-        loadPageWithAlerts(html);
+        loadPageWithAlerts2(html);
     }
 
 }

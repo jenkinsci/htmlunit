@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,30 +14,45 @@
  */
 package com.gargoylesoftware.htmlunit.javascript.host.html;
 
-import com.gargoylesoftware.htmlunit.javascript.host.FormChild;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.CHROME;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.FF;
+import static com.gargoylesoftware.htmlunit.javascript.configuration.BrowserName.IE;
+
+import com.gargoylesoftware.htmlunit.html.HtmlFieldSet;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClass;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxClasses;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxConstructor;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxGetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.JsxSetter;
+import com.gargoylesoftware.htmlunit.javascript.configuration.WebBrowser;
 
 /**
  * The JavaScript object "HTMLFieldSetElement".
  *
- * @version $Revision: 4649 $
+ * @version $Revision: 10505 $
  * @author Ahmed Ashour
  */
+@JsxClasses({
+        @JsxClass(domClass = HtmlFieldSet.class,
+                browsers = { @WebBrowser(CHROME), @WebBrowser(FF), @WebBrowser(value = IE, minVersion = 11) }),
+        @JsxClass(domClass = HtmlFieldSet.class,
+            isJSObject = false, browsers = @WebBrowser(value = IE, maxVersion = 8))
+    })
 public class HTMLFieldSetElement extends FormChild {
-
-    private static final long serialVersionUID = -5222303197991907832L;
 
     /**
      * Creates an instance.
      */
+    @JsxConstructor({ @WebBrowser(CHROME), @WebBrowser(FF) })
     public HTMLFieldSetElement() {
-        // Empty.
     }
 
     /**
      * Returns the value of the <tt>align</tt> property.
      * @return the value of the <tt>align</tt> property
      */
-    public String jsxGet_align() {
+    @JsxGetter(@WebBrowser(IE))
+    public String getAlign() {
         return getAlign(false);
     }
 
@@ -45,19 +60,9 @@ public class HTMLFieldSetElement extends FormChild {
      * Sets the value of the <tt>align</tt> property.
      * @param align the value of the <tt>align</tt> property
      */
-    public void jsxSet_align(final String align) {
+    @JsxSetter(@WebBrowser(IE))
+    public void setAlign(final String align) {
         setAlign(align, false);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Object getWithFallback(final String name) {
-        if ("align".equals(name)) {
-            return NOT_FOUND;
-        }
-        return super.getWithFallback(name);
     }
 
 }

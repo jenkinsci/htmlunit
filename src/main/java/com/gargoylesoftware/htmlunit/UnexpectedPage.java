@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Gargoyle Software Inc.
+ * Copyright (c) 2002-2015 Gargoyle Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,19 +16,18 @@ package com.gargoylesoftware.htmlunit;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 
 /**
  * A generic page that is returned whenever an unexpected content type is
  * returned by the server.
  *
- * @version $Revision: 4756 $
+ * @version $Revision: 9837 $
  * @author <a href="mailto:mbowler@GargoyleSoftware.com">Mike Bowler</a>
  * @author David K. Taylor
+ * @author Ronald Brill
  */
 public class UnexpectedPage implements Page {
-
-    /** Serial version UID. */
-    private static final long serialVersionUID = -4072615208727355040L;
 
     private final WebResponse webResponse_;
     private WebWindow enclosingWindow_;
@@ -48,22 +47,23 @@ public class UnexpectedPage implements Page {
      * Initialize this page.
      */
     public void initialize() {
+        // nothing to do here
     }
 
     /**
      * Cleans up this page.
      */
     public void cleanUp() {
+        webResponse_.cleanUp();
     }
 
     /**
      * Returns an input stream representing all the content that was returned from the server.
      *
      * @return an input stream representing all the content that was returned from the server
-     * @exception IOException if an IO error occurs
+     * @throws IOException in case of IO problems
      */
-    public InputStream getInputStream()
-        throws IOException {
+    public InputStream getInputStream() throws IOException {
         return webResponse_.getContentAsStream();
     }
 
@@ -84,5 +84,17 @@ public class UnexpectedPage implements Page {
     public WebWindow getEnclosingWindow() {
         return enclosingWindow_;
     }
-}
 
+    /**
+     * Returns the URL of this page.
+     * @return the URL of this page
+     */
+    public URL getUrl() {
+        return getWebResponse().getWebRequest().getUrl();
+    }
+
+    @Override
+    public boolean isHtmlPage() {
+        return false;
+    }
+}
