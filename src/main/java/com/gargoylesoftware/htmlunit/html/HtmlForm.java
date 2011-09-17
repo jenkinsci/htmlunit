@@ -110,7 +110,7 @@ public class HtmlForm extends HtmlElement {
      * @return a new page that reflects the results of this submission
      * @exception IOException if an IO error occurs
      */
-    Page submit(final SubmittableElement submitElement) throws IOException {
+    public Page submit(final SubmittableElement submitElement) throws IOException {
         final HtmlPage htmlPage = (HtmlPage) getPage();
         final WebClient webClient = htmlPage.getWebClient();
         if (webClient.isJavaScriptEnabled()) {
