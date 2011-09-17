@@ -54,13 +54,25 @@ public interface DownloadedContent extends Serializable {
      * Implementation keeping content on the file system.
      */
     static class OnFile implements DownloadedContent {
-        private final File file_;
+        final File file_;
         public OnFile(final File file) {
             file_ = file;
         }
 
         public InputStream getInputStream() throws FileNotFoundException {
             return new FileInputStream(file_);
+        }
+    }
+
+    static class OnTempFile extends OnFile {
+        public OnTempFile(final File file) {
+            super(file);
+        }
+
+        @Override
+        protected void finalize() throws Throwable {
+            super.finalize();
+            file_.delete();
         }
     }
 
