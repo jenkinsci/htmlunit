@@ -1282,7 +1282,7 @@ public abstract class DomNode implements Cloneable, Serializable, Node {
     }
 
     public <X> X selectSingleNode(final String xpathExpr) {
-        return getFirstByXPath(xpathExpr);
+        return this.<X>getFirstByXPath(xpathExpr);
     }
     
     /**

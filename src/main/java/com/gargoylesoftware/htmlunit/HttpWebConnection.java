@@ -14,9 +14,12 @@
  */
 package com.gargoylesoftware.htmlunit;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
 import java.util.ArrayList;
@@ -52,6 +55,7 @@ import org.apache.commons.httpclient.methods.multipart.PartBase;
 import org.apache.commons.httpclient.methods.multipart.StringPart;
 import org.apache.commons.httpclient.params.HttpMethodParams;
 import org.apache.commons.httpclient.util.EncodingUtil;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.logging.impl.SimpleLog;
@@ -422,6 +426,45 @@ public class HttpWebConnection implements WebConnection {
         }
         final WebResponseData responseData = newWebResponseDataInstance(statusMessage, headers, statusCode, method);
         return newWebResponseInstance(responseData, loadTime, requestSettings);
+    }
+
+
+    private static final long MAX_IN_MEMORY = 500 * 1024;
+
+    /**
+     * Reads the content of the stream and saves it in memory or on the file system.
+     * @param is the stream to read
+     * @return a wrapper around the downloaded content
+     * @throws IOException in case of read issues
+     */
+    public static DownloadedContent downloadContent(final InputStream is) throws IOException {
+        if (is == null) {
+            return new DownloadedContent.InMemory(new byte[] {});
+        }
+        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
+
+        final byte[] buffer = new byte[1024];
+        int nbRead;
+        try {
+            while ((nbRead = is.read(buffer)) != -1) {
+                bos.write(buffer, 0, nbRead);
+                if (bos.size() > MAX_IN_MEMORY) {
+                    // we have exceeded the max for memory, let's write everything to a temporary file
+                    final File file = File.createTempFile("htmlunit", ".tmp");
+                    file.deleteOnExit();
+                    final FileOutputStream fos = new FileOutputStream(file);
+                    bos.writeTo(fos); // what we have already read
+                    IOUtils.copyLarge(is, fos); // what remains from the server response
+                    fos.close();
+                    return new DownloadedContent.OnFile(file);
+                }
+            }
+        }
+        finally {
+            IOUtils.closeQuietly(is);
+        }
+
+        return new DownloadedContent.InMemory(bos.toByteArray());
     }
 
     /**
