@@ -1470,18 +1470,8 @@
         <function name="getAttributeNS">
             <browser name="Firefox"/>
         </function>
-        <function name="getBoundingClientRect">
-            <doclink
-                url="http://msdn2.microsoft.com/en-us/library/ms536433.aspx"
-                descr="MSDN documentation"/>
-            <browser name="Internet Explorer"/>
-        </function>
-        <function name="getClientRects">
-            <doclink
-                url="http://msdn2.microsoft.com/en-us/library/ms536435.aspx"
-                descr="MSDN documentation"/>
-            <browser name="Internet Explorer"/>
-        </function>
+        <function name="getBoundingClientRect" />
+        <function name="getClientRects" />
         <function name="getElementsByClassName">
             <browser name="Firefox" min-version="3"/>
         </function>
